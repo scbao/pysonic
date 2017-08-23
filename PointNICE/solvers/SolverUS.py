@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 17:30:03
+# @Last Modified time: 2017-08-23 16:23:00
 
 import os
 import warnings
@@ -17,7 +17,6 @@ from scipy.interpolate import interp2d
 from ..bls import BilayerSonophore
 from ..utils import *
 from ..constants import *
-
 
 # Get package logger
 logger = logging.getLogger('PointNICE')

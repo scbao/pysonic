@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-23 15:34:29
+# @Last Modified time: 2017-08-23 16:22:25
 
 """ Definition of generic utility functions used in other modules """
 
@@ -86,37 +86,6 @@ def OpenFilesDialog(filetype, dirname=''):
     else:
         par_dir = None
     return (filenames, par_dir)
-
-
-def xlslog(filename, sheetname, data):
-    """ Append log data on a new row to specific sheet of excel workbook.
-
-        :param filename: absolute or relative path to the Excel workbook
-        :param sheetname: name of the Excel spreadsheet to which data is appended
-        :param data: data structure to be added to specific columns on a new row
-        :return: boolean indicating success (1) or failure (0) of operation
-    """
-
-    try:
-        wb = load_workbook(filename)
-        ws = wb[sheetname]
-        keys = data.keys()
-        i = 1
-        row_data = {}
-        for k in keys:
-            row_data[k] = data[k]
-            i += 1
-        ws.append(row_data)
-        wb.save(filename)
-        return 1
-    except PermissionError:
-        # If file cannot be accessed for writing because already opened
-        logger.error('Cannot write to "%s". Close the file and type "Y"', filename)
-        user_str = input()
-        if user_str in ['y', 'Y']:
-            return xlslog(filename, sheetname, data)
-        else:
-            return 0
 
 
 def ImportExcelCol(filename, sheetname, colstr, startrow):
@@ -252,6 +221,78 @@ def Intensity2Pressure(I, rho, c):
     return np.sqrt(2 * rho * c * I)
 
 
+def find_nearest(array, value):
+    ''' Find nearest element in 1D array. '''
+
+    idx = (np.abs(array - value)).argmin()
+    return (idx, array[idx])
+
+
+def rescale(x, lb, ub, lb_new=0, ub_new=1):
+    ''' Rescale a value to a specific interval by linear transformation. '''
+
+    xnorm = (x - lb) / (ub - lb)
+    return xnorm * (ub_new - lb_new) + lb_new
+
+
+def printPct(pct, precision):
+    print(('{:.' + str(precision) + 'f}%').format(pct), end='', flush=True)
+    print('\r' * (precision + 3), end='')
+
+
+def LennardJones(x, beta, alpha, C, m, n):
+    """ Generic expression of a Lennard-Jones function, adapted for the context of
+        symmetric deflection (distance = 2x).
+
+        :param x: deflection (i.e. half-distance)
+        :param beta: x-shifting factor
+        :param alpha: x-scaling factor
+        :param C: y-scaling factor
+        :param m: exponent of the repulsion term
+        :param n: exponent of the attraction term
+        :return: Lennard-Jones potential at given distance (2x)
+    """
+    return C * (np.power((alpha / (2 * x + beta)), m) - np.power((alpha / (2 * x + beta)), n))
+
+
+def CheckBatchLog(batch_type):
+    ''' Determine batch directory, and add a log file to the directory if it is absent.
+
+        :param batch_type: name of the log file to search for
+        :return: 2-tuple with full paths to batch directory and log file
+    '''
+
+    # Get batch directory from user
+    root = tk.Tk()
+    root.withdraw()
+    batch_dir = filedialog.askdirectory()
+    assert batch_dir, 'No batch directory chosen'
+
+    # Check presence of log file in batch directory
+    logdst = batch_dir + '/log.xlsx'
+    log_in_dir = os.path.isfile(logdst)
+
+    # If no log file, copy template in directory
+    if not log_in_dir:
+
+        # Determine log template from batch type
+        if batch_type == 'mech':
+            logfile = 'log_mech.xlsx'
+        elif batch_type == 'elec':
+            logfile = 'log_elec.xlsx'
+        else:
+            raise ValueError('Unknown batch type', batch_type)
+        this_dir, _ = os.path.split(__file__)
+        # par_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
+        logsrc = this_dir + '/templates/' + logfile
+
+        # Copy template
+        shutil.copy2(logsrc, logdst)
+
+    return (batch_dir, logdst)
+
+
+
 def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising',
                 kpsh=False, valley=False, ax=None):
     """ Detect peaks in data based on their amplitude and inter-peak distance. """
@@ -367,74 +408,3 @@ def detectSpikes(t, Qm, min_amp, min_dt):
         spike_rate = 'N/A'
         n_spikes = 0
     return (n_spikes, latency, spike_rate)
-
-
-def find_nearest(array, value):
-    ''' Find nearest element in 1D array. '''
-
-    idx = (np.abs(array - value)).argmin()
-    return (idx, array[idx])
-
-
-def rescale(x, lb, ub, lb_new=0, ub_new=1):
-    ''' Rescale a value to a specific interval by linear transformation. '''
-
-    xnorm = (x - lb) / (ub - lb)
-    return xnorm * (ub_new - lb_new) + lb_new
-
-
-def printPct(pct, precision):
-    print(('{:.' + str(precision) + 'f}%').format(pct), end='', flush=True)
-    print('\r' * (precision + 3), end='')
-
-
-def LennardJones(x, beta, alpha, C, m, n):
-    """ Generic expression of a Lennard-Jones function, adapted for the context of
-        symmetric deflection (distance = 2x).
-
-        :param x: deflection (i.e. half-distance)
-        :param beta: x-shifting factor
-        :param alpha: x-scaling factor
-        :param C: y-scaling factor
-        :param m: exponent of the repulsion term
-        :param n: exponent of the attraction term
-        :return: Lennard-Jones potential at given distance (2x)
-    """
-    return C * (np.power((alpha / (2 * x + beta)), m) - np.power((alpha / (2 * x + beta)), n))
-
-
-def CheckBatchLog(batch_type):
-    ''' Determine batch directory, and add a log file to the directory if it is absent.
-
-        :param batch_type: name of the log file to search for
-        :return: 2-tuple with full paths to batch directory and log file
-    '''
-
-    # Get batch directory from user
-    root = tk.Tk()
-    root.withdraw()
-    batch_dir = filedialog.askdirectory()
-    assert batch_dir, 'No batch directory chosen'
-
-    # Check presence of log file in batch directory
-    logdst = batch_dir + '/log.xlsx'
-    log_in_dir = os.path.isfile(logdst)
-
-    # If no log file, copy template in directory
-    if not log_in_dir:
-
-        # Determine log template from batch type
-        if batch_type == 'mech':
-            logfile = 'log_mech.xlsx'
-        elif batch_type == 'elec':
-            logfile = 'log_elec.xlsx'
-        else:
-            raise ValueError('Unknown batch type', batch_type)
-        this_dir, _ = os.path.split(__file__)
-        # par_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
-        logsrc = this_dir + '/templates/' + logfile
-
-        # Copy template
-        shutil.copy2(logsrc, logdst)
-
-    return (batch_dir, logdst)

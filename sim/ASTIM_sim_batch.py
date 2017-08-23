@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 18:39:57
+# @Last Modified time: 2017-08-23 16:25:04
 
 """ Run batch acoustic simulations of the NICE model. """
 

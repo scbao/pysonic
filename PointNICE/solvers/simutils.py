@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 17:16:12
+# @Last Modified time: 2017-08-23 16:23:51
 
 """ Utility functions used in simulations """
 
@@ -10,10 +10,12 @@ import time
 import logging
 import pickle
 import numpy as np
+from openpyxl import load_workbook
 
-from .import SolverUS
+# from . import SolverUS
+from .SolverUS import SolverUS
 from ..constants import *
-from ..utils import detectSpikes, xlslog
+from ..utils import detectSpikes
 
 
 # Get package logger
@@ -70,6 +72,37 @@ def createSimQueue(amps, durations, offsets, PRFs, DFs):
 
     # Return
     return queue[1:, :]
+
+
+def xlslog(filename, sheetname, data):
+    """ Append log data on a new row to specific sheet of excel workbook.
+
+        :param filename: absolute or relative path to the Excel workbook
+        :param sheetname: name of the Excel spreadsheet to which data is appended
+        :param data: data structure to be added to specific columns on a new row
+        :return: boolean indicating success (1) or failure (0) of operation
+    """
+
+    try:
+        wb = load_workbook(filename)
+        ws = wb[sheetname]
+        keys = data.keys()
+        i = 1
+        row_data = {}
+        for k in keys:
+            row_data[k] = data[k]
+            i += 1
+        ws.append(row_data)
+        wb.save(filename)
+        return 1
+    except PermissionError:
+        # If file cannot be accessed for writing because already opened
+        logger.error('Cannot write to "%s". Close the file and type "Y"', filename)
+        user_str = input()
+        if user_str in ['y', 'Y']:
+            return xlslog(filename, sheetname, data)
+        else:
+            return 0
 
 
 def runSimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params, sim_type):

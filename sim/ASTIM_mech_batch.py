@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-07-18 16:33:16
+# @Last Modified time: 2017-08-23 15:51:56
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -14,7 +14,8 @@ import pickle
 import numpy as np
 
 import PointNICE
-from PointNICE.utils import LoadParams, xlslog, CheckBatchLog
+from PointNICE.utils import LoadParams, CheckBatchLog
+from PointNICE.solvers import xlslog
 
 # Set logging options
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
