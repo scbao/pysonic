@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-23 14:15:34
+# @Last Modified time: 2017-08-23 14:52:26
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -40,7 +40,7 @@ pltvars = {
         'label': 'P_{AC}',
         'unit': 'kPa',
         'factor': 1e-3,
-        'alias': 'bls.Pacoustic(t, Adrive * states, Fdrive)'
+        'alias': 'bls.Pacoustic(t, data["Adrive"] * states, Fdrive)'
     },
 
     'Pmavg': {

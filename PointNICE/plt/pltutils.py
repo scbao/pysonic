@@ -1,0 +1,449 @@
+# -*- coding: utf-8 -*-
+# @Author: Theo Lemaire
+# @Date:   2017-08-23 14:55:37
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2017-08-23 15:41:49
+
+''' Plotting utilities '''
+
+import pickle
+import ntpath
+import re
+import inspect
+import tkinter as tk
+from tkinter import filedialog
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+
+from .. import channels
+from ..bls import BilayerSonophore
+from .pltvars import pltvars
+
+
+class InteractiveLegend(object):
+    """ Class defining an interactive matplotlib legend, where lines visibility can
+    be toggled by simply clicking on the corresponding legend label. Other graphic
+    objects can also be associated to the toggle of a specific line
+
+    Adapted from:
+    http://stackoverflow.com/questions/31410043/hiding-lines-after-showing-a-pyplot-figure
+    """
+
+    def __init__(self, legend, aliases):
+        self.legend = legend
+        self.fig = legend.axes.figure
+        self.lookup_artist, self.lookup_handle = self._build_lookups(legend)
+        self._setup_connections()
+        self.handles_aliases = aliases
+        self.update()
+
+    def _setup_connections(self):
+        for artist in self.legend.texts + self.legend.legendHandles:
+            artist.set_picker(10)  # 10 points tolerance
+
+        self.fig.canvas.mpl_connect('pick_event', self.on_pick)
+
+    def _build_lookups(self, legend):
+        ''' Method of the InteractiveLegend class building
+            the legend lookups. '''
+
+        labels = [t.get_text() for t in legend.texts]
+        handles = legend.legendHandles
+        label2handle = dict(zip(labels, handles))
+        handle2text = dict(zip(handles, legend.texts))
+
+        lookup_artist = {}
+        lookup_handle = {}
+        for artist in legend.axes.get_children():
+            if artist.get_label() in labels:
+                handle = label2handle[artist.get_label()]
+                lookup_handle[artist] = handle
+                lookup_artist[handle] = artist
+                lookup_artist[handle2text[handle]] = artist
+
+        lookup_handle.update(zip(handles, handles))
+        lookup_handle.update(zip(legend.texts, handles))
+
+        return lookup_artist, lookup_handle
+
+    def on_pick(self, event):
+        handle = event.artist
+        if handle in self.lookup_artist:
+            artist = self.lookup_artist[handle]
+            artist.set_visible(not artist.get_visible())
+            self.update()
+
+    def update(self):
+        for artist in self.lookup_artist.values():
+            handle = self.lookup_handle[artist]
+            if artist.get_visible():
+                handle.set_visible(True)
+                if artist in self.handles_aliases:
+                    for al in self.handles_aliases[artist]:
+                        al.set_visible(True)
+            else:
+                handle.set_visible(False)
+                if artist in self.handles_aliases:
+                    for al in self.handles_aliases[artist]:
+                        al.set_visible(False)
+        self.fig.canvas.draw()
+
+
+    def show(self):
+        ''' showing the interactive legend '''
+
+        plt.show()
+
+
+
+def getPatchesLoc(t, states):
+    ''' Determine the location of stimulus patches.
+
+        :param t: simulation time vector (s).
+        :param states: a vector of stimulation state (ON/OFF) at each instant in time.
+        :return: 3-tuple with number of patches, timing of STIM-ON an STIM-OFF instants.
+    '''
+
+    # Compute states derivatives and identify bounds indexes of pulses
+    dstates = np.diff(states)
+    ipatch_on = np.insert(np.where(dstates > 0.0)[0] + 1, 0, 0)
+    ipatch_off = np.where(dstates < 0.0)[0]
+
+    # Get time instants for pulses ON and OFF
+    npatches = ipatch_on.size
+    tpatch_on = t[ipatch_on]
+    tpatch_off = t[ipatch_off]
+
+    # return 3-tuple with #patches, pulse ON and pulse OFF instants
+    return (npatches, tpatch_on, tpatch_off)
+
+
+def SaveFigDialog(dirname, filename):
+    """ Open a FileSaveDialogBox to set the directory and name
+        of the figure to be saved.
+
+        The default directory and filename are given, and the
+        default extension is ".pdf"
+
+        :param dirname: default directory
+        :param filename: default filename
+        :return: full path to the chosen filename
+    """
+    root = tk.Tk()
+    root.withdraw()
+    filename_out = filedialog.asksaveasfilename(defaultextension=".pdf", initialdir=dirname,
+                                                initialfile=filename)
+    return filename_out
+
+
+
+def plotComp(yvars, filepaths, fs=15, show_patches=True):
+    ''' Compare profiles of several specific output variables of NICE simulations.
+
+        :param yvars: list of variables names to extract and compare
+        :param filepaths: list of full paths to output data files to be compared
+        :param fs: labels fontsize
+        :param show_patches: boolean indicating whether to indicate periods of stimulation with
+         colored rectangular patches
+    '''
+
+    nvars = len(yvars)
+
+    # x and y variables plotting information
+    t_plt = pltvars['t']
+    y_pltvars = [pltvars[key] for key in yvars]
+
+    # Dictionary of neurons
+    neurons = {}
+    for _, obj in inspect.getmembers(channels):
+        if inspect.isclass(obj) and isinstance(obj.name, str):
+            neurons[obj.name] = obj
+
+
+    # Regular expression for input files
+    rgxp = re.compile('sim_([A-Za-z]*)_(.*).pkl')
+
+
+    # Initialize figure and axes
+    if nvars == 1:
+        _, ax = plt.subplots(figsize=(11, 4))
+        axes = [ax]
+    else:
+        _, axes = plt.subplots(nvars, 1, figsize=(11, min(3 * nvars, 9)))
+    labels = [ntpath.basename(fp)[4:-4].replace('_', ' ') for fp in filepaths]
+    for i in range(nvars):
+        ax = axes[i]
+        pltvar = y_pltvars[i]
+        if 'min' in pltvar and 'max' in pltvar:
+            ax.set_ylim(pltvar['min'], pltvar['max'])
+        if pltvar['unit']:
+            ax.set_ylabel('${}\ ({})$'.format(pltvar['label'], pltvar['unit']), fontsize=fs)
+        else:
+            ax.set_ylabel('${}$'.format(pltvar['label']), fontsize=fs)
+        if i < nvars - 1:
+            ax.get_xaxis().set_ticklabels([])
+        else:
+            ax.set_xlabel('${}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
+            for tick in ax.xaxis.get_major_ticks():
+                tick.label.set_fontsize(fs)
+        ax.locator_params(axis='y', nbins=2)
+        for tick in ax.yaxis.get_major_ticks():
+            tick.label.set_fontsize(fs)
+
+
+
+    # Loop through data files
+    tstim_ref = 0.0
+    nstim = 0
+    j = 0
+    aliases = {}
+    for filepath in filepaths:
+
+        pkl_filename = ntpath.basename(filepath)
+
+        # Retrieve neuron name
+        mo = rgxp.fullmatch(pkl_filename)
+        if not mo:
+            print('Error: PKL file does not match regular expression pattern')
+            quit()
+        neuron_name = mo.group(1)
+
+        # Load data
+        print('Loading data from "' + pkl_filename + '"')
+        with open(filepath, 'rb') as pkl_file:
+            data = pickle.load(pkl_file)
+
+        # Extract useful variables
+        t = data['t']
+        states = data['states']
+        tstim = data['tstim']
+        Fdrive = data['Fdrive']
+        params = data['params']
+        a = data['a']
+        d = data['d']
+        geom = {"a": a, "d": d}
+
+        # Initialize BLS and channels mechanism
+        global neuron, bls
+        neuron = neurons[neuron_name]()
+        Qm0 = neuron.Cm0 * neuron.Vm0 * 1e-3
+        bls = BilayerSonophore(geom, params, Fdrive, neuron.Cm0, Qm0)
+
+        # Get data of variables to plot
+        vrs = []
+        for i in range(nvars):
+            pltvar = y_pltvars[i]
+            if 'alias' in pltvar:
+                var = eval(pltvar['alias'])
+            elif 'key' in pltvar:
+                var = data[pltvar['key']]
+            else:
+                var = data[yvars[i]]
+            vrs.append(var)
+
+        # Determine patches location
+        npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
+
+        # Adding onset to all signals
+        if t_plt['onset'] > 0.0:
+            t = np.insert(t + t_plt['onset'], 0, 0.0)
+            for i in range(nvars):
+                vrs[i] = np.insert(vrs[i], 0, vrs[i][0])
+            tpatch_on += t_plt['onset']
+            tpatch_off += t_plt['onset']
+
+        # Plotting
+        handles = [axes[i].plot(t * t_plt['factor'], vrs[i] * y_pltvars[i]['factor'],
+                                linewidth=2, label=labels[j]) for i in range(nvars)]
+        plt.tight_layout()
+
+        if show_patches:
+            k = 0
+            # stimulation patches
+            for ax in axes:
+                handle = handles[k]
+                (ybottom, ytop) = ax.get_ylim()
+                la = []
+                for i in range(npatches):
+                    la.append(ax.add_patch(Rectangle((tpatch_on[i] * t_plt['factor'], ybottom),
+                                                     (tpatch_off[i] - tpatch_on[i]) * t_plt['factor'],
+                                                     ytop - ybottom,
+                                                     color=handle[0].get_color(), alpha=0.2)))
+
+            aliases[handle[0]] = la
+            k += 1
+
+        if tstim != tstim_ref:
+            if nstim == 0:
+                nstim += 1
+                tstim_ref = tstim
+            else:
+                print('Warning: comparing different stimulation durations')
+
+        j += 1
+
+
+    iLegends = []
+    for k in range(nvars):
+        axes[k].legend(loc='upper left', fontsize=fs)
+        iLegends.append(InteractiveLegend(axes[k].legend_, aliases))
+
+    plt.show()
+
+
+
+def plotBatch(yvars, positions, directory, filepaths, plt_show=True, plt_save=False,
+              ask_before_save=1, fig_ext='png', tag='fig', fs=15, show_patches=True):
+    ''' Plot a figure with profiles of several specific NICE output variables, for several
+        NICE simulations.
+
+        :param yvars: list of variables names to extract and compare
+        :param positions: subplot indexes of each variable
+        :param filepaths: list of full paths to output data files to be compared
+        :param fs: labels fontsize
+        :param show_patches: boolean indicating whether to indicate periods of stimulation with
+         colored rectangular patches
+    '''
+
+    nvars = len(yvars)
+    naxes = np.unique(positions).size
+
+    # x and y variables plotting information
+    t_plt = pltvars['t']
+    y_pltvars = [pltvars[key] for key in yvars]
+
+    # Dictionary of neurons
+    neurons = {}
+    for _, obj in inspect.getmembers(channels):
+        if inspect.isclass(obj) and isinstance(obj.name, str):
+            neurons[obj.name] = obj
+
+    # Regular expression for input files
+    rgxp = re.compile('sim_([A-Za-z]*)_(.*).pkl')
+
+    # Loop through data files
+    for filepath in filepaths:
+
+        # Get code from file name
+        pkl_filename = ntpath.basename(filepath)
+        filecode = pkl_filename[0:-4]
+
+        # Retrieve neuron name
+        mo = rgxp.fullmatch(pkl_filename)
+        if not mo:
+            print('Error: PKL file does not match regular expression pattern')
+            quit()
+        neuron_name = mo.group(1)
+
+        # Load data
+        print('Loading data from "' + pkl_filename + '"')
+        with open(filepath, 'rb') as pkl_file:
+            data = pickle.load(pkl_file)
+
+        # Extract variables
+        print('Extracting variables')
+        t = data['t']
+        states = data['states']
+        Fdrive = data['Fdrive']
+        params = data['params']
+        a = data['a']
+        d = data['d']
+        geom = {"a": a, "d": d}
+
+        # Initialize BLS and channels mechanism
+        global bls, neuron
+        neuron = neurons[neuron_name]()
+        Qm0 = neuron.Cm0 * neuron.Vm0 * 1e-3
+        bls = BilayerSonophore(geom, params, Fdrive, neuron.Cm0, Qm0)
+
+        # Get data of variables to plot
+        vrs = []
+        for i in range(nvars):
+            pltvar = y_pltvars[i]
+            if 'alias' in pltvar:
+                var = eval(pltvar['alias'])
+            elif 'key' in pltvar:
+                var = data[pltvar['key']]
+            elif 'constant' in pltvar:
+                var = eval(pltvar['constant']) * np.ones(t.size)
+            else:
+                # var = data[varlist[i]]
+                var = data[yvars[i]]
+            vrs.append(var)
+
+        # Determine patches location
+        npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
+
+        # Adding onset to all signals
+        if t_plt['onset'] > 0.0:
+            t = np.insert(t + t_plt['onset'], 0, 0.0)
+            for i in range(nvars):
+                vrs[i] = np.insert(vrs[i], 0, vrs[i][0])
+            tpatch_on += t_plt['onset']
+            tpatch_off += t_plt['onset']
+
+        # Plotting
+        if naxes == 1:
+            _, ax = plt.subplots(figsize=(11, 4))
+            axes = [ax]
+        else:
+            _, axes = plt.subplots(naxes, 1, figsize=(11, min(3 * naxes, 9)))
+
+        # Axes
+        for i in range(naxes):
+            ax = axes[i]
+            if positions[i] < naxes - 1:
+                ax.get_xaxis().set_ticklabels([])
+            else:
+                ax.set_xlabel('${}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
+                for tick in ax.xaxis.get_major_ticks():
+                    tick.label.set_fontsize(fs)
+            ax.locator_params(axis='y', nbins=2)
+            for tick in ax.yaxis.get_major_ticks():
+                tick.label.set_fontsize(fs)
+
+        # Time series
+        icolor = 0
+        for i in range(nvars):
+            pltvar = y_pltvars[i]
+            ax = axes[positions[i]]
+            if 'constant' in pltvar:
+                ax.plot(t * t_plt['factor'], vrs[i] * pltvar['factor'], '--', c='black', lw=4)
+            else:
+                ax.plot(t * t_plt['factor'], vrs[i] * pltvar['factor'],
+                        c='C{}'.format(icolor), lw=4)
+                if 'min' in pltvar and 'max' in pltvar:
+                    ax.set_ylim(pltvar['min'], pltvar['max'])
+                if pltvar['unit']:
+                    ax.set_ylabel('${}\ ({})$'.format(pltvar['label'], pltvar['unit']),
+                                  fontsize=fs)
+                else:
+                    ax.set_ylabel('${}$'.format(pltvar['label']), fontsize=fs)
+                icolor += 1
+
+        # Patches
+        if show_patches == 1:
+            for ax in axes:
+                (ybottom, ytop) = ax.get_ylim()
+                for j in range(npatches):
+                    ax.add_patch(Rectangle((tpatch_on[j] * t_plt['factor'], ybottom),
+                                           (tpatch_off[j] - tpatch_on[j]) * t_plt['factor'],
+                                           ytop - ybottom, color='#8A8A8A', alpha=0.1))
+
+        plt.tight_layout()
+
+        # Save figure if needed (automatic or checked)
+        if plt_save == 1:
+            if ask_before_save == 1:
+                plt_filename = SaveFigDialog(directory, '{}_{}.{}'.format(filecode, tag, fig_ext))
+            else:
+                plt_filename = '{}/{}_{}.{}'.format(directory, filecode, tag, fig_ext)
+            if plt_filename:
+                plt.savefig(plt_filename)
+                print('Saving figure as "{}"'.format(plt_filename))
+                plt.close()
+
+    # Show all plots if needed
+    if plt_show == 1:
+        plt.show()

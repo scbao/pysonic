@@ -4,9 +4,8 @@
 # @Date:   2017-06-06 13:36:00
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-23 15:42:34
+# @Last Modified time: 2017-08-23 15:39:45
 
 
-from .SolverElec import SolverElec
-from .SolverUS import SolverUS
-from .simutils import *
+from .pltutils import *
+from .pltvars import *

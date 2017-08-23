@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 18:39:31
+# @Last Modified time: 2017-08-23 15:34:29
 
 """ Definition of generic utility functions used in other modules """
 
@@ -18,7 +18,6 @@ from tkinter import filedialog
 from openpyxl import load_workbook
 import numpy as np
 import yaml
-import matplotlib.pyplot as plt
 
 
 # Get package logger
@@ -87,24 +86,6 @@ def OpenFilesDialog(filetype, dirname=''):
     else:
         par_dir = None
     return (filenames, par_dir)
-
-
-def SaveFigDialog(dirname, filename):
-    """ Open a FileSaveDialogBox to set the directory and name
-        of the figure to be saved.
-
-        The default directory and filename are given, and the
-        default extension is ".pdf"
-
-        :param dirname: default directory
-        :param filename: default filename
-        :return: full path to the chosen filename
-    """
-    root = tk.Tk()
-    root.withdraw()
-    filename_out = filedialog.asksaveasfilename(defaultextension=".pdf", initialdir=dirname,
-                                                initialfile=filename)
-    return filename_out
 
 
 def xlslog(filename, sheetname, data):
@@ -388,81 +369,6 @@ def detectSpikes(t, Qm, min_amp, min_dt):
     return (n_spikes, latency, spike_rate)
 
 
-class InteractiveLegend(object):
-    """ Class defining an interactive matplotlib legend, where lines visibility can
-    be toggled by simply clicking on the corresponding legend label. Other graphic
-    objects can also be associated to the toggle of a specific line
-
-    Adapted from:
-    http://stackoverflow.com/questions/31410043/hiding-lines-after-showing-a-pyplot-figure
-    """
-
-    def __init__(self, legend, aliases):
-        self.legend = legend
-        self.fig = legend.axes.figure
-        self.lookup_artist, self.lookup_handle = self._build_lookups(legend)
-        self._setup_connections()
-        self.handles_aliases = aliases
-        self.update()
-
-    def _setup_connections(self):
-        for artist in self.legend.texts + self.legend.legendHandles:
-            artist.set_picker(10)  # 10 points tolerance
-
-        self.fig.canvas.mpl_connect('pick_event', self.on_pick)
-
-    def _build_lookups(self, legend):
-        ''' Method of the InteractiveLegend class building
-            the legend lookups. '''
-
-        labels = [t.get_text() for t in legend.texts]
-        handles = legend.legendHandles
-        label2handle = dict(zip(labels, handles))
-        handle2text = dict(zip(handles, legend.texts))
-
-        lookup_artist = {}
-        lookup_handle = {}
-        for artist in legend.axes.get_children():
-            if artist.get_label() in labels:
-                handle = label2handle[artist.get_label()]
-                lookup_handle[artist] = handle
-                lookup_artist[handle] = artist
-                lookup_artist[handle2text[handle]] = artist
-
-        lookup_handle.update(zip(handles, handles))
-        lookup_handle.update(zip(legend.texts, handles))
-
-        return lookup_artist, lookup_handle
-
-    def on_pick(self, event):
-        handle = event.artist
-        if handle in self.lookup_artist:
-            artist = self.lookup_artist[handle]
-            artist.set_visible(not artist.get_visible())
-            self.update()
-
-    def update(self):
-        for artist in self.lookup_artist.values():
-            handle = self.lookup_handle[artist]
-            if artist.get_visible():
-                handle.set_visible(True)
-                if artist in self.handles_aliases:
-                    for al in self.handles_aliases[artist]:
-                        al.set_visible(True)
-            else:
-                handle.set_visible(False)
-                if artist in self.handles_aliases:
-                    for al in self.handles_aliases[artist]:
-                        al.set_visible(False)
-        self.fig.canvas.draw()
-
-
-    def show(self):
-        ''' showing the interactive legend '''
-
-        plt.show()
-
-
 def find_nearest(array, value):
     ''' Find nearest element in 1D array. '''
 
@@ -495,29 +401,6 @@ def LennardJones(x, beta, alpha, C, m, n):
         :return: Lennard-Jones potential at given distance (2x)
     """
     return C * (np.power((alpha / (2 * x + beta)), m) - np.power((alpha / (2 * x + beta)), n))
-
-
-
-def getPatchesLoc(t, states):
-    ''' Determine the location of stimulus patches.
-
-        :param t: simulation time vector (s).
-        :param states: a vector of stimulation state (ON/OFF) at each instant in time.
-        :return: 3-tuple with number of patches, timing of STIM-ON an STIM-OFF instants.
-    '''
-
-    # Compute states derivatives and identify bounds indexes of pulses
-    dstates = np.diff(states)
-    ipatch_on = np.insert(np.where(dstates > 0.0)[0] + 1, 0, 0)
-    ipatch_off = np.where(dstates < 0.0)[0]
-
-    # Get time instants for pulses ON and OFF
-    npatches = ipatch_on.size
-    tpatch_on = t[ipatch_on]
-    tpatch_off = t[ipatch_off]
-
-    # return 3-tuple with #patches, pulse ON and pulse OFF instants
-    return (npatches, tpatch_on, tpatch_off)
 
 
 def CheckBatchLog(batch_type):
