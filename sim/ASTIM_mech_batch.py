@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-23 15:51:56
+# @Last Modified time: 2017-08-24 14:13:24
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -14,8 +14,8 @@ import pickle
 import numpy as np
 
 import PointNICE
-from PointNICE.utils import LoadParams, CheckBatchLog
-from PointNICE.solvers import xlslog
+from PointNICE.utils import LoadParams
+from PointNICE.solvers import xlslog, checkBatchLog
 
 # Set logging options
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
@@ -24,7 +24,7 @@ logger.setLevel(logging.DEBUG)
 
 # Select output directory
 try:
-    (batch_dir, log_filepath) = CheckBatchLog('mech')
+    (batch_dir, log_filepath) = checkBatchLog('mech')
 except AssertionError as err:
     logger.error(err)
     quit()

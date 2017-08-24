@@ -4,14 +4,13 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-23 16:22:25
+# @Last Modified time: 2017-08-24 14:09:42
 
 """ Definition of generic utility functions used in other modules """
 
 from enum import Enum
 from functools import partial
 import os
-import shutil
 import logging
 import tkinter as tk
 from tkinter import filedialog
@@ -253,43 +252,6 @@ def LennardJones(x, beta, alpha, C, m, n):
         :return: Lennard-Jones potential at given distance (2x)
     """
     return C * (np.power((alpha / (2 * x + beta)), m) - np.power((alpha / (2 * x + beta)), n))
-
-
-def CheckBatchLog(batch_type):
-    ''' Determine batch directory, and add a log file to the directory if it is absent.
-
-        :param batch_type: name of the log file to search for
-        :return: 2-tuple with full paths to batch directory and log file
-    '''
-
-    # Get batch directory from user
-    root = tk.Tk()
-    root.withdraw()
-    batch_dir = filedialog.askdirectory()
-    assert batch_dir, 'No batch directory chosen'
-
-    # Check presence of log file in batch directory
-    logdst = batch_dir + '/log.xlsx'
-    log_in_dir = os.path.isfile(logdst)
-
-    # If no log file, copy template in directory
-    if not log_in_dir:
-
-        # Determine log template from batch type
-        if batch_type == 'mech':
-            logfile = 'log_mech.xlsx'
-        elif batch_type == 'elec':
-            logfile = 'log_elec.xlsx'
-        else:
-            raise ValueError('Unknown batch type', batch_type)
-        this_dir, _ = os.path.split(__file__)
-        # par_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
-        logsrc = this_dir + '/templates/' + logfile
-
-        # Copy template
-        shutil.copy2(logsrc, logdst)
-
-    return (batch_dir, logdst)
 
 
 

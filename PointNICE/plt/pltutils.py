@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-23 15:41:49
+# @Last Modified time: 2017-08-24 17:45:07
 
 ''' Plotting utilities '''
 
@@ -19,6 +19,14 @@ from matplotlib.patches import Rectangle
 from .. import channels
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
+
+
+# Define global variables
+neuron = None
+bls = None
+
+# Regular expression for input files
+rgxp = re.compile('([E,A])STIM_([A-Za-z]*)_(.*).pkl')
 
 
 class InteractiveLegend(object):
@@ -161,10 +169,6 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
             neurons[obj.name] = obj
 
 
-    # Regular expression for input files
-    rgxp = re.compile('sim_([A-Za-z]*)_(.*).pkl')
-
-
     # Initialize figure and axes
     if nvars == 1:
         _, ax = plt.subplots(figsize=(11, 4))
@@ -207,7 +211,8 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
         if not mo:
             print('Error: PKL file does not match regular expression pattern')
             quit()
-        neuron_name = mo.group(1)
+        sim_type = mo.group(1)
+        neuron_name = mo.group(2)
 
         # Load data
         print('Loading data from "' + pkl_filename + '"')
@@ -218,17 +223,22 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
         t = data['t']
         states = data['states']
         tstim = data['tstim']
-        Fdrive = data['Fdrive']
-        params = data['params']
-        a = data['a']
-        d = data['d']
-        geom = {"a": a, "d": d}
 
         # Initialize BLS and channels mechanism
-        global neuron, bls
+        global neuron
         neuron = neurons[neuron_name]()
-        Qm0 = neuron.Cm0 * neuron.Vm0 * 1e-3
-        bls = BilayerSonophore(geom, params, Fdrive, neuron.Cm0, Qm0)
+        neuron_states = [data[sn] for sn in neuron.states_names]
+
+        # Initialize BLS
+        if sim_type == 'A':
+            global bls
+            params = data['params']
+            Fdrive = data['Fdrive']
+            a = data['a']
+            d = data['d']
+            geom = {"a": a, "d": d}
+            Qm0 = neuron.Cm0 * neuron.Vm0 * 1e-3
+            bls = BilayerSonophore(geom, params, Fdrive, neuron.Cm0, Qm0)
 
         # Get data of variables to plot
         vrs = []
@@ -293,12 +303,13 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
 
 
 
-def plotBatch(yvars, positions, directory, filepaths, plt_show=True, plt_save=False,
-              ask_before_save=1, fig_ext='png', tag='fig', fs=15, show_patches=True):
+
+def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
+              ask_before_save=1, fig_ext='png', tag='fig', fs=15, lw=4, show_patches=True):
     ''' Plot a figure with profiles of several specific NICE output variables, for several
         NICE simulations.
 
-        :param yvars: list of variables names to extract and compare
+        :param vars_dict: dict of lists of variables names to extract and plot together
         :param positions: subplot indexes of each variable
         :param filepaths: list of full paths to output data files to be compared
         :param fs: labels fontsize
@@ -306,12 +317,11 @@ def plotBatch(yvars, positions, directory, filepaths, plt_show=True, plt_save=Fa
          colored rectangular patches
     '''
 
-    nvars = len(yvars)
-    naxes = np.unique(positions).size
+    labels = list(vars_dict.keys())
+    naxes = len(vars_dict)
 
     # x and y variables plotting information
     t_plt = pltvars['t']
-    y_pltvars = [pltvars[key] for key in yvars]
 
     # Dictionary of neurons
     neurons = {}
@@ -319,8 +329,6 @@ def plotBatch(yvars, positions, directory, filepaths, plt_show=True, plt_save=Fa
         if inspect.isclass(obj) and isinstance(obj.name, str):
             neurons[obj.name] = obj
 
-    # Regular expression for input files
-    rgxp = re.compile('sim_([A-Za-z]*)_(.*).pkl')
 
     # Loop through data files
     for filepath in filepaths:
@@ -334,7 +342,8 @@ def plotBatch(yvars, positions, directory, filepaths, plt_show=True, plt_save=Fa
         if not mo:
             print('Error: PKL file does not match regular expression pattern')
             quit()
-        neuron_name = mo.group(1)
+        sim_type = mo.group(1)
+        neuron_name = mo.group(2)
 
         # Load data
         print('Loading data from "' + pkl_filename + '"')
@@ -345,41 +354,29 @@ def plotBatch(yvars, positions, directory, filepaths, plt_show=True, plt_save=Fa
         print('Extracting variables')
         t = data['t']
         states = data['states']
-        Fdrive = data['Fdrive']
-        params = data['params']
-        a = data['a']
-        d = data['d']
-        geom = {"a": a, "d": d}
 
-        # Initialize BLS and channels mechanism
-        global bls, neuron
+        # Initialize channel mechanism
+        global neuron
         neuron = neurons[neuron_name]()
-        Qm0 = neuron.Cm0 * neuron.Vm0 * 1e-3
-        bls = BilayerSonophore(geom, params, Fdrive, neuron.Cm0, Qm0)
+        neuron_states = [data[sn] for sn in neuron.states_names]
 
-        # Get data of variables to plot
-        vrs = []
-        for i in range(nvars):
-            pltvar = y_pltvars[i]
-            if 'alias' in pltvar:
-                var = eval(pltvar['alias'])
-            elif 'key' in pltvar:
-                var = data[pltvar['key']]
-            elif 'constant' in pltvar:
-                var = eval(pltvar['constant']) * np.ones(t.size)
-            else:
-                # var = data[varlist[i]]
-                var = data[yvars[i]]
-            vrs.append(var)
+        # Initialize BLS
+        if sim_type == 'A':
+            global bls
+            params = data['params']
+            Fdrive = data['Fdrive']
+            a = data['a']
+            d = data['d']
+            geom = {"a": a, "d": d}
+            Qm0 = neuron.Cm0 * neuron.Vm0 * 1e-3
+            bls = BilayerSonophore(geom, params, Fdrive, neuron.Cm0, Qm0)
 
         # Determine patches location
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
 
-        # Adding onset to all signals
+        # Adding onset to time vector and patches
         if t_plt['onset'] > 0.0:
             t = np.insert(t + t_plt['onset'], 0, 0.0)
-            for i in range(nvars):
-                vrs[i] = np.insert(vrs[i], 0, vrs[i][0])
             tpatch_on += t_plt['onset']
             tpatch_off += t_plt['onset']
 
@@ -390,46 +387,71 @@ def plotBatch(yvars, positions, directory, filepaths, plt_show=True, plt_save=Fa
         else:
             _, axes = plt.subplots(naxes, 1, figsize=(11, min(3 * naxes, 9)))
 
-        # Axes
         for i in range(naxes):
+
             ax = axes[i]
-            if positions[i] < naxes - 1:
+            ax_pltvars = [pltvars[j] for j in vars_dict[labels[i]]]
+            nvars = len(ax_pltvars)
+
+            # X-axis
+            if i < naxes - 1:
                 ax.get_xaxis().set_ticklabels([])
             else:
                 ax.set_xlabel('${}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
                 for tick in ax.xaxis.get_major_ticks():
                     tick.label.set_fontsize(fs)
+
+            # Y-axis
+            if ax_pltvars[0]['unit']:
+                ax.set_ylabel('${}\ ({})$'.format(labels[i], ax_pltvars[0]['unit']),
+                              fontsize=fs)
+            else:
+                ax.set_ylabel('${}$'.format(labels[i]), fontsize=fs)
+            if 'min' in ax_pltvars[0] and 'max' in ax_pltvars[0]:
+                ax_min = min([ap['min'] for ap in ax_pltvars])
+                ax_max = max([ap['max'] for ap in ax_pltvars])
+                ax.set_ylim(ax_min, ax_max)
             ax.locator_params(axis='y', nbins=2)
             for tick in ax.yaxis.get_major_ticks():
                 tick.label.set_fontsize(fs)
 
-        # Time series
-        icolor = 0
-        for i in range(nvars):
-            pltvar = y_pltvars[i]
-            ax = axes[positions[i]]
-            if 'constant' in pltvar:
-                ax.plot(t * t_plt['factor'], vrs[i] * pltvar['factor'], '--', c='black', lw=4)
-            else:
-                ax.plot(t * t_plt['factor'], vrs[i] * pltvar['factor'],
-                        c='C{}'.format(icolor), lw=4)
-                if 'min' in pltvar and 'max' in pltvar:
-                    ax.set_ylim(pltvar['min'], pltvar['max'])
-                if pltvar['unit']:
-                    ax.set_ylabel('${}\ ({})$'.format(pltvar['label'], pltvar['unit']),
-                                  fontsize=fs)
-                else:
-                    ax.set_ylabel('${}$'.format(pltvar['label']), fontsize=fs)
-                icolor += 1
+            # Time series
+            icolor = 0
+            for j in range(nvars):
 
-        # Patches
-        if show_patches == 1:
-            for ax in axes:
+                # Extract variable
+                pltvar = ax_pltvars[j]
+                if 'alias' in pltvar:
+                    var = eval(pltvar['alias'])
+                elif 'key' in pltvar:
+                    var = data[pltvar['key']]
+                elif 'constant' in pltvar:
+                    var = eval(pltvar['constant']) * np.ones(t.size)
+                else:
+                    var = data[vars_dict[labels[i]][j]]
+                if t_plt['onset'] > 0.0:
+                    var = np.insert(var, 0, var[0])
+
+                # Plot variable
+                if 'constant' in pltvar:
+                    ax.plot(t * t_plt['factor'], var * pltvar['factor'], '--', c='black', lw=lw,
+                            label='${}$'.format(pltvar['label']))
+                else:
+                    ax.plot(t * t_plt['factor'], var * pltvar['factor'],
+                            c='C{}'.format(icolor), lw=lw, label='${}$'.format(pltvar['label']))
+                    icolor += 1
+
+            # Patches
+            if show_patches == 1:
                 (ybottom, ytop) = ax.get_ylim()
                 for j in range(npatches):
                     ax.add_patch(Rectangle((tpatch_on[j] * t_plt['factor'], ybottom),
                                            (tpatch_off[j] - tpatch_on[j]) * t_plt['factor'],
                                            ytop - ybottom, color='#8A8A8A', alpha=0.1))
+
+            # Legend
+            if nvars > 1:
+                ax.legend(fontsize=fs, loc=7, ncol=nvars // 5 + 1)
 
         plt.tight_layout()
 

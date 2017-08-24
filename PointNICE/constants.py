@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 17:29:02
+# @Last Modified time: 2017-08-24 13:41:31
 
 ''' Algorithmic constants used in the core modules. '''
 
@@ -41,5 +41,5 @@ TITRATION_DT_THR = 1e-3  # stimulus duration search range threshold for titratio
 
 # Spike detection
 SPIKE_MIN_QAMP = 10e-5  # threshold amplitude for spike detection on charge signal (C/m2)
+SPIKE_MIN_VAMP = 10.0  # threshold amplitude for spike detection on potential signal (mV)
 SPIKE_MIN_DT = 1e-3  # minimal time interval for spike detection on charge signal (s)
-

@@ -4,13 +4,17 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 10:45:35
+# @Last Modified time: 2017-08-24 17:20:49
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
+import logging
 from functools import partialmethod
 import numpy as np
 from .base import BaseMech
+
+# Get package logger
+logger = logging.getLogger('PointNICE')
 
 
 class LeechTouch(BaseMech):
@@ -62,17 +66,17 @@ class LeechTouch(BaseMech):
     tau_PumpNa_act = 0.1  # Time constant for the PumpNa current activation from Sodium ions (s)
     tau_KCa_act = 0.01  # Time constant for the KCa current activation from Calcium ions (s)
 
-    # Names of the channels state probabilities
-    states_names = ['m', 'h', 'n', 's', 'C_Na', 'A_Na', 'C_Ca', 'A_Ca']
-
-    # Names of the channels effective coefficients
-    coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan', 'alphas', 'betas']
-
-    # initial channel probabilities
-    states0 = np.array([])
 
     def __init__(self):
         ''' Constructor of the class. '''
+
+        # Names and initial states of the channels state probabilities
+        self.states_names = ['m', 'h', 'n', 's', 'C_Na', 'A_Na', 'C_Ca', 'A_Ca']
+        self.states0 = np.array([])
+
+        # Names of the channels effective coefficients
+        self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
+                            'alphas', 'betas']
 
         self.K_Na = 0.016 * self.surface / self.curr_factor
         self.K_Ca = 0.1 * self.surface / self.curr_factor

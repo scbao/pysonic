@@ -4,15 +4,17 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 17:15:29
+# @Last Modified time: 2017-08-24 14:15:12
 
 """ Run batch parameter titrations of the NICE model. """
 
+import os
 import logging
 import numpy as np
-from PointNICE.solvers import runTitrationBatch
+from PointNICE.solvers import checkBatchLog, runTitrationBatch
 from PointNICE.channels import *
-from PointNICE.utils import LoadParams, CheckBatchLog
+from PointNICE.utils import LoadParams
+from PointNICE.plt import plotBatch
 
 # Set logging options
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
@@ -41,10 +43,13 @@ stim_params = {
 
 # Select output directory
 try:
-    (batch_dir, log_filepath) = CheckBatchLog('elec')
+    (batch_dir, log_filepath) = checkBatchLog('A-STIM')
 except AssertionError as err:
     logger.error(err)
     quit()
 
 # Run titration batch
-runTitrationBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params)
+pkl_filepaths = runTitrationBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params)
+pkl_dir, _ = os.path.split(pkl_filepaths[0])
+
+plotBatch(['Qm'], [0], pkl_dir, pkl_filepaths)

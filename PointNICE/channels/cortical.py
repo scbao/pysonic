@@ -4,12 +4,16 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 14:49:00
+# @Last Modified time: 2017-08-24 17:22:05
 
 ''' Channels mechanisms for thalamic neurons. '''
 
+import logging
 import numpy as np
 from .base import BaseMech
+
+# Get package logger
+logger = logging.getLogger('PointNICE')
 
 
 class Cortical(BaseMech):
@@ -33,16 +37,17 @@ class Cortical(BaseMech):
     VNa = 50.0  # Sodium Nernst potential (mV)
     VK = -90.0  # Potassium Nernst potential (mV)
 
-    # Names and initial states of the channels state probabilities
-    states_names = ['m', 'h', 'n', 'p']
-    states0 = np.array([])
-
-    # Names of the different coefficients to be averaged in a lookup table.
-    coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan', 'alphap', 'betap']
 
     def __init__(self):
         ''' Constructor of the class '''
-        pass
+
+        # Names and initial states of the channels state probabilities
+        self.states_names = ['m', 'h', 'n', 'p']
+        self.states0 = np.array([])
+
+        # Names of the different coefficients to be averaged in a lookup table.
+        self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
+                            'alphap', 'betap']
 
 
     def alpham(self, Vm):
@@ -390,7 +395,6 @@ class CorticalLTS(Cortical):
     VT = -50.0  # Spike threshold adjustment parameter (mV)
     TauMax = 4.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
     Vx = -7.0  # Voltage-dependence uniform shift factor at 36°C (mV)
-
 
     def __init__(self):
         ''' Constructor of the class. '''

@@ -4,12 +4,16 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 14:48:08
+# @Last Modified time: 2017-08-24 17:20:30
 
 ''' Channels mechanisms for thalamic neurons. '''
 
+import logging
 import numpy as np
 from .base import BaseMech
+
+# Get package logger
+logger = logging.getLogger('PointNICE')
 
 
 class Thalamic(BaseMech):
@@ -34,18 +38,16 @@ class Thalamic(BaseMech):
     VK = -90.0  # Potassium Nernst potential (mV)
     VCa = 120.0  # Calcium Nernst potential (mV)
 
-    # Names and initial states of the channels state probabilities
-    states_names = ['m', 'h', 'n', 's', 'u']
-    states0 = np.array([])
-
-    # Names of the different coefficients to be averaged in a lookup table.
-    coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan', 'alphas', 'betas',
-                   'alphau', 'betau']
-
-
     def __init__(self):
         ''' Constructor of the class '''
-        pass
+
+        # Names and initial states of the channels state probabilities
+        self.states_names = ['m', 'h', 'n', 's', 'u']
+        self.states0 = np.array([])
+
+        # Names of the different coefficients to be averaged in a lookup table.
+        self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
+                            'alphas', 'betas', 'alphau', 'betau']
 
 
     def alpham(self, Vm):

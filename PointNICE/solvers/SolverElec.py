@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-03 15:09:53
+# @Last Modified time: 2017-08-24 13:14:22
 
 
 import logging
@@ -73,16 +73,16 @@ class SolverElec:
         nvar = len(y0)
 
         # Run simulation
-        y = np.empty((nsamples - 1, nvar))
+        y = np.empty((nvar, nsamples - 1))
         solver.set_initial_value(y0, t[0])
         k = 1
         while solver.successful() and k <= nsamples - 1:
             solver.set_f_params(channel_mech, pulse[k])
             solver.integrate(t[k])
-            y[k - 1, :] = solver.y
+            y[:, k - 1] = solver.y
             k += 1
 
-        y = np.concatenate((np.atleast_2d(y0), y), axis=0)
+        y = np.concatenate((np.atleast_2d(y0).T, y), axis=1)
         return (t, y)
 
 

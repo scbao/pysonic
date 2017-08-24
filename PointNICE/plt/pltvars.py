@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-23 14:52:26
+# @Last Modified time: 2017-08-24 17:34:28
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -82,19 +82,8 @@ pltvars = {
         'desc': 'membrane potential',
         'label': 'V_m',
         'unit': 'mV',
-        'factor': 1e3,
-        'alias': 'data["Qm"] / np.array([bls.Capct(ZZ) for ZZ in data["Z"]])'
-    },
-
-
-    'iL': {
-        'desc': 'leakage current',
-        'label': 'I_L',
-        'unit': 'mA/cm^2',
         'factor': 1,
-        'alias': 'neuron.currL(data["Qm"] * 1e3 / np.array([bls.Capct(ZZ) for ZZ in data["Z"]]))'
     },
-
 
     'm': {
         'desc': 'iNa activation gate opening',
@@ -169,6 +158,16 @@ pltvars = {
         'alias': '1 - data["O"] - data["C"]'
     },
 
+    'O + 2OL': {
+        'desc': 'iH activation gate relative conductance',
+        'label': 'O\ +\ 2O_L',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 2.1,
+        'alias': 'data["O"] + 2 * (1 - data["O"] - data["C"])'
+    },
+
     'P0': {
         'desc': 'iH regulating factor activation',
         'label': 'P_0',
@@ -225,6 +224,78 @@ pltvars = {
         'label': 'A_{Na^{2+}}',
         'unit': 'mV',
         'factor': 1e0
+    },
+
+    'iL': {
+        'desc': 'leakage current',
+        'label': 'I_L',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currL(data["Vm"])'
+    },
+
+    'iNa': {
+        'desc': 'Sodium current',
+        'label': 'I_{Na}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currNa(data["m"], data["h"], data["Vm"])'
+    },
+
+    'iK': {
+        'desc': 'delayed-rectifier Potassium current',
+        'label': 'I_K',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currK(data["n"], data["Vm"])'
+    },
+
+    'iM': {
+        'desc': 'slow non-inactivating Potassium current',
+        'label': 'I_M',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currM(data["p"], data["Vm"])'
+    },
+
+    'iT': {
+        'desc': 'low-threshold Calcium current',
+        'label': 'I_T',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currCa(data["s"], data["u"], data["Vm"])'
+    },
+
+    'iTs': {
+        'desc': 'low-threshold Calcium current',
+        'label': 'I_{TS}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currCa(data["s"], data["u"], data["Vm"])'
+    },
+
+    'iH': {
+        'desc': 'hyperpolarization-activated cationic current',
+        'label': 'I_h',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currH(data["O"], data["C"], data["Vm"])'
+    },
+
+    'iKL': {
+        'desc': 'leakage Potassium current',
+        'label': 'I_{KL}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currKL(data["Vm"])'
+    },
+
+    'iNet': {
+        'desc': 'net current',
+        'label': 'I_{net}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currNet(data["Vm"], neuron_states)'
     },
 
     'Veff': {

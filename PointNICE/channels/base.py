@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-03 14:41:42
+# @Last Modified time: 2017-08-24 17:16:19
 
 ''' Module standard API for all neuron mechanisms.
 
@@ -62,20 +62,20 @@ class BaseMech(metaclass=abc.ABCMeta):
     def Vm0(self):
         return 'Should never reach here'
 
-    @property
-    @abc.abstractmethod
-    def states_names(self):
-        return 'Should never reach here'
+    # @property
+    # @abc.abstractmethod
+    # def states_names(self):
+    #     return 'Should never reach here'
 
-    @property
-    @abc.abstractmethod
-    def states0(self):
-        return 'Should never reach here'
+    # @property
+    # @abc.abstractmethod
+    # def states0(self):
+    #     return 'Should never reach here'
 
-    @property
-    @abc.abstractmethod
-    def coeff_names(self):
-        return 'Should never reach here'
+    # @property
+    # @abc.abstractmethod
+    # def coeff_names(self):
+    #     return 'Should never reach here'
 
 
     @abc.abstractmethod
