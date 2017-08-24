@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 17:37:01
+# @Last Modified time: 2017-08-24 18:16:23
 
 """ Run batch acoustic simulations of the NICE model. """
 
@@ -61,7 +61,7 @@ vars_RS_FS = {
     'i_{Na}\ kin.': ['m', 'h'],
     'i_K\ kin.': ['n'],
     'i_M\ kin.': ['p'],
-    'curr.': ['iNa', 'iK', 'iM', 'iL', 'iNet']
+    'I': ['iNa', 'iK', 'iM', 'iL', 'iNet']
 }
 
 
@@ -72,7 +72,7 @@ vars_LTS = {
     'i_K\ kin.': ['n'],
     'i_M\ kin.': ['p'],
     'i_T\ kin.': ['s', 'u'],
-    'curr.': ['iNa', 'iK', 'iM', 'iT', 'iL', 'iNet']
+    'I': ['iNa', 'iK', 'iM', 'iT', 'iL', 'iNet']
 }
 
 vars_RE = {
@@ -81,7 +81,7 @@ vars_RE = {
     'i_{Na}\ kin.': ['m', 'h'],
     'i_K\ kin.': ['n'],
     'i_{TS}\ kin.': ['s', 'u'],
-    'curr.': ['iNa', 'iK', 'iTs', 'iL', 'iNet']
+    'I': ['iNa', 'iK', 'iTs', 'iL', 'iNet']
 }
 
 vars_TC = {
@@ -91,7 +91,7 @@ vars_TC = {
     'i_K\ kin.': ['n'],
     'i_{T}\ kin.': ['s', 'u'],
     'i_{H}\ kin.': ['O', 'OL', 'O + 2OL'],
-    'curr.': ['iNa', 'iK', 'iT', 'iH', 'iKL', 'iL', 'iNet']
+    'I': ['iNa', 'iK', 'iT', 'iH', 'iKL', 'iL', 'iNet']
 }
 
 plotBatch(vars_TC, pkl_dir, pkl_filepaths)

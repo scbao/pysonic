@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 17:45:53
+# @Last Modified time: 2017-08-24 18:16:37
 
 """ Run batch electrical simulations of point-neuron models. """
 
@@ -18,7 +18,7 @@ logger = logging.getLogger('PointNICE')
 logger.setLevel(logging.DEBUG)
 
 # Channels mechanisms
-neurons = [ThalamoCortical()]
+neurons = [LeechTouch()]
 
 # Stimulation parameters
 stim_params = {
@@ -45,7 +45,7 @@ vars_RS_FS = {
     'i_{Na}\ kin.': ['m', 'h'],
     'i_L\ kin.': ['n'],
     'i_M\ kin.': ['p'],
-    'curr.': ['iNa', 'iK', 'iM', 'iL', 'iNet']
+    'I': ['iNa', 'iK', 'iM', 'iL', 'iNet']
 }
 
 vars_LTS = {
@@ -54,7 +54,7 @@ vars_LTS = {
     'i_K\ kin.': ['n'],
     'i_M\ kin.': ['p'],
     'i_T\ kin.': ['s', 'u'],
-    'curr.': ['iNa', 'iK', 'iM', 'iT', 'iL', 'iNet']
+    'I': ['iNa', 'iK', 'iM', 'iT', 'iL', 'iNet']
 }
 
 vars_RE = {
@@ -62,7 +62,7 @@ vars_RE = {
     'i_{Na}\ kin.': ['m', 'h'],
     'i_K\ kin.': ['n'],
     'i_{TS}\ kin.': ['s', 'u'],
-    'curr.': ['iNa', 'iK', 'iTs', 'iL', 'iNet']
+    'I': ['iNa', 'iK', 'iTs', 'iL', 'iNet']
 }
 
 vars_TC = {
@@ -71,8 +71,16 @@ vars_TC = {
     'i_K\ kin.': ['n'],
     'i_{T}\ kin.': ['s', 'u'],
     'i_{H}\ kin.': ['O', 'OL', 'O + 2OL'],
-    'curr.': ['iNa', 'iK', 'iT', 'iH', 'iKL', 'iL', 'iNet']
+    'I': ['iNa', 'iK', 'iT', 'iH', 'iKL', 'iL', 'iNet']
 }
 
+vars_LeechT = {
+    'V_m': ['Vm'],
+    'i_{Na}\ kin.': ['m', 'h'],
+    'i_K\ kin.': ['n'],
+    'i_{Ca}\ kin.': ['s'],
+    'pools': ['C_Na_arb', 'C_Na_arb_activation', 'C_Ca_arb', 'C_Ca_arb_activation'],
+    'I': ['iNa', 'iK', 'iCa', 'iKCa', 'iPumpNa', 'iL', 'iNet']
+}
 
-plotBatch(vars_TC, pkl_dir, pkl_filepaths, lw=2)
+plotBatch(vars_LeechT, pkl_dir, pkl_filepaths, lw=2)

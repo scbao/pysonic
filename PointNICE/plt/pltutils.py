@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 17:56:17
+# @Last Modified time: 2017-08-24 18:14:46
 
 ''' Plotting utilities '''
 
@@ -452,7 +452,7 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
 
             # Legend
             if nvars > 1:
-                ax.legend(fontsize=fs, loc=7, ncol=nvars // 5 + 1)
+                ax.legend(fontsize=fs, loc=7, ncol=nvars // 4 + 1)
 
         plt.tight_layout()
 

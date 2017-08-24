@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 17:56:46
+# @Last Modified time: 2017-08-24 18:11:23
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -274,6 +274,14 @@ pltvars = {
         'alias': 'neuron.currCa(data["s"], data["u"], data["Vm"])'
     },
 
+    'iCa': {
+        'desc': 'leech low-threshold Calcium current',
+        'label': 'I_{Ca}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currCa(data["s"], data["Vm"])'
+    },
+
     'iH': {
         'desc': 'hyperpolarization-activated cationic current',
         'label': 'I_h',
@@ -288,6 +296,22 @@ pltvars = {
         'unit': 'A/m^2',
         'factor': 1e-3,
         'alias': 'neuron.currKL(data["Vm"])'
+    },
+
+    'iKCa': {
+        'desc': 'Calcium-activated Potassium current',
+        'label': 'I_{KCa}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currKCa(data["A_Ca"], data["Vm"])'
+    },
+
+    'iPumpNa': {
+        'desc': 'Outward current mimicking the activity of the NaK-ATPase pump',
+        'label': 'I_{PumpNa}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currPumpNa(data["A_Na"], data["Vm"])'
     },
 
     'iNet': {
