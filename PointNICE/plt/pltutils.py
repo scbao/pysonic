@@ -2,13 +2,14 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 18:14:46
+# @Last Modified time: 2017-08-24 18:47:04
 
 ''' Plotting utilities '''
 
 import pickle
 import ntpath
 import re
+import logging
 import inspect
 import tkinter as tk
 from tkinter import filedialog
@@ -20,6 +21,8 @@ from .. import channels
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
 
+# Get package logger
+logger = logging.getLogger('PointNICE')
 
 # Define global variables
 neuron = None
@@ -27,6 +30,11 @@ bls = None
 
 # Regular expression for input files
 rgxp = re.compile('([E,A])STIM_([A-Za-z]*)_(.*).pkl')
+
+# Figure naming conventions
+ESTIM_CW_title = '{} neuron: E-STIM {:.2f} mA/m2, {:.0f} ms)'
+ASTIM_CW_title = '{} neuron: CW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms'
+ASTIM_PW_title = '{} neuron: PW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms, {:.2f}kHz PRF, {:.0f}% DC'
 
 
 class InteractiveLegend(object):
@@ -175,7 +183,8 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
         axes = [ax]
     else:
         _, axes = plt.subplots(nvars, 1, figsize=(11, min(3 * nvars, 9)))
-    labels = [ntpath.basename(fp)[4:-4].replace('_', ' ') for fp in filepaths]
+
+
     for i in range(nvars):
         ax = axes[i]
         pltvar = y_pltvars[i]
@@ -263,10 +272,21 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
             tpatch_on += t_plt['onset']
             tpatch_off += t_plt['onset']
 
+        # Legend label
+        if sim_type == 'E':
+            label = ESTIM_CW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3)
+        elif sim_type == 'A':
+            if data['DF'] == 1.0:
+                label = ASTIM_CW_title.format(neuron.name, Fdrive * 1e-3,
+                                              data['Adrive'] * 1e-3, data['tstim'] * 1e3)
+            else:
+                label = ASTIM_PW_title.format(neuron.name, Fdrive * 1e-3,
+                                              data['Adrive'] * 1e-3, data['tstim'] * 1e3,
+                                              data['PRF'] * 1e-3, data['DF'] * 1e2)
+
         # Plotting
         handles = [axes[i].plot(t * t_plt['factor'], vrs[i] * y_pltvars[i]['factor'],
-                                linewidth=2, label=labels[j]) for i in range(nvars)]
-        plt.tight_layout()
+                                linewidth=2, label=label) for i in range(nvars)]
 
         if show_patches:
             k = 0
@@ -293,6 +313,7 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
 
         j += 1
 
+    plt.tight_layout()
 
     iLegends = []
     for k in range(nvars):
@@ -305,7 +326,8 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
 
 
 def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
-              ask_before_save=1, fig_ext='png', tag='fig', fs=15, lw=4, show_patches=True):
+              ask_before_save=1, fig_ext='png', tag='fig', fs=15, lw=4, title=True,
+              show_patches=True):
     ''' Plot a figure with profiles of several specific NICE output variables, for several
         NICE simulations.
 
@@ -344,6 +366,7 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
             quit()
         sim_type = mo.group(1)
         neuron_name = mo.group(2)
+        assert sim_type in ['A', 'E'], 'invalid stimulation type (should be "ESTIM" or "ASTIM")'
 
         # Load data
         print('Loading data from "' + pkl_filename + '"')
@@ -453,6 +476,21 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
             # Legend
             if nvars > 1:
                 ax.legend(fontsize=fs, loc=7, ncol=nvars // 4 + 1)
+
+
+        # Title
+        if title:
+            if sim_type == 'E':
+                fig_title = ESTIM_CW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3)
+            elif sim_type == 'A':
+                if data['DF'] == 1.0:
+                    fig_title = ASTIM_CW_title.format(neuron.name, Fdrive * 1e-3,
+                                                      data['Adrive'] * 1e-3, data['tstim'] * 1e3)
+                else:
+                    fig_title = ASTIM_PW_title.format(neuron.name, Fdrive * 1e-3,
+                                                      data['Adrive'] * 1e-3, data['tstim'] * 1e3,
+                                                      data['PRF'] * 1e-3, data['DF'] * 1e2)
+            axes[0].set_title(fig_title, fontsize=fs)
 
         plt.tight_layout()
 

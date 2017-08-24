@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 18:16:23
+# @Last Modified time: 2017-08-24 18:37:50
 
 """ Run batch acoustic simulations of the NICE model. """
 
@@ -30,7 +30,7 @@ d = 0.0e-6  # embedding tissue thickness (m)
 geom = {"a": a, "d": d}
 
 # Channels mechanisms
-neurons = [ThalamoCortical()]
+neurons = [CorticalLTS()]
 
 # Stimulation parameters
 stim_params = {
@@ -38,7 +38,7 @@ stim_params = {
     'amps': [100e3],  # Pa
     'durations': [50e-3],  # s
     'PRFs': [1e2],  # Hz
-    'DFs': [1.0]
+    'DFs': [0.5]
 }
 stim_params['offsets'] = [30e-3] * len(stim_params['durations'])  # s
 
@@ -94,4 +94,4 @@ vars_TC = {
     'I': ['iNa', 'iK', 'iT', 'iH', 'iKL', 'iL', 'iNet']
 }
 
-plotBatch(vars_TC, pkl_dir, pkl_filepaths)
+plotBatch(vars_LTS, pkl_dir, pkl_filepaths)
