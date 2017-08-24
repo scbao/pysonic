@@ -4,7 +4,7 @@
 # @Date:   2017-03-20 12:19:55
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-23 15:41:25
+# @Last Modified time: 2017-08-24 17:53:48
 
 """ Batch plot profiles of several specific output variables of NICE simulations. """
 
@@ -13,8 +13,9 @@ from PointNICE.plt import plotBatch
 
 # List of variables to plot and positions
 tag = 'test'
-yvars = ['Vm', 'VL']
-positions = [0, 0]
+yvars = {
+    'V_m': ['Vm', 'VL']
+}
 
 # Select data files
 pkl_filepaths, pkl_dir = OpenFilesDialog('pkl')
@@ -23,4 +24,4 @@ if not pkl_filepaths:
     quit()
 
 
-plotBatch(yvars, positions, pkl_dir, pkl_filepaths, tag=tag)
+plotBatch(yvars, pkl_dir, pkl_filepaths, tag=tag)

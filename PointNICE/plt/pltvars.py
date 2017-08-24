@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 17:34:28
+# @Last Modified time: 2017-08-24 17:56:46
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -221,7 +221,7 @@ pltvars = {
     'VL': {
         'constant': 'neuron.VL',
         'desc': 'non-specific leakage current resting potential',
-        'label': 'A_{Na^{2+}}',
+        'label': 'V_L',
         'unit': 'mV',
         'factor': 1e0
     },

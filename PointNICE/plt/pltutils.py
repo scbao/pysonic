@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 17:45:07
+# @Last Modified time: 2017-08-24 17:56:17
 
 ''' Plotting utilities '''
 
@@ -354,6 +354,7 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
         print('Extracting variables')
         t = data['t']
         states = data['states']
+        nsamples = t.size
 
         # Initialize channel mechanism
         global neuron
@@ -426,7 +427,7 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
                 elif 'key' in pltvar:
                     var = data[pltvar['key']]
                 elif 'constant' in pltvar:
-                    var = eval(pltvar['constant']) * np.ones(t.size)
+                    var = eval(pltvar['constant']) * np.ones(nsamples)
                 else:
                     var = data[vars_dict[labels[i]][j]]
                 if t_plt['onset'] > 0.0:
