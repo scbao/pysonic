@@ -2,19 +2,27 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 18:11:23
+# @Last Modified time: 2017-08-25 16:27:52
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
 
 pltvars = {
 
-    't': {
+    't_ms': {
         'desc': 'time',
         'label': 'time',
         'unit': 'ms',
         'factor': 1e3,
         'onset': 3e-3
+    },
+
+    't_us': {
+        'desc': 'time',
+        'label': 'time',
+        'unit': 'us',
+        'factor': 1e6,
+        'onset': 1e-6
     },
 
     'Z': {

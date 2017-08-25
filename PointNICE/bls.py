@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-21 17:39:48
+# @Last Modified time: 2017-08-25 17:02:42
 
 import logging
 import warnings
@@ -535,7 +535,7 @@ class BilayerSonophore:
         U1 = (Z1 - Z0) / dt_mech
 
         # Construct arrays to hold system variables
-        states = np.array([-1, -1])
+        states = np.array([1, 1])
         t = np.array([t0, t0 + dt_mech])
         y = np.array([[U0, U1], [Z0, Z1], [ng0, ng0]])
 
@@ -582,6 +582,8 @@ class BilayerSonophore:
             j += 1
 
         logger.debug('Periodic convergence after %u cycles', j)
+
+        states[-1] = 0
 
         # return output variables
         return (t, y[1:, :], states)

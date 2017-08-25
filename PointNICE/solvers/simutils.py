@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 14:52:53
+# @Last Modified time: 2017-08-25 16:47:56
 
 """ Utility functions used in simulations """
 
@@ -16,7 +16,7 @@ from tkinter import filedialog
 import numpy as np
 from openpyxl import load_workbook
 
-# from . import SolverUS
+from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
 from .SolverElec import SolverElec
 from ..constants import *
@@ -27,13 +27,20 @@ logger = logging.getLogger('PointNICE')
 
 
 # Naming and logging settings
+
+
+MECH_code = 'MECH_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.1f}nCcm2'
+MECH_log = ('Mechanical simulation %u/%u (a = %.1f nm, d = %.1f um, f = %.2f kHz, '
+            'A = %.2f kPa, Q = %.1f nC/cm2)')
+
 ESTIM_CW_code = 'ESTIM_{}_CW_{:.1f}mA_per_m2_{:.0f}ms'
 ESTIM_PW_code = 'ESTIM_{}_PW_{:.1f}mA_per_m2_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}'
-ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
-ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}_{}'
 ESTIM_CW_log = '%s neuron - CW E-STIM simulation %u/%u (A = %.1f mA/m2, t = %.1f ms)'
 ESTIM_PW_log = ('%s neuron - PW E-STIM simulation %u/%u (A = %.1f mA/m2, t = %.1f ms, '
                 'PRF = %.2f kHz, DF = %.2f)')
+
+ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
+ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}_{}'
 ASTIM_CW_log = ('%s neuron - CW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
                 'A = %.2f kPa, t = %.2f ms')
 ASTIM_PW_log = ('%s neuron - PW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
@@ -293,7 +300,6 @@ def detectSpikes(t, Qm, min_amp, min_dt):
     return (n_spikes, latency, spike_rate)
 
 
-
 def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     ''' Run batch E-STIM simulations of the system for various neuron types and
         stimulation parameters.
@@ -394,8 +400,6 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
             logger.error(err)
 
     return filepaths
-
-
 
 
 def runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params,
@@ -1002,6 +1006,130 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                     'J': n_spikes,
                     'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
                     'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+                }
+
+                if xlslog(log_filepath, 'Data', log) == 1:
+                    logger.info('log exported to "%s"', log_filepath)
+                else:
+                    logger.error('log export to "%s" aborted', log_filepath)
+
+        except AssertionError as err:
+            logger.error(err)
+
+    return filepaths
+
+
+def runMechBatch(batch_dir, log_filepath, bls_params, geom, Cm0, Qm0, stim_params):
+    ''' Run batch simulations of the mechanical system with imposed values of charge density,
+        for various sonophore spans and stimulation parameters.
+
+        :param batch_dir: full path to output directory of batch
+        :param log_filepath: full path log file of batch
+        :param bls_params: BLS biomechanical and biophysical parameters dictionary
+        :param geom: BLS geometric constants dictionary
+        :param Cm0: membrane resting capacitance (F/m2)
+        :param Qm0: membrane resting charge density (C/m2)
+        :param stim_params: dictionary containing sweeps for all stimulation parameters
+    '''
+
+    logger.info("Starting mechanical simulation batch")
+
+    # Unpack geometrical and stimulation parameters
+    a = geom['a']
+    d = geom['d']
+    amps = np.array(stim_params['amps'])
+    charges = np.array(stim_params['charges'])
+
+    # Generate simulations queue
+    nA = len(amps)
+    nQ = len(charges)
+    sim_queue = np.array(np.meshgrid(amps, charges)).T.reshape(nA * nQ, 2)
+    nqueue = sim_queue.shape[0]
+
+    # Run simulations
+    nsims = len(stim_params['freqs']) * nqueue
+    simcount = 0
+    filepaths = []
+    for Fdrive in stim_params['freqs']:
+        try:
+            # Create BilayerSonophore instance (modulus of embedding tissue depends on frequency)
+            bls = BilayerSonophore(geom, bls_params, Fdrive, Cm0, Qm0)
+
+            for i in range(nqueue):
+                simcount += 1
+                Adrive, Qm = sim_queue[i, :]
+
+                # Get date and time info
+                date_str = time.strftime("%Y.%m.%d")
+                daytime_str = time.strftime("%H:%M:%S")
+
+                # Log and define naming
+                logger.info(MECH_log, simcount, nsims, a * 1e9, d * 1e6, Fdrive * 1e-3,
+                            Adrive * 1e-3, Qm * 1e5)
+                simcode = MECH_code.format(a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
+
+                # Run simulation
+                tstart = time.time()
+                (t, y, states) = bls.runMech(Fdrive, Adrive, Qm)
+                (Z, ng) = y
+
+                U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
+                tcomp = time.time() - tstart
+                logger.info('completed in %.2f seconds', tcomp)
+
+                # Store data in dictionary
+                data = {
+                    'a': a,
+                    'd': d,
+                    'Cm0': Cm0,
+                    'Qm0': Qm0,
+                    'params': bls_params,
+                    'Fdrive': Fdrive,
+                    'Adrive': Adrive,
+                    'phi': np.pi,
+                    'Qm': Qm,
+                    't': t,
+                    'states': states,
+                    'U': U,
+                    'Z': Z,
+                    'ng': ng
+                }
+
+                # Export data to PKL file
+                output_filepath = batch_dir + '/' + simcode + ".pkl"
+                with open(output_filepath, 'wb') as fh:
+                    pickle.dump(data, fh)
+                logger.info('simulation data exported to "%s"', output_filepath)
+                filepaths.append(output_filepath)
+
+                # Compute key output metrics
+                Zmax = np.amax(Z)
+                Zmin = np.amin(Z)
+                Zabs_max = np.amax(np.abs([Zmin, Zmax]))
+                eAmax = bls.arealstrain(Zabs_max)
+                Tmax = bls.TEtot(Zabs_max)
+                Pmmax = bls.PMavgpred(Zmin)
+                ngmax = np.amax(ng)
+                dUdtmax = np.amax(np.abs(np.diff(U) / np.diff(t)**2))
+
+                # Export key metrics to log file
+                log = {
+                    'A': date_str,
+                    'B': daytime_str,
+                    'C': a * 1e9,
+                    'D': d * 1e6,
+                    'E': Fdrive * 1e-3,
+                    'F': Adrive * 1e-3,
+                    'G': Qm * 1e5,
+                    'H': t.size,
+                    'I': tcomp,
+                    'J': bls.kA + bls.kA_tissue,
+                    'K': Zmax * 1e9,
+                    'L': eAmax,
+                    'M': Tmax * 1e3,
+                    'N': (ngmax - bls.ng0) / bls.ng0,
+                    'O': Pmmax * 1e-3,
+                    'P': dUdtmax
                 }
 
                 if xlslog(log_filepath, 'Data', log) == 1:

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 14:53:43
+# @Last Modified time: 2017-08-25 17:18:54
 
 ''' Plotting utilities '''
 
@@ -29,13 +29,17 @@ neuron = None
 bls = None
 
 # Regular expression for input files
-rgxp = re.compile('([E,A])STIM_([A-Za-z]*)_(.*).pkl')
+rgxp = re.compile('(ESTIM|ASTIM)_([A-Za-z]*)_(.*).pkl')
+rgxp_mech = re.compile('(MECH)_(.*).pkl')
+
+
 
 # Figure naming conventions
 ESTIM_CW_title = '{} neuron: CW E-STIM {:.2f}mA/m2, {:.0f}ms'
 ESTIM_PW_title = '{} neuron: PW E-STIM {:.2f}mA/m2, {:.0f}ms, {:.2f}kHz PRF, {:.0f}% DC'
 ASTIM_CW_title = '{} neuron: CW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms'
 ASTIM_PW_title = '{} neuron: PW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms, {:.2f}kHz PRF, {:.0f}% DC'
+MECH_title = '{:.0f}nm BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa'
 
 
 class InteractiveLegend(object):
@@ -343,15 +347,11 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
     labels = list(vars_dict.keys())
     naxes = len(vars_dict)
 
-    # x and y variables plotting information
-    t_plt = pltvars['t']
-
     # Dictionary of neurons
     neurons = {}
     for _, obj in inspect.getmembers(channels):
         if inspect.isclass(obj) and isinstance(obj.name, str):
             neurons[obj.name] = obj
-
 
     # Loop through data files
     for filepath in filepaths:
@@ -361,13 +361,17 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
         filecode = pkl_filename[0:-4]
 
         # Retrieve neuron name
-        mo = rgxp.fullmatch(pkl_filename)
-        if not mo:
+        mo1 = rgxp.fullmatch(pkl_filename)
+        mo2 = rgxp_mech.fullmatch(pkl_filename)
+        if mo1:
+            mo = mo1
+        elif mo2:
+            mo = mo2
+        else:
             print('Error: PKL file does not match regular expression pattern')
             quit()
         sim_type = mo.group(1)
-        neuron_name = mo.group(2)
-        assert sim_type in ['A', 'E'], 'invalid stimulation type (should be "ESTIM" or "ASTIM")'
+        assert sim_type in ['MECH', 'ASTIM', 'ESTIM'], 'invalid stimulation type'
 
         # Load data
         print('Loading data from "' + pkl_filename + '"')
@@ -381,29 +385,38 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
         nsamples = t.size
 
         # Initialize channel mechanism
-        global neuron
-        neuron = neurons[neuron_name]()
-        neuron_states = [data[sn] for sn in neuron.states_names]
+        if sim_type in ['ASTIM', 'ESTIM']:
+            neuron_name = mo.group(2)
+            global neuron
+            neuron = neurons[neuron_name]()
+            neuron_states = [data[sn] for sn in neuron.states_names]
+            Cm0 = neuron.Cm0
+            Qm0 = Cm0 * neuron.Vm0 * 1e-3
+            t_plt = pltvars['t_ms']
+        else:
+            Cm0 = data['Cm0']
+            Qm0 = data['Qm0']
+            t_plt = pltvars['t_us']
 
         # Initialize BLS
-        if sim_type == 'A':
+        if sim_type in ['MECH', 'ASTIM']:
             global bls
             params = data['params']
             Fdrive = data['Fdrive']
             a = data['a']
             d = data['d']
             geom = {"a": a, "d": d}
-            Qm0 = neuron.Cm0 * neuron.Vm0 * 1e-3
-            bls = BilayerSonophore(geom, params, Fdrive, neuron.Cm0, Qm0)
+            bls = BilayerSonophore(geom, params, Fdrive, Cm0, Qm0)
 
         # Determine patches location
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
 
         # Adding onset to time vector and patches
         if t_plt['onset'] > 0.0:
-            t = np.insert(t + t_plt['onset'], 0, 0.0)
-            tpatch_on += t_plt['onset']
-            tpatch_off += t_plt['onset']
+            t = np.insert(t, 0, -t_plt['onset'])
+            states = np.insert(states, 0, 0)
+            # tpatch_on += t_plt['onset']
+            # tpatch_off += t_plt['onset']
 
         # Plotting
         if naxes == 1:
@@ -454,7 +467,7 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
                     var = eval(pltvar['constant']) * np.ones(nsamples)
                 else:
                     var = data[vars_dict[labels[i]][j]]
-                if t_plt['onset'] > 0.0:
+                if var.size == t.size - 1:
                     var = np.insert(var, 0, var[0])
 
                 # Plot variable
@@ -481,9 +494,15 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
 
         # Title
         if title:
-            if sim_type == 'E':
-                fig_title = ESTIM_CW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3)
-            elif sim_type == 'A':
+            if sim_type == 'ESTIM':
+                if data['DF'] == 1.0:
+                    fig_title = ESTIM_CW_title.format(neuron.name, data['Astim'],
+                                                      data['tstim'] * 1e3)
+                else:
+                    fig_title = ESTIM_PW_title.format(neuron.name, data['Astim'],
+                                                      data['tstim'] * 1e3, data['PRF'] * 1e-3,
+                                                      data['DF'] * 1e2)
+            elif sim_type == 'ASTIM':
                 if data['DF'] == 1.0:
                     fig_title = ASTIM_CW_title.format(neuron.name, Fdrive * 1e-3,
                                                       data['Adrive'] * 1e-3, data['tstim'] * 1e3)
@@ -491,6 +510,9 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
                     fig_title = ASTIM_PW_title.format(neuron.name, Fdrive * 1e-3,
                                                       data['Adrive'] * 1e-3, data['tstim'] * 1e3,
                                                       data['PRF'] * 1e-3, data['DF'] * 1e2)
+            elif sim_type == 'MECH':
+                fig_title = MECH_title.format(a * 1e9, Fdrive * 1e-3, data['Adrive'] * 1e-3)
+
             axes[0].set_title(fig_title, fontsize=fs)
 
         plt.tight_layout()
