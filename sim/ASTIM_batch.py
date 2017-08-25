@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 14:48:38
+# @Last Modified time: 2017-08-25 17:39:24
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -35,7 +35,7 @@ neurons = [CorticalLTS()]
 # Stimulation parameters
 stim_params = {
     'freqs': [3.5e5],  # Hz
-    'amps': [100e3],  # Pa
+    'amps': [150e3],  # Pa
     'durations': [50e-3],  # s
     'PRFs': [1e2],  # Hz
     'DFs': [0.5]

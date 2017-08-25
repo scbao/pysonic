@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 16:47:56
+# @Last Modified time: 2017-08-25 17:50:57
 
 """ Utility functions used in simulations """
 
@@ -131,8 +131,8 @@ def createSimQueue(amps, durations, offsets, PRFs, DFs):
         nCW = len(amps) * len(durations)
         arr1 = np.ones(nCW)
         iCW_queue = np.array(np.meshgrid(iamps, idurs)).T.reshape(nCW, 2)
-        CW_queue = np.hstack((amps[iCW_queue[:, 0]], durations[iCW_queue[:, 1]],
-                              offsets[iCW_queue[:, 1]], PRFs.min() * arr1, arr1))
+        CW_queue = np.vstack((amps[iCW_queue[:, 0]], durations[iCW_queue[:, 1]],
+                              offsets[iCW_queue[:, 1]], PRFs.min() * arr1, arr1)).T
         queue = np.vstack((queue, CW_queue))
 
 
@@ -143,9 +143,9 @@ def createSimQueue(amps, durations, offsets, PRFs, DFs):
         ipulsed_DFs = range(len(pulsed_DFs))
         nPW = len(amps) * len(durations) * len(PRFs) * len(pulsed_DFs)
         iPW_queue = np.array(np.meshgrid(iamps, idurs, iPRFs, ipulsed_DFs)).T.reshape(nPW, 4)
-        PW_queue = np.hstack((amps[iPW_queue[:, 0]], durations[iPW_queue[:, 1]],
+        PW_queue = np.vstack((amps[iPW_queue[:, 0]], durations[iPW_queue[:, 1]],
                               offsets[iPW_queue[:, 1]], PRFs[iPW_queue[:, 2]],
-                              pulsed_DFs[iPW_queue[:, 3]]))
+                              pulsed_DFs[iPW_queue[:, 3]])).T
         queue = np.vstack((queue, PW_queue))
 
     # Return

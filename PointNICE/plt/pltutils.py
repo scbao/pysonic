@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 17:18:54
+# @Last Modified time: 2017-08-25 17:38:50
 
 ''' Plotting utilities '''
 
@@ -171,8 +171,7 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
 
     nvars = len(yvars)
 
-    # x and y variables plotting information
-    t_plt = pltvars['t']
+    # y variables plotting information
     y_pltvars = [pltvars[key] for key in yvars]
 
     # Dictionary of neurons
@@ -180,7 +179,6 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
     for _, obj in inspect.getmembers(channels):
         if inspect.isclass(obj) and isinstance(obj.name, str):
             neurons[obj.name] = obj
-
 
     # Initialize figure and axes
     if nvars == 1:
@@ -202,59 +200,81 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
         if i < nvars - 1:
             ax.get_xaxis().set_ticklabels([])
         else:
-            ax.set_xlabel('${}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
             for tick in ax.xaxis.get_major_ticks():
                 tick.label.set_fontsize(fs)
         ax.locator_params(axis='y', nbins=2)
         for tick in ax.yaxis.get_major_ticks():
             tick.label.set_fontsize(fs)
 
-
-
     # Loop through data files
-    tstim_ref = 0.0
-    nstim = 0
     j = 0
     aliases = {}
     for filepath in filepaths:
 
         pkl_filename = ntpath.basename(filepath)
 
-        # Retrieve neuron name
-        mo = rgxp.fullmatch(pkl_filename)
-        if not mo:
+        # Retrieve sim type
+        mo1 = rgxp.fullmatch(pkl_filename)
+        mo2 = rgxp_mech.fullmatch(pkl_filename)
+        if mo1:
+            mo = mo1
+        elif mo2:
+            mo = mo2
+        else:
             print('Error: PKL file does not match regular expression pattern')
             quit()
         sim_type = mo.group(1)
-        neuron_name = mo.group(2)
+        assert sim_type in ['MECH', 'ASTIM', 'ESTIM'], 'invalid stimulation type'
+
+        if j == 0:
+            sim_type_ref = sim_type
+        else:
+            assert sim_type == sim_type_ref, 'Error: comparing different simulation types'
 
         # Load data
         print('Loading data from "' + pkl_filename + '"')
         with open(filepath, 'rb') as pkl_file:
             data = pickle.load(pkl_file)
 
-        # Extract useful variables
+        # Extract variables
+        print('Extracting variables')
         t = data['t']
         states = data['states']
-        tstim = data['tstim']
+        nsamples = t.size
 
-        # Initialize BLS and channels mechanism
-        global neuron
-        neuron = neurons[neuron_name]()
-        neuron_states = [data[sn] for sn in neuron.states_names]
+        # Initialize channel mechanism
+        if sim_type in ['ASTIM', 'ESTIM']:
+            neuron_name = mo.group(2)
+            global neuron
+            neuron = neurons[neuron_name]()
+            neuron_states = [data[sn] for sn in neuron.states_names]
+            Cm0 = neuron.Cm0
+            Qm0 = Cm0 * neuron.Vm0 * 1e-3
+            t_plt = pltvars['t_ms']
+        else:
+            Cm0 = data['Cm0']
+            Qm0 = data['Qm0']
+            t_plt = pltvars['t_us']
 
         # Initialize BLS
-        if sim_type == 'A':
+        if sim_type in ['MECH', 'ASTIM']:
             global bls
             params = data['params']
             Fdrive = data['Fdrive']
             a = data['a']
             d = data['d']
             geom = {"a": a, "d": d}
-            Qm0 = neuron.Cm0 * neuron.Vm0 * 1e-3
-            bls = BilayerSonophore(geom, params, Fdrive, neuron.Cm0, Qm0)
+            bls = BilayerSonophore(geom, params, Fdrive, Cm0, Qm0)
 
-        # Get data of variables to plot
+        # Determine patches location
+        npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
+
+        # Adding onset to time and states vectors
+        if t_plt['onset'] > 0.0:
+            t = np.insert(t, 0, -t_plt['onset'])
+            states = np.insert(states, 0, 0)
+
+        # Extract variables to plot
         vrs = []
         for i in range(nvars):
             pltvar = y_pltvars[i]
@@ -262,25 +282,33 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
                 var = eval(pltvar['alias'])
             elif 'key' in pltvar:
                 var = data[pltvar['key']]
+            elif 'constant' in pltvar:
+                var = eval(pltvar['constant']) * np.ones(nsamples)
             else:
                 var = data[yvars[i]]
+            if var.size == t.size - 1:
+                var = np.insert(var, 0, var[0])
             vrs.append(var)
 
-        # Determine patches location
-        npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
+        # # Determine patches location
+        # npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
 
-        # Adding onset to all signals
-        if t_plt['onset'] > 0.0:
-            t = np.insert(t + t_plt['onset'], 0, 0.0)
-            for i in range(nvars):
-                vrs[i] = np.insert(vrs[i], 0, vrs[i][0])
-            tpatch_on += t_plt['onset']
-            tpatch_off += t_plt['onset']
+        # # Adding onset to all signals
+        # if t_plt['onset'] > 0.0:
+        #     t = np.insert(t + t_plt['onset'], 0, 0.0)
+        #     for i in range(nvars):
+        #         vrs[i] = np.insert(vrs[i], 0, vrs[i][0])
+        #     tpatch_on += t_plt['onset']
+        #     tpatch_off += t_plt['onset']
 
         # Legend label
-        if sim_type == 'E':
-            label = ESTIM_CW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3)
-        elif sim_type == 'A':
+        if sim_type == 'ESTIM':
+            if data['DF'] == 1.0:
+                label = ESTIM_CW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3)
+            else:
+                label = ESTIM_PW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3,
+                                              data['PRF'] * 1e-3, data['DF'] * 1e2)
+        elif sim_type == 'ASTIM':
             if data['DF'] == 1.0:
                 label = ASTIM_CW_title.format(neuron.name, Fdrive * 1e-3,
                                               data['Adrive'] * 1e-3, data['tstim'] * 1e3)
@@ -288,6 +316,8 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
                 label = ASTIM_PW_title.format(neuron.name, Fdrive * 1e-3,
                                               data['Adrive'] * 1e-3, data['tstim'] * 1e3,
                                               data['PRF'] * 1e-3, data['DF'] * 1e2)
+        elif sim_type == 'MECH':
+            label = MECH_title.format(a * 1e9, Fdrive * 1e-3, data['Adrive'] * 1e-3)
 
         # Plotting
         handles = [axes[i].plot(t * t_plt['factor'], vrs[i] * y_pltvars[i]['factor'],
@@ -309,14 +339,10 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
             aliases[handle[0]] = la
             k += 1
 
-        if tstim != tstim_ref:
-            if nstim == 0:
-                nstim += 1
-                tstim_ref = tstim
-            else:
-                print('Warning: comparing different stimulation durations')
-
         j += 1
+
+    # set x-axis label
+    axes[-1].set_xlabel('${}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
 
     plt.tight_layout()
 
@@ -360,7 +386,7 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
         pkl_filename = ntpath.basename(filepath)
         filecode = pkl_filename[0:-4]
 
-        # Retrieve neuron name
+        # Retrieve sim type
         mo1 = rgxp.fullmatch(pkl_filename)
         mo2 = rgxp_mech.fullmatch(pkl_filename)
         if mo1:
@@ -411,12 +437,10 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
         # Determine patches location
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
 
-        # Adding onset to time vector and patches
+        # Adding onset to time and states vectors
         if t_plt['onset'] > 0.0:
             t = np.insert(t, 0, -t_plt['onset'])
             states = np.insert(states, 0, 0)
-            # tpatch_on += t_plt['onset']
-            # tpatch_off += t_plt['onset']
 
         # Plotting
         if naxes == 1:
