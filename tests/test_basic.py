@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 13:00:28
+# @Last Modified time: 2017-08-25 14:40:55
 
 ''' Test the basic functionalities of the package. '''
 
@@ -97,7 +97,7 @@ solver = PointNICE.SolverUS(geom, params, rs_mech, Fdrive)
 logger.info('Test 10: running effective amplitude titration')
 tstim = 30e-3  # s
 toffset = 10e-3  # s
-Arange = (0.0, 2 * TITRATION_A_MAX)  # Pa
+Arange = (0.0, 2 * TITRATION_ASTIM_A_MAX)  # Pa
 (Athr, t, y, _, latency) = titrateAStim(solver, rs_mech, Fdrive, Arange, tstim, toffset, PRF, DF)
 Qm = y[2]
 n_spikes, _, _ = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)

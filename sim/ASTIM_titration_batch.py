@@ -4,14 +4,14 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 13:04:24
+# @Last Modified time: 2017-08-25 14:48:19
 
-""" Run batch parameter titrations of the NICE model. """
+""" Run batch acoustic titrations of specific "point-neuron" models. """
 
 import os
 import logging
 import numpy as np
-from PointNICE.solvers import checkBatchLog, runTitrationBatch
+from PointNICE.solvers import checkBatchLog, titrateAStimBatch
 from PointNICE.channels import *
 from PointNICE.utils import LoadParams
 from PointNICE.plt import plotBatch

@@ -4,9 +4,9 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 18:37:50
+# @Last Modified time: 2017-08-25 14:48:38
 
-""" Run batch acoustic simulations of the NICE model. """
+""" Run batch acoustic simulations of specific "point-neuron" models. """
 
 import os
 import logging
