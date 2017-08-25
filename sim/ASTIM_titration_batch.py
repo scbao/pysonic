@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 14:15:12
+# @Last Modified time: 2017-08-25 13:04:24
 
 """ Run batch parameter titrations of the NICE model. """
 
@@ -35,10 +35,10 @@ neurons = [CorticalRS()]
 # Stimulation parameters
 stim_params = {
     'freqs': [3.5e5],  # Hz
-    # 'amps': [100e3],  # Pa
+    'amps': [100e3],  # Pa
     'durations': [50e-3],  # s
     'PRFs': [1e2],  # Hz
-    'DFs': [1.0]
+    # 'DFs': [1.0]
 }
 
 # Select output directory
@@ -49,7 +49,7 @@ except AssertionError as err:
     quit()
 
 # Run titration batch
-pkl_filepaths = runTitrationBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params)
+pkl_filepaths = titrateAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params)
 pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
-plotBatch(['Qm'], [0], pkl_dir, pkl_filepaths)
+plotBatch({'Q_m': ['Qm']}, pkl_dir, pkl_filepaths)

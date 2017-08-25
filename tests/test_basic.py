@@ -4,14 +4,15 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-23 16:22:41
+# @Last Modified time: 2017-08-25 13:00:28
 
 ''' Test the basic functionalities of the package. '''
 
 import logging
 import numpy as np
 import PointNICE
-from PointNICE.utils import LoadParams, detectSpikes
+from PointNICE.utils import LoadParams
+from PointNICE.solvers import detectSpikes, titrateAStim
 from PointNICE.channels import CorticalRS
 from PointNICE.constants import *
 
@@ -57,7 +58,7 @@ solver = PointNICE.SolverUS(geom, params, rs_mech, Fdrive)
 # logger.info('Test 6: running short classic simulation of the full system')
 # tstim = 1e-3  # s
 # toffset = 1e-3  # s
-# (t, y, _) = solver.runSim(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'classic')
+# (t, y, _) = solver.run(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'classic')
 # Qm = y[2]
 # n_spikes, _, _ = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
 # assert n_spikes == 0, 'Error: number of spikes should be 0'
@@ -67,7 +68,7 @@ solver = PointNICE.SolverUS(geom, params, rs_mech, Fdrive)
 # logger.info('Test 7: running hybrid simulation')
 # tstim = 30e-3  # s
 # toffset = 10e-3  # s
-# (t, y, _) = solver.runSim(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'hybrid')
+# (t, y, _) = solver.run(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'hybrid')
 # Qm = y[2]
 # n_spikes, _, _ = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
 # assert n_spikes == 1, 'Error: number of spikes should be 1'
@@ -86,7 +87,7 @@ solver = PointNICE.SolverUS(geom, params, rs_mech, Fdrive)
 # logger.info('Test 9: running effective simulation')
 # tstim = 30e-3  # s
 # toffset = 10e-3  # s
-# (t, y, _) = solver.runSim(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'effective')
+# (t, y, _) = solver.run(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'effective')
 # Qm = y[2]
 # n_spikes, _, _ = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
 # assert n_spikes == 1, 'Error: number of spikes should be 1'
@@ -96,9 +97,8 @@ solver = PointNICE.SolverUS(geom, params, rs_mech, Fdrive)
 logger.info('Test 10: running effective amplitude titration')
 tstim = 30e-3  # s
 toffset = 10e-3  # s
-Arange = (0.0, 2 * TITRATION_AMAX)  # Pa
-(Athr, t, y, _, latency) = solver.titrateAmp(rs_mech, Fdrive, Arange, tstim, toffset,
-                                             PRF, DF, 'effective')
+Arange = (0.0, 2 * TITRATION_A_MAX)  # Pa
+(Athr, t, y, _, latency) = titrateAStim(solver, rs_mech, Fdrive, Arange, tstim, toffset, PRF, DF)
 Qm = y[2]
 n_spikes, _, _ = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
 assert n_spikes == 1, 'Error: number of spikes should be 1'
@@ -106,7 +106,7 @@ logger.info('1 spike detected --> OK')
 
 
 # logger.info('Test 11: running effective duration titration')
-# trange = (0.0, 2 * TITRATION_TMAX)  # s
+# trange = (0.0, 2 * TITRATION_T_MAX)  # s
 # toffset = 10e-3  # s
 # (tthr, t, y, _, latency) = solver.titrateDur(rs_mech, Fdrive, Adrive, trange, toffset,
 #                                              PRF, DF, 'effective')

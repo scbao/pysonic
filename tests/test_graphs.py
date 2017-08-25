@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-07-18 15:54:31
+# @Last Modified time: 2017-08-25 10:43:11
 
 ''' Test the basic functionalities of the package and output graphs of the call flows. '''
 
@@ -69,7 +69,7 @@ tstim = 1e-3  # s
 toffset = 1e-3  # s
 graphviz.output_file = 'graphs/sim_classic.png'
 with PyCallGraph(output=graphviz):
-    solver.runSim(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'classic')
+    solver.run(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'classic')
 
 
 logger.info('Graph 6: effective simulation')
@@ -77,7 +77,7 @@ tstim = 30e-3  # s
 toffset = 10e-3  # s
 graphviz.output_file = 'graphs/sim_effective.png'
 with PyCallGraph(output=graphviz):
-    solver.runSim(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'effective')
+    solver.run(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'effective')
 
 
 logger.info('Graph 7: hybrid simulation')
@@ -85,7 +85,7 @@ tstim = 10e-3  # s
 toffset = 1e-3  # s
 graphviz.output_file = 'graphs/sim_hybrid.png'
 with PyCallGraph(output=graphviz):
-    solver.runSim(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'hybrid')
+    solver.run(rs_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, 'hybrid')
 
 
 

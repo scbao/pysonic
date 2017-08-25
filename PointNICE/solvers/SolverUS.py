@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-23 16:23:00
+# @Last Modified time: 2017-08-25 10:44:13
 
 import os
 import warnings
@@ -331,7 +331,7 @@ class SolverUS(BilayerSonophore):
         y = y[:, ::CLASSIC_DS_FACTOR]
         states = states[::CLASSIC_DS_FACTOR]
 
-        # return output variables
+        # Return output variables
         return (t, y[1:, :], states)
 
 
@@ -653,7 +653,7 @@ class SolverUS(BilayerSonophore):
         return (t, y[1:, :], states)
 
 
-    def runSim(self, channel_mech, Fdrive, Adrive, tstim, toffset, PRF, DF=1.0, sim_type='effective'):
+    def run(self, channel_mech, Fdrive, Adrive, tstim, toffset, PRF, DF=1.0, sim_type='effective'):
         """ Run simulation of the system for a specific set of
             US stimulation parameters.
 
@@ -688,108 +688,4 @@ class SolverUS(BilayerSonophore):
             assert DF == 1.0, 'Hybrid method can only handle continuous wave stimuli'
             return self.runHybrid(channel_mech, Fdrive, Adrive, tstim, toffset)
 
-
-    def titrateAmp(self, channel_mech, Fdrive, Arange, tstim, toffset,
-                   PRF=1.5e3, DF=1.0, sim_type='effective'):
-        """ Use a dichotomic search to determine the threshold acoustic amplitude
-            needed to obtain neural excitation, for specific stimulation parameters.
-
-            This function is called recursively until an accurate threshold is found.
-
-            :param channel_mech: channels mechanism object
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param Arange: bounds of the acoustic amplitude searching interval (Pa)
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DF: pulse duty factor (-)
-            :param sim_type: selected integration method
-            :return: 5-tuple with the determined amplitude threshold, time profile,
-                     solution matrix, state vector and response latency
-        """
-
-        # Check amplitude interval
-        assert Arange[0] < Arange[1], 'Amplitude bounds must be (lower_bound, upper_bound)'
-
-        # Define current amplitude
-        Adrive = (Arange[0] + Arange[1]) / 2
-
-        # Run simulation
-        (t, y, states) = self.runSim(channel_mech, Fdrive, Adrive, tstim, toffset,
-                                     PRF, DF, sim_type)
-
-        # Detect spikes
-        n_spikes, latency, _ = detectSpikes(t, y[2, :], SPIKE_MIN_QAMP, SPIKE_MIN_DT)
-        logger.info('%.2f kPa ---> %u spike%s detected', Adrive * 1e-3, n_spikes,
-                    "s" if n_spikes > 1 else "")
-
-        # If accurate threshold is found, return simulation results
-        if (Arange[1] - Arange[0]) <= TITRATION_DA_THR and n_spikes == 1:
-            return (Adrive, t, y, states, latency)
-
-        # Otherwise, refine titration interval and iterate recursively
-        else:
-            if n_spikes == 0:
-                new_Arange = (Adrive, Arange[1])
-            else:
-                new_Arange = (Arange[0], Adrive)
-            return self.titrateAmp(channel_mech, Fdrive, new_Arange, tstim, toffset,
-                                   PRF, DF, sim_type)
-
-
-    def titrateDur(self, channel_mech, Fdrive, Adrive, trange, toffset,
-                   PRF=1.5e3, DF=1.0, sim_type='effective'):
-        """ Use a dichotomic search to determine the threshold stimulus duration
-            needed to obtain neural excitation, for specific stimulation parameters.
-
-            This function is called recursively until an accurate threshold is found.
-
-            :param channel_mech: channels mechanism object
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param Adrive: acoustic drive amplitude (Pa)
-            :param trange: bounds of the stimulus duration (s)
-            :param toffset: duration of the offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DF: pulse duty factor (-)
-            :param sim_type: selected integration method
-            :return: 5-tuple with the determined duration threshold, time profile,
-                     solution matrix, state vector and response latency
-        """
-
-        # Check duration interval
-        assert trange[0] < trange[1], 'Duration bounds must be (lower_bound, upper_bound)'
-
-        # Define current duration
-        tstim = (trange[0] + trange[1]) / 2
-
-        # Run simulation
-        (t, y, states) = self.runSim(channel_mech, Fdrive, Adrive, tstim, toffset,
-                                     PRF, DF, sim_type)
-
-        # Detect spikes
-        n_spikes, latency, _ = detectSpikes(t, y[2, :], SPIKE_MIN_QAMP, SPIKE_MIN_DT)
-        logger.info('%.2f ms ---> %u spike%s detected', tstim * 1e3, n_spikes,
-                    "s" if n_spikes > 1 else "")
-
-        # If accurate threshold is found, return simulation results
-        if (trange[1] - trange[0]) <= TITRATION_DT_THR and n_spikes == 1:
-            return (tstim, t, y, states, latency)
-
-        # Otherwise, refine titration interval and iterate recursively
-        else:
-            if n_spikes == 0:
-                new_trange = (tstim, trange[1])
-            else:
-                new_trange = (trange[0], tstim)
-            return self.titrateDur(channel_mech, Fdrive, Adrive, new_trange, toffset,
-                                   PRF, DF, sim_type)
-
-
-    def titrate(self, channel_mech, Fdrive, x, toffset, PRF, DF, titr_type, sim_type='effective'):
-        if titr_type == 'amplitude':
-            return self.titrateAmp(channel_mech, Fdrive, (0.0, 2 * TITRATION_AMAX), x,
-                                   toffset, PRF, DF, sim_type)
-        elif titr_type == 'duration':
-            return self.titrateDur(channel_mech, Fdrive, x, (0.0, 2 * TITRATION_TMAX),
-                                   toffset, PRF, DF, sim_type)
 

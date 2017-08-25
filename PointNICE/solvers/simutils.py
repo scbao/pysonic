@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 16:49:21
+# @Last Modified time: 2017-08-25 13:04:16
 
 """ Utility functions used in simulations """
 
@@ -20,7 +20,6 @@ from openpyxl import load_workbook
 from .SolverUS import SolverUS
 from .SolverElec import SolverElec
 from ..constants import *
-from ..utils import detectSpikes
 
 
 # Get package logger
@@ -28,19 +27,29 @@ logger = logging.getLogger('PointNICE')
 
 
 # Naming and logging settings
-ESTIM_CW_code = 'ESTIM_{}_{:.1f}mA_per_m2_{:.0f}ms'
+ESTIM_CW_code = 'ESTIM_{}_CW_{:.1f}mA_per_m2_{:.0f}ms'
+ESTIM_PW_code = 'ESTIM_{}_PW_{:.1f}mA_per_m2_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}'
 ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
 ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}_{}'
-ESTIM_CW_log = '%s neuron - E-STIM simulation %u/%u (A = %.1f mA/m2, t = %.1f ms)'
+ESTIM_CW_log = '%s neuron - CW E-STIM simulation %u/%u (A = %.1f mA/m2, t = %.1f ms)'
+ESTIM_PW_log = ('%s neuron - PW E-STIM simulation %u/%u (A = %.1f mA/m2, t = %.1f ms, '
+                'PRF = %.2f kHz, DF = %.2f)')
 ASTIM_CW_log = ('%s neuron - CW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
                 'A = %.2f kPa, t = %.2f ms')
 ASTIM_PW_log = ('%s neuron - PW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
                 'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DF = %.2f)')
-ASTIM_CW_titration_log = ('%s neuron - CW A-STIM titration %u/%u (a = %.1f nm, f = %.2f kHz, '
-                          '%s = %.2f %s')
-ASTIM_PW_titration_log = ('%s neuron - PW A-STIM titration %u/%u (a = %.1f nm, f = %.2f kHz, '
-                          '%s = %.2f %s, PRF = %.2f kHz, DF = %.2f)')
 
+ASTIM_titration_log = '%s neuron - A-STIM titration %u/%u (a = %.1f nm, %s)'
+
+
+# Define parameters units
+params_info = {
+    'f': {'index': 0, 'factor': 1e-3, 'unit': 'kHz'},
+    'A': {'index': 1, 'factor': 1e-3, 'unit': 'kPa'},
+    't': {'index': 2, 'factor': 1e3, 'unit': 'ms'},
+    'PRF': {'index': 4, 'factor': 1e-3, 'unit': 'kHz'},
+    'DF': {'index': 5, 'factor': 1e2, 'unit': '%'}
+}
 
 
 def checkBatchLog(batch_type):
@@ -161,6 +170,124 @@ def xlslog(filename, sheetname, data):
             return 0
 
 
+def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising',
+                kpsh=False, valley=False, ax=None):
+    """ Detect peaks in data based on their amplitude and inter-peak distance. """
+
+    x = np.atleast_1d(x).astype('float64')
+    if x.size < 3:
+        return np.array([], dtype=int)
+    if valley:
+        x = -x
+    # find indices of all peaks
+    dx = x[1:] - x[:-1]
+    # handle NaN's
+    indnan = np.where(np.isnan(x))[0]
+    if indnan.size:
+        x[indnan] = np.inf
+        dx[np.where(np.isnan(dx))[0]] = np.inf
+    ine, ire, ife = np.array([[], [], []], dtype=int)
+    if not edge:
+        ine = np.where((np.hstack((dx, 0)) < 0) & (np.hstack((0, dx)) > 0))[0]
+    else:
+        if edge.lower() in ['rising', 'both']:
+            ire = np.where((np.hstack((dx, 0)) <= 0) & (np.hstack((0, dx)) > 0))[0]
+        if edge.lower() in ['falling', 'both']:
+            ife = np.where((np.hstack((dx, 0)) < 0) & (np.hstack((0, dx)) >= 0))[0]
+    ind = np.unique(np.hstack((ine, ire, ife)))
+    # handle NaN's
+    if ind.size and indnan.size:
+        # NaN's and values close to NaN's cannot be peaks
+        ind = ind[np.in1d(ind, np.unique(np.hstack((indnan, indnan - 1, indnan + 1))), invert=True)]
+    # first and last values of x cannot be peaks
+    if ind.size and ind[0] == 0:
+        ind = ind[1:]
+    if ind.size and ind[-1] == x.size - 1:
+        ind = ind[:-1]
+    # remove peaks < minimum peak height
+    if ind.size and mph is not None:
+        ind = ind[x[ind] >= mph]
+    # remove peaks - neighbors < threshold
+    if ind.size and threshold > 0:
+        dx = np.min(np.vstack([x[ind] - x[ind - 1], x[ind] - x[ind + 1]]), axis=0)
+        ind = np.delete(ind, np.where(dx < threshold)[0])
+    # detect small peaks closer than minimum peak distance
+    if ind.size and mpd > 1:
+        ind = ind[np.argsort(x[ind])][::-1]  # sort ind by peak height
+        idel = np.zeros(ind.size, dtype=bool)
+        for i in range(ind.size):
+            if not idel[i]:
+                # keep peaks with the same height if kpsh is True
+                idel = idel | (ind >= ind[i] - mpd) & (ind <= ind[i] + mpd) \
+                    & (x[ind[i]] > x[ind] if kpsh else True)
+                idel[i] = 0  # Keep current peak
+        # remove the small peaks and sort back the indices by their occurrence
+        ind = np.sort(ind[~idel])
+
+    return ind
+
+
+def detectPeaksTime(t, y, mph, mtd):
+    """ Extension of the detectPeaks function to detect peaks in data based on their
+        amplitude and time difference, with a non-uniform time vector.
+
+        :param t: time vector (not necessarily uniform)
+        :param y: signal
+        :param mph: minimal peak height
+        :param mtd: minimal time difference
+        :return: array of peak indexes
+    """
+
+    # Detect peaks on signal with no restriction on inter-peak distance
+    raw_indexes = detectPeaks(y, mph, mpd=1)
+
+    if raw_indexes.size > 0:
+
+        # Filter relevant peaks with temporal distance
+        n_raw = raw_indexes.size
+        filtered_indexes = np.array([raw_indexes[0]])
+        for i in range(1, n_raw):
+            i1 = filtered_indexes[-1]
+            i2 = raw_indexes[i]
+            if t[i2] - t[i1] < mtd:
+                if y[i2] > y[i1]:
+                    filtered_indexes[-1] = i2
+            else:
+                filtered_indexes = np.append(filtered_indexes, i2)
+
+        # Return peak indexes
+        return filtered_indexes
+    else:
+        return None
+
+
+def detectSpikes(t, Qm, min_amp, min_dt):
+    ''' Detect spikes on a charge density signal, and
+        return their number, latency and rate.
+
+        :param t: time vector (s)
+        :param Qm: charge density vector (C/m2)
+        :param min_amp: minimal charge amplitude to detect spikes (C/m2)
+        :param min_dt: minimal time interval between 2 spikes (s)
+        :return: 3-tuple with number of spikes, latency (s) and spike rate (sp/s)
+    '''
+    i_spikes = detectPeaksTime(t, Qm, min_amp, min_dt)
+    if i_spikes is not None:
+        latency = t[i_spikes[0]]  # s
+        n_spikes = i_spikes.size
+        if n_spikes > 1:
+            first_to_last_spike = t[i_spikes[-1]] - t[i_spikes[0]]  # s
+            spike_rate = n_spikes / first_to_last_spike  # spikes/s
+        else:
+            spike_rate = 'N/A'
+    else:
+        latency = 'N/A'
+        spike_rate = 'N/A'
+        n_spikes = 0
+    return (n_spikes, latency, spike_rate)
+
+
+
 def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     ''' Run batch E-STIM simulations of the system for various neuron types and
         stimulation parameters.
@@ -189,34 +316,35 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
         try:
             for i in range(nqueue):
                 simcount += 1
-                Astim, tstim, toffset, _, _ = sim_queue[i, :]
+                Astim, tstim, toffset, PRF, DF = sim_queue[i, :]
 
                 # Get date and time info
                 date_str = time.strftime("%Y.%m.%d")
                 daytime_str = time.strftime("%H:%M:%S")
 
                 # Log and define naming
-                logger.info(ESTIM_CW_log, ch_mech.name, simcount, nsims, Astim, tstim * 1e3)
-                simcode = ESTIM_CW_code.format(ch_mech.name, Astim, tstim * 1e3)
+                if DF == 1.0:
+                    logger.info(ESTIM_CW_log, ch_mech.name, simcount, nsims, Astim, tstim * 1e3)
+                    simcode = ESTIM_CW_code.format(ch_mech.name, Astim, tstim * 1e3)
+                else:
+                    logger.info(ESTIM_PW_log, ch_mech.name, simcount, nsims, Astim, tstim * 1e3,
+                                PRF * 1e-3, DF)
+                    simcode = ESTIM_PW_code.format(ch_mech.name, Astim, tstim * 1e3, PRF * 1e-3, DF)
 
                 # Run simulation
                 tstart = time.time()
-                (t, y) = solver.runSim(ch_mech, Astim, tstim, toffset)
+                (t, y, states) = solver.run(ch_mech, Astim, tstim, toffset, PRF, DF)
                 Vm, *channels = y
                 tcomp = time.time() - tstart
                 logger.info('completed in %.2f seconds', tcomp)
-
-                # States vector
-                nsamples = t.size
-                nstim = int(np.round(nsamples * tstim / (tstim + toffset)))
-                noffset = nsamples - nstim
-                states = np.hstack((np.ones(nstim), np.zeros(noffset)))
 
                 # Store data in dictionary
                 data = {
                     'Astim': Astim,
                     'tstim': tstim,
                     'toffset': toffset,
+                    'PRF': PRF,
+                    'DF': DF,
                     't': t,
                     'states': states,
                     'Vm': Vm
@@ -242,8 +370,8 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                     'C': ch_mech.name,
                     'D': Astim,
                     'E': tstim * 1e3,
-                    'F': 'N/A',
-                    'G': 'N/A',
+                    'F': PRF * 1e-3 if DF < 1 else 'N/A',
+                    'G': DF,
                     'H': t.size,
                     'I': round(tcomp, 2),
                     'J': n_spikes,
@@ -323,8 +451,8 @@ def runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_param
 
                     # Run simulation
                     tstart = time.time()
-                    (t, y, states) = solver.runSim(ch_mech, Fdrive, Adrive, tstim, toffset,
-                                                   PRF, DF, sim_type)
+                    (t, y, states) = solver.run(ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DF,
+                                                sim_type)
 
 
                     Z, ng, Qm, *channels = y
@@ -398,8 +526,82 @@ def runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_param
     return filepaths
 
 
+def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset,
+                 PRF=1.5e3, DF=1.0, sim_type='effective'):
+    """ Use a dichotomic recursive search to determine the threshold value of a specific
+        stimulation parameter needed to obtain neural excitation, keeping all other parameters
+        fixed. The titration parameter can be stimulation amplitude, duration or any variable
+        for which the number of spikes is a monotonically increasing function.
 
-def runTitrationBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params):
+        This function is called recursively until an accurate threshold is found.
+
+        :param solver: solver instance
+        :param ch_mech: channels mechanism object
+        :param Fdrive: acoustic drive frequency (Hz)
+        :param Adrive: acoustic drive amplitude (Pa)
+        :param tstim: duration of US stimulation (s)
+        :param toffset: duration of the offset (s)
+        :param PRF: pulse repetition frequency (Hz)
+        :param DF: pulse duty factor (-)
+        :param sim_type: selected integration method
+        :return: 5-tuple with the determined amplitude threshold, time profile,
+                 solution matrix, state vector and response latency
+    """
+
+    # Determine titration type
+    if isinstance(Adrive, tuple):
+        t_type = 'A'
+        interval = Adrive
+        thr = TITRATION_DA_THR
+    elif isinstance(tstim, tuple):
+        t_type = 't'
+        interval = tstim
+        thr = TITRATION_DT_THR
+    elif isinstance(DF, tuple):
+        t_type = 'DF'
+        interval = DF
+        thr = TITRATION_DDF_THR
+    else:
+        logger.error('Invalid titration type')
+        return 0.
+
+    t_var = params_info[t_type]
+
+    # Check amplitude interval and define current value
+    assert interval[0] < interval[1], '{} interval must be defined as (lb, ub)'.format(t_type)
+    value = (interval[0] + interval[1]) / 2
+
+    # Define stimulation parameters
+    if t_type == 'A':
+        stim_params = [Fdrive, value, tstim, toffset, PRF, DF]
+    elif t_type == 't':
+        stim_params = [Fdrive, Adrive, value, toffset, PRF, DF]
+    elif t_type == 'DF':
+        stim_params = [Fdrive, Adrive, tstim, toffset, PRF, value]
+
+    # Run simulation and detect spikes
+    (t, y, states) = solver.run(ch_mech, *stim_params, sim_type)
+    n_spikes, latency, _ = detectSpikes(t, y[2, :], SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+    logger.info('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
+                n_spikes, "s" if n_spikes > 1 else "")
+
+    # If accurate threshold is found, return simulation results
+    if (interval[1] - interval[0]) <= thr and n_spikes == 1:
+        return (value, t, y, states, latency)
+
+    # Otherwise, refine titration interval and iterate recursively
+    else:
+        if n_spikes == 0:
+            new_interval = (value, interval[1])
+        else:
+            new_interval = (interval[0], value)
+
+        stim_params[t_var['index']] = new_interval
+        return titrateAStim(solver, ch_mech, *stim_params, sim_type)
+
+
+
+def titrateAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params):
     ''' Run batch titrations of the system for various neuron types, sonophore and
         stimulation parameters, to determine the threshold of a specific stimulus parameter
         for neural excitation.
@@ -422,27 +624,25 @@ def runTitrationBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_p
     sim_type = 'effective'
     offset = 30e-3
 
-    # Determine titration parameter (x) and titrations list
-    A = {'name': 'A', 'factor': 1e-3, 'unit': 'kPa'}
-    t = {'name': 't', 'factor': 1e3, 'unit': 'ms'}
+    # Determine titration parameter and titrations list
     if 'durations' not in stim_params:
-        varin = A
-        varout = t
-        titr_type = 'duration'
-        sim_queue = createSimQueue(stim_params['amps'], [0.], [offset],
+        t_type = 't'
+        sim_queue = createSimQueue(stim_params['amps'], [None], [offset],
                                    stim_params['PRFs'], stim_params['DFs'])
-        sim_queue = np.delete(sim_queue, 1, axis=1)
-
+        # sim_queue = np.delete(sim_queue, 1, axis=1)
     elif 'amps' not in stim_params:
-        varin = t
-        varout = A
-        titr_type = 'amplitude'
-        sim_queue = createSimQueue([0.], stim_params['durations'],
+        t_type = 'A'
+        sim_queue = createSimQueue([None], stim_params['durations'],
                                    [offset] * len(stim_params['durations']),
                                    stim_params['PRFs'], stim_params['DFs'])
-        sim_queue = np.delete(sim_queue, 0, axis=1)
+    elif 'DF' not in stim_params:
+        t_type = 'DF'
+        sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
+                                   [offset] * len(stim_params['durations']),
+                                   stim_params['PRFs'], [None])
 
     nqueue = sim_queue.shape[0]
+    t_var = params_info[t_type]
 
     # Run titrations
     nsims = len(neurons) * len(stim_params['freqs']) * nqueue
@@ -456,39 +656,57 @@ def runTitrationBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_p
 
                 for i in range(nqueue):
                     simcount += 1
-                    input_val, toffset, PRF, DF = sim_queue[i, :]
+
+                    # Extract parameters
+                    Adrive, tstim, toffset, PRF, DF = sim_queue[i, :]
+                    if Adrive is None:
+                        Adrive = (0., 2 * TITRATION_A_MAX)
+                    elif tstim is None:
+                        tstim = (0., 2 * TITRATION_T_MAX)
+                    elif DF is None:
+                        DF = (0., 2 * TITRATION_DF_MAX)
+                    curr_params = [Fdrive, Adrive, tstim, PRF, DF]
+
+                    # Generate log str
+                    log_str = ''
+                    pnames = list(params_info.keys())
+                    j = 0
+                    for cp in curr_params:
+                        pn = pnames[j]
+                        pi = params_info[pn]
+                        if not isinstance(cp, tuple):
+                            if a:
+                                log_str += ', '
+                            log_str += '{} = {:.2f} {}'.format(pn, pi['factor'] * cp, pi['unit'])
+                        j += 1
 
                     # Get date and time info
                     date_str = time.strftime("%Y.%m.%d")
                     daytime_str = time.strftime("%H:%M:%S")
 
-                    # Log and define naming
-                    if DF == 1.0:
-                        logger.info(ASTIM_CW_titration_log, ch_mech.name, simcount, nsims, a * 1e9,
-                                    Fdrive * 1e-3, varin['name'], input_val * varin['factor'],
-                                    varin['unit'])
-                    else:
-                        logger.info(ASTIM_PW_titration_log, ch_mech.name, simcount, nsims, a * 1e9,
-                                    Fdrive * 1e-3, varin['name'], input_val * varin['factor'],
-                                    varin['unit'], PRF * 1e-3, DF)
+                    # Log
+                    logger.info(ASTIM_titration_log, ch_mech.name, simcount, nsims, a * 1e9,
+                                log_str)
 
                     # Run titration
                     tstart = time.time()
-                    (output_thr, t, y, states, lat) = solver.titrate(ch_mech, Fdrive, input_val,
-                                                                     toffset, PRF, DF, titr_type)
+
+                    (output_thr, t, y, states, lat) = titrateAStim(solver, ch_mech, Fdrive, Adrive,
+                                                                   tstim, toffset, PRF, DF)
+
                     Z, ng, Qm, *channels = y
                     U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
                     tcomp = time.time() - tstart
                     logger.info('completed in %.2f s, threshold = %.2f %s', tcomp,
-                                output_thr * varout['factor'], varout['unit'])
+                                output_thr * t_var['factor'], t_var['unit'])
 
-                    # Sort input and output as amplitude and duration
-                    if titr_type == 'amplitude':
+                    # Determine output variable
+                    if t_type == 'A':
                         Adrive = output_thr
-                        tstim = input_val
-                    elif titr_type == 'duration':
+                    elif t_type == 't':
                         tstim = output_thr
-                        Adrive = input_val
+                    elif t_type == 'DF':
+                        DF = output_thr
 
                     # Define output naming
                     if DF == 1.0:

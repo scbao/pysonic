@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 18:16:37
+# @Last Modified time: 2017-08-25 10:40:50
 
 """ Run batch electrical simulations of point-neuron models. """
 

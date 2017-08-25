@@ -4,12 +4,15 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 13:14:22
+# @Last Modified time: 2017-08-25 10:35:53
 
 
+import warnings
 import logging
 import numpy as np
 import scipy.integrate as integrate
+
+from ..constants import *
 
 # Get package logger
 logger = logging.getLogger('PointNICE')
@@ -40,7 +43,7 @@ class SolverElec:
         return [dVmdt, *dstates]
 
 
-    def runSim(self, channel_mech, Astim, tstim, toffset, tonset=10e-3):
+    def run(self, channel_mech, Astim, tstim, toffset, PRF, DF):
         ''' Compute solutions of a neuron's HH system for a specific set of
             electrical stimulation parameters, using a classic integration scheme.
 
@@ -48,100 +51,99 @@ class SolverElec:
             :param Astim: pulse amplitude (mA/m2)
             :param tstim: pulse duration (s)
             :param toffset: offset duration (s)
-            :param tonset: onset duration (s)
-            :return: 2-tuple with the time profile and solution matrix
+            :param PRF: pulse repetition frequency (Hz)
+            :param DF: pulse duty factor (-)
+            :return: 3-tuple with the time profile and solution matrix and a state vector
         '''
 
-        # Set time vector
-        ttot = tonset + tstim + toffset
-        dt = 1e-4  # s
-        nsamples = int(np.round(ttot / dt))
-        t = np.linspace(0.0, ttot, nsamples) - tonset
+        # Raise warnings as error
+        warnings.filterwarnings('error')
 
-        # Set pulse vector
-        n_onset = int(np.round(tonset / dt))
-        n_stim = int(np.round(tstim / dt))
-        n_offset = int(np.round(toffset / dt))
-        pulse = np.concatenate((np.zeros(n_onset), Astim * np.ones(n_stim), np.zeros(n_offset)))
-
-        # Create solver
+        # Initialize system solver
         solver = integrate.ode(self.eqHH)
         solver.set_integrator('lsoda', nsteps=1000)
+
+        # Determine system time step
+        dt = DT_ESTIM
+
+        # Determine proportion of tstim in total integration
+        stim_prop = tstim / (tstim + toffset)
+
+        # if CW stimulus: divide integration during stimulus into single interval
+        if DF == 1.0:
+            PRF = 1 / tstim
+
+        # Compute vector sizes
+        npulses = int(np.round(PRF * tstim))
+        Tpulse_on = DF / PRF
+        Tpulse_off = (1 - DF) / PRF
+        n_pulse_on = int(np.round(Tpulse_on / dt))
+        n_pulse_off = int(np.round(Tpulse_off / dt))
+        n_off = int(np.round(toffset / dt))
 
         # Set initial conditions
         y0 = [channel_mech.Vm0, *channel_mech.states0]
         nvar = len(y0)
 
-        # Run simulation
-        y = np.empty((nvar, nsamples - 1))
-        solver.set_initial_value(y0, t[0])
-        k = 1
-        while solver.successful() and k <= nsamples - 1:
-            solver.set_f_params(channel_mech, pulse[k])
-            solver.integrate(t[k])
-            y[:, k - 1] = solver.y
+        # Initialize global arrays
+        t = np.array([0.])
+        states = np.array([1])
+        y = np.array([y0]).T
+
+        # Initialize pulse time and states vectors
+        t_pulse0 = np.linspace(0, Tpulse_on + Tpulse_off, n_pulse_on + n_pulse_off)
+        states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
+
+        # Loop through all pulse (ON and OFF) intervals
+        for i in range(npulses):
+
+            # Construct and initialize arrays
+            t_pulse = t_pulse0 + t[-1]
+            y_pulse = np.empty((nvar, n_pulse_on + n_pulse_off))
+            y_pulse[:, 0] = y[:, -1]
+
+            # Initialize iterator
+            k = 0
+
+            # Integrate ON system
+            solver.set_f_params(channel_mech, Astim)
+            solver.set_initial_value(y_pulse[:, k], t_pulse[k])
+            while solver.successful() and k < n_pulse_on - 1:
+                k += 1
+                solver.integrate(t_pulse[k])
+                y_pulse[:, k] = solver.y
+
+            # Integrate OFF system
+            solver.set_f_params(channel_mech, 0.0)
+            solver.set_initial_value(y_pulse[:, k], t_pulse[k])
+            while solver.successful() and k < n_pulse_on + n_pulse_off - 1:
+                k += 1
+                solver.integrate(t_pulse[k])
+                y_pulse[:, k] = solver.y
+
+            # Append pulse arrays to global arrays
+            states = np.concatenate([states, states_pulse[1:]])
+            t = np.concatenate([t, t_pulse[1:]])
+            y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
+
+        # Integrate offset interval
+        t_off = np.linspace(0, toffset, n_off) + t[-1]
+        states_off = np.zeros(n_off)
+        y_off = np.empty((nvar, n_off))
+        y_off[:, 0] = y[:, -1]
+        solver.set_initial_value(y_off[:, 0], t_off[0])
+        solver.set_f_params(channel_mech, 0.0)
+        k = 0
+        while solver.successful() and k < n_off - 1:
             k += 1
-
-        y = np.concatenate((np.atleast_2d(y0).T, y), axis=1)
-        return (t, y)
-
-
-    def eqHH_VClamp(self, _, y, channel_mech, Vc):
-        ''' Compute the derivatives of a HH system variables for a
-            specific value of clamped voltage.
-
-            :param t: time value (s, unused)
-            :param y: vector of HH system variables at time t
-            :param channel_mech: channels mechanism object
-            :param Vc: clamped voltage (mV)
-            :return: vector of HH system derivatives at time t
-        '''
-
-        return channel_mech.derStates(Vc, y)
+            solver.integrate(t_off[k])
+            y_off[:, k] = solver.y
 
 
+        # Concatenate offset arrays to global arrays
+        states = np.concatenate([states, states_off[1:]])
+        t = np.concatenate([t, t_off[1:]])
+        y = np.concatenate([y, y_off[:, 1:]], axis=1)
 
-    def runVClamp(self, channel_mech, Vclamp, tclamp, toffset, tonset=10e-3):
-        ''' Compute solutions of a neuron's HH system for a specific set of
-            voltage clamp parameters, using a classic integration scheme.
-
-            :param channel_mech: channels mechanism object
-            :param Vclamp: clamped voltage (mV)
-            :param toffset: offset duration (s)
-            :param tclamp: clamp duration (s)
-            :param tonset: onset duration (s)
-            :return: 2-tuple with the time profile and solution matrix
-        '''
-
-        # Set time vector
-        ttot = tonset + tclamp + toffset
-        dt = 1e-4  # s
-        nsamples = int(np.round(ttot / dt))
-        t = np.linspace(0.0, ttot, nsamples) - tonset
-
-        # Set clamp vector
-        n_onset = int(np.round(tonset / dt))
-        n_clamp = int(np.round(tclamp / dt))
-        n_offset = int(np.round(toffset / dt))
-        clamp = np.concatenate((np.zeros(n_onset), Vclamp * np.ones(n_clamp), np.zeros(n_offset)))
-
-        # Create solver
-        solver = integrate.ode(self.eqHH_VClamp)
-        solver.set_integrator('lsoda', nsteps=1000)
-
-        # Set initial conditions
-        y0 = channel_mech.states0
-        nvar = len(y0)
-
-        # Run simulation
-        y = np.empty((nsamples - 1, nvar))
-        solver.set_initial_value(y0, t[0])
-        k = 1
-        while solver.successful() and k <= nsamples - 1:
-            solver.set_f_params(channel_mech, clamp[k])
-            solver.integrate(t[k])
-            y[k - 1, :] = solver.y
-            k += 1
-
-        y = np.concatenate((np.atleast_2d(y0), y), axis=0)
-        return (t, y)
+        # Return output variables
+        return (t, y, states)

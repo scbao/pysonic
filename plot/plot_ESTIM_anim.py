@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 17:25:23
+# @Last Modified time: 2017-08-25 10:42:24
 
 """ Run simulations of the HH system with injected electric current,
 and plot resulting dynamics. """
@@ -50,7 +50,7 @@ for Astim in amps:
     # Run simulation
     print('sim {}/{} ({:.2f} mA/m2, {:.0f} ms)'.format(i, nA, Astim, tstim * 1e3))
     solver = SolverElec()
-    (t, y) = solver.runSim(neuron, Astim, tstim, toffset)
+    (t, y) = solver.run(neuron, Astim, tstim, toffset)
     Vm = y[:, 0]
 
     # Plot membrane potential profile
