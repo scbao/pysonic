@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 17:38:50
+# @Last Modified time: 2017-08-25 18:24:33
 
 ''' Plotting utilities '''
 
@@ -356,22 +356,26 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
 
 
 
-def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
-              ask_before_save=1, fig_ext='png', tag='fig', fs=15, lw=4, title=True,
+def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=False,
+              ask_before_save=True, fig_ext='png', tag='fig', fs=15, lw=2, title=True,
               show_patches=True):
     ''' Plot a figure with profiles of several specific NICE output variables, for several
         NICE simulations.
 
-        :param vars_dict: dict of lists of variables names to extract and plot together
         :param positions: subplot indexes of each variable
         :param filepaths: list of full paths to output data files to be compared
-        :param fs: labels fontsize
+        :param vars_dict: dict of lists of variables names to extract and plot together
+        :param plt_show: boolean stating whether to show the created figures
+        :param plt_save: boolean stating whether to save the created figures
+        :param ask_before_save: boolean stating whether to show the created figures
+        :param fig_ext: file extension for the saved figures
+        :param tag: suffix added to the end of the figures name
+        :param fs: labels font size
+        :param lw: curves line width
+        :param title: boolean stating whether to display a general title on the figures
         :param show_patches: boolean indicating whether to indicate periods of stimulation with
          colored rectangular patches
     '''
-
-    labels = list(vars_dict.keys())
-    naxes = len(vars_dict)
 
     # Dictionary of neurons
     neurons = {}
@@ -441,6 +445,19 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
         if t_plt['onset'] > 0.0:
             t = np.insert(t, 0, -t_plt['onset'])
             states = np.insert(states, 0, 0)
+
+        # Determine variables to plot if not provided
+        if not vars_dict:
+            if sim_type == 'ASTIM':
+                vars_dict = {'Z': ['Z'], 'Q_m': ['Qm']}
+            elif sim_type == 'ESTIM':
+                vars_dict = {'V_m': ['Vm']}
+            elif sim_type == 'MECH':
+                vars_dict = {'P_{AC}': ['Pac'], 'Z': ['Z'], 'n_g': ['ng']}
+            if sim_type in ['ASTIM', 'ESTIM'] and hasattr(neuron, 'pltvars_scheme'):
+                vars_dict.update(neuron.pltvars_scheme)
+        labels = list(vars_dict.keys())
+        naxes = len(vars_dict)
 
         # Plotting
         if naxes == 1:
@@ -542,8 +559,8 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
         plt.tight_layout()
 
         # Save figure if needed (automatic or checked)
-        if plt_save == 1:
-            if ask_before_save == 1:
+        if plt_save:
+            if ask_before_save:
                 plt_filename = SaveFigDialog(directory, '{}_{}.{}'.format(filecode, tag, fig_ext))
             else:
                 plt_filename = '{}/{}_{}.{}'.format(directory, filecode, tag, fig_ext)
@@ -553,5 +570,5 @@ def plotBatch(vars_dict, directory, filepaths, plt_show=True, plt_save=False,
                 plt.close()
 
     # Show all plots if needed
-    if plt_show == 1:
+    if plt_show:
         plt.show()

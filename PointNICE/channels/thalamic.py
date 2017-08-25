@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 17:20:30
+# @Last Modified time: 2017-08-25 18:04:26
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -325,6 +325,14 @@ class ThalamicRE(Thalamic):
     VL = -90.0  # Non-specific leakage Nernst potential (mV)
     VT = -67.0  # Spike threshold adjustment parameter (mV)
 
+    # Default plotting scheme
+    vars_RE = {
+        'i_{Na}\ kin.': ['m', 'h'],
+        'i_K\ kin.': ['n'],
+        'i_{TS}\ kin.': ['s', 'u'],
+        'I': ['iNa', 'iK', 'iTs', 'iL', 'iNet']
+    }
+
     def __init__(self):
         ''' Constructor of the class. '''
 
@@ -420,6 +428,15 @@ class ThalamoCortical(Thalamic):
     k2 = 0.4  # intracellular Ca2+ regulation factor (s-1)
     k3 = 100.0  # intracellular Ca2+ regulation factor (s-1)
     k4 = 1.0  # intracellular Ca2+ regulation factor (s-1)
+
+    # Default plotting scheme
+    pltvars_scheme = {
+        'i_{Na}\ kin.': ['m', 'h'],
+        'i_K\ kin.': ['n'],
+        'i_{T}\ kin.': ['s', 'u'],
+        'i_{H}\ kin.': ['O', 'OL', 'O + 2OL'],
+        'I': ['iNa', 'iK', 'iT', 'iH', 'iKL', 'iL', 'iNet']
+    }
 
 
     def __init__(self):

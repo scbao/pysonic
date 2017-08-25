@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 17:10:07
+# @Last Modified time: 2017-08-25 18:24:51
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -51,10 +51,5 @@ except AssertionError as err:
 pkl_filepaths = runMechBatch(batch_dir, log_filepath, bls_params, geom, Cm0, Qm0, stim_params)
 pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
-vars_mech = {
-    'P_{AC}': ['Pac'],
-    'Z': ['Z'],
-    'n_g': ['ng']
-}
-
-plotBatch(vars_mech, pkl_dir, pkl_filepaths)
+# Plot resulting profiles
+plotBatch(pkl_dir, pkl_filepaths)

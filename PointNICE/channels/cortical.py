@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 17:22:05
+# @Last Modified time: 2017-08-25 18:03:08
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -322,6 +322,14 @@ class CorticalRS(Cortical):
     VT = -56.2  # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
+    # Default plotting scheme
+    pltvars_scheme = {
+        'i_{Na}\ kin.': ['m', 'h'],
+        'i_K\ kin.': ['n'],
+        'i_M\ kin.': ['p'],
+        'I': ['iNa', 'iK', 'iM', 'iL', 'iNet']
+    }
+
 
     def __init__(self):
         ''' Constructor of the class. '''
@@ -331,6 +339,7 @@ class CorticalRS(Cortical):
 
         # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
+
 
 
 class CorticalFS(Cortical):
@@ -355,6 +364,14 @@ class CorticalFS(Cortical):
     VT = -57.9  # Spike threshold adjustment parameter (mV)
     TauMax = 0.502  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
+    # Default plotting scheme
+    pltvars_scheme = {
+        'i_{Na}\ kin.': ['m', 'h'],
+        'i_K\ kin.': ['n'],
+        'i_M\ kin.': ['p'],
+        'I': ['iNa', 'iK', 'iM', 'iL', 'iNet']
+    }
+
 
     def __init__(self):
         ''' Constructor of the class. '''
@@ -364,6 +381,7 @@ class CorticalFS(Cortical):
 
         # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
+
 
 
 class CorticalLTS(Cortical):
@@ -395,6 +413,15 @@ class CorticalLTS(Cortical):
     VT = -50.0  # Spike threshold adjustment parameter (mV)
     TauMax = 4.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
     Vx = -7.0  # Voltage-dependence uniform shift factor at 36°C (mV)
+
+    # Default plotting scheme
+    pltvars_scheme = {
+        'i_{Na}\ kin.': ['m', 'h'],
+        'i_K\ kin.': ['n'],
+        'i_M\ kin.': ['p'],
+        'i_T\ kin.': ['s', 'u'],
+        'I': ['iNa', 'iK', 'iM', 'iT', 'iL', 'iNet']
+    }
 
     def __init__(self):
         ''' Constructor of the class. '''

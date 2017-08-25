@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 14:48:19
+# @Last Modified time: 2017-08-25 18:25:39
 
 """ Run batch acoustic titrations of specific "point-neuron" models. """
 
@@ -52,4 +52,5 @@ except AssertionError as err:
 pkl_filepaths = titrateAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params)
 pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
+# Plot resulting profiles
 plotBatch({'Q_m': ['Qm']}, pkl_dir, pkl_filepaths)

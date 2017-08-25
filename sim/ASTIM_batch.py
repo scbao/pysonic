@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 17:39:24
+# @Last Modified time: 2017-08-25 18:23:59
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -42,7 +42,6 @@ stim_params = {
 }
 stim_params['offsets'] = [30e-3] * len(stim_params['durations'])  # s
 
-
 # Select output directory
 try:
     (batch_dir, log_filepath) = checkBatchLog('A-STIM')
@@ -54,44 +53,5 @@ except AssertionError as err:
 pkl_filepaths = runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params)
 pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
-
-vars_RS_FS = {
-    'Z': ['Z'],
-    'Q_m': ['Qm'],
-    'i_{Na}\ kin.': ['m', 'h'],
-    'i_K\ kin.': ['n'],
-    'i_M\ kin.': ['p'],
-    'I': ['iNa', 'iK', 'iM', 'iL', 'iNet']
-}
-
-
-vars_LTS = {
-    'Z': ['Z'],
-    'Q_m': ['Qm'],
-    'i_{Na}\ kin.': ['m', 'h'],
-    'i_K\ kin.': ['n'],
-    'i_M\ kin.': ['p'],
-    'i_T\ kin.': ['s', 'u'],
-    'I': ['iNa', 'iK', 'iM', 'iT', 'iL', 'iNet']
-}
-
-vars_RE = {
-    'Z': ['Z'],
-    'Q_m': ['Qm'],
-    'i_{Na}\ kin.': ['m', 'h'],
-    'i_K\ kin.': ['n'],
-    'i_{TS}\ kin.': ['s', 'u'],
-    'I': ['iNa', 'iK', 'iTs', 'iL', 'iNet']
-}
-
-vars_TC = {
-    'Z': ['Z'],
-    'Q_m': ['Qm'],
-    'i_{Na}\ kin.': ['m', 'h'],
-    'i_K\ kin.': ['n'],
-    'i_{T}\ kin.': ['s', 'u'],
-    'i_{H}\ kin.': ['O', 'OL', 'O + 2OL'],
-    'I': ['iNa', 'iK', 'iT', 'iH', 'iKL', 'iL', 'iNet']
-}
-
-plotBatch(vars_LTS, pkl_dir, pkl_filepaths)
+# Plot resulting profiles
+plotBatch(pkl_dir, pkl_filepaths)

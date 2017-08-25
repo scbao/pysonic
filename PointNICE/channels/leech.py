@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 17:20:49
+# @Last Modified time: 2017-08-25 18:21:20
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -65,6 +65,15 @@ class LeechTouch(BaseMech):
 
     tau_PumpNa_act = 0.1  # Time constant for the PumpNa current activation from Sodium ions (s)
     tau_KCa_act = 0.01  # Time constant for the KCa current activation from Calcium ions (s)
+
+    # Default plotting scheme
+    pltvars_scheme = {
+        'i_{Na}\ kin.': ['m', 'h'],
+        'i_K\ kin.': ['n'],
+        'i_{Ca}\ kin.': ['s'],
+        'pools': ['C_Na_arb', 'C_Na_arb_activation', 'C_Ca_arb', 'C_Ca_arb_activation'],
+        'I': ['iNa', 'iK', 'iCa', 'iKCa', 'iPumpNa', 'iL', 'iNet']
+    }
 
 
     def __init__(self):

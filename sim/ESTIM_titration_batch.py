@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-25 14:50:39
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 14:51:19
+# @Last Modified time: 2017-08-25 18:25:36
 
 """ Run batch electrical titrations of specific "point-neuron" models. """
 
@@ -40,4 +40,5 @@ except AssertionError as err:
 pkl_filepaths = titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params)
 pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
+# Plot resulting profiles
 plotBatch({'V_m': ['Vm']}, pkl_dir, pkl_filepaths)

@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 17:52:39
+# @Last Modified time: 2017-08-25 18:26:33
 
 """ Compare profiles of several specific output variables of NICE simulations. """
 
@@ -12,7 +12,7 @@ from PointNICE.utils import OpenFilesDialog
 from PointNICE.plt import plotComp
 
 # List of variables to plot
-ASTIM_vars = ['Pac', 'Pmavg', 'Telastic', 'Vm', 'iL', 'iNet']
+ASTIM_vars = ['Pac', 'Pmavg', 'Telastic', 'Qm', 'iL', 'iNet']
 ESTIM_vars = ['Vm', 'iL', 'iNet']
 MECH_vars = ['Pac', 'Z', 'ng']
 
