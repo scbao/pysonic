@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:07:37
+# @Last Modified time: 2017-08-28 14:18:56
 
 ''' Test the basic functionalities of the package. '''
 
@@ -12,7 +12,7 @@ import logging
 import inspect
 import numpy as np
 
-from PointNICE.utils import LoadParams
+from PointNICE.utils import load_BLS_params
 from PointNICE import BilayerSonophore, channels, SolverElec, SolverUS
 from PointNICE.solvers import detectSpikes, titrateEStim, titrateAStim
 from PointNICE.constants import *
@@ -38,7 +38,7 @@ def test_MECH():
 
     # BLS geometry and parameters
     geom = {"a": 32e-9, "d": 0.0e-6}
-    params = LoadParams()
+    params = load_BLS_params()
 
     # Create BLS instance
     Fdrive = 350e3  # Hz
@@ -156,7 +156,7 @@ def test_ASTIM():
 
     # BLS geometry and parameters
     geom = {"a": 32e-9, "d": 0.0e-6}
-    params = LoadParams()
+    params = load_BLS_params()
 
     # Stimulation parameters
     Fdrive = 350e3  # Hz
@@ -209,7 +209,7 @@ def test_ASTIM_classic():
 
     # BLS geometry and parameters
     geom = {"a": 32e-9, "d": 0.0e-6}
-    params = LoadParams()
+    params = load_BLS_params()
 
     # Stimulation parameters
     Fdrive = 350e3  # Hz
@@ -237,7 +237,7 @@ def test_ASTIM_hybrid():
 
     # BLS geometry and parameters
     geom = {"a": 32e-9, "d": 0.0e-6}
-    params = LoadParams()
+    params = load_BLS_params()
 
     # Stimulation parameters
     Fdrive = 350e3  # Hz

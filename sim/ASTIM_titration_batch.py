@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 18:25:39
+# @Last Modified time: 2017-08-28 14:18:52
 
 """ Run batch acoustic titrations of specific "point-neuron" models. """
 
@@ -13,7 +13,7 @@ import logging
 import numpy as np
 from PointNICE.solvers import checkBatchLog, titrateAStimBatch
 from PointNICE.channels import *
-from PointNICE.utils import LoadParams
+from PointNICE.utils import load_BLS_params
 from PointNICE.plt import plotBatch
 
 # Set logging options
@@ -22,7 +22,7 @@ logger = logging.getLogger('PointNICE')
 logger.setLevel(logging.DEBUG)
 
 # BLS parameters
-bls_params = LoadParams()
+bls_params = load_BLS_params()
 
 # Geometry of NBLS structure
 a = 32e-9  # in-plane radius (m)

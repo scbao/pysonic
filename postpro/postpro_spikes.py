@@ -4,7 +4,7 @@
 # @Date:   2016-10-27 09:50:55
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-07-18 15:48:58
+# @Last Modified time: 2017-08-28 14:18:29
 
 """ Test influence of acoustic intensity and duration on number of spikes. """
 
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from mpl_toolkits.mplot3d import Axes3D
 
-from PointNICE.utils import ImportExcelCol, ConstructMatrix, LoadParams
+from PointNICE.utils import ImportExcelCol, ConstructMatrix, load_BLS_params
 
 
 # Define options
@@ -25,7 +25,7 @@ plt_save_ext = '.png'
 
 
 # Load NICE parameters
-params = LoadParams()
+params = load_BLS_params()
 biomech = params['biomech']
 ac_imp = biomech['rhoL'] * biomech['c']  # Rayl
 

@@ -4,7 +4,7 @@
 # @Date:   2016-10-30 21:48:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-07-18 15:49:20
+# @Last Modified time: 2017-08-28 14:18:23
 
 """ Test relationship between stimulus frequency and minimum acoustic intensity
 for AP generation. """
@@ -13,10 +13,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-from PointNICE.utils import ImportExcelCol, LoadParams
+from PointNICE.utils import ImportExcelCol, load_BLS_params
 
 # Load NICE parameters
-params = LoadParams()
+params = load_BLS_params()
 biomech = params['biomech']
 ac_imp = biomech['rhoL'] * biomech['c']  # Rayl
 

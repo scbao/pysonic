@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 13:02:15
+# @Last Modified time: 2017-08-28 14:19:14
 
 """ Definition of generic utility functions used in other modules """
 
@@ -29,7 +29,7 @@ class PmCompMethod(Enum):
     predict = 2
 
 
-def LoadParamsFile(filename):
+def loadParamsFile(filename):
     """ Load a dictionary of parameters for the BLS model from an external yaml file.
 
         :param filename: name of the input file
@@ -43,7 +43,7 @@ def LoadParamsFile(filename):
     return ParseNestedDict(params)
 
 
-LoadParams = partial(LoadParamsFile, filename=os.path.split(__file__)[0] + '/params.yaml')
+load_BLS_params = partial(loadParamsFile, filename=os.path.split(__file__)[0] + '/params.yaml')
 
 
 def getLookupDir():

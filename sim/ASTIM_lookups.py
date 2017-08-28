@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 14:30:33
+# @Last Modified time: 2017-08-28 14:18:17
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -12,7 +12,7 @@ import logging
 import numpy as np
 
 import PointNICE
-from PointNICE.utils import LoadParams
+from PointNICE.utils import load_BLS_params
 from PointNICE.channels import *
 
 # Set logging options
@@ -21,7 +21,7 @@ logger = logging.getLogger('PointNICE')
 logger.setLevel(logging.DEBUG)
 
 # BLS parameters
-params = LoadParams()
+params = load_BLS_params()
 
 # Geometry of NBLS structure
 a = 32e-9  # in-plane radius (m)

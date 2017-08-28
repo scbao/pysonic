@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 10:23:04
+# @Last Modified time: 2017-08-28 14:18:54
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -12,7 +12,7 @@ import os
 import logging
 import numpy as np
 
-from PointNICE.utils import LoadParams
+from PointNICE.utils import load_BLS_params
 from PointNICE.solvers import checkBatchLog, runMechBatch
 from PointNICE.plt import plotBatch
 
@@ -22,7 +22,7 @@ logger = logging.getLogger('PointNICE')
 logger.setLevel(logging.DEBUG)
 
 # BLS parameters
-bls_params = LoadParams()
+bls_params = load_BLS_params()
 
 # Geometry of BLS structure
 a = 32e-9  # in-plane radius (m)

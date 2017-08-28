@@ -4,7 +4,7 @@
 # @Date:   2016-10-07 10:22:24
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-07-18 15:53:50
+# @Last Modified time: 2017-08-28 14:17:56
 
 """ Analysis of the system geometric variables and interplaying forces at
 stake in a static quasi-steady NICE system. """
@@ -14,13 +14,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import PointNICE
-from PointNICE.utils import LoadParams, PmCompMethod
+from PointNICE.utils import load_BLS_params, PmCompMethod
 
 
 plt_bool = 1
 
 # Initialization: create a BLS instance
-params = LoadParams()
+params = load_BLS_params()
 a = 32e-9  # in-plane radius (m)
 d = 0.0e-6  # embedding tissue thickness (m)
 geom = {"a": a, "d": d}

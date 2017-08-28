@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 10:43:11
+# @Last Modified time: 2017-08-28 14:19:39
 
 ''' Test the basic functionalities of the package and output graphs of the call flows. '''
 
@@ -13,7 +13,7 @@ from pycallgraph import PyCallGraph
 from pycallgraph.output import GraphvizOutput
 
 import PointNICE
-from PointNICE.utils import LoadParams
+from PointNICE.utils import load_BLS_params
 from PointNICE.channels import CorticalRS
 
 
@@ -29,7 +29,7 @@ graphviz = GraphvizOutput()
 geom = {"a": 32e-9, "d": 0.0e-6}
 
 # Loading model parameters
-params = LoadParams()
+params = load_BLS_params()
 
 # Defining general stimulation parameters
 Fdrive = 3.5e5  # Hz
