@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:13:50
+# @Last Modified time: 2017-08-28 15:20:07
 
 import os
 import warnings
@@ -313,22 +313,23 @@ class SolverUS(BilayerSonophore):
             y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
 
         # Integrate offset interval
-        t_off = np.linspace(0, toffset, n_off) + t[-1]
-        states_off = np.zeros(n_off)
-        y_off = np.empty((nvar, n_off))
-        y_off[:, 0] = y[:, -1]
-        solver_full.set_initial_value(y_off[:, 0], t_off[0])
-        solver_full.set_f_params(ch_mech, 0.0, 0.0, 0.0)
-        k = 0
-        while solver_full.successful() and k < n_off - 1:
-            k += 1
-            solver_full.integrate(t_off[k])
-            y_off[:, k] = solver_full.y
+        if n_off > 0:
+            t_off = np.linspace(0, toffset, n_off) + t[-1]
+            states_off = np.zeros(n_off)
+            y_off = np.empty((nvar, n_off))
+            y_off[:, 0] = y[:, -1]
+            solver_full.set_initial_value(y_off[:, 0], t_off[0])
+            solver_full.set_f_params(ch_mech, 0.0, 0.0, 0.0)
+            k = 0
+            while solver_full.successful() and k < n_off - 1:
+                k += 1
+                solver_full.integrate(t_off[k])
+                y_off[:, k] = solver_full.y
 
-        # Concatenate offset arrays to global arrays
-        states = np.concatenate([states, states_off[1:]])
-        t = np.concatenate([t, t_off[1:]])
-        y = np.concatenate([y, y_off[:, 1:]], axis=1)
+            # Concatenate offset arrays to global arrays
+            states = np.concatenate([states, states_off[1:]])
+            t = np.concatenate([t, t_off[1:]])
+            y = np.concatenate([y, y_off[:, 1:]], axis=1)
 
         # Downsample arrays in time-domain to reduce overall size
         t = t[::CLASSIC_DS_FACTOR]
@@ -455,32 +456,33 @@ class SolverUS(BilayerSonophore):
             ngeff = np.concatenate([ngeff, ngeff_pulse[1:]])
 
         # Integrate offset interval
-        t_off = np.linspace(0, toffset, n_off) + t[-1]
-        states_off = np.zeros(n_off)
-        y_off = np.empty((nvar, n_off))
-        ngeff_off = np.empty(n_off)
-        Zeff_off = np.empty(n_off)
+        if n_off > 0:
+            t_off = np.linspace(0, toffset, n_off) + t[-1]
+            states_off = np.zeros(n_off)
+            y_off = np.empty((nvar, n_off))
+            ngeff_off = np.empty(n_off)
+            Zeff_off = np.empty(n_off)
 
-        y_off[:, 0] = y[:, -1]
-        ngeff_off[0] = ngeff[-1]
-        Zeff_off[0] = Zeff[-1]
-        solver_off.set_initial_value(y_off[:, 0], t_off[0])
-        solver_off.set_f_params(ch_mech, self.Capct(Zeff_pulse[k]))
-        k = 0
-        while solver_off.successful() and k < n_off - 1:
-            k += 1
-            solver_off.integrate(t_off[k])
-            y_off[:, k] = solver_off.y
-            ngeff_off[k] = interpolators['ng'](0.0, y_off[0, k])  # mole
-            Zeff_off[k] = self.balancedefQS(ngeff_off[k], y_off[0, k])  # m
-            solver_off.set_f_params(ch_mech, self.Capct(Zeff_off[k]))
+            y_off[:, 0] = y[:, -1]
+            ngeff_off[0] = ngeff[-1]
+            Zeff_off[0] = Zeff[-1]
+            solver_off.set_initial_value(y_off[:, 0], t_off[0])
+            solver_off.set_f_params(ch_mech, self.Capct(Zeff_pulse[k]))
+            k = 0
+            while solver_off.successful() and k < n_off - 1:
+                k += 1
+                solver_off.integrate(t_off[k])
+                y_off[:, k] = solver_off.y
+                ngeff_off[k] = interpolators['ng'](0.0, y_off[0, k])  # mole
+                Zeff_off[k] = self.balancedefQS(ngeff_off[k], y_off[0, k])  # m
+                solver_off.set_f_params(ch_mech, self.Capct(Zeff_off[k]))
 
-        # Concatenate offset arrays to global arrays
-        states = np.concatenate([states, states_off[1:]])
-        t = np.concatenate([t, t_off[1:]])
-        y = np.concatenate([y, y_off[:, 1:]], axis=1)
-        Zeff = np.concatenate([Zeff, Zeff_off[1:]])
-        ngeff = np.concatenate([ngeff, ngeff_off[1:]])
+            # Concatenate offset arrays to global arrays
+            states = np.concatenate([states, states_off[1:]])
+            t = np.concatenate([t, t_off[1:]])
+            y = np.concatenate([y, y_off[:, 1:]], axis=1)
+            Zeff = np.concatenate([Zeff, Zeff_off[1:]])
+            ngeff = np.concatenate([ngeff, ngeff_off[1:]])
 
         # Add Zeff and ngeff to solution matrix
         y = np.vstack([Zeff, ngeff, y])
