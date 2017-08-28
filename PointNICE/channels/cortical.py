@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 18:03:08
+# @Last Modified time: 2017-08-28 17:54:21
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -285,10 +285,11 @@ class Cortical(BaseMech):
         return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg, ap_avg, bp_avg])
 
 
-    def derStatesEff(self, Adrive, Qm, states, interpolators):
+    def derStatesEff(self, Qm, states, interp_data):
         ''' Concrete implementation of the abstract API method. '''
 
-        rates = np.array([interpolators[rn](Adrive, Qm) for rn in self.coeff_names])
+        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
+                          for rn in self.coeff_names])
 
         m, h, n, p = states
         dmdt = rates[0] * (1 - m) - rates[1] * m
@@ -585,17 +586,18 @@ class CorticalLTS(Cortical):
         return np.concatenate((NaK_rates, Ca_rates))
 
 
-    def derStatesEff(self, Adrive, Qm, states, interpolators):
+    def derStatesEff(self, Qm, states, interp_data):
         ''' Concrete implementation of the abstract API method. '''
 
         # Unpack input states
         *NaK_states, s, u = states
 
         # Call parent method to compute Sodium and Potassium channels states derivatives
-        NaK_dstates = super().derStatesEff(Adrive, Qm, NaK_states, interpolators)
+        NaK_dstates = super().derStatesEff(Qm, NaK_states, interp_data)
 
         # Compute Calcium channels states derivatives
-        Ca_rates = np.array([interpolators[rn](Adrive, Qm) for rn in self.coeff_names[8:]])
+        Ca_rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
+                             for rn in self.coeff_names[8:]])
         dsdt = Ca_rates[0] * (1 - s) - Ca_rates[1] * s
         dudt = Ca_rates[2] * (1 - u) - Ca_rates[3] * u
 

@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-24 17:16:19
+# @Last Modified time: 2017-08-28 17:50:40
 
 ''' Module standard API for all neuron mechanisms.
 
@@ -43,7 +43,7 @@ class BaseMech(metaclass=abc.ABCMeta):
               effective simulations. This method must return an array of effective rates ordered
               identically as in the coeff_names attribute.
             - **derStatesEff**: compute the effective derivatives of channel states, based on
-              2-dimensional linear interpolators of "effective" coefficients. This method must
+              1-dimensional linear interpolators of "effective" coefficients. This method must
               return a list of derivatives ordered identically as in the states0 attribute.
     '''
 
@@ -114,13 +114,13 @@ class BaseMech(metaclass=abc.ABCMeta):
         '''
 
     @abc.abstractmethod
-    def derStatesEff(self, Adrive, Qm, states, interpolators):
+    def derStatesEff(self, Qm, states, interp_data):
         ''' Compute the effective derivatives of channel states, based on
-            2-dimensional linear interpolation of "effective" coefficients
+            1-dimensional linear interpolation of "effective" coefficients
             that summarize the system's behaviour over an acoustic cycle.
 
-            :param Vm_eff: effective membrane potential (mV)
+            :param Qm: membrane charge density (C/m2)
             :states: state probabilities of the ion channels
-            :param interpolators: dictionary of 2-dimensional linear interpolators
-                of "effective" rates over the 2D amplitude x charge input domain.
+            :param interp_data: dictionary of 1D vectors of "effective" coefficients
+             over the charge domain, for specific frequency and amplitude values.
         '''

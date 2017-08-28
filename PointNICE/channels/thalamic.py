@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 18:04:26
+# @Last Modified time: 2017-08-28 17:55:32
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -283,10 +283,12 @@ class Thalamic(BaseMech):
                          as_avg, bs_avg, au_avg, bu_avg])
 
 
-    def derStatesEff(self, Adrive, Qm, states, interpolators):
+
+    def derStatesEff(self, Qm, states, interp_data):
         ''' Concrete implementation of the abstract API method. '''
 
-        rates = np.array([interpolators[rn](Adrive, Qm) for rn in self.coeff_names])
+        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
+                          for rn in self.coeff_names])
 
         m, h, n, s, u = states
         dmdt = rates[0] * (1 - m) - rates[1] * m
@@ -763,11 +765,12 @@ class ThalamoCortical(Thalamic):
         return np.concatenate((NaKCa_effrates, iH_effrates))
 
 
-    def derStatesEff(self, Adrive, Qm, states, interpolators):
+    def derStatesEff(self, Qm, states, interp_data):
         ''' Concrete implementation of the abstract API method. '''
 
-        rates = np.array([interpolators[rn](Adrive, Qm) for rn in self.coeff_names])
-        Vmeff = interpolators['V'](Adrive, Qm)
+        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
+                          for rn in self.coeff_names])
+        Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         # Unpack states
         m, h, n, s, u, O, C, P0, C_Ca = states

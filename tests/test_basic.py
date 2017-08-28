@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:18:56
+# @Last Modified time: 2017-08-28 18:00:05
 
 ''' Test the basic functionalities of the package. '''
 

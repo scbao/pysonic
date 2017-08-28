@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 18:21:20
+# @Last Modified time: 2017-08-28 17:57:49
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -245,12 +245,7 @@ class LeechTouch(BaseMech):
 
 
     def currNet(self, Vm, states):
-        ''' Compute the net ionic current per unit area.
-
-            :param Vm: membrane potential (mV)
-            :states: state probabilities of the ion channels
-            :return: current per unit area (mA/m2)
-        '''
+        ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, _, A_Na, _, A_Ca = states
         return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm)
@@ -258,12 +253,7 @@ class LeechTouch(BaseMech):
 
 
     def steadyStates(self, Vm):
-        ''' Compute the Sodium, Potassium and Calcium channel gates steady-states
-            for a specific membrane potential value.
-
-            :param Vm: membrane potential (mV)
-            :return: array of steady-states
-        '''
+        ''' Concrete implementation of the abstract API method. '''
 
         # Standard gating dynamics: Solve the equation dx/dt = 0 at Vm for each x-state
         meq = self.minf(Vm)
@@ -289,12 +279,7 @@ class LeechTouch(BaseMech):
 
 
     def derStates(self, Vm, states):
-        ''' Compute the derivatives of channel states.
-
-            :param Vm: membrane potential (mV)
-            :states: state probabilities of the ion channels
-            :return: current per unit area (mA/m2)
-        '''
+        ''' Concrete implementation of the abstract API method. '''
 
         # Unpack states
         m, h, n, s, C_Na, A_Na, C_Ca, A_Ca = states
@@ -320,12 +305,7 @@ class LeechTouch(BaseMech):
 
 
     def getEffRates(self, Vm):
-        ''' Get the effective rate constants of ion channels, averaged along an acoustic cycle,
-            for future use in effective simulations.
-
-            :param Vm: array of membrane potential values for an acoustic cycle (mV)
-            :return: an array of rate average constants (s-1)
-        '''
+        ''' Concrete implementation of the abstract API method. '''
 
         # Compute average cycle value for rate constants
         Tm = self.taum
@@ -353,19 +333,12 @@ class LeechTouch(BaseMech):
 
 
 
-    def derStatesEff(self, Adrive, Qm, states, interpolators):
-        ''' Compute the effective derivatives of channel states, based on
-            2-dimensional linear interpolation of "effective" coefficients
-            that summarize the system's behaviour over an acoustic cycle.
+    def derStatesEff(self, Qm, states, interp_data):
+        ''' Concrete implementation of the abstract API method. '''
 
-            :param Vm_eff: effective membrane potential (mV)
-            :states: state probabilities of the ion channels
-            :param interpolators: dictionary of 2-dimensional linear interpolators
-                of "effective" rates over the 2D amplitude x charge input domain.
-        '''
-
-        rates = np.array([interpolators[rn](Adrive, Qm) for rn in self.coeff_names])
-        Vmeff = interpolators['V'](Adrive, Qm)
+        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
+                          for rn in self.coeff_names])
+        Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         # Unpack states
         m, h, n, s, C_Na, A_Na, C_Ca, A_Ca = states

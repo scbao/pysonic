@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 15:20:07
+# @Last Modified time: 2017-08-28 17:47:33
 
 import os
 import warnings
@@ -76,33 +76,6 @@ class SolverUS(BilayerSonophore):
         return [dQm, *dstates]
 
 
-    def eqHHeff(self, t, y, ch_mech, A, interpolators):
-        """ Compute the derivatives of the n-ODE effective HH system variables,
-            based on 2-dimensional linear interpolation of "effective" coefficients
-            that summarize the system's behaviour over an acoustic cycle.
-
-            :param t: specific instant in time (s)
-            :param y: vector of HH system variables at time t
-            :param ch_mech: channels mechanism object
-            :param A: acoustic drive amplitude (Pa)
-            :param channels: Channel object to compute a specific electrical membrane dynamics
-            :param interpolators: dictionary of 2-dimensional linear interpolators
-                of "effective" coefficients over the 2D amplitude x charge input domain.
-            :return: vector of effective system derivatives at time t
-        """
-
-        # Split input vector explicitly
-        Qm, *states = y
-
-        # Compute charge and channel states variation
-        Vm = interpolators['V'](A, Qm)  # mV
-        dQmdt = - ch_mech.currNet(Vm, states) * 1e-3
-        dstates = ch_mech.derStatesEff(A, Qm, states, interpolators)
-
-        # Return derivatives vector
-        return [dQmdt, *dstates]
-
-
     def eqFull(self, t, y, ch_mech, Adrive, Fdrive, phi):
         """ Compute the derivatives of the (n+3) ODE full NBLS system variables.
 
@@ -121,6 +94,32 @@ class SolverUS(BilayerSonophore):
 
         # return concatenated output
         return dydt_mech + dydt_elec
+
+
+    def eqHHeff(self, t, y, ch_mech, interp_data):
+        """ Compute the derivatives of the n-ODE effective HH system variables,
+            based on 1-dimensional linear interpolation of "effective" coefficients
+            that summarize the system's behaviour over an acoustic cycle.
+
+            :param t: specific instant in time (s)
+            :param y: vector of HH system variables at time t
+            :param ch_mech: channels mechanism object
+            :param channels: Channel object to compute a specific electrical membrane dynamics
+            :param interp_data: dictionary of 1D data points of "effective" coefficients
+             over the charge domain, for specific frequency and amplitude values.
+            :return: vector of effective system derivatives at time t
+        """
+
+        # Split input vector explicitly
+        Qm, *states = y
+
+        # Compute charge and channel states variation
+        Vm = np.interp(Qm, interp_data['Q'], interp_data['V'])  # mV
+        dQmdt = - ch_mech.currNet(Vm, states) * 1e-3
+        dstates = ch_mech.derStatesEff(Qm, states, interp_data)
+
+        # Return derivatives vector
+        return [dQmdt, *dstates]
 
 
     def getEffCoeffs(self, ch_mech, Fdrive, Adrive, Qm, phi=np.pi):
@@ -368,22 +367,27 @@ class SolverUS(BilayerSonophore):
 
         # Load coefficients
         with open(lookup_path, 'rb') as fh:
-            coeffs = pickle.load(fh)
+            coeffs2d = pickle.load(fh)
 
         # Check that pressure amplitude is within lookup range
-        Amax = np.amax(coeffs['A']) + 1e-9  # adding margin to compensate for eventual round error
+        Amax = np.amax(coeffs2d['A']) + 1e-9  # adding margin to compensate for eventual round error
         assert Adrive <= Amax, 'Amplitude must be within [0, {:.1f}] kPa'.format(Amax * 1e-3)
 
-        # Initialize interpolators
-        interpolators = {cn: interp2d(coeffs['A'], coeffs['Q'], np.transpose(coeffs[cn]))
-                         for cn in ch_mech.coeff_names}
-        interpolators['V'] = interp2d(coeffs['A'], coeffs['Q'], np.transpose(coeffs['V']))
-        interpolators['ng'] = interp2d(coeffs['A'], coeffs['Q'], np.transpose(coeffs['ng']))
+        # Derive 1D charge-based interpolation dataset for specific amplitude
+        coeffs_list = ['V', 'ng', *ch_mech.coeff_names]
+        interpolators2d = {cn: interp2d(coeffs2d['A'], coeffs2d['Q'], np.transpose(coeffs2d[cn]))
+                           for cn in coeffs_list}
+        coeffs1d = {cn: interpolators2d[cn](Adrive, coeffs2d['Q']) for cn in coeffs_list}
+        coeffs1d['Q'] = coeffs2d['Q']
+        coeffs1d['ng0'] = interpolators2d['ng'](0.0, coeffs2d['Q'])
+        for key in coeffs1d.keys():
+            coeffs1d[key] = np.squeeze(coeffs1d[key])
+
 
         # Initialize system solvers
         solver_on = integrate.ode(self.eqHHeff)
         solver_on.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
-        solver_on.set_f_params(ch_mech, Adrive, interpolators)
+        solver_on.set_f_params(ch_mech, coeffs1d)
         solver_off = integrate.ode(self.eqHH)
         solver_off.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
 
@@ -434,7 +438,7 @@ class SolverUS(BilayerSonophore):
                 k += 1
                 solver_on.integrate(t_pulse[k])
                 y_pulse[:, k] = solver_on.y
-                ngeff_pulse[k] = interpolators['ng'](Adrive, y_pulse[0, k])  # mole
+                ngeff_pulse[k] = np.interp(y_pulse[0, k], coeffs1d['Q'], coeffs1d['ng'])  # mole
                 Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
 
             # Integrate OFF system
@@ -444,7 +448,7 @@ class SolverUS(BilayerSonophore):
                 k += 1
                 solver_off.integrate(t_pulse[k])
                 y_pulse[:, k] = solver_off.y
-                ngeff_pulse[k] = interpolators['ng'](0.0, y_pulse[0, k])  # mole
+                ngeff_pulse[k] = np.interp(y_pulse[0, k], coeffs1d['Q'], coeffs1d['ng0'])  # mole
                 Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
                 solver_off.set_f_params(ch_mech, self.Capct(Zeff_pulse[k]))
 
@@ -473,7 +477,7 @@ class SolverUS(BilayerSonophore):
                 k += 1
                 solver_off.integrate(t_off[k])
                 y_off[:, k] = solver_off.y
-                ngeff_off[k] = interpolators['ng'](0.0, y_off[0, k])  # mole
+                ngeff_off[k] = np.interp(y_off[0, k], coeffs1d['Q'], coeffs1d['ng0'])  # mole
                 Zeff_off[k] = self.balancedefQS(ngeff_off[k], y_off[0, k])  # m
                 solver_off.set_f_params(ch_mech, self.Capct(Zeff_off[k]))
 
@@ -675,12 +679,11 @@ class SolverUS(BilayerSonophore):
             :return: 3-tuple with the time profile, the solution matrix and a state vector
         """
 
-        # Check validity of simulation type
+        # # Check validity of simulation type
         sim_types = ('classic, effective, hybrid')
         assert sim_type in sim_types, 'Allowed simulation types are {}'.format(sim_types)
 
         # Check validity of stimulation parameters
-        # Check validity of input parameters
         assert isinstance(ch_mech, BaseMech), ('channel mechanism must be inherited '
                                                'from the BaseMech class')
         for param in [Fdrive, Adrive, tstim, toffset, DF]:
@@ -704,3 +707,4 @@ class SolverUS(BilayerSonophore):
         elif sim_type == 'hybrid':
             assert DF == 1.0, 'Hybrid method can only handle continuous wave stimuli'
             return self.__runHybrid(ch_mech, Fdrive, Adrive, tstim, toffset)
+
