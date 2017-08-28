@@ -4,7 +4,7 @@
 # @Date:   2017-06-13 09:40:02
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:37:47
+# @Last Modified time: 2017-08-28 16:15:50
 
 from setuptools import setup
 
@@ -19,7 +19,7 @@ setup(name='PointNICE',
       description='A Python framework to predict the electrical response of various neuron types\
                    to ultrasonic stimulation, according to the Neuronal Intramembrane Cavitation\
                    Excitation (NICE) model. The framework couples an optimized implementation of\
-                   the Bilayer Sonophore (BLS) model with Hodgkin-Huxley "point-neuron" models.'
+                   the Bilayer Sonophore (BLS) model with Hodgkin-Huxley "point-neuron" models.',
       long_description=readme(),
       url='???',
       classifiers=[
