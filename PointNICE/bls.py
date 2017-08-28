@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 17:02:42
+# @Last Modified time: 2017-08-28 14:00:57
 
 import logging
 import warnings
@@ -509,6 +509,15 @@ class BilayerSonophore:
             :param Qm: imposed membrane charge density (C/m2)
             :return: 3-tuple with the time profile, the solution matrix and a state vector
         """
+
+        # Check validity of stimulation parameters
+        for param in [Fdrive, Adrive, Qm, phi]:
+            assert isinstance(param, float), 'stimulation parameters must be float typed'
+        assert Fdrive > 0, 'Driving frequency must be strictly positive'
+        assert Adrive > 0, 'Acoustic pressure amplitude must be strictly positive'
+        assert INPUT_CHARGE_RANGE[0] <= Qm <= INPUT_CHARGE_RANGE[1], ('Applied charge must be '
+                                                                      'within physiological range')
+        assert phi >= 0 and phi < 2 * np.pi, 'US phase must be within [0, 2 PI)'
 
         # Raise warnings as error
         warnings.filterwarnings('error')

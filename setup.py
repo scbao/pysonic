@@ -16,7 +16,10 @@ def readme():
 
 setup(name='PointNICE',
       version='1.0',
-      description='Optimized Python implementation of the NICE model',
+      description='A Python framework to predict the electrical response of various neuron types\
+                   to ultrasonic stimulation, according to the Neuronal Intramembrane Cavitation\
+                   Excitation (NICE) model. The framework couples an optimized implementation of\
+                   the Bilayer Sonophore (BLS) model with Hodgkin-Huxley "point-neuron" models.'
       long_description=readme(),
       url='???',
       classifiers=[

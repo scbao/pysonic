@@ -1,0 +1,15 @@
+PointNICE is a Python implementation of the *Neuronal Intramembrane Cavitation Excitation* (NICE) model introduced by Plaksin et. al in 2014 and initially developed in MATLAB by its authors. It contains optimized methods to predict the electrical response of point-neuron models to both acoustic and electrical stimuli.
+
+This package contains several core modules:
+	- **bls** defines the underlying biomechanical model of *intramembrane cavitation* (**BilayerSonophore** class), and provides an integration method to predict compute the mechanical oscillations of the plasma membrane subject to a periodic acoustic perturbation.
+	- **solvers** contains a simple solver for electrical stimuli (**SolverElec** class) as well as a tailored solver for acoustic stimuli (**SolverUS** class). The latter directly inherits from the BilayerSonophore class upon instantiation, and is hooked to a specific "channel mechanism" in order to link the mechanical model to an electrical model of membrane dynamics. It also provides several integration methods (detailed below) to compute the behaviour of the full electro-mechanical model subject to a continuous or pulsed ultrasonic stimulus.
+	- **channels** contains the definitions of the different channels mechanisms inherent to specific neurons, including several types of **cortical** and **thalamic** neurons.
+	- **plt** defines plotting utilities to load results of several simulations and display/compare temporal profiles of multiple variables of interest across simulations. 
+	- **utils** defines generic utilities used across the different modules
+
+The **SolverUS** class incorporates optimized numerical integration methods to perform dynamic simulations of the model subject to acoustic perturbation, and compute the evolution of its mechanical and electrical variables:
+	- a **classic** method that solves all variables for the entire duration of the simulation. This method uses very small time steps and is computationally expensive (simulation time: several hours)
+	- a **hybrid** method (initially developed by Plaskin et al.) in which integration is performed in consecutive “slices” of time, during which the full system is solved until mechanical stabilization, at which point the electrical system is solely solved with predicted mechanical variables until the end of the slice. This method is more efficient (simulation time: several minutes) and provides accurate results.
+	- a newly developed **effective** method that neglects the high amplitude oscillations of mechanical and electrical variables during each acoustic cycle, to instead grasp the net effect of the acoustic stimulus on the electrical system. To do so, the sole electrical system is solved using pre-computed coefficients that depend on membrane charge and acoustic amplitude. This method allows to run simulations of the electrical system in only a few seconds, with very accurate results of the net membrane charge density evolution.
+
+This package is meant to be easy to use as a predictive and comparative tool for researchers investigating ultrasonic and/or electrical neuro-stimulation experimentally.

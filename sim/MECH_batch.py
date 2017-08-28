@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 18:24:51
+# @Last Modified time: 2017-08-28 10:23:04
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -31,12 +31,12 @@ geom = {"a": a, "d": d}
 
 # Electrical properties of the membrane
 Cm0 = 1e-2  # membrane resting capacitance (F/m2)
-Qm0 = -54.0e-5  # membrane resting charge density (C/m2)
+Qm0 = -80e-5  # membrane resting charge density (C/m2)
 
 # Stimulation parameters
 stim_params = {
     'freqs': [3.5e5],  # Hz
-    'amps': [200e3],  # Pa
+    'amps': [100e3],  # Pa
     'charges': [80e-5]  # C/m2
 }
 
