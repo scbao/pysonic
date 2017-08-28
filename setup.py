@@ -4,7 +4,7 @@
 # @Date:   2017-06-13 09:40:02
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-22 19:21:59
+# @Last Modified time: 2017-08-28 14:37:47
 
 from setuptools import setup
 
@@ -39,6 +39,7 @@ setup(name='PointNICE',
           'scipy>=0.17',
           'matplotlib>=2',
           'openpyxl>=2.4',
-          'pyyaml>=3.11'
+          'pyyaml>=3.11',
+          'pycallgraph>=1.0.1'
       ],
       zip_safe=False)
