@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-29 16:06:10
+# @Last Modified time: 2017-08-29 16:26:03
 
 import os
 import warnings
@@ -689,7 +689,7 @@ class SolverUS(BilayerSonophore):
         for param in [Fdrive, Adrive, tstim, toffset, DF]:
             assert isinstance(param, float), 'stimulation parameters must be float typed'
         assert Fdrive > 0, 'Driving frequency must be strictly positive'
-        assert Adrive > 0, 'Acoustic pressure amplitude must be strictly positive'
+        assert Adrive >= 0, 'Acoustic pressure amplitude must be positive'
         assert tstim > 0, 'Stimulus duration must be strictly positive'
         assert toffset >= 0, 'Stimulus offset must be positive or null'
         assert DF > 0 and DF <= 1, 'Duty cycle must be within [0; 1)'
