@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 17:47:33
+# @Last Modified time: 2017-08-29 16:06:10
 
 import os
 import warnings
@@ -135,7 +135,7 @@ class SolverUS(BilayerSonophore):
             :param Adrive: acoustic drive amplitude (Pa)
             :param Qm: imposed charge density (C/m2)
             :param phi: acoustic drive phase (rad)
-            :return: tuple with the effective potential, rates, and gas content coefficients
+            :return: tuple with the effective potential, gas content and channel rates
         """
 
         # Run simulation and retrieve deflection and gas content vectors from last cycle
@@ -153,61 +153,61 @@ class SolverUS(BilayerSonophore):
         # Take final cycle value for gas content
         ng_eff = ng[-1]  # mole
 
-        return (Vm_eff, rates_eff, ng_eff)
+        return (Vm_eff, ng_eff, *rates_eff)
 
 
-    def createLookup(self, ch_mech, Fdrive, amps, charges, phi=np.pi):
+    def createLookup(self, ch_mech, freqs, amps, charges, phi=np.pi):
         """ Run simulations of the mechanical system for a multiple combinations of
             imposed charge densities and acoustic amplitudes, compute effective coefficients
             and store them as 2D arrays in a lookup file.
 
             :param ch_mech: channels mechanism object
-            :param Fdrive: acoustic drive frequency (Hz)
+            :param freqs: array of acoustic drive frequencies (Hz)
             :param amps: array of acoustic drive amplitudes (Pa)
             :param charges: array of charge densities (C/m2)
             :param phi: acoustic drive phase (rad)
         """
 
         # Check validity of stimulation parameters
-        assert Fdrive > 0, 'Driving frequency must be strictly positive'
-        assert np.amin(amps) >= 0, 'Acoustic pressure amplitudes must be positive'
+        assert freqs.min() > 0, 'Driving frequencies must be strictly positive'
+        assert amps.min() >= 0, 'Acoustic pressure amplitudes must be positive'
 
-        logger.info('Creating lookup table for f = %.2f kHz', Fdrive * 1e-3)
+        logger.info('Creating lookup table for %s neuron', ch_mech.name)
 
-        # Initialize 3D array to store effective coefficients
+        # Initialize lookup dictionary of 3D array to store effective coefficients
+        nf = freqs.size
         nA = amps.size
         nQ = charges.size
-        Vm = np.empty((nA, nQ))
-        ng = np.empty((nA, nQ))
-        nrates = len(ch_mech.coeff_names)
-        rates = np.empty((nA, nQ, nrates))
+        coeffs_names = ['V', 'ng', *ch_mech.coeff_names]
+        ncoeffs = len(coeffs_names)
+        lookup_dict = {cn: np.empty((nf, nA, nQ)) for cn in coeffs_names}
 
-        # Loop through all (A, Q) combinations
+        # Loop through all (f, A, Q) combinations
+        nsims = nf * nA * nQ
         isim = 0
-        for i in range(nA):
-            for j in range(nQ):
-                isim += 1
-                # Run short simulation and store effective coefficients
-                logger.info('sim %u/%u (A = %.2f kPa, Q = %.2f nC/cm2)',
-                            isim, nA * nQ, amps[i] * 1e-3, charges[j] * 1e5)
-                (Vm[i, j], rates[i, j, :], ng[i, j]) = self.getEffCoeffs(ch_mech, Fdrive,
-                                                                         amps[i], charges[j], phi)
+        log_str = 'short simulation %u/%u (f = %.2f kHz, A = %.2f kPa, Q = %.2f nC/cm2)'
+        for i in range(nf):
+            for j in range(nA):
+                for k in range(nQ):
+                    isim += 1
+                    # Run short simulation and store effective coefficients
+                    logger.info(log_str, isim, nsims, freqs[i] * 1e-3, amps[j] * 1e-3,
+                                charges[k] * 1e5)
+                    sim_coeffs = self.getEffCoeffs(ch_mech, freqs[i], amps[j], charges[k], phi)
+                    for icoeff in range(ncoeffs):
+                        lookup_dict[coeffs_names[icoeff]][i, j, k] = sim_coeffs[icoeff]
 
-        # Convert coefficients array into dictionary with specific names
-        lookup_dict = {ch_mech.coeff_names[k]: rates[:, :, k] for k in range(nrates)}
-        lookup_dict['V'] = Vm  # mV
-        lookup_dict['ng'] = ng  # mole
 
-        # Add input amplitude and charge arrays to dictionary
+        # Add input frequency, amplitude and charge arrays to lookup dictionary
+        lookup_dict['f'] = freqs  # Hz
         lookup_dict['A'] = amps  # Pa
         lookup_dict['Q'] = charges  # C/m2
 
         # Save dictionary in lookup file
-        lookup_file = '{}_lookups_a{:.1f}nm_f{:.1f}kHz.pkl'.format(ch_mech.name,
-                                                                   self.a * 1e9,
-                                                                   Fdrive * 1e-3)
-        logger.info('Saving effective coefficients arrays in lookup file: "%s"', lookup_file)
-        lookup_filepath = '{0}/{1}/{2}'.format(getLookupDir(), ch_mech.name, lookup_file)
+        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(ch_mech.name, self.a * 1e9)
+        logger.info('Saving %s neuron lookup table in file: "%s"', ch_mech.name, lookup_file)
+
+        lookup_filepath = '{0}/{1}'.format(getLookupDir(), lookup_file)
         with open(lookup_filepath, 'wb') as fh:
             pickle.dump(lookup_dict, fh)
 

@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:18:17
+# @Last Modified time: 2017-08-29 16:10:36
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -29,22 +29,25 @@ d = 0.0e-6  # embedding tissue thickness (m)
 geom = {"a": a, "d": d}
 
 # Channel mechanisms
-neurons = [ThalamoCortical()]
+neurons = [CorticalRS()]
 
 # Stimulation parameters
-freqs = [690e3]  # Hz
-amps = np.logspace(np.log10(0.1), np.log10(600), num=50) * 1e3  # Pa
-amps = np.insert(amps, 0, 0.0)  # adding amplitude 0
+freqs = np.array([100, 500, 1000]) * 1e3  # Hz
+amps = np.logspace(np.log10(0.1), np.log10(600), num=3) * 1e3  # Pa
+
+# freqs = np.arange(100, 1001, 100) * 1e3  # Hz
+# amps = np.logspace(np.log10(0.1), np.log10(600), num=50) * 1e3  # Pa
+# amps = np.insert(amps, 0, 0.0)  # adding amplitude 0
 
 logger.info('Starting batch lookup creation')
 
 for ch_mech in neurons:
     # Create a SolverUS instance (with dummy frequency parameter)
     solver = PointNICE.SolverUS(geom, params, ch_mech, 0.0)
-    charges = np.arange(np.round(ch_mech.Vm0 - 10.0), 50.0 + 1.0, 1.0) * 1e-5  # C/m2
+    charges = np.linspace(np.round(ch_mech.Vm0 - 10.0), 50.0, 3) * 1e-5  # C/m2
+    # charges = np.arange(np.round(ch_mech.Vm0 - 10.0), 50.0 + 1.0, 1.0) * 1e-5  # C/m2
 
-    # Create lookups for each frequency
-    for Fdrive in freqs:
-        solver.createLookup(ch_mech, Fdrive, amps, charges)
+    # Create lookup file
+    solver.createLookup(ch_mech, freqs, amps, charges)
 
 logger.info('Lookup tables successfully created')
