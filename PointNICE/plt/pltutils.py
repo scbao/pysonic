@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 18:24:33
+# @Last Modified time: 2017-08-29 10:43:10
 
 ''' Plotting utilities '''
 
@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 from .. import channels
+from ..utils import getNeuronsDict
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
 
@@ -175,10 +176,7 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
     y_pltvars = [pltvars[key] for key in yvars]
 
     # Dictionary of neurons
-    neurons = {}
-    for _, obj in inspect.getmembers(channels):
-        if inspect.isclass(obj) and isinstance(obj.name, str):
-            neurons[obj.name] = obj
+    neurons = getNeuronsDict()
 
     # Initialize figure and axes
     if nvars == 1:
@@ -378,10 +376,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
     '''
 
     # Dictionary of neurons
-    neurons = {}
-    for _, obj in inspect.getmembers(channels):
-        if inspect.isclass(obj) and isinstance(obj.name, str):
-            neurons[obj.name] = obj
+    neurons = getNeuronsDict()
 
     # Loop through data files
     for filepath in filepaths:

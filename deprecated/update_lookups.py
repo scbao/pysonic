@@ -1,57 +1,96 @@
 import os
+import glob
+import re
 import pickle
 import numpy as np
 
-# Define frequencies
-# freqs = np.append(np.arange(50, 1001, 50), 690.0) * 1e3
-freqs = np.arange(50, 1001, 50) * 1e3
+from PointNICE.utils import getNeuronsDict
 
-# Locate lookup files
-for Fdrive in freqs:
-    lookup_file_in = 'Tcell_lookups_a32.0nm_f{:.1f}kHz.pkl'.format(Fdrive * 1e-3)
-    lookup_file_out = 'LeechT_lookups_a32.0nm_f{:.1f}kHz.pkl'.format(Fdrive * 1e-3)
-    lookup_path_in = 'lookups/LeechT/{}'.format(lookup_file_in)
-    lookup_path_out = 'lookups/LeechT/{}'.format(lookup_file_out)
+# Get list of implemented neurons names
+neurons = list(getNeuronsDict().keys())
 
-    # Load coefficients
-    assert os.path.isfile(lookup_path_in), 'Error: no lookup file for these stimulation parameters'
-    print('modifying dict keys in "{}"'.format(lookup_path_in))
+# Define root directory and filename regular expression
+root = 'C:/Users/admin/Google Drive/PhD/NICE model/PointNICE/PointNICE/lookups'
+rgxp = re.compile('([A-Za-z]*)_lookups_a([0-9.]*)nm_f([0-9.]*)kHz.pkl')
 
-    # Load file
-    with open(lookup_path_in, 'rb') as fh:
-        coeffs = pickle.load(fh)
+# For each neuron
+for neuron in neurons:
 
-    print('keys:')
-    print(coeffs.keys())
+    print('--------- Aggregating lookups for {} neuron -------'.format(neuron))
 
-    # m-gate
-    coeffs['alpham'] = coeffs['miTm_Na']
-    coeffs['betam'] = coeffs['invTm_Na'] - coeffs['alpham']
-    coeffs.pop('miTm_Na')
-    coeffs.pop('invTm_Na')
+    # Get filepaths from all lookups file in directory
+    neuron_root = '{}/{}'.format(root, neuron)
+    filepaths = glob.glob('{}/*.pkl'.format(neuron_root))
 
-    # h-gate
-    coeffs['alphah'] = coeffs['hiTh_Na']
-    coeffs['betah'] = coeffs['invTh_Na'] - coeffs['alpham']
-    coeffs.pop('hiTh_Na')
-    coeffs.pop('invTh_Na')
+    # Create empty frequencies list and empty directory to hold aggregated coefficients
+    freqs = []
+    agg_coeffs = {}
+    ifile = 0
 
-    # n-gate
-    coeffs['alphan'] = coeffs['miTm_K']
-    coeffs['betan'] = coeffs['invTm_K'] - coeffs['alphan']
-    coeffs.pop('miTm_K')
-    coeffs.pop('invTm_K')
+    # Loop through each lookup file
+    for fp in filepaths:
 
-    # s-gate
-    coeffs['alphas'] = coeffs['miTm_Ca']
-    coeffs['betas'] = coeffs['invTm_Ca'] - coeffs['alphas']
-    coeffs.pop('miTm_Ca')
-    coeffs.pop('invTm_Ca')
+        # Get information from filename (a, f)
+        filedir, filename = os.path.split(fp)
+        mo = rgxp.fullmatch(filename)
+        if mo:
+            name = mo.group(1)
+            a = float(mo.group(2)) * 1e-9  # nm
+            f = float(mo.group(3)) * 1e3  # Hz
+        else:
+            print('error: lookup file does not match regular expression pattern')
+            quit()
 
+        # Add lookup frequency to list
+        freqs.append(f)
 
-    print('new keys:')
-    print(coeffs.keys())
+        print('f =', f * 1e-3, 'kHz')
 
-    # Save new dict in file
-    with open(lookup_path_out, 'wb') as fh:
-        pickle.dump(coeffs, fh)
+        # Open file and get coefficients dictionary
+        with open(fp, 'rb') as fh:
+            coeffs = pickle.load(fh)
+
+        # If first file: initialization steps
+        if ifile == 0:
+            # Get names of output coefficients
+            coeffs_keys = [ck for ck in coeffs.keys() if ck not in ['A', 'Q']]
+
+            # Save input coefficients vectors separately
+            A = coeffs['A']
+            Q = coeffs['Q']
+            print('nQ = ', len(Q))
+
+            # Initialize aggregating dictionary of output coefficients with empty lists
+            agg_coeffs = {ck: [] for ck in coeffs_keys}
+
+        # Append current coefficients to corresponding list in aggregating dictionary
+        for ck in coeffs_keys:
+            agg_coeffs[ck].append(coeffs[ck])
+
+        # Increment file index
+        ifile += 1
+
+    # Transform lists of 2D arrays into 3D arrays inside aggregating dictionary
+    for ck in agg_coeffs.keys():
+        # shape = agg_coeffs[ck][0].shape
+        # for tmp in agg_coeffs[ck]:
+        #     if tmp.shape != shape:
+        #         print('dimensions error:', shape, tmp.shape)
+        #         quit()
+        print(ck, len(agg_coeffs[ck]), [tmp.shape for tmp in agg_coeffs[ck]])
+        agg_coeffs[ck] = np.array(agg_coeffs[ck])
+
+    # Add the 3 input vectors to the dictionary
+    agg_coeffs['f'] = np.array(freqs)
+    agg_coeffs['A'] = A
+    agg_coeffs['Q'] = Q
+
+    # Print out all coefficients names and dimensions
+    for ck in agg_coeffs.keys():
+        print(ck, agg_coeffs[ck].shape)
+
+    # Save aggregated lookups in file
+    filepath_out = '{}/{}_lookups_a{:.1f}nm.pkl'.format(root, neuron, a * 1e9)
+    print(filepath_out)
+    # with open(filepath_out, 'wb') as fh:
+    #     pickle.dump(agg_coeffs, fh)

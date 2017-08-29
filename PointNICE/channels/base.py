@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 17:50:40
+# @Last Modified time: 2017-08-29 10:26:30
 
 ''' Module standard API for all neuron mechanisms.
 

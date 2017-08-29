@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 18:00:05
+# @Last Modified time: 2017-08-29 10:40:32
 
 ''' Test the basic functionalities of the package. '''
 
@@ -12,7 +12,7 @@ import logging
 import inspect
 import numpy as np
 
-from PointNICE.utils import load_BLS_params
+from PointNICE.utils import load_BLS_params, getNeuronsDict
 from PointNICE import BilayerSonophore, channels, SolverElec, SolverUS
 from PointNICE.solvers import detectSpikes, titrateEStim, titrateAStim
 from PointNICE.constants import *
@@ -23,11 +23,9 @@ logger = logging.getLogger('PointNICE')
 logger.setLevel(logging.DEBUG)
 
 # List of implemented neurons
-neurons = []
-for _, obj in inspect.getmembers(channels):
-    if inspect.isclass(obj) and isinstance(obj.name, str):
-        if obj.name != 'LeechT':
-            neurons.append(obj)
+neurons = getNeuronsDict()
+del neurons['LeechT']
+neurons = list(neurons.values())
 
 
 def test_MECH():
@@ -261,11 +259,11 @@ def test_ASTIM_hybrid():
 if __name__ == '__main__':
     logger.info('Starting tests')
 
-    test_MECH()
-    test_resting_potential()
-    test_ESTIM()
+    # test_MECH()
+    # test_resting_potential()
+    # test_ESTIM()
     test_ASTIM()
-    test_ASTIM_classic()
-    test_ASTIM_hybrid()
+    # test_ASTIM_classic()
+    # test_ASTIM_hybrid()
 
     logger.info('All tests successfully passed')

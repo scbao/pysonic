@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:19:14
+# @Last Modified time: 2017-08-29 10:34:00
 
 """ Definition of generic utility functions used in other modules """
 
@@ -14,9 +14,12 @@ import os
 import logging
 import tkinter as tk
 from tkinter import filedialog
+import inspect
 from openpyxl import load_workbook
 import numpy as np
 import yaml
+
+from . import channels
 
 
 # Get package logger
@@ -252,3 +255,12 @@ def LennardJones(x, beta, alpha, C, m, n):
         :return: Lennard-Jones potential at given distance (2x)
     """
     return C * (np.power((alpha / (2 * x + beta)), m) - np.power((alpha / (2 * x + beta)), n))
+
+
+def getNeuronsDict():
+    ''' Return dictionary of neurons classes that can be instantiated. '''
+    neurons = {}
+    for _, obj in inspect.getmembers(channels):
+        if inspect.isclass(obj) and isinstance(obj.name, str):
+            neurons[obj.name] = obj
+    return neurons

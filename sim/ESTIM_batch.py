@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 18:24:27
+# @Last Modified time: 2017-08-29 15:09:38
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
@@ -18,11 +18,12 @@ logger = logging.getLogger('PointNICE')
 logger.setLevel(logging.DEBUG)
 
 # Channels mechanisms
-neurons = [LeechTouch()]
+# neurons = [LeechTouch()]
+neurons = [ThalamicRE()]
 
 # Stimulation parameters
 stim_params = {
-    'amps': [20.0],  # mA/m2
+    'amps': [3.1],  # mA/m2
     'durations': [0.5],  # s
     'PRFs': [1e2],  # Hz
     'DFs': [1.]
