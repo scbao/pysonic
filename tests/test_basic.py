@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-29 10:40:32
+# @Last Modified time: 2017-08-30 15:35:51
 
 ''' Test the basic functionalities of the package. '''
 
@@ -161,14 +161,13 @@ def test_ASTIM():
     tstim = 50e-3  # s
     toffset = 30e-3  # s
 
-
     Arange = (0.0, 2 * TITRATION_ASTIM_A_MAX)  # Pa
 
     # Reference values
     Athr_refs = {'FS': 38.67e3, 'LTS': 24.80e3, 'RS': 51.17e3, 'RE': 46.36e3, 'TC': 23.24e3,
                  'LeechT': None}
-    latency_refs = {'FS': 63.72e-3, 'LTS': 61.92e-3, 'RS': 62.52e-3, 'RE': 79.20e-3, 'TC': 68.53e-3,
-                    'LeechT': None}
+    latency_refs = {'FS': 63.72e-3, 'LTS': 61.92e-3, 'RS': 62.52e-3, 'RE': 79.20e-3,
+                    'TC': 67.38e-3, 'LeechT': None}
 
     # Titration for each neuron
     for neuron_class in neurons:

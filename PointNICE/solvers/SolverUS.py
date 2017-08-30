@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-29 18:16:18
+# @Last Modified time: 2017-08-30 15:44:21
 
 import os
 import warnings
@@ -359,162 +359,6 @@ class SolverUS(BilayerSonophore):
         warnings.filterwarnings('error')
 
         # Check lookup file existence
-        lookup_file = '{}_lookups_a{:.1f}nm_f{:.1f}kHz.pkl'.format(ch_mech.name,
-                                                                   self.a * 1e9,
-                                                                   Fdrive * 1e-3)
-        lookup_path = '{}/{}/{}'.format(getLookupDir(), ch_mech.name, lookup_file)
-        assert os.path.isfile(lookup_path), 'No lookup file for this stimulation frequency'
-
-        # Load coefficients
-        with open(lookup_path, 'rb') as fh:
-            coeffs2d = pickle.load(fh)
-
-        # Check that pressure amplitude is within lookup range
-        Amax = np.amax(coeffs2d['A']) + 1e-9  # adding margin to compensate for eventual round error
-        assert Adrive <= Amax, 'Amplitude must be within [0, {:.1f}] kPa'.format(Amax * 1e-3)
-
-        # Derive 1D charge-based interpolation dataset for specific amplitude
-        coeffs_list = ['V', 'ng', *ch_mech.coeff_names]
-        interpolators2d = {cn: interp2d(coeffs2d['A'], coeffs2d['Q'], np.transpose(coeffs2d[cn]))
-                           for cn in coeffs_list}
-        coeffs1d = {cn: interpolators2d[cn](Adrive, coeffs2d['Q']) for cn in coeffs_list}
-        coeffs1d['Q'] = coeffs2d['Q']
-        coeffs1d['ng0'] = interpolators2d['ng'](0.0, coeffs2d['Q'])
-        for key in coeffs1d.keys():
-            coeffs1d[key] = np.squeeze(coeffs1d[key])
-
-
-        # Initialize system solvers
-        solver_on = integrate.ode(self.eqHHeff)
-        solver_on.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
-        solver_on.set_f_params(ch_mech, coeffs1d)
-        solver_off = integrate.ode(self.eqHH)
-        solver_off.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
-
-        # if CW stimulus: change PRF to have exactly one integration interval during stimulus
-        if DF == 1.0:
-            PRF = 1 / tstim
-
-        # Compute vector sizes
-        npulses = int(np.round(PRF * tstim))
-        Tpulse_on = DF / PRF
-        Tpulse_off = (1 - DF) / PRF
-        n_pulse_on = int(np.round(Tpulse_on / dt)) + 1
-        n_pulse_off = int(np.round(Tpulse_off / dt))
-        n_off = int(np.round(toffset / dt))
-
-        # Initialize global arrays
-        states = np.array([1])
-        t = np.array([0.0])
-        y = np.atleast_2d(np.insert(ch_mech.states0, 0, self.Qm0)).T
-        nvar = y.shape[0]
-        Zeff = np.array([0.0])
-        ngeff = np.array([self.ng0])
-
-        # Initializing accurate pulse time vector
-        t_pulse_on = np.linspace(0, Tpulse_on, n_pulse_on)
-        t_pulse_off = np.linspace(dt, Tpulse_off, n_pulse_off) + Tpulse_on
-        t_pulse0 = np.concatenate([t_pulse_on, t_pulse_off])
-        states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
-
-        # Loop through all pulse (ON and OFF) intervals
-        for i in range(npulses):
-
-            # Construct and initialize arrays
-            t_pulse = t_pulse0 + t[-1]
-            y_pulse = np.empty((nvar, n_pulse_on + n_pulse_off))
-            ngeff_pulse = np.empty(n_pulse_on + n_pulse_off)
-            Zeff_pulse = np.empty(n_pulse_on + n_pulse_off)
-            y_pulse[:, 0] = y[:, -1]
-            ngeff_pulse[0] = ngeff[-1]
-            Zeff_pulse[0] = Zeff[-1]
-
-            # Initialize iterator
-            k = 0
-
-            # Integrate ON system
-            solver_on.set_initial_value(y_pulse[:, k], t_pulse[k])
-            while solver_on.successful() and k < n_pulse_on - 1:
-                k += 1
-                solver_on.integrate(t_pulse[k])
-                y_pulse[:, k] = solver_on.y
-                ngeff_pulse[k] = np.interp(y_pulse[0, k], coeffs1d['Q'], coeffs1d['ng'])  # mole
-                Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
-
-            # Integrate OFF system
-            solver_off.set_initial_value(y_pulse[:, k], t_pulse[k])
-            solver_off.set_f_params(ch_mech, self.Capct(Zeff_pulse[k]))
-            while solver_off.successful() and k < n_pulse_on + n_pulse_off - 1:
-                k += 1
-                solver_off.integrate(t_pulse[k])
-                y_pulse[:, k] = solver_off.y
-                ngeff_pulse[k] = np.interp(y_pulse[0, k], coeffs1d['Q'], coeffs1d['ng0'])  # mole
-                Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
-                solver_off.set_f_params(ch_mech, self.Capct(Zeff_pulse[k]))
-
-            # Append pulse arrays to global arrays
-            states = np.concatenate([states[:-1], states_pulse])
-            t = np.concatenate([t, t_pulse[1:]])
-            y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
-            Zeff = np.concatenate([Zeff, Zeff_pulse[1:]])
-            ngeff = np.concatenate([ngeff, ngeff_pulse[1:]])
-
-        # Integrate offset interval
-        if n_off > 0:
-            t_off = np.linspace(0, toffset, n_off) + t[-1]
-            states_off = np.zeros(n_off)
-            y_off = np.empty((nvar, n_off))
-            ngeff_off = np.empty(n_off)
-            Zeff_off = np.empty(n_off)
-
-            y_off[:, 0] = y[:, -1]
-            ngeff_off[0] = ngeff[-1]
-            Zeff_off[0] = Zeff[-1]
-            solver_off.set_initial_value(y_off[:, 0], t_off[0])
-            solver_off.set_f_params(ch_mech, self.Capct(Zeff_pulse[k]))
-            k = 0
-            while solver_off.successful() and k < n_off - 1:
-                k += 1
-                solver_off.integrate(t_off[k])
-                y_off[:, k] = solver_off.y
-                ngeff_off[k] = np.interp(y_off[0, k], coeffs1d['Q'], coeffs1d['ng0'])  # mole
-                Zeff_off[k] = self.balancedefQS(ngeff_off[k], y_off[0, k])  # m
-                solver_off.set_f_params(ch_mech, self.Capct(Zeff_off[k]))
-
-            # Concatenate offset arrays to global arrays
-            states = np.concatenate([states, states_off[1:]])
-            t = np.concatenate([t, t_off[1:]])
-            y = np.concatenate([y, y_off[:, 1:]], axis=1)
-            Zeff = np.concatenate([Zeff, Zeff_off[1:]])
-            ngeff = np.concatenate([ngeff, ngeff_off[1:]])
-
-        # Add Zeff and ngeff to solution matrix
-        y = np.vstack([Zeff, ngeff, y])
-
-        # return output variables
-        return (t, y, states)
-
-
-    def __runEffective2(self, ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, dt=DT_EFF):
-        """ Compute solutions of the system for a specific set of
-            US stimulation parameters, using charge-predicted "effective"
-            coefficients to solve the HH equations at each step.
-
-            :param ch_mech: channels mechanism object
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param Adrive: acoustic drive amplitude (Pa)
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DF: pulse duty factor (-)
-            :param dt: integration time step (s)
-            :return: 3-tuple with the time profile, the effective solution matrix and a state vector
-        """
-
-        # Raise warnings as error
-        warnings.filterwarnings('error')
-
-        # Check lookup file existence
         lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(ch_mech.name, self.a * 1e9)
         lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
         assert os.path.isfile(lookup_path), ('No lookup file available for {} '
@@ -524,48 +368,65 @@ class SolverUS(BilayerSonophore):
         with open(lookup_path, 'rb') as fh:
             lookup_dict = pickle.load(fh)
 
+
         # Retrieve 1D inputs from lookup dictionary
         freqs = lookup_dict['f']
         amps = lookup_dict['A']
         charges = lookup_dict['Q']
-        nf = len(freqs)
-        nA = len(amps)
-        nQ = len(charges)
-        ncomb = nf * nA * nQ
-
-        # Serializing inputs
-        points = np.array(np.meshgrid(amps, charges, freqs)).T.reshape(ncomb, 3)
-        points = np.array([points[:, 2], points[:, 0], points[:, 1]]).T
-        print(points.shape)
-
-        sim_points = np.hstack((np.full(nf, Fdrive), np.full(nA, Adrive), charges))
-        sim_A0_points = np.hstack((np.full(nf, Fdrive), np.full(nA, 0.0), charges))
-        print(sim_points.shape)
 
         # Check that stimulation parameters are within lookup range
         margin = 1e-9  # adding margin to compensate for eventual round error
         frange = (freqs.min() - margin, freqs.max() + margin)
         Arange = (amps.min() - margin, amps.max() + margin)
         assert frange[0] <= Fdrive <= frange[1], \
-            'Fdrive must be within [{:.1f}, {:.1f}] kHz'.format(*frange * 1e-3)
+            'Fdrive must be within [{:.1f}, {:.1f}] kHz'.format(*[f * 1e-3 for f in frange])
         assert Arange[0] <= Adrive <= Arange[1], \
-            'Adrive must be within [{:.1f}, {:.1f}] kPa'.format(*Arange * 1e-3)
+            'Adrive must be within [{:.1f}, {:.1f}] kPa'.format(*[A * 1e-3 for A in Arange])
 
-        # Retrieve 3D outputs from lookup dictionary
+        # Define interpolation datasets to be projected
         coeffs_list = ['V', 'ng', *ch_mech.coeff_names]
 
-        # Project 3D interpolation dataset onto 1D charge-based interpolation dataset
-        coeffs1d = {}
-        for cn in coeffs_list:
-            coeff3d = lookup_dict[cn]
-            values = np.reshape(coeff3d, ncomb)
-            coeffs1d[cn] = griddata(points, values, sim_points)
+        # If Fdrive in lookup frequencies, simply project (A, Q) interpolation dataset
+        # at Fdrive index onto 1D charge-based interpolation dataset
+        if Fdrive in freqs:
+            iFdrive = np.searchsorted(freqs, Fdrive)
+            logger.debug('Using lookups directly at %.2f kHz', freqs[iFdrive] * 1e-3)
+            coeffs1d = {}
+            for cn in coeffs_list:
+                coeff2d = np.squeeze(lookup_dict[cn][iFdrive, :, :])
+                itrp = interp2d(amps, charges, coeff2d.T)
+                coeffs1d[cn] = itrp(Adrive, charges)
+                if cn == 'ng':
+                    coeffs1d['ng0'] = itrp(0.0, charges)
 
-        # Add input charges and output ng0 to dictionary of 1D interpolation vectors
+        # Otherwise, project 2 (A, Q) interpolation datasets at Fdrive lower and upper bounds
+        # indexes in lookup frequencies onto 2 1D charge-based interpolation datasets, and
+        # interpolate between them afterwards
+        else:
+            ilb = np.searchsorted(freqs, Fdrive) - 1
+            logger.debug('Interpolating lookups between %.2f kHz and %.2f kHz',
+                         freqs[ilb] * 1e-3, freqs[ilb + 1] * 1e-3)
+            coeffs1d = {}
+            for cn in coeffs_list:
+                coeffs1d_bounds = []
+                ng0_bounds = []
+                for iFdrive in [ilb, ilb + 1]:
+                    coeff2d = np.squeeze(lookup_dict[cn][iFdrive, :, :])
+                    itrp = interp2d(amps, charges, coeff2d.T)
+                    coeffs1d_bounds.append(itrp(Adrive, charges))
+                    if cn == 'ng':
+                        ng0_bounds.append(itrp(0.0, charges))
+                coeffs1d_bounds = np.squeeze(np.array([coeffs1d_bounds]))
+                itrp = interp2d(freqs[ilb:ilb + 2], charges, coeffs1d_bounds.T)
+                coeffs1d[cn] = itrp(Fdrive, charges)
+                if cn == 'ng':
+                    ng0_bounds = np.squeeze(np.array([ng0_bounds]))
+                    itrp = interp2d(freqs[ilb:ilb + 2], charges, ng0_bounds.T)
+                    coeffs1d['ng0'] = itrp(Fdrive, charges)
+
+        # Squeeze interpolated vectors extra dimensions and add input charges vector
+        coeffs1d = {key: np.squeeze(value) for key, value in coeffs1d.items()}
         coeffs1d['Q'] = charges
-        coeffs1d['ng0'] = griddata(points, values, sim_A0_points)
-        for key in coeffs1d.keys():
-            coeffs1d[key] = np.squeeze(coeffs1d[key])
 
         # Initialize system solvers
         solver_on = integrate.ode(self.eqHHeff)
