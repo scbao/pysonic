@@ -4,17 +4,13 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 18:26:33
+# @Last Modified time: 2017-09-01 15:46:14
 
 """ Compare profiles of several specific output variables of NICE simulations. """
 
 from PointNICE.utils import OpenFilesDialog
 from PointNICE.plt import plotComp
 
-# List of variables to plot
-ASTIM_vars = ['Pac', 'Pmavg', 'Telastic', 'Qm', 'iL', 'iNet']
-ESTIM_vars = ['Vm', 'iL', 'iNet']
-MECH_vars = ['Pac', 'Z', 'ng']
 
 # Select data files
 pkl_filepaths, _ = OpenFilesDialog('pkl')
@@ -23,4 +19,5 @@ if not pkl_filepaths:
     quit()
 
 # Comparative plot
-plotComp(ESTIM_vars, pkl_filepaths)
+yvars = ['Qm', 's']
+plotComp(yvars, pkl_filepaths, labels=['classic', 'effective'])

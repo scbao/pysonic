@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-29 10:43:10
+# @Last Modified time: 2017-09-01 15:52:06
 
 ''' Plotting utilities '''
 
@@ -10,7 +10,6 @@ import pickle
 import ntpath
 import re
 import logging
-import inspect
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
@@ -34,12 +33,17 @@ rgxp = re.compile('(ESTIM|ASTIM)_([A-Za-z]*)_(.*).pkl')
 rgxp_mech = re.compile('(MECH)_(.*).pkl')
 
 
+# nb = '[0-9]*[.]?[0-9]+'
+# rgxp_ASTIM = re.compile('(ASTIM)_(\w+)_(PW|CW)_({0})nm_({0})kHz_({0})kPa_({0})ms(.*)_(\w+).pkl'.format(nb))
+# rgxp_ESTIM = re.compile('(ESTIM)_(\w+)_(PW|CW)_({0})mA_per_m2_({0})ms(.*).pkl'.format(nb))
+# rgxp_PW = re.compile('_PRF({0})kHz_DF({0})_(PW|CW)_(\d+)kHz_(\d+)kPa_(\d+)ms_(.*).pkl'.format(nb))
+
 
 # Figure naming conventions
 ESTIM_CW_title = '{} neuron: CW E-STIM {:.2f}mA/m2, {:.0f}ms'
 ESTIM_PW_title = '{} neuron: PW E-STIM {:.2f}mA/m2, {:.0f}ms, {:.2f}kHz PRF, {:.0f}% DC'
 ASTIM_CW_title = '{} neuron: CW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms'
-ASTIM_PW_title = '{} neuron: PW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms, {:.2f}kHz PRF, {:.0f}% DC'
+ASTIM_PW_title = '{} neuron: PW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms, {:.2f}kHz PRF, {:.2f}% DC'
 MECH_title = '{:.0f}nm BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa'
 
 
@@ -160,15 +164,21 @@ def SaveFigDialog(dirname, filename):
 
 
 
-def plotComp(yvars, filepaths, fs=15, show_patches=True):
+def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
     ''' Compare profiles of several specific output variables of NICE simulations.
 
         :param yvars: list of variables names to extract and compare
         :param filepaths: list of full paths to output data files to be compared
+        :param labels: list of labels to use in the legend
         :param fs: labels fontsize
         :param show_patches: boolean indicating whether to indicate periods of stimulation with
          colored rectangular patches
     '''
+
+    # check labels if given
+    if labels:
+        assert len(labels) == len(filepaths), 'labels do not match number of compared files'
+        assert all(isinstance(x, str) for x in labels), 'labels must be string typed'
 
     nvars = len(yvars)
 
@@ -288,34 +298,26 @@ def plotComp(yvars, filepaths, fs=15, show_patches=True):
                 var = np.insert(var, 0, var[0])
             vrs.append(var)
 
-        # # Determine patches location
-        # npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
-
-        # # Adding onset to all signals
-        # if t_plt['onset'] > 0.0:
-        #     t = np.insert(t + t_plt['onset'], 0, 0.0)
-        #     for i in range(nvars):
-        #         vrs[i] = np.insert(vrs[i], 0, vrs[i][0])
-        #     tpatch_on += t_plt['onset']
-        #     tpatch_off += t_plt['onset']
-
         # Legend label
-        if sim_type == 'ESTIM':
-            if data['DF'] == 1.0:
-                label = ESTIM_CW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3)
-            else:
-                label = ESTIM_PW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3,
-                                              data['PRF'] * 1e-3, data['DF'] * 1e2)
-        elif sim_type == 'ASTIM':
-            if data['DF'] == 1.0:
-                label = ASTIM_CW_title.format(neuron.name, Fdrive * 1e-3,
-                                              data['Adrive'] * 1e-3, data['tstim'] * 1e3)
-            else:
-                label = ASTIM_PW_title.format(neuron.name, Fdrive * 1e-3,
-                                              data['Adrive'] * 1e-3, data['tstim'] * 1e3,
-                                              data['PRF'] * 1e-3, data['DF'] * 1e2)
-        elif sim_type == 'MECH':
-            label = MECH_title.format(a * 1e9, Fdrive * 1e-3, data['Adrive'] * 1e-3)
+        if labels:
+            label = labels[j]
+        else:
+            if sim_type == 'ESTIM':
+                if data['DF'] == 1.0:
+                    label = ESTIM_CW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3)
+                else:
+                    label = ESTIM_PW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3,
+                                                  data['PRF'] * 1e-3, data['DF'] * 1e2)
+            elif sim_type == 'ASTIM':
+                if data['DF'] == 1.0:
+                    label = ASTIM_CW_title.format(neuron.name, Fdrive * 1e-3,
+                                                  data['Adrive'] * 1e-3, data['tstim'] * 1e3)
+                else:
+                    label = ASTIM_PW_title.format(neuron.name, Fdrive * 1e-3,
+                                                  data['Adrive'] * 1e-3, data['tstim'] * 1e3,
+                                                  data['PRF'] * 1e-3, data['DF'] * 1e2)
+            elif sim_type == 'MECH':
+                label = MECH_title.format(a * 1e9, Fdrive * 1e-3, data['Adrive'] * 1e-3)
 
         # Plotting
         handles = [axes[i].plot(t * t_plt['factor'], vrs[i] * y_pltvars[i]['factor'],
@@ -393,7 +395,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
         elif mo2:
             mo = mo2
         else:
-            print('Error: PKL file does not match regular expression pattern')
+            logger.error('Error: "%s" file does not match regexp pattern', pkl_filename)
             quit()
         sim_type = mo.group(1)
         assert sim_type in ['MECH', 'ASTIM', 'ESTIM'], 'invalid stimulation type'

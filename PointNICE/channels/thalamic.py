@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 17:55:32
+# @Last Modified time: 2017-08-30 19:26:17
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -244,6 +244,7 @@ class Thalamic(BaseMech):
         neq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
         seq = self.sinf(Vm)
         ueq = self.uinf(Vm)
+
         return np.array([meq, heq, neq, seq, ueq])
 
 
@@ -328,7 +329,7 @@ class ThalamicRE(Thalamic):
     VT = -67.0  # Spike threshold adjustment parameter (mV)
 
     # Default plotting scheme
-    vars_RE = {
+    pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
         'i_K\ kin.': ['n'],
         'i_{TS}\ kin.': ['s', 'u'],

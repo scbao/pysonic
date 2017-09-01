@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-30 15:44:21
+# @Last Modified time: 2017-08-30 15:47:41
 
 import os
 import warnings
@@ -399,8 +399,8 @@ class SolverUS(BilayerSonophore):
                 if cn == 'ng':
                     coeffs1d['ng0'] = itrp(0.0, charges)
 
-        # Otherwise, project 2 (A, Q) interpolation datasets at Fdrive lower and upper bounds
-        # indexes in lookup frequencies onto 2 1D charge-based interpolation datasets, and
+        # Otherwise, project 2 (A, Q) interpolation datasets at Fdrive bounding values
+        # indexes in lookup frequencies onto two 1D charge-based interpolation datasets, and
         # interpolate between them afterwards
         else:
             ilb = np.searchsorted(freqs, Fdrive) - 1

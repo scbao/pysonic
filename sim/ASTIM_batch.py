@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-30 15:25:29
+# @Last Modified time: 2017-09-01 13:45:40
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -34,13 +34,13 @@ neurons = [CorticalLTS()]
 
 # Stimulation parameters
 stim_params = {
-    'freqs': [0.5e5, 3.5e5],  # Hz
-    'amps': [150e3],  # Pa
-    'durations': [50e-3],  # s
-    'PRFs': [1e2],  # Hz
-    'DFs': [0.5]
+    'freqs': [690e3],  # Hz
+    'amps': [320e3],  # Pa
+    'durations': [150e-3],  # s
+    'PRFs': [100.0],  # Hz
+    'DFs': [0.05]
 }
-stim_params['offsets'] = [30e-3] * len(stim_params['durations'])  # s
+stim_params['offsets'] = [200e-3] * len(stim_params['durations'])  # s
 
 # Select output directory
 try:
@@ -54,4 +54,5 @@ pkl_filepaths = runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom
 pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
 # Plot resulting profiles
-plotBatch(pkl_dir, pkl_filepaths)
+yvars = {'Q_m': ['Qm'], 'i_{Ca}\ kin.': ['s', 'u', 's2u']}
+plotBatch(pkl_dir, pkl_filepaths, yvars)

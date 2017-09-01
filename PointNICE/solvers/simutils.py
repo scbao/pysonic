@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 17:50:57
+# @Last Modified time: 2017-08-30 15:50:48
 
 """ Utility functions used in simulations """
 
@@ -40,11 +40,11 @@ ESTIM_PW_log = ('%s neuron - PW E-STIM simulation %u/%u (A = %.1f mA/m2, t = %.1
                 'PRF = %.2f kHz, DF = %.2f)')
 
 ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
-ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}_{}'
+ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.3f}_{}'
 ASTIM_CW_log = ('%s neuron - CW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
                 'A = %.2f kPa, t = %.2f ms')
 ASTIM_PW_log = ('%s neuron - PW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
-                'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DF = %.2f)')
+                'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DF = %.3f)')
 
 ASTIM_titration_log = '%s neuron - A-STIM titration %u/%u (a = %.1f nm, %s)'
 ESTIM_titration_log = '%s neuron - E-STIM titration %u/%u (%s)'

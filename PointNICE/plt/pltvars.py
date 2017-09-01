@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 16:27:52
+# @Last Modified time: 2017-08-31 12:24:18
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -111,6 +111,16 @@ pltvars = {
         'max': 1.1
     },
 
+    'm2h': {
+        'desc': 'iNa relative conductance',
+        'label': 'm^2h',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1,
+        'alias': 'data["m"]**2 * data["h"]'
+    },
+
     'n': {
         'desc': 'iK activation gate opening',
         'label': 'n-gate',
@@ -145,6 +155,16 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1
+    },
+
+    's2u': {
+        'desc': 'iT relative conductance',
+        'label': 's^2u',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1,
+        'alias': 'data["s"]**2 * data["u"]'
     },
 
     'O': {
