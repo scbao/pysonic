@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-01 15:52:06
+# @Last Modified time: 2017-09-01 20:44:37
 
 ''' Plotting utilities '''
 
@@ -13,6 +13,7 @@ import logging
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
+# from scipy.optimize import brentq
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
@@ -569,3 +570,80 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
     # Show all plots if needed
     if plt_show:
         plt.show()
+
+
+def plotGatingKinetics(neuron, fs=15):
+    ''' Plot the voltage-dependent steady-states and time constants of activation and
+        inactivation gates of the different ionic currents involved in a specific
+        neuron's membrane.
+
+        :param neuron: specific channel mechanism object
+        :param fs: labels and title font size
+    '''
+
+    # Input membrane potential vector
+    Vm = np.linspace(-100, 50, 300)
+
+    xinf_dict = {}
+    taux_dict = {}
+
+    print('Computing {} neuron gating kinetics'.format(neuron.name))
+    names = neuron.states_names
+    for xname in names:
+        Vm_state = True
+
+        # Names of functions of interest
+        xinf_func_str = xname.lower() + 'inf'
+        taux_func_str = 'tau' + xname.lower()
+        alphax_func_str = 'alpha' + xname.lower()
+        betax_func_str = 'beta' + xname.lower()
+        derx_func_str = 'der' + xname.upper()
+
+        # 1st choice: use xinf and taux function
+        if hasattr(neuron, xinf_func_str) and hasattr(neuron, taux_func_str):
+            xinf_func = eval('neuron.{}'.format(xinf_func_str))
+            taux_func = eval('neuron.{}'.format(taux_func_str))
+            xinf = np.array([xinf_func(v) for v in Vm])
+            taux = np.array([taux_func(v) for v in Vm])
+
+        # 2nd choice: use alphax and betax functions
+        elif hasattr(neuron, alphax_func_str) and hasattr(neuron, betax_func_str):
+            alphax_func = eval('neuron.{}'.format(alphax_func_str))
+            betax_func = eval('neuron.{}'.format(betax_func_str))
+            alphax = np.array([alphax_func(v) for v in Vm])
+            betax = np.array([betax_func(v) for v in Vm])
+            taux = 1.0 / (alphax + betax)
+            xinf = taux * alphax
+
+        # # 3rd choice: use derX choice
+        # elif hasattr(neuron, derx_func_str):
+        #     derx_func = eval('neuron.{}'.format(derx_func_str))
+        #     xinf = brentq(lambda x: derx_func(neuron.Vm, x), 0, 1)
+        else:
+            Vm_state = False
+        if not Vm_state:
+            print('no function to compute {}-state gating kinetics'.format(xname))
+        else:
+            xinf_dict[xname] = xinf
+            taux_dict[xname] = taux
+
+    fig, axes = plt.subplots(2)
+    fig.suptitle('Gating dynamics')
+
+    ax = axes[0]
+    ax.get_xaxis().set_ticklabels([])
+    ax.set_ylabel('$X_{\infty}\ (mV)$', fontsize=fs)
+    for xname in names:
+        if xname in xinf_dict:
+            ax.plot(Vm, xinf_dict[xname], lw=2, label='$' + xname + '_{\infty}$')
+    ax.legend(fontsize=fs, loc=7)
+
+    ax = axes[1]
+    ax.set_xlabel('$V_m\ (mV)$', fontsize=fs)
+    ax.set_ylabel('$\\tau_X\ (ms)$', fontsize=fs)
+    for xname in names:
+        if xname in taux_dict:
+            ax.plot(Vm, taux_dict[xname] * 1e3, lw=2, label='$\\tau_{' + xname + '}$')
+    ax.legend(fontsize=fs, loc=7)
+
+    plt.show()
