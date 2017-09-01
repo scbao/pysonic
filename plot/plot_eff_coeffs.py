@@ -4,7 +4,7 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-21 21:11:54
+# @Last Modified time: 2017-09-01 21:21:56
 
 ''' Plot the profiles of the 9 charge-dependent "effective" HH coefficients,
     as a function of charge density or membrane potential. '''
@@ -20,7 +20,7 @@ import numpy as np
 
 import PointNICE
 from PointNICE.utils import OpenFilesDialog, rescale
-from PointNICE.pltvars import pltvars
+from PointNICE.plt import pltvars
 
 
 # Dictionary of neurons
