@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-30 15:47:41
+# @Last Modified time: 2017-09-01 16:57:47
 
 import os
 import warnings
@@ -461,8 +461,29 @@ class SolverUS(BilayerSonophore):
         t_pulse0 = np.concatenate([t_pulse_on, t_pulse_off])
         states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
 
+        # TMP: slightly delay specific pulse
+        Tdelay = -1e-3  # s
+        iref = npulses - 1
+        print('delaying pulse {} of {:.2f} ms'.format(iref + 1, Tdelay * 1e3))
+
         # Loop through all pulse (ON and OFF) intervals
         for i in range(npulses):
+
+            # TMP: slightly delay specific pulse
+            if i == iref - 1:
+                Tpulse_off += Tdelay
+                n_pulse_off = int(np.round(Tpulse_off / dt))
+                t_pulse_on = np.linspace(0, Tpulse_on, n_pulse_on)
+                t_pulse_off = np.linspace(dt, Tpulse_off, n_pulse_off) + Tpulse_on
+                t_pulse0 = np.concatenate([t_pulse_on, t_pulse_off])
+                states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
+            elif i == iref:
+                Tpulse_off -= Tdelay
+                n_pulse_off = int(np.round(Tpulse_off / dt))
+                t_pulse_on = np.linspace(0, Tpulse_on, n_pulse_on)
+                t_pulse_off = np.linspace(dt, Tpulse_off, n_pulse_off) + Tpulse_on
+                t_pulse0 = np.concatenate([t_pulse_on, t_pulse_off])
+                states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
 
             # Construct and initialize arrays
             t_pulse = t_pulse0 + t[-1]
