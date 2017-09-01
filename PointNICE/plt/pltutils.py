@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-01 20:44:37
+# @Last Modified time: 2017-09-01 21:18:19
 
 ''' Plotting utilities '''
 
@@ -628,7 +628,7 @@ def plotGatingKinetics(neuron, fs=15):
             taux_dict[xname] = taux
 
     fig, axes = plt.subplots(2)
-    fig.suptitle('Gating dynamics')
+    fig.suptitle('{} neuron: gating dynamics'.format(neuron.name))
 
     ax = axes[0]
     ax.get_xaxis().set_ticklabels([])
@@ -646,4 +646,79 @@ def plotGatingKinetics(neuron, fs=15):
             ax.plot(Vm, taux_dict[xname] * 1e3, lw=2, label='$\\tau_{' + xname + '}$')
     ax.legend(fontsize=fs, loc=7)
 
+    plt.show()
+
+
+def plotRateConstants(neuron, fs=15):
+    ''' Plot the voltage-dependent activation and inactivation rate constants for each gate
+        of all ionic currents involved in a specific neuron's membrane.
+
+        :param neuron: specific channel mechanism object
+        :param fs: labels and title font size
+    '''
+
+    # Input membrane potential vector
+    Vm = np.linspace(-250, 250, 300)
+
+    alphax_dict = {}
+    betax_dict = {}
+
+    print('Computing {} neuron gating kinetics'.format(neuron.name))
+    names = neuron.states_names
+    for xname in names:
+        Vm_state = True
+
+        # Names of functions of interest
+        xinf_func_str = xname.lower() + 'inf'
+        taux_func_str = 'tau' + xname.lower()
+        alphax_func_str = 'alpha' + xname.lower()
+        betax_func_str = 'beta' + xname.lower()
+
+        # 1st choice: use alphax and betax functions
+        if hasattr(neuron, alphax_func_str) and hasattr(neuron, betax_func_str):
+            alphax_func = eval('neuron.{}'.format(alphax_func_str))
+            betax_func = eval('neuron.{}'.format(betax_func_str))
+            alphax = np.array([alphax_func(v) for v in Vm])
+            betax = np.array([betax_func(v) for v in Vm])
+
+        # 2nd choice: use xinf and taux function
+        elif hasattr(neuron, xinf_func_str) and hasattr(neuron, taux_func_str):
+            xinf_func = eval('neuron.{}'.format(xinf_func_str))
+            taux_func = eval('neuron.{}'.format(taux_func_str))
+            xinf = np.array([xinf_func(v) for v in Vm])
+            taux = np.array([taux_func(v) for v in Vm])
+            alphax = xinf / taux
+            betax = 1.0 / taux - alphax
+
+        else:
+            Vm_state = False
+        if not Vm_state:
+            print('no function to compute {}-state gating kinetics'.format(xname))
+        else:
+            alphax_dict[xname] = alphax
+            betax_dict[xname] = betax
+
+    naxes = len(alphax_dict)
+    fig, axes = plt.subplots(naxes, figsize=(11, min(3 * naxes, 9)))
+
+    for i, xname in enumerate(alphax_dict.keys()):
+        ax1 = axes[i]
+        if i == 0:
+            ax1.set_title('{} neuron: rate constants'.format(neuron.name))
+        if i == naxes - 1:
+            ax1.set_xlabel('$V_m\ (mV)$', fontsize=fs)
+        else:
+            ax1.get_xaxis().set_ticklabels([])
+        ax1.set_ylabel('$\\alpha_{' + xname + '}\ (ms^{-1})$', fontsize=fs, color='C0')
+        for label in ax1.get_yticklabels():
+            label.set_color('C0')
+        ax1.plot(Vm, alphax_dict[xname] * 1e-3, lw=2)
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('$\\beta_{' + xname + '}\ (ms^{-1})$', fontsize=fs, color='C1')
+        for label in ax2.get_yticklabels():
+            label.set_color('C1')
+        ax2.plot(Vm, betax_dict[xname] * 1e-3, lw=2, color='C1')
+
+    plt.tight_layout()
     plt.show()
