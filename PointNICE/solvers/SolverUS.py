@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-01 19:21:56
+# @Last Modified time: 2017-09-02 16:01:24
 
 import os
 import warnings
@@ -12,7 +12,7 @@ import pickle
 import logging
 import numpy as np
 import scipy.integrate as integrate
-from scipy.interpolate import interp2d, griddata
+from scipy.interpolate import interp2d
 
 from ..bls import BilayerSonophore
 from ..utils import *

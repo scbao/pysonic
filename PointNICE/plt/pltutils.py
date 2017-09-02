@@ -2,10 +2,11 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-01 21:29:38
+# @Last Modified time: 2017-09-02 17:37:19
 
 ''' Plotting utilities '''
 
+import os
 import pickle
 import ntpath
 import re
@@ -13,12 +14,14 @@ import logging
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
+from scipy.interpolate import interp2d
 # from scipy.optimize import brentq
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+import matplotlib.cm as cm
 
 from .. import channels
-from ..utils import getNeuronsDict
+from ..utils import getNeuronsDict, getLookupDir, rescale
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
 
@@ -721,4 +724,112 @@ def plotRateConstants(neuron, fs=15):
         ax2.plot(Vm, betax_dict[xname] * 1e-3, lw=2, color='C1')
 
     plt.tight_layout()
+    plt.show()
+
+
+def setGrid(n):
+    ''' Determine number of rows and columns in figure grid, based on number of
+        variables to plot. '''
+    if n <= 3:
+        return (1, n)
+    else:
+        return ((n - 1) // 3 + 1, 3)
+
+
+
+def plotEffCoeffs(neuron, Fdrive, a=32e-9, fs=12):
+    ''' Plot the profiles of all effective coefficients of a specific neuron for a given frequency.
+        For each coefficient X, one line chart per lookup amplitude is plotted, using charge as the
+        input variable on the abscissa and a linear color code for the amplitude value.
+
+        :param neuron: channel mechanism object
+        :param Fdrive: acoustic drive frequency (Hz)
+        :param a: sonophore diameter (m)
+        :param fs: figure fontsize
+    '''
+
+    # Check lookup file existence
+    lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, a * 1e9)
+    lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
+    assert os.path.isfile(lookup_path), ('No lookup file available for {} '
+                                         'neuron type').format(neuron.name)
+
+    # Load coefficients
+    with open(lookup_path, 'rb') as fh:
+        lookup_dict = pickle.load(fh)
+
+    # Retrieve 1D inputs from lookup dictionary
+    freqs = lookup_dict['f']
+    amps = lookup_dict['A']
+    charges = lookup_dict['Q']
+
+    # Check that frequency is within lookup range
+    margin = 1e-9  # adding margin to compensate for eventual round error
+    frange = (freqs.min() - margin, freqs.max() + margin)
+    assert frange[0] <= Fdrive <= frange[1], \
+        'Fdrive must be within [{:.1f}, {:.1f}] kHz'.format(*[f * 1e-3 for f in frange])
+
+    # Define coefficients list
+    coeffs_list = ['V', 'ng', *neuron.coeff_names]
+    AQ_coeffs = {}
+
+    # If Fdrive in lookup frequencies, simply project (A, Q) dataset at that frequency
+    if Fdrive in freqs:
+        iFdrive = np.searchsorted(freqs, Fdrive)
+        print('Using lookups directly at {:.2f} kHz'.format(freqs[iFdrive] * 1e-3))
+        for cn in coeffs_list:
+            AQ_coeffs[cn] = np.squeeze(lookup_dict[cn][iFdrive, :, :])
+
+    # Otherwise, project 2 (A, Q) interpolation datasets at Fdrive bounding values
+    # indexes in lookup frequencies onto two 1D charge-based interpolation datasets, and
+    # interpolate between them afterwards
+    else:
+        ilb = np.searchsorted(freqs, Fdrive) - 1
+        print('Interpolating lookups between {:.2f} kHz and {:.2f} kHz'.format(
+            freqs[ilb] * 1e-3, freqs[ilb + 1] * 1e-3))
+        for cn in coeffs_list:
+            AQ_slice = []
+            for iAdrive in range(len(amps)):
+                fQ_slice = np.squeeze(lookup_dict[cn][:, iAdrive, :])
+                itrp = interp2d(freqs, charges, fQ_slice.T)
+                Q_vect = itrp(Fdrive, charges)
+                AQ_slice.append(Q_vect)
+            AQ_coeffs[cn] = np.squeeze(np.array([AQ_slice]))
+
+    # Replace dict key
+    AQ_coeffs['Veff'] = AQ_coeffs.pop('V')
+
+    # Plotting
+    print('plotting')
+
+    Amin, Amax = amps.min(), amps.max()
+    ncoeffs = len(coeffs_list)
+    nrows, ncols = setGrid(ncoeffs)
+    xvar = pltvars['Qm']
+
+    mymap = cm.get_cmap('viridis')
+    sm_amp = plt.cm.ScalarMappable(cmap=mymap, norm=plt.Normalize(Amin * 1e-3, Amax * 1e-3))
+    sm_amp._A = []
+
+    fig, _ = plt.subplots(figsize=(5 * ncols, 1.8 * nrows), squeeze=False)
+
+    for j, cn in enumerate(AQ_coeffs.keys()):
+        ax = plt.subplot2grid((nrows, ncols), (j // 3, j % 3))
+        # ax = axes[j // 3, j % 3]
+        yvar = pltvars[cn]
+        ax.set_xlabel('${}\ ({})$'.format(xvar['label'], xvar['unit']), fontsize=fs)
+        ax.set_ylabel('${}\ ({})$'.format(yvar['label'], yvar['unit']), fontsize=fs)
+        for i, Adrive in enumerate(amps):
+            ax.plot(charges * xvar['factor'], AQ_coeffs[cn][i, :] * yvar['factor'],
+                    c=mymap(rescale(Adrive, Amin, Amax)))
+    plt.tight_layout()
+    fig.suptitle('{} neuron: effective coefficients @ {:.0f} kHz'.format(
+        neuron.name, Fdrive * 1e-3))
+
+    fig.subplots_adjust(top=0.9, right=0.85)
+    cbar_ax = fig.add_axes([0.87, 0.05, 0.02, 0.9])
+    fig.add_axes()
+    fig.colorbar(sm_amp, cax=cbar_ax)
+    cbar_ax.set_ylabel('$A_{drive} \ (kPa)$', fontsize=fs)
+
     plt.show()

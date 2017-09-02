@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-31 12:24:18
+# @Last Modified time: 2017-09-02 17:24:19
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -438,6 +438,20 @@ pltvars = {
     'betau': {
         'desc': 'iT u-gate inactivation rate',
         'label': '\\beta_{u,\ eff}',
+        'unit': 'ms^-1',
+        'factor': 1e-3
+    },
+
+    'alphao': {
+        'desc': 'iH channels activation rate (between closed and open forms)',
+        'label': '\\alpha_{O,\ eff}',
+        'unit': 'ms^-1',
+        'factor': 1e-3
+    },
+
+    'betao': {
+        'desc': 'iH channels inactivation rate (between closed and open forms)',
+        'label': '\\beta_{O,\ eff}',
         'unit': 'ms^-1',
         'factor': 1e-3
     }
