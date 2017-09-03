@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-03 17:33:04
+# @Last Modified time: 2017-09-03 19:10:03
 
 ''' Test the basic functionalities of the package. '''
 
@@ -247,22 +247,14 @@ def main(argv):
         sys.exit(2)
 
     if testset == 'all':
-        try:
-            test_all()
-            sys.exit(0)
-        except Exception as e:
-            print(e)
-            sys.exit(1)
+        test_all()
+        sys.exit(0)
     else:
         possibles = globals().copy()
         possibles.update(locals())
         method = possibles.get('test_{}'.format(testset))
-        try:
-            method(is_profiled)
-            sys.exit(0)
-        except Exception as e:
-            print(e)
-            sys.exit(1)
+        method(is_profiled)
+        sys.exit(0)
 
 
 if __name__ == '__main__':

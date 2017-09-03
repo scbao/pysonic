@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-03 17:14:45
+# @Last Modified time: 2017-09-03 19:09:01
 
 import logging
 import warnings
@@ -53,19 +53,35 @@ class BilayerSonophore:
         G_tissue = self.alpha * Fdrive  # G'' (Pa)
         self.kA_tissue = 2 * G_tissue * self.d  # kA of the tissue layer (N/m)
 
-        # Find Delta that cancels out Pm + Pec at Z = 0, i.e. the initial gap
-        # between the two leaflets on a charged membrane at equilibrium (m)
-        if self.Qm0 == 0.0:
-            self.Delta = self.Delta_
-        else:
-            (D_eq, Pnet_eq) = self.findDeltaEq(self.Qm0)
-            assert Pnet_eq < PNET_EQ_MAX, 'High Pnet at Z = 0 with Delta = %.2f nm' % (D_eq * 1e9)
-            self.Delta = D_eq
+        # Check existence of lookups for derived parameters
+        lookups = get_BLS_lookups(geom['a'])
+        Qkey = '{:.2f}'.format(Qm0 * 1e5)
 
-        (LJ_approx, std_err, _) = self.LJfitPMavg()
-        assert std_err < PMAVG_STD_ERR_MAX, 'High error in PmAvg nonlinear fit:'\
-            ' std_err =  %.2f Pa' % std_err
-        self.LJ_approx = LJ_approx
+        # If no lookup, compute parameters and store them in lookup
+        if not lookups or Qkey not in lookups:
+
+            # Find Delta that cancels out Pm + Pec at Z = 0 (m)
+            if self.Qm0 == 0.0:
+                self.Delta = self.Delta_
+            else:
+                (D_eq, Pnet_eq) = self.findDeltaEq(self.Qm0)
+                assert Pnet_eq < PNET_EQ_MAX, 'High Pnet at Z = 0 with ∆ = %.2f nm' % (D_eq * 1e9)
+                self.Delta = D_eq
+
+            # Find optimal Lennard-Jones parameters to approximate PMavg
+            (LJ_approx, std_err, _) = self.LJfitPMavg()
+            assert std_err < PMAVG_STD_ERR_MAX, 'High error in PmAvg nonlinear fit:'\
+                ' std_err =  %.2f Pa' % std_err
+            self.LJ_approx = LJ_approx
+            lookups[Qkey] = {'LJ_approx': LJ_approx, 'Delta_eq': D_eq}
+            logger.debug('Saving BLS derived parameters to lookup file')
+            save_BLS_lookups(geom['a'], lookups)
+
+        # If lookup exists, load parameters from it
+        else:
+            logger.debug('Loading BLS derived parameters from lookup file')
+            self.LJ_approx = lookups[Qkey]['LJ_approx']
+            self.Delta = lookups[Qkey]['Delta_eq']
 
         # Compute initial volume and gas content
         self.V0 = np.pi * self.Delta * self.a**2

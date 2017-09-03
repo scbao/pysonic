@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-03 15:30:58
+# @Last Modified time: 2017-09-03 18:55:33
 
 """ Definition of generic utility functions used in other modules """
 
@@ -18,6 +18,8 @@ import inspect
 from openpyxl import load_workbook
 import numpy as np
 import yaml
+import json
+
 
 from . import channels
 
@@ -265,3 +267,22 @@ def getNeuronsDict():
         if inspect.isclass(obj) and isinstance(obj.name, str):
             neurons[obj.name] = obj
     return neurons
+
+
+def get_BLS_lookups(a):
+    lookup_path = getLookupDir() + '/BLS_lookups_a{:.1f}nm.json'.format(a * 1e9)
+    try:
+        with open(lookup_path) as fh:
+            sample = json.load(fh)
+        return sample
+    except FileNotFoundError:
+        return {}
+
+
+def save_BLS_lookups(a, lookups):
+    """ Save BLS parameter into specific lookup file
+        :return: absolute path to the directory
+    """
+    lookup_path = getLookupDir() + '/BLS_lookups_a{:.1f}nm.json'.format(a * 1e9)
+    with open(lookup_path, 'w') as fh:
+        json.dump(lookups, fh)
