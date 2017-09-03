@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-03 17:13:40
+# @Last Modified time: 2017-09-03 17:33:04
 
 ''' Test the basic functionalities of the package. '''
 
@@ -230,29 +230,39 @@ def main(argv):
     for opt, arg in opts:
         if opt == '-h':
             print('script usage: {}'.format(script_usage))
-            sys.exit()
+            sys.exit(2)
         elif opt in ("-t", "--testset"):
             testset = arg
             if testset not in valid_testsets:
                 print('valid testsets are: ', str(valid_testsets))
-                sys.exit()
+                sys.exit(2)
         elif opt in ("-p", "--profile"):
             is_profiled = int(arg)
             if is_profiled not in valid_profiles:
                 print('valid profiling options are: ', str(valid_profiles))
-                sys.exit()
+                sys.exit(2)
 
     if is_profiled and testset == 'all':
         print('profiling can only be run on individual tests')
-        sys.exit()
+        sys.exit(2)
 
     if testset == 'all':
-        test_all()
+        try:
+            test_all()
+            sys.exit(0)
+        except Exception as e:
+            print(e)
+            sys.exit(1)
     else:
         possibles = globals().copy()
         possibles.update(locals())
         method = possibles.get('test_{}'.format(testset))
-        method(is_profiled)
+        try:
+            method(is_profiled)
+            sys.exit(0)
+        except Exception as e:
+            print(e)
+            sys.exit(1)
 
 
 if __name__ == '__main__':

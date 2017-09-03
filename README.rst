@@ -4,7 +4,7 @@ This package contains several core modules:
 	- **bls** defines the underlying biomechanical model of *intramembrane cavitation* (**BilayerSonophore** class), and provides an integration method to predict compute the mechanical oscillations of the plasma membrane subject to a periodic acoustic perturbation.
 	- **solvers** contains a simple solver for electrical stimuli (**SolverElec** class) as well as a tailored solver for acoustic stimuli (**SolverUS** class). The latter directly inherits from the BilayerSonophore class upon instantiation, and is hooked to a specific "channel mechanism" in order to link the mechanical model to an electrical model of membrane dynamics. It also provides several integration methods (detailed below) to compute the behaviour of the full electro-mechanical model subject to a continuous or pulsed ultrasonic stimulus.
 	- **channels** contains the definitions of the different channels mechanisms inherent to specific neurons, including several types of **cortical** and **thalamic** neurons.
-	- **plt** defines plotting utilities to load results of several simulations and display/compare temporal profiles of multiple variables of interest across simulations. 
+	- **plt** defines plotting utilities to load results of several simulations and display/compare temporal profiles of multiple variables of interest across simulations.
 	- **utils** defines generic utilities used across the different modules
 
 The **SolverUS** class incorporates optimized numerical integration methods to perform dynamic simulations of the model subject to acoustic perturbation, and compute the evolution of its mechanical and electrical variables:
