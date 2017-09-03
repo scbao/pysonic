@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-30 15:50:48
+# @Last Modified time: 2017-09-03 17:16:30
 
 """ Utility functions used in simulations """
 
@@ -589,8 +589,8 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DF=1.0):
     # Run simulation and detect spikes
     (t, y, states) = solver.run(ch_mech, *stim_params)
     n_spikes, latency, _ = detectSpikes(t, y[0, :], SPIKE_MIN_VAMP, SPIKE_MIN_DT)
-    logger.info('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
-                n_spikes, "s" if n_spikes > 1 else "")
+    logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
+                 n_spikes, "s" if n_spikes > 1 else "")
 
     # If accurate threshold is found, return simulation results
     if (interval[1] - interval[0]) <= thr and n_spikes == 1:
@@ -663,8 +663,8 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
     # Run simulation and detect spikes
     (t, y, states) = solver.run(ch_mech, *stim_params, sim_type)
     n_spikes, latency, _ = detectSpikes(t, y[2, :], SPIKE_MIN_QAMP, SPIKE_MIN_DT)
-    logger.info('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
-                n_spikes, "s" if n_spikes > 1 else "")
+    logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
+                 n_spikes, "s" if n_spikes > 1 else "")
 
     # If accurate threshold is found, return simulation results
     if (interval[1] - interval[0]) <= thr and n_spikes == 1:

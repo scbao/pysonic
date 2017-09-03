@@ -4,23 +4,24 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-02 18:36:28
+# @Last Modified time: 2017-09-03 17:21:53
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
 import sys
+import getopt
 import logging
 import numpy as np
 
 from PointNICE.utils import load_BLS_params, getNeuronsDict
-from PointNICE import BilayerSonophore, channels, SolverElec, SolverUS
+from PointNICE import BilayerSonophore, SolverElec, SolverUS
 from PointNICE.solvers import detectSpikes, titrateEStim, titrateAStim
 from PointNICE.constants import *
 
 # Set logging options
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
 logger = logging.getLogger('PointNICE')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # List of implemented neurons
 neurons = getNeuronsDict()
@@ -89,7 +90,8 @@ def test_resting_potential():
         # Check membrane potential convergence to resting potential
         Vm_free_diff = Vm_free_last - neuron.Vm0
         assert np.abs(Vm_free_diff) < 0.1, value_err_msg.format(neuron.name, Vm_free_diff)
-        logger.info('Passed test: neurons in free conditions')
+
+    logger.info('Passed test: neurons in free conditions')
 
 
 def test_ESTIM():
@@ -120,7 +122,7 @@ def test_ESTIM():
 
         # Perform titration for each neuron
         neuron = neuron_class()
-        print(neuron.name, 'neuron titration')
+        logger.info('%s neuron titration', neuron.name)
         (Athr, t, y, _, latency) = titrateEStim(solver, neuron, Arange, tstim, toffset,
                                                 PRF=None, DF=1.0)
         Vm = y[0, :]
@@ -173,7 +175,7 @@ def test_ASTIM():
 
         # Initialize neuron
         neuron = neuron_class()
-        print(neuron.name, 'neuron titration')
+        logger.info('%s neuron titration', neuron.name)
 
         # Initialize solver
         solver = SolverUS(geom, params, neuron, Fdrive)
@@ -207,27 +209,42 @@ def test_all():
     logger.info('All tests successfully passed')
 
 
-if __name__ == '__main__':
+def main(argv):
 
-    valid_args = [
+    script_usage = 'test_values.py -t <testset>'
+
+    valid_testsets = [
         'MECH',
         'resting_potential',
         'ESTIM',
         'ASTIM',
         'all'
     ]
+    testset = 'all'
 
-    if len(sys.argv) > 2:
-        print('tests script can only accept 1 command line argument')
+    try:
+        opts, _ = getopt.getopt(argv, 'ht:', ['testset='])
+    except getopt.GetoptError:
+        print('script usage: {}'.format(script_usage))
         sys.exit()
-    if len(sys.argv) == 2:
-        arg = sys.argv[1]
-        if arg not in valid_args:
-            print('tests script valid command line arguments are: ', str(valid_args))
+    for opt, arg in opts:
+        if opt == '-h':
+            print('script usage: {}'.format(script_usage))
             sys.exit()
+        elif opt in ("-t", "--testset"):
+            testset = arg
+            if testset not in valid_testsets:
+                print('valid testsets are: ', str(valid_testsets))
+                sys.exit()
+
+    if testset == 'all':
+        test_all()
+    else:
         possibles = globals().copy()
         possibles.update(locals())
-        method = possibles.get('test_{}'.format(arg))
+        method = possibles.get('test_{}'.format(testset))
         method()
-    if len(sys.argv) == 1:
-        test_all()
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
