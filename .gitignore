@@ -18,6 +18,9 @@ conf.py
 # PNG images
 *.png
 
+# Temporary stats file
+*.stats
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

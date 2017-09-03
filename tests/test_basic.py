@@ -4,25 +4,31 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-02 18:34:49
+# @Last Modified time: 2017-09-03 16:50:26
 
 ''' Test the basic functionalities of the package. '''
 
+import os
 import sys
+import getopt
+import logging
+import time
+import cProfile
+import pstats
 
-from PointNICE.utils import load_BLS_params, getNeuronsDict
+from PointNICE.utils import load_BLS_params
 from PointNICE import BilayerSonophore, SolverElec, SolverUS
 from PointNICE.channels import *
 
+# Set logging options
+logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
+logger = logging.getLogger('PointNICE')
+logger.setLevel(logging.INFO)
 
-# List of implemented neurons
-neurons = getNeuronsDict()
-del neurons['LeechT']
-neurons = list(neurons.values())
 
-
-def test_MECH():
+def test_MECH(is_profiled=False):
     ''' Mechanical simulation. '''
+    logger.info('Test: running MECH simulation')
 
     # BLS geometry and parameters
     geom = {"a": 32e-9, "d": 0.0e-6}
@@ -34,14 +40,28 @@ def test_MECH():
     Qm0 = -80e-5  # membrane resting charge density (C/m2)
     bls = BilayerSonophore(geom, params, Fdrive, Cm0, Qm0)
 
-    # Run mechanical simulation
+    # Stimulation parameters
     Adrive = 100e3  # Pa
     Qm = 50e-5  # C/m2
-    bls.runMech(Fdrive, Adrive, Qm)
+
+    # Run simulation
+    if is_profiled:
+        pfile = 'tmp.stats'
+        cProfile.runctx('bls.runMech(Fdrive, Adrive, Qm)', globals(), locals(), pfile)
+        stats = pstats.Stats(pfile)
+        os.remove(pfile)
+        stats.strip_dirs()
+        stats.sort_stats('cumulative')
+        stats.print_stats()
+    else:
+        bls.runMech(Fdrive, Adrive, Qm)
 
 
-def test_ESTIM():
+
+def test_ESTIM(is_profiled=False):
     ''' Electrical simulation '''
+
+    logger.info('Test: running ESTIM simulation')
 
     # Initialize neuron
     neuron = CorticalRS()
@@ -55,11 +75,23 @@ def test_ESTIM():
     toffset = 50e-3  # s
 
     # Run simulation
-    solver.run(neuron, Astim, tstim, toffset, PRF=None, DF=1.0)
+    if is_profiled:
+        pfile = 'tmp.stats'
+        cProfile.runctx('solver.run(neuron, Astim, tstim, toffset)',
+                        globals(), locals(), pfile)
+        stats = pstats.Stats(pfile)
+        os.remove(pfile)
+        stats.strip_dirs()
+        stats.sort_stats('cumulative')
+        stats.print_stats()
+    else:
+        solver.run(neuron, Astim, tstim, toffset, PRF=None, DF=1.0)
 
 
-def test_ASTIM_effective():
+def test_ASTIM_effective(is_profiled=False):
     ''' Effective acoustic simulation '''
+
+    logger.info('Test: running ASTIM effective simulation')
 
     # BLS geometry and parameters
     geom = {"a": 32e-9, "d": 0.0e-6}
@@ -74,12 +106,28 @@ def test_ASTIM_effective():
     tstim = 50e-3  # s
     toffset = 30e-3  # s
 
+    # Initialize solver
     solver = SolverUS(geom, params, neuron, Fdrive)
-    solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF=None, DF=1.0, sim_type='effective')
+
+    # Run simulation
+    if is_profiled:
+        pfile = 'tmp.stats'
+        cProfile.runctx("solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='effective')",
+                        globals(), locals(), pfile)
+        stats = pstats.Stats(pfile)
+        os.remove(pfile)
+        stats.strip_dirs()
+        stats.sort_stats('cumulative')
+        stats.print_stats()
+    else:
+        solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='effective')
 
 
-def test_ASTIM_classic():
+
+def test_ASTIM_classic(is_profiled=False):
     ''' Classic acoustic simulation '''
+
+    logger.info('Test: running ASTIM classic simulation')
 
     # BLS geometry and parameters
     geom = {"a": 32e-9, "d": 0.0e-6}
@@ -94,12 +142,27 @@ def test_ASTIM_classic():
     tstim = 1e-6  # s
     toffset = 0e-3  # s
 
+    # Initialize solver
     solver = SolverUS(geom, params, neuron, Fdrive)
-    solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF=None, DF=1.0, sim_type='classic')
+
+    # Run simulation
+    if is_profiled:
+        pfile = 'tmp.stats'
+        cProfile.runctx("solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='classic')",
+                        globals(), locals(), pfile)
+        stats = pstats.Stats(pfile)
+        os.remove(pfile)
+        stats.strip_dirs()
+        stats.sort_stats('cumulative')
+        stats.print_stats()
+    else:
+        solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='classic')
 
 
-def test_ASTIM_hybrid():
+def test_ASTIM_hybrid(is_profiled=False):
     ''' Hybrid acoustic simulation '''
+
+    logger.info('Test: running ASTIM hybrid simulation')
 
     # BLS geometry and parameters
     geom = {"a": 32e-9, "d": 0.0e-6}
@@ -114,21 +177,39 @@ def test_ASTIM_hybrid():
     tstim = 1e-3  # s
     toffset = 1e-3  # s
 
+    # Initialize solver
     solver = SolverUS(geom, params, neuron, Fdrive)
-    solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF=None, DF=1.0, sim_type='hybrid')
+
+    # Run simulation
+    if is_profiled:
+        pfile = 'tmp.stats'
+        cProfile.runctx("solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='hybrid')",
+                        globals(), locals(), pfile)
+        stats = pstats.Stats(pfile)
+        os.remove(pfile)
+        stats.strip_dirs()
+        stats.sort_stats('cumulative')
+        stats.print_stats()
+    else:
+        solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='hybrid')
 
 
 def test_all():
+    t0 = time.time()
     test_MECH()
     test_ESTIM()
     test_ASTIM_effective()
     test_ASTIM_classic()
     test_ASTIM_hybrid()
+    tcomp = time.time() - t0
+    logger.info('All tests completed in %.0f s', tcomp)
 
 
-if __name__ == '__main__':
+def main(argv):
 
-    valid_args = [
+    script_usage = 'test_basic.py -t <testset> -p <is_profiled>'
+
+    valid_testsets = [
         'MECH',
         'ESTIM',
         'ASTIM_effective',
@@ -136,18 +217,43 @@ if __name__ == '__main__':
         'ASTIM_hybrid',
         'all'
     ]
+    valid_profiles = [0, 1]
 
-    if len(sys.argv) > 2:
-        print('tests script can only accept 1 command line argument')
+    testset = 'all'
+    is_profiled = False
+
+    try:
+        opts, _ = getopt.getopt(argv, 'ht:p:', ['testset=', 'profile='])
+    except getopt.GetoptError:
+        print('script usage: {}'.format(script_usage))
         sys.exit()
-    if len(sys.argv) == 2:
-        arg = sys.argv[1]
-        if arg not in valid_args:
-            print('tests script valid command line arguments are: ', str(valid_args))
+    for opt, arg in opts:
+        if opt == '-h':
+            print('script usage: {}'.format(script_usage))
             sys.exit()
+        elif opt in ("-t", "--testset"):
+            testset = arg
+            if testset not in valid_testsets:
+                print('valid testsets are: ', str(valid_testsets))
+                sys.exit()
+        elif opt in ("-p", "--profile"):
+            is_profiled = int(arg)
+            if is_profiled not in valid_profiles:
+                print('valid profiling options are: ', str(valid_profiles))
+                sys.exit()
+
+    if is_profiled and testset == 'all':
+        print('profiling can only be run on individual tests')
+        sys.exit()
+
+    if testset == 'all':
+        test_all()
+    else:
         possibles = globals().copy()
         possibles.update(locals())
-        method = possibles.get('test_{}'.format(arg))
-        method()
-    if len(sys.argv) == 1:
-        test_all()
+        method = possibles.get('test_{}'.format(testset))
+        method(is_profiled)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

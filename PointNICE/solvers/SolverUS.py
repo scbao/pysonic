@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-02 16:01:24
+# @Last Modified time: 2017-09-03 15:41:18
 
 import os
 import warnings
@@ -47,7 +47,7 @@ class SolverUS(BilayerSonophore):
         Vm0 = ch_mech.Vm0
         BilayerSonophore.__init__(self, geom, params, Fdrive, Cm0, Cm0 * Vm0 * 1e-3)
 
-        logger.info('US solver initialization with %s channel mechanism', ch_mech.name)
+        logger.debug('US solver initialization with %s channel mechanism', ch_mech.name)
 
 
     def eqHH(self, t, y, ch_mech, Cm):

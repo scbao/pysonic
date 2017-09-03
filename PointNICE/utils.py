@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-29 10:34:00
+# @Last Modified time: 2017-09-03 15:30:58
 
 """ Definition of generic utility functions used in other modules """
 
@@ -32,21 +32,22 @@ class PmCompMethod(Enum):
     predict = 2
 
 
-def loadParamsFile(filename):
-    """ Load a dictionary of parameters for the BLS model from an external yaml file.
+def loadYAML(filepath):
+    """ Load a dictionary of parameters from an external YAML file.
 
-        :param filename: name of the input file
+        :param filepath: full path to the YAML file
         :return: parameters dictionary
     """
 
-    logger.info('Loading parameters from "%s"', filename)
-    with open(filename, 'r') as f:
+    _, filename = os.path.split(filepath)
+    logger.debug('Loading parameters from "%s"', filename)
+    with open(filepath, 'r') as f:
         stream = f.read()
     params = yaml.load(stream)
     return ParseNestedDict(params)
 
 
-load_BLS_params = partial(loadParamsFile, filename=os.path.split(__file__)[0] + '/params.yaml')
+load_BLS_params = partial(loadYAML, filepath=os.path.split(__file__)[0] + '/params.yaml')
 
 
 def getLookupDir():
