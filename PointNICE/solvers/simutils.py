@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-03 17:16:30
+# @Last Modified time: 2017-09-04 16:59:20
 
 """ Utility functions used in simulations """
 
@@ -15,6 +15,8 @@ import tkinter as tk
 from tkinter import filedialog
 import numpy as np
 from openpyxl import load_workbook
+import lockfile
+
 
 from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
@@ -35,16 +37,14 @@ MECH_log = ('Mechanical simulation %u/%u (a = %.1f nm, d = %.1f um, f = %.2f kHz
 
 ESTIM_CW_code = 'ESTIM_{}_CW_{:.1f}mA_per_m2_{:.0f}ms'
 ESTIM_PW_code = 'ESTIM_{}_PW_{:.1f}mA_per_m2_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}'
-ESTIM_CW_log = '%s neuron - CW E-STIM simulation %u/%u (A = %.1f mA/m2, t = %.1f ms)'
-ESTIM_PW_log = ('%s neuron - PW E-STIM simulation %u/%u (A = %.1f mA/m2, t = %.1f ms, '
-                'PRF = %.2f kHz, DF = %.2f)')
 
-ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
-ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.3f}_{}'
-ASTIM_CW_log = ('%s neuron - CW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
-                'A = %.2f kPa, t = %.2f ms')
-ASTIM_PW_log = ('%s neuron - PW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
-                'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DF = %.3f)')
+ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
+ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.3f}_{}'
+
+# ASTIM_CW_log = ('%s neuron - CW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
+#                 'A = %.2f kPa, t = %.2f ms')
+# ASTIM_PW_log = ('%s neuron - PW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
+#                 'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DF = %.3f)')
 
 ASTIM_titration_log = '%s neuron - A-STIM titration %u/%u (a = %.1f nm, %s)'
 ESTIM_titration_log = '%s neuron - E-STIM titration %u/%u (%s)'
@@ -153,15 +153,17 @@ def createSimQueue(amps, durations, offsets, PRFs, DFs):
 
 
 def xlslog(filename, sheetname, data):
-    """ Append log data on a new row to specific sheet of excel workbook.
+    """ Append log data on a new row to specific sheet of excel workbook, using a lockfile
+        to avoid read/write errors between concurrent processes.
 
         :param filename: absolute or relative path to the Excel workbook
         :param sheetname: name of the Excel spreadsheet to which data is appended
         :param data: data structure to be added to specific columns on a new row
         :return: boolean indicating success (1) or failure (0) of operation
     """
-
     try:
+        lock = lockfile.FileLock(filename)
+        lock.acquire()
         wb = load_workbook(filename)
         ws = wb[sheetname]
         keys = data.keys()
@@ -172,6 +174,7 @@ def xlslog(filename, sheetname, data):
             i += 1
         ws.append(row_data)
         wb.save(filename)
+        lock.release()
         return 1
     except PermissionError:
         # If file cannot be accessed for writing because already opened
@@ -300,6 +303,91 @@ def detectSpikes(t, Qm, min_amp, min_dt):
     return (n_spikes, latency, spike_rate)
 
 
+
+def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF, DF):
+    ''' Run a single E-STIM simulation a given neuron for specific stimulation parameters,
+        and save the results in a PKL file.
+
+        :param batch_dir: full path to output directory of batch
+        :param log_filepath: full path log file of batch
+        :param solver: SolverElec instance
+        :param Astim: pulse amplitude (mA/m2)
+        :param tstim: pulse duration (s)
+        :param toffset: offset duration (s)
+        :param PRF: pulse repetition frequency (Hz)
+        :param DF: pulse duty factor (-)
+        :return: full path to the output file
+    '''
+
+    if DF == 1.0:
+        simcode = ESTIM_CW_code.format(neuron.name, Astim, tstim * 1e3)
+    else:
+        simcode = ESTIM_PW_code.format(neuron.name, Astim, tstim * 1e3, PRF * 1e-3, DF)
+
+    # Get date and time info
+    date_str = time.strftime("%Y.%m.%d")
+    daytime_str = time.strftime("%H:%M:%S")
+
+    try:
+        # Run simulation
+        tstart = time.time()
+        (t, y, states) = solver.run(neuron, Astim, tstim, toffset, PRF, DF)
+        Vm, *channels = y
+        tcomp = time.time() - tstart
+        logger.debug('completed in %.2f seconds', tcomp)
+
+        # Store data in dictionary
+        data = {
+            'Astim': Astim,
+            'tstim': tstim,
+            'toffset': toffset,
+            'PRF': PRF,
+            'DF': DF,
+            't': t,
+            'states': states,
+            'Vm': Vm
+        }
+        for j in range(len(neuron.states_names)):
+            data[neuron.states_names[j]] = channels[j]
+
+        # Export data to PKL file
+        output_filepath = batch_dir + '/' + simcode + ".pkl"
+        with open(output_filepath, 'wb') as fh:
+            pickle.dump(data, fh)
+        logger.debug('simulation data exported to "%s"', output_filepath)
+
+        # Detect spikes on Vm signal
+        n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+        logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
+
+        # Export key metrics to log file
+        log = {
+            'A': date_str,
+            'B': daytime_str,
+            'C': neuron.name,
+            'D': Astim,
+            'E': tstim * 1e3,
+            'F': PRF * 1e-3 if DF < 1 else 'N/A',
+            'G': DF,
+            'H': t.size,
+            'I': round(tcomp, 2),
+            'J': n_spikes,
+            'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
+            'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+        }
+
+        if xlslog(log_filepath, 'Data', log) == 1:
+            logger.debug('log exported to "%s"', log_filepath)
+        else:
+            logger.error('log export to "%s" aborted', log_filepath)
+
+        return output_filepath
+
+    except AssertionError as err:
+        logger.error(err)
+        return ''
+
+
 def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     ''' Run batch E-STIM simulations of the system for various neuron types and
         stimulation parameters.
@@ -308,7 +396,13 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
         :param log_filepath: full path log file of batch
         :param neurons: array of channel mechanisms
         :param stim_params: dictionary containing sweeps for all stimulation parameters
+        :return: list of full paths to the output files
     '''
+
+    # Define logging format
+    ESTIM_CW_log = 'E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms'
+    ESTIM_PW_log = ('E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms, '
+                    'PRF = %.2f kHz, DF = %.2f')
 
     logger.info("Starting E-STIM simulation batch")
 
@@ -324,82 +418,122 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     nsims = len(neurons) * nqueue
     simcount = 0
     filepaths = []
-    for ch_mech in neurons:
-        try:
-            for i in range(nqueue):
-                simcount += 1
-                Astim, tstim, toffset, PRF, DF = sim_queue[i, :]
-
-                # Get date and time info
-                date_str = time.strftime("%Y.%m.%d")
-                daytime_str = time.strftime("%H:%M:%S")
-
-                # Log and define naming
-                if DF == 1.0:
-                    logger.info(ESTIM_CW_log, ch_mech.name, simcount, nsims, Astim, tstim * 1e3)
-                    simcode = ESTIM_CW_code.format(ch_mech.name, Astim, tstim * 1e3)
-                else:
-                    logger.info(ESTIM_PW_log, ch_mech.name, simcount, nsims, Astim, tstim * 1e3,
-                                PRF * 1e-3, DF)
-                    simcode = ESTIM_PW_code.format(ch_mech.name, Astim, tstim * 1e3, PRF * 1e-3, DF)
-
-                # Run simulation
-                tstart = time.time()
-                (t, y, states) = solver.run(ch_mech, Astim, tstim, toffset, PRF, DF)
-                Vm, *channels = y
-                tcomp = time.time() - tstart
-                logger.info('completed in %.2f seconds', tcomp)
-
-                # Store data in dictionary
-                data = {
-                    'Astim': Astim,
-                    'tstim': tstim,
-                    'toffset': toffset,
-                    'PRF': PRF,
-                    'DF': DF,
-                    't': t,
-                    'states': states,
-                    'Vm': Vm
-                }
-                for j in range(len(ch_mech.states_names)):
-                    data[ch_mech.states_names[j]] = channels[j]
-
-                # Export data to PKL file
-                output_filepath = batch_dir + '/' + simcode + ".pkl"
-                with open(output_filepath, 'wb') as fh:
-                    pickle.dump(data, fh)
-                logger.info('simulation data exported to "%s"', output_filepath)
-                filepaths.append(output_filepath)
-
-                # Detect spikes on Vm signal
-                n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
-                logger.info('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
-
-                # Export key metrics to log file
-                log = {
-                    'A': date_str,
-                    'B': daytime_str,
-                    'C': ch_mech.name,
-                    'D': Astim,
-                    'E': tstim * 1e3,
-                    'F': PRF * 1e-3 if DF < 1 else 'N/A',
-                    'G': DF,
-                    'H': t.size,
-                    'I': round(tcomp, 2),
-                    'J': n_spikes,
-                    'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
-                    'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-                }
-
-                if xlslog(log_filepath, 'Data', log) == 1:
-                    logger.info('log exported to "%s"', log_filepath)
-                else:
-                    logger.error('log export to "%s" aborted', log_filepath)
-
-        except AssertionError as err:
-            logger.error(err)
-
+    for neuron in neurons:
+        for i in range(nqueue):
+            simcount += 1
+            Astim, tstim, toffset, PRF, DF = sim_queue[i, :]
+            if DF == 1.0:
+                logger.info(ESTIM_CW_log, simcount, nsims, neuron.name, Astim, tstim * 1e3)
+            else:
+                logger.info(ESTIM_PW_log, simcount, nsims, neuron.name, Astim, tstim * 1e3,
+                            PRF * 1e-3, DF)
+            output_filepath = runEStim(batch_dir, log_filepath, solver, neuron,
+                                       Astim, tstim, toffset, PRF, DF)
+            filepaths.append(output_filepath)
     return filepaths
+
+
+
+def runAStim(batch_dir, log_filepath, solver, neuron, bls_params, Fdrive, Adrive,
+             tstim, toffset, PRF, DF, sim_type):
+    ''' Run a single A-STIM simulation a given neuron for specific stimulation parameters,
+        and save the results in a PKL file.
+
+        :param batch_dir: full path to output directory of batch
+        :param log_filepath: full path log file of batch
+        :param solver: SolverUS instance
+        :param bls_params: BLS biomechanical and biophysical parameters dictionary
+        :param Fdrive: acoustic drive frequency (Hz)
+        :param Adrive: acoustic drive amplitude (Pa)
+        :param tstim: duration of US stimulation (s)
+        :param toffset: duration of the offset (s)
+        :param PRF: pulse repetition frequency (Hz)
+        :param DF: pulse duty factor (-)
+        :return: full path to the output file
+    '''
+
+    if DF == 1.0:
+        simcode = ASTIM_CW_code.format(neuron.name, Fdrive * 1e-3, Adrive * 1e-3,
+                                       tstim * 1e3, sim_type)
+    else:
+        simcode = ASTIM_PW_code.format(neuron.name, Fdrive * 1e-3, Adrive * 1e-3,
+                                       tstim * 1e3, PRF * 1e-3, DF, sim_type)
+
+    # Get date and time info
+    date_str = time.strftime("%Y.%m.%d")
+    daytime_str = time.strftime("%H:%M:%S")
+
+    # Run simulation
+    try:
+        tstart = time.time()
+        (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DF, sim_type)
+        Z, ng, Qm, *channels = y
+        U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
+        tcomp = time.time() - tstart
+        logger.debug('completed in %.2f seconds', tcomp)
+
+        # Store data in dictionary
+        data = {
+            'a': solver.a,
+            'd': solver.d,
+            'params': bls_params,
+            'Fdrive': Fdrive,
+            'Adrive': Adrive,
+            'phi': np.pi,
+            'tstim': tstim,
+            'toffset': toffset,
+            'PRF': PRF,
+            'DF': DF,
+            't': t,
+            'states': states,
+            'U': U,
+            'Z': Z,
+            'ng': ng,
+            'Qm': Qm,
+            'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])
+        }
+        for j in range(len(neuron.states_names)):
+            data[neuron.states_names[j]] = channels[j]
+
+        # Export data to PKL file
+        output_filepath = batch_dir + '/' + simcode + ".pkl"
+        with open(output_filepath, 'wb') as fh:
+            pickle.dump(data, fh)
+        logger.debug('simulation data exported to "%s"', output_filepath)
+
+        # Detect spikes on Qm signal
+        n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+        logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
+
+        # Export key metrics to log file
+        log = {
+            'A': date_str,
+            'B': daytime_str,
+            'C': neuron.name,
+            'D': solver.a * 1e9,
+            'E': solver.d * 1e6,
+            'F': Fdrive * 1e-3,
+            'G': Adrive * 1e-3,
+            'H': tstim * 1e3,
+            'I': PRF * 1e-3 if DF < 1 else 'N/A',
+            'J': DF,
+            'K': sim_type,
+            'L': t.size,
+            'M': round(tcomp, 2),
+            'N': n_spikes,
+            'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
+            'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+        }
+
+        if xlslog(log_filepath, 'Data', log) == 1:
+            logger.debug('log exported to "%s"', log_filepath)
+        else:
+            logger.error('log export to "%s" aborted', log_filepath)
+
+        return output_filepath
+
+    except AssertionError as err:
+        logger.error(err)
 
 
 def runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params,
@@ -416,12 +550,16 @@ def runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_param
         :param sim_type: selected integration method
     '''
 
+    # Define logging format
+    ASTIM_CW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
+                    'A = %.2f kPa, t = %.2f ms')
+    ASTIM_PW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
+                    'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DF = %.3f')
 
     logger.info("Starting A-STIM simulation batch")
 
     # Unpack geometrical parameters
     a = geom['a']
-    d = geom['d']
 
     # Generate simulations queue
     sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
@@ -432,107 +570,26 @@ def runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_param
     nsims = len(neurons) * len(stim_params['freqs']) * nqueue
     simcount = 0
     filepaths = []
-    for ch_mech in neurons:
+    for neuron in neurons:
         for Fdrive in stim_params['freqs']:
-            try:
-                # Create SolverUS instance (modulus of embedding tissue depends on frequency)
-                solver = SolverUS(geom, bls_params, ch_mech, Fdrive)
+            # Initialize SolverUS
+            solver = SolverUS(geom, bls_params, neuron, Fdrive)
 
-                for i in range(nqueue):
-                    simcount += 1
-                    Adrive, tstim, toffset, PRF, DF = sim_queue[i, :]
-
-                    # Get date and time info
-                    date_str = time.strftime("%Y.%m.%d")
-                    daytime_str = time.strftime("%H:%M:%S")
-
-                    # Log and define naming
-                    if DF == 1.0:
-                        logger.info(ASTIM_CW_log, ch_mech.name, sim_type, simcount, nsims,
-                                    a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3)
-                        simcode = ASTIM_CW_code.format(ch_mech.name, a * 1e9, Fdrive * 1e-3,
-                                                       Adrive * 1e-3, tstim * 1e3, sim_type)
-                    else:
-                        logger.info(ASTIM_PW_log, ch_mech.name, sim_type, simcount, nsims, a * 1e9,
-                                    Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF * 1e-3, DF)
-                        simcode = ASTIM_PW_code.format(ch_mech.name, a * 1e9, Fdrive * 1e-3,
-                                                       Adrive * 1e-3, tstim * 1e3, PRF * 1e-3,
-                                                       DF, sim_type)
-
-                    # Run simulation
-                    tstart = time.time()
-                    (t, y, states) = solver.run(ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DF,
-                                                sim_type)
+            for i in range(nqueue):
+                simcount += 1
+                Adrive, tstim, toffset, PRF, DF = sim_queue[i, :]
+                # Log and define naming
+                if DF == 1.0:
+                    logger.info(ASTIM_CW_log, sim_type, simcount, nsims, neuron.name,
+                                a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3)
+                else:
+                    logger.info(ASTIM_PW_log, sim_type, simcount, nsims, neuron.name, a * 1e9,
+                                Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF * 1e-3, DF)
 
 
-                    Z, ng, Qm, *channels = y
-                    U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
-                    tcomp = time.time() - tstart
-                    logger.info('completed in %.2f seconds', tcomp)
-
-                    # Store data in dictionary
-                    bls_params['biophys']['Qm0'] = solver.Qm0
-                    data = {
-                        'a': a,
-                        'd': d,
-                        'params': bls_params,
-                        'Fdrive': Fdrive,
-                        'Adrive': Adrive,
-                        'phi': np.pi,
-                        'tstim': tstim,
-                        'toffset': toffset,
-                        'PRF': PRF,
-                        'DF': DF,
-                        't': t,
-                        'states': states,
-                        'U': U,
-                        'Z': Z,
-                        'ng': ng,
-                        'Qm': Qm,
-                        'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])
-                    }
-                    for j in range(len(ch_mech.states_names)):
-                        data[ch_mech.states_names[j]] = channels[j]
-
-                    # Export data to PKL file
-                    output_filepath = batch_dir + '/' + simcode + ".pkl"
-                    with open(output_filepath, 'wb') as fh:
-                        pickle.dump(data, fh)
-                    logger.info('simulation data exported to "%s"', output_filepath)
-                    filepaths.append(output_filepath)
-
-                    # Detect spikes on Qm signal
-                    n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
-                    logger.info('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
-
-                    # Export key metrics to log file
-                    log = {
-                        'A': date_str,
-                        'B': daytime_str,
-                        'C': ch_mech.name,
-                        'D': a * 1e9,
-                        'E': d * 1e6,
-                        'F': Fdrive * 1e-3,
-                        'G': Adrive * 1e-3,
-                        'H': tstim * 1e3,
-                        'I': PRF * 1e-3 if DF < 1 else 'N/A',
-                        'J': DF,
-                        'K': sim_type,
-                        'L': t.size,
-                        'M': round(tcomp, 2),
-                        'N': n_spikes,
-                        'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
-                        'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-                    }
-
-                    if xlslog(log_filepath, 'Data', log) == 1:
-                        logger.info('log exported to "%s"', log_filepath)
-                    else:
-                        logger.error('log export to "%s" aborted', log_filepath)
-
-            except AssertionError as err:
-                logger.error(err)
-
+                output_filepath = runAStim(batch_dir, log_filepath, solver, neuron, bls_params,
+                                           Fdrive, Adrive, tstim, toffset, PRF, DF, sim_type)
+                filepaths.append(output_filepath)
     return filepaths
 
 

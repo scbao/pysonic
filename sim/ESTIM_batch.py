@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-29 15:09:38
+# @Last Modified time: 2017-09-04 16:58:09
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
@@ -26,7 +26,7 @@ stim_params = {
     'amps': [3.1],  # mA/m2
     'durations': [0.5],  # s
     'PRFs': [1e2],  # Hz
-    'DFs': [1.]
+    'DFs': [0.1]
 }
 stim_params['offsets'] = [1.0] * len(stim_params['durations'])  # s
 

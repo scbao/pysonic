@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-01 16:31:51
+# @Last Modified time: 2017-09-04 16:59:36
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -19,7 +19,7 @@ from PointNICE.plt import plotBatch
 # Set logging options
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
 logger = logging.getLogger('PointNICE')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # BLS parameters
 bls_params = load_BLS_params()
