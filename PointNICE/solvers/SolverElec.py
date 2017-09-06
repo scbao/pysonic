@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-03 17:12:54
+# @Last Modified time: 2017-09-06 15:52:21
 
 
 import warnings
@@ -22,7 +22,7 @@ class SolverElec:
 
     def __init__(self):
         # Do nothing
-        logger.debug('Elec solver initialization')
+        pass
 
 
     def eqHH(self, _, y, ch_mech, Iinj):

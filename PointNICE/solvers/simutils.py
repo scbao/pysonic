@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 14:58:36
+# @Last Modified time: 2017-09-06 16:12:24
 
 """ Utility functions used in simulations """
 
@@ -22,7 +22,7 @@ from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
 from .SolverElec import SolverElec
 from ..constants import *
-from ..utils import load_BLS_params
+from ..utils import load_BLS_params, getNeuronsDict
 
 
 # Get package logger
@@ -395,7 +395,7 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
 
         :param batch_dir: full path to output directory of batch
         :param log_filepath: full path log file of batch
-        :param neurons: array of channel mechanisms
+        :param neurons: list of neurons names
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :return: list of full paths to the output files
     '''
@@ -419,7 +419,8 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     nsims = len(neurons) * nqueue
     simcount = 0
     filepaths = []
-    for neuron in neurons:
+    for nname in neurons:
+        neuron = getNeuronsDict()[nname]()
         for i in range(nqueue):
             simcount += 1
             Astim, tstim, toffset, PRF, DF = sim_queue[i, :]
@@ -545,7 +546,7 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, bls_params=load
 
         :param batch_dir: full path to output directory of batch
         :param log_filepath: full path log file of batch
-        :param neurons: array of channel mechanisms
+        :param neurons: list of neurons names
         :param bls_params: BLS biomechanical and biophysical parameters dictionary
         :param geom: BLS geometric constants dictionary
         :param stim_params: dictionary containing sweeps for all stimulation parameters
@@ -572,7 +573,8 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, bls_params=load
     nsims = len(neurons) * len(stim_params['freqs']) * nqueue
     simcount = 0
     filepaths = []
-    for neuron in neurons:
+    for nname in neurons:
+        neuron = getNeuronsDict()[nname]()
         for Fdrive in stim_params['freqs']:
             # Initialize SolverUS
             solver = SolverUS(geom, bls_params, neuron, Fdrive)
@@ -747,7 +749,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
 
         :param batch_dir: full path to output directory of batch
         :param log_filepath: full path log file of batch
-        :param neurons: array of channel mechanisms
+        :param neurons: list of neurons names
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :param bls_params: BLS biomechanical and biophysical parameters dictionary
         :param geom: BLS geometric constants dictionary
@@ -790,11 +792,12 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
     nsims = len(neurons) * len(stim_params['freqs']) * nqueue
     simcount = 0
     filepaths = []
-    for ch_mech in neurons:
+    for nname in neurons:
+        neuron = getNeuronsDict()[nname]()
         for Fdrive in stim_params['freqs']:
             try:
                 # Create SolverUS instance (modulus of embedding tissue depends on frequency)
-                solver = SolverUS(geom, bls_params, ch_mech, Fdrive)
+                solver = SolverUS(geom, bls_params, neuron, Fdrive)
 
                 for i in range(nqueue):
                     simcount += 1
@@ -827,13 +830,13 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
                     daytime_str = time.strftime("%H:%M:%S")
 
                     # Log
-                    logger.info(ASTIM_titration_log, ch_mech.name, simcount, nsims, a * 1e9,
+                    logger.info(ASTIM_titration_log, neuron.name, simcount, nsims, a * 1e9,
                                 log_str)
 
                     # Run titration
                     tstart = time.time()
 
-                    (output_thr, t, y, states, lat) = titrateAStim(solver, ch_mech, Fdrive, Adrive,
+                    (output_thr, t, y, states, lat) = titrateAStim(solver, neuron, Fdrive, Adrive,
                                                                    tstim, toffset, PRF, DF)
 
                     Z, ng, Qm, *channels = y
@@ -852,10 +855,10 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
 
                     # Define output naming
                     if DF == 1.0:
-                        simcode = ASTIM_CW_code.format(ch_mech.name, a * 1e9, Fdrive * 1e-3,
+                        simcode = ASTIM_CW_code.format(neuron.name, a * 1e9, Fdrive * 1e-3,
                                                        Adrive * 1e-3, tstim * 1e3, int_method)
                     else:
-                        simcode = ASTIM_PW_code.format(ch_mech.name, a * 1e9, Fdrive * 1e-3,
+                        simcode = ASTIM_PW_code.format(neuron.name, a * 1e9, Fdrive * 1e-3,
                                                        Adrive * 1e-3, tstim * 1e3, PRF * 1e-3,
                                                        DF, int_method)
 
@@ -880,8 +883,8 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
                         'Qm': Qm,
                         'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])
                     }
-                    for j in range(len(ch_mech.states_names)):
-                        data[ch_mech.states_names[j]] = channels[j]
+                    for j in range(len(neuron.states_names)):
+                        data[neuron.states_names[j]] = channels[j]
 
                     # Export data to PKL file
                     output_filepath = batch_dir + '/' + simcode + ".pkl"
@@ -898,7 +901,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
                     log = {
                         'A': date_str,
                         'B': daytime_str,
-                        'C': ch_mech.name,
+                        'C': neuron.name,
                         'D': a * 1e9,
                         'E': d * 1e6,
                         'F': Fdrive * 1e-3,
@@ -932,7 +935,7 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
 
         :param batch_dir: full path to output directory of batch
         :param log_filepath: full path log file of batch
-        :param neurons: array of channel mechanisms
+        :param neurons: list of neurons names
         :param stim_params: dictionary containing sweeps for all stimulation parameters
     '''
 
@@ -970,7 +973,8 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     nsims = len(neurons) * nqueue
     simcount = 0
     filepaths = []
-    for ch_mech in neurons:
+    for nname in neurons:
+        neuron = getNeuronsDict()[nname]()
         try:
 
             for i in range(nqueue):
@@ -1004,12 +1008,12 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                 daytime_str = time.strftime("%H:%M:%S")
 
                 # Log
-                logger.info(ESTIM_titration_log, ch_mech.name, simcount, nsims, log_str)
+                logger.info(ESTIM_titration_log, neuron.name, simcount, nsims, log_str)
 
                 # Run titration
                 tstart = time.time()
 
-                (output_thr, t, y, states, lat) = titrateEStim(solver, ch_mech, Astim,
+                (output_thr, t, y, states, lat) = titrateEStim(solver, neuron, Astim,
                                                                tstim, toffset, PRF, DF)
 
                 Vm, *channels = y
@@ -1027,9 +1031,9 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
 
                 # Define output naming
                 if DF == 1.0:
-                    simcode = ESTIM_CW_code.format(ch_mech.name, Astim, tstim * 1e3)
+                    simcode = ESTIM_CW_code.format(neuron.name, Astim, tstim * 1e3)
                 else:
-                    simcode = ESTIM_PW_code.format(ch_mech.name, Astim, tstim * 1e3,
+                    simcode = ESTIM_PW_code.format(neuron.name, Astim, tstim * 1e3,
                                                    PRF * 1e-3, DF)
 
                 # Store data in dictionary
@@ -1043,8 +1047,8 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                     'states': states,
                     'Vm': Vm
                 }
-                for j in range(len(ch_mech.states_names)):
-                    data[ch_mech.states_names[j]] = channels[j]
+                for j in range(len(neuron.states_names)):
+                    data[neuron.states_names[j]] = channels[j]
 
                 # Export data to PKL file
                 output_filepath = batch_dir + '/' + simcode + ".pkl"
@@ -1061,7 +1065,7 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                 log = {
                     'A': date_str,
                     'B': daytime_str,
-                    'C': ch_mech.name,
+                    'C': neuron.name,
                     'D': Astim,
                     'E': tstim * 1e3,
                     'F': PRF * 1e-3 if DF < 1 else 'N/A',

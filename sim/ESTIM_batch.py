@@ -2,14 +2,13 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 13:35:56
+# @Last Modified time: 2017-09-06 16:03:29
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
 import os
 import logging
 from PointNICE.solvers import setBatchDir, checkBatchLog, runEStimBatch
-from PointNICE.channels import *
 from PointNICE.plt import plotBatch
 
 # Set logging options
@@ -17,9 +16,8 @@ logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S
 logger = logging.getLogger('PointNICE')
 logger.setLevel(logging.DEBUG)
 
-# Channels mechanisms
-# neurons = [LeechTouch()]
-neurons = [ThalamicRE()]
+# Neurons
+neurons = ['RE', 'TC']
 
 # Stimulation parameters
 stim_params = {
