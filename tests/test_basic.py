@@ -4,17 +4,17 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 14:23:38
+# @Last Modified time: 2017-09-06 17:03:06
 
 ''' Test the basic functionalities of the package. '''
 
 import os
 import sys
-import getopt
 import logging
 import time
 import cProfile
 import pstats
+from argparse import ArgumentParser
 
 from PointNICE.utils import load_BLS_params
 from PointNICE import BilayerSonophore, SolverElec, SolverUS
@@ -23,7 +23,6 @@ from PointNICE.channels import *
 # Set logging options
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
 logger = logging.getLogger('PointNICE')
-logger.setLevel(logging.INFO)
 
 
 def test_MECH(is_profiled=False):
@@ -205,10 +204,11 @@ def test_all():
     logger.info('All tests completed in %.0f s', tcomp)
 
 
-def main(argv):
 
-    script_usage = 'test_basic.py -t <testset> -p <is_profiled>'
+def main():
 
+
+    # Define valid test sets
     valid_testsets = [
         'MECH',
         'ESTIM',
@@ -217,45 +217,37 @@ def main(argv):
         'ASTIM_hybrid',
         'all'
     ]
-    valid_profiles = [0, 1]
 
-    testset = 'all'
-    is_profiled = False
+    # Define argument parser
+    ap = ArgumentParser()
 
-    try:
-        opts, _ = getopt.getopt(argv, 'ht:p:', ['testset=', 'profile='])
-    except getopt.GetoptError:
-        print('script usage: {}'.format(script_usage))
-        sys.exit()
-    for opt, arg in opts:
-        if opt == '-h':
-            print('script usage: {}'.format(script_usage))
-            sys.exit(2)
-        elif opt in ("-t", "--testset"):
-            testset = arg
-            if testset not in valid_testsets:
-                print('valid testsets are: ', str(valid_testsets))
-                sys.exit(2)
-        elif opt in ("-p", "--profile"):
-            is_profiled = int(arg)
-            if is_profiled not in valid_profiles:
-                print('valid profiling options are: ', str(valid_profiles))
-                sys.exit(2)
+    ap.add_argument('-t', '--testset', type=str, default='all', choices=valid_testsets,
+                    help='Specific test set')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true',
+                    help='Increase verbosity')
+    ap.add_argument('-p', '--profile', default=False, action='store_true',
+                    help='Profile test set')
 
-    if is_profiled and testset == 'all':
-        print('profiling can only be run on individual tests')
+    # Parse arguments
+    args = ap.parse_args()
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+    if args.profile and args.testset == 'all':
+        logger.error('profiling can only be run on individual tests')
         sys.exit(2)
 
-    if testset == 'all':
+    # Run test
+    if args.testset == 'all':
         test_all()
-        sys.exit(0)
     else:
         possibles = globals().copy()
         possibles.update(locals())
-        method = possibles.get('test_{}'.format(testset))
-        method(is_profiled)
-        sys.exit(0)
+        method = possibles.get('test_{}'.format(args.testset))
+        method(args.profile)
+    sys.exit(0)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main()

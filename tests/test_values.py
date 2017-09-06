@@ -4,13 +4,13 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-03 17:21:53
+# @Last Modified time: 2017-09-06 17:07:24
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
 import sys
-import getopt
 import logging
+from argparse import ArgumentParser
 import numpy as np
 
 from PointNICE.utils import load_BLS_params, getNeuronsDict
@@ -21,7 +21,6 @@ from PointNICE.constants import *
 # Set logging options
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
 logger = logging.getLogger('PointNICE')
-logger.setLevel(logging.INFO)
 
 # List of implemented neurons
 neurons = getNeuronsDict()
@@ -209,10 +208,10 @@ def test_all():
     logger.info('All tests successfully passed')
 
 
-def main(argv):
 
-    script_usage = 'test_values.py -t <testset>'
+def main():
 
+    # Define valid test sets
     valid_testsets = [
         'MECH',
         'resting_potential',
@@ -220,31 +219,32 @@ def main(argv):
         'ASTIM',
         'all'
     ]
-    testset = 'all'
 
-    try:
-        opts, _ = getopt.getopt(argv, 'ht:', ['testset='])
-    except getopt.GetoptError:
-        print('script usage: {}'.format(script_usage))
-        sys.exit()
-    for opt, arg in opts:
-        if opt == '-h':
-            print('script usage: {}'.format(script_usage))
-            sys.exit()
-        elif opt in ("-t", "--testset"):
-            testset = arg
-            if testset not in valid_testsets:
-                print('valid testsets are: ', str(valid_testsets))
-                sys.exit()
+    # Define argument parser
+    ap = ArgumentParser()
 
-    if testset == 'all':
+    ap.add_argument('-t', '--testset', type=str, default='all', choices=valid_testsets,
+                    help='Specific test set')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true',
+                    help='Increase verbosity')
+
+    # Parse arguments
+    args = ap.parse_args()
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+
+    # Run test
+    if args.testset == 'all':
         test_all()
     else:
         possibles = globals().copy()
         possibles.update(locals())
-        method = possibles.get('test_{}'.format(testset))
+        method = possibles.get('test_{}'.format(args.testset))
         method()
+    sys.exit(0)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main()

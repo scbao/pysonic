@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 14:33:28
+# @Last Modified time: 2017-09-06 17:01:45
 
 import os
 import warnings
@@ -275,9 +275,11 @@ class SolverUS(BilayerSonophore):
         states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
 
         # Initialize progress bar
-        widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
-        pbar = pb.ProgressBar(widgets=widgets, max_value=int(npulses * (toffset + tstim) / tstim))
-        pbar.start()
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
+            pbar = pb.ProgressBar(widgets=widgets,
+                                  max_value=int(npulses * (toffset + tstim) / tstim))
+            pbar.start()
 
         # Loop through all pulse (ON and OFF) intervals
         for i in range(npulses):
@@ -312,7 +314,8 @@ class SolverUS(BilayerSonophore):
             y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
 
             # Update progress bar
-            pbar.update(i)
+            if logger.getEffectiveLevel() == logging.DEBUG:
+                pbar.update(i)
 
         # Integrate offset interval
         if n_off > 0:
@@ -334,7 +337,8 @@ class SolverUS(BilayerSonophore):
             y = np.concatenate([y, y_off[:, 1:]], axis=1)
 
         # Terminate progress bar
-        pbar.finish()
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            pbar.finish()
 
         # Downsample arrays in time-domain to reduce overall size
         t = t[::CLASSIC_DS_FACTOR]
@@ -610,9 +614,10 @@ class SolverUS(BilayerSonophore):
         nvar = y.shape[0]
 
         # Initialize progress bar
-        widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
-        pbar = pb.ProgressBar(widgets=widgets, max_value=1000)
-        pbar.start()
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
+            pbar = pb.ProgressBar(widgets=widgets, max_value=1000)
+            pbar.start()
 
         # For each hybrid integration interval
         irep = 0
@@ -710,12 +715,14 @@ class SolverUS(BilayerSonophore):
                 j += 1
 
             # Update progress bar
-            pbar.update(int(1000 * (t[-1] / (tstim + toffset))))
+            if logger.getEffectiveLevel() == logging.DEBUG:
+                pbar.update(int(1000 * (t[-1] / (tstim + toffset))))
 
             irep += 1
 
         # Terminate progress bar
-        pbar.finish()
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            pbar.finish()
 
         # Return output
         return (t, y[1:, :], states)
