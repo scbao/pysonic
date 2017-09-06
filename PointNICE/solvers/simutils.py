@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 13:38:46
+# @Last Modified time: 2017-09-06 14:58:36
 
 """ Utility functions used in simulations """
 
@@ -22,6 +22,7 @@ from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
 from .SolverElec import SolverElec
 from ..constants import *
+from ..utils import load_BLS_params
 
 
 # Get package logger
@@ -49,6 +50,9 @@ ESTIM_params = {
     'PRF': {'index': 3, 'factor': 1e-3, 'unit': 'kHz'},
     'DF': {'index': 4, 'factor': 1e2, 'unit': '%'}
 }
+
+# Default geometry
+default_geom = {'a': 32e-9, 'd': 0.0}
 
 
 def setBatchDir():
@@ -431,30 +435,31 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
 
 
 
-def runAStim(batch_dir, log_filepath, solver, neuron, bls_params, Fdrive, Adrive,
-             tstim, toffset, PRF, DF, sim_type):
+def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, toffset, PRF, DF,
+             bls_params=load_BLS_params(), int_method='effective'):
     ''' Run a single A-STIM simulation a given neuron for specific stimulation parameters,
         and save the results in a PKL file.
 
         :param batch_dir: full path to output directory of batch
         :param log_filepath: full path log file of batch
         :param solver: SolverUS instance
-        :param bls_params: BLS biomechanical and biophysical parameters dictionary
         :param Fdrive: acoustic drive frequency (Hz)
         :param Adrive: acoustic drive amplitude (Pa)
         :param tstim: duration of US stimulation (s)
         :param toffset: duration of the offset (s)
         :param PRF: pulse repetition frequency (Hz)
         :param DF: pulse duty factor (-)
+        :param bls_params: BLS biomechanical and biophysical parameters dictionary
+        :param int_method: selected integration method
         :return: full path to the output file
     '''
 
     if DF == 1.0:
         simcode = ASTIM_CW_code.format(neuron.name, Fdrive * 1e-3, Adrive * 1e-3,
-                                       tstim * 1e3, sim_type)
+                                       tstim * 1e3, int_method)
     else:
         simcode = ASTIM_PW_code.format(neuron.name, Fdrive * 1e-3, Adrive * 1e-3,
-                                       tstim * 1e3, PRF * 1e-3, DF, sim_type)
+                                       tstim * 1e3, PRF * 1e-3, DF, int_method)
 
     # Get date and time info
     date_str = time.strftime("%Y.%m.%d")
@@ -463,7 +468,7 @@ def runAStim(batch_dir, log_filepath, solver, neuron, bls_params, Fdrive, Adrive
     # Run simulation
     try:
         tstart = time.time()
-        (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DF, sim_type)
+        (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DF, int_method)
         Z, ng, Qm, *channels = y
         U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
         tcomp = time.time() - tstart
@@ -514,7 +519,7 @@ def runAStim(batch_dir, log_filepath, solver, neuron, bls_params, Fdrive, Adrive
             'H': tstim * 1e3,
             'I': PRF * 1e-3 if DF < 1 else 'N/A',
             'J': DF,
-            'K': sim_type,
+            'K': int_method,
             'L': t.size,
             'M': round(tcomp, 2),
             'N': n_spikes,
@@ -533,8 +538,8 @@ def runAStim(batch_dir, log_filepath, solver, neuron, bls_params, Fdrive, Adrive
         logger.error(err)
 
 
-def runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params,
-                  sim_type='effective'):
+def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, bls_params=load_BLS_params(),
+                  geom=default_geom, int_method='effective'):
     ''' Run batch simulations of the system for various neuron types, sonophore and
         stimulation parameters.
 
@@ -544,7 +549,7 @@ def runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_param
         :param bls_params: BLS biomechanical and biophysical parameters dictionary
         :param geom: BLS geometric constants dictionary
         :param stim_params: dictionary containing sweeps for all stimulation parameters
-        :param sim_type: selected integration method
+        :param int_method: selected integration method
     '''
 
     # Define logging format
@@ -577,15 +582,14 @@ def runAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_param
                 Adrive, tstim, toffset, PRF, DF = sim_queue[i, :]
                 # Log and define naming
                 if DF == 1.0:
-                    logger.info(ASTIM_CW_log, sim_type, simcount, nsims, neuron.name,
+                    logger.info(ASTIM_CW_log, int_method, simcount, nsims, neuron.name,
                                 a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3)
                 else:
-                    logger.info(ASTIM_PW_log, sim_type, simcount, nsims, neuron.name, a * 1e9,
+                    logger.info(ASTIM_PW_log, int_method, simcount, nsims, neuron.name, a * 1e9,
                                 Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF * 1e-3, DF)
 
-
-                output_filepath = runAStim(batch_dir, log_filepath, solver, neuron, bls_params,
-                                           Fdrive, Adrive, tstim, toffset, PRF, DF, sim_type)
+                output_filepath = runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
+                                           tstim, toffset, PRF, DF, bls_params, int_method)
                 filepaths.append(output_filepath)
     return filepaths
 
@@ -662,7 +666,7 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DF=1.0):
 
 
 def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=1.0,
-                 sim_type='effective'):
+                 int_method='effective'):
     """ Use a dichotomic recursive search to determine the threshold value of a specific
         acoustic stimulation parameter needed to obtain neural excitation, keeping all other
         parameters fixed. The titration parameter can be stimulation amplitude, duration or
@@ -678,7 +682,7 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
         :param toffset: duration of the offset (s)
         :param PRF: pulse repetition frequency (Hz)
         :param DF: pulse duty factor (-)
-        :param sim_type: selected integration method
+        :param int_method: selected integration method
         :return: 5-tuple with the determined amplitude threshold, time profile,
                  solution matrix, state vector and response latency
     """
@@ -715,7 +719,7 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
         stim_params = [Fdrive, Adrive, tstim, toffset, PRF, value]
 
     # Run simulation and detect spikes
-    (t, y, states) = solver.run(ch_mech, *stim_params, sim_type)
+    (t, y, states) = solver.run(ch_mech, *stim_params, int_method)
     n_spikes, latency, _ = detectSpikes(t, y[2, :], SPIKE_MIN_QAMP, SPIKE_MIN_DT)
     logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
                  n_spikes, "s" if n_spikes > 1 else "")
@@ -732,10 +736,11 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
             new_interval = (interval[0], value)
 
         stim_params[t_var['index']] = new_interval
-        return titrateAStim(solver, ch_mech, *stim_params, sim_type)
+        return titrateAStim(solver, ch_mech, *stim_params, int_method)
 
 
-def titrateAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_params):
+def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
+                      bls_params=load_BLS_params(), geom=default_geom):
     ''' Run batch acoustic titrations of the system for various neuron types, sonophore and
         stimulation parameters, to determine the threshold of a specific stimulus parameter
         for neural excitation.
@@ -743,9 +748,9 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_p
         :param batch_dir: full path to output directory of batch
         :param log_filepath: full path log file of batch
         :param neurons: array of channel mechanisms
+        :param stim_params: dictionary containing sweeps for all stimulation parameters
         :param bls_params: BLS biomechanical and biophysical parameters dictionary
         :param geom: BLS geometric constants dictionary
-        :param stim_params: dictionary containing sweeps for all stimulation parameters
     '''
 
     # Define logging format
@@ -758,7 +763,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_p
     d = geom['d']
 
     # Define default parameters
-    sim_type = 'effective'
+    int_method = 'effective'
     offset = 30e-3
 
     # Determine titration parameter and titrations list
@@ -848,11 +853,11 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_p
                     # Define output naming
                     if DF == 1.0:
                         simcode = ASTIM_CW_code.format(ch_mech.name, a * 1e9, Fdrive * 1e-3,
-                                                       Adrive * 1e-3, tstim * 1e3, sim_type)
+                                                       Adrive * 1e-3, tstim * 1e3, int_method)
                     else:
                         simcode = ASTIM_PW_code.format(ch_mech.name, a * 1e9, Fdrive * 1e-3,
                                                        Adrive * 1e-3, tstim * 1e3, PRF * 1e-3,
-                                                       DF, sim_type)
+                                                       DF, int_method)
 
                     # Store data in dictionary
                     bls_params['biophys']['Qm0'] = solver.Qm0
@@ -901,7 +906,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_p
                         'H': tstim * 1e3,
                         'I': PRF * 1e-3 if DF < 1 else 'N/A',
                         'J': DF,
-                        'K': sim_type,
+                        'K': int_method,
                         'L': t.size,
                         'M': round(tcomp, 2),
                         'N': n_spikes,
@@ -1079,17 +1084,18 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     return filepaths
 
 
-def runMechBatch(batch_dir, log_filepath, bls_params, geom, Cm0, Qm0, stim_params):
+def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, bls_params=load_BLS_params(),
+                 geom=default_geom):
     ''' Run batch simulations of the mechanical system with imposed values of charge density,
         for various sonophore spans and stimulation parameters.
 
         :param batch_dir: full path to output directory of batch
         :param log_filepath: full path log file of batch
-        :param bls_params: BLS biomechanical and biophysical parameters dictionary
-        :param geom: BLS geometric constants dictionary
         :param Cm0: membrane resting capacitance (F/m2)
         :param Qm0: membrane resting charge density (C/m2)
         :param stim_params: dictionary containing sweeps for all stimulation parameters
+        :param bls_params: BLS biomechanical and biophysical parameters dictionary
+        :param geom: BLS geometric constants dictionary
     '''
 
     # Define logging format
