@@ -4,12 +4,13 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-03 17:12:48
+# @Last Modified time: 2017-09-06 14:33:28
 
 import os
 import warnings
 import pickle
 import logging
+import progressbar as pb
 import numpy as np
 import scipy.integrate as integrate
 from scipy.interpolate import interp2d
@@ -242,9 +243,6 @@ class SolverUS(BilayerSonophore):
         Tdrive = 1 / Fdrive
         dt = Tdrive / NPC_FULL
 
-        # Determine proportion of tstim in total integration
-        stim_prop = tstim / (tstim + toffset)
-
         # if CW stimulus: divide integration during stimulus into 100 intervals
         if DF == 1.0:
             PRF = 100 / tstim
@@ -276,11 +274,13 @@ class SolverUS(BilayerSonophore):
         t_pulse0 = np.linspace(0, Tpulse_on + Tpulse_off, n_pulse_on + n_pulse_off)
         states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
 
+        # Initialize progress bar
+        widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
+        pbar = pb.ProgressBar(widgets=widgets, max_value=int(npulses * (toffset + tstim) / tstim))
+        pbar.start()
+
         # Loop through all pulse (ON and OFF) intervals
         for i in range(npulses):
-
-            # logger.debug('pulse %u/%u', i + 1, npulses)
-            printPct(100 * stim_prop * (i + 1) / npulses, 1)
 
             # Construct and initialize arrays
             t_pulse = t_pulse0 + t[-1]
@@ -311,6 +311,9 @@ class SolverUS(BilayerSonophore):
             t = np.concatenate([t, t_pulse[1:]])
             y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
 
+            # Update progress bar
+            pbar.update(i)
+
         # Integrate offset interval
         if n_off > 0:
             t_off = np.linspace(0, toffset, n_off) + t[-1]
@@ -329,6 +332,9 @@ class SolverUS(BilayerSonophore):
             states = np.concatenate([states, states_off[1:]])
             t = np.concatenate([t, t_off[1:]])
             y = np.concatenate([y, y_off[:, 1:]], axis=1)
+
+        # Terminate progress bar
+        pbar.finish()
 
         # Downsample arrays in time-domain to reduce overall size
         t = t[::CLASSIC_DS_FACTOR]
@@ -603,6 +609,11 @@ class SolverUS(BilayerSonophore):
         y = np.vstack((y_membrane, y_channels))
         nvar = y.shape[0]
 
+        # Initialize progress bar
+        widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
+        pbar = pb.ProgressBar(widgets=widgets, max_value=1000)
+        pbar.start()
+
         # For each hybrid integration interval
         irep = 0
         sim_error = False
@@ -698,10 +709,13 @@ class SolverUS(BilayerSonophore):
                 # Increment loop index
                 j += 1
 
-            # Print progress
-            printPct(100 * (t[-1] / (tstim + toffset)), 1)
+            # Update progress bar
+            pbar.update(int(1000 * (t[-1] / (tstim + toffset))))
 
             irep += 1
+
+        # Terminate progress bar
+        pbar.finish()
 
         # Return output
         return (t, y[1:, :], states)

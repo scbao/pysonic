@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-03 19:10:03
+# @Last Modified time: 2017-09-06 14:23:38
 
 ''' Test the basic functionalities of the package. '''
 
@@ -140,7 +140,7 @@ def test_ASTIM_classic(is_profiled=False):
     Fdrive = 350e3  # Hz
     Adrive = 100e3  # Pa
     tstim = 1e-6  # s
-    toffset = 0e-3  # s
+    toffset = 1e-6  # s
 
     # Initialize solver
     solver = SolverUS(geom, params, neuron, Fdrive)

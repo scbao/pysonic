@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-03 18:55:33
+# @Last Modified time: 2017-09-06 14:33:48
 
 """ Definition of generic utility functions used in other modules """
 
@@ -238,11 +238,6 @@ def rescale(x, lb, ub, lb_new=0, ub_new=1):
 
     xnorm = (x - lb) / (ub - lb)
     return xnorm * (ub_new - lb_new) + lb_new
-
-
-def printPct(pct, precision):
-    print(('{:.' + str(precision) + 'f}%').format(pct), end='', flush=True)
-    print('\r' * (precision + 3), end='')
 
 
 def LennardJones(x, beta, alpha, C, m, n):
