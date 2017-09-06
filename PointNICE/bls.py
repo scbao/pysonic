@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-04 16:37:06
+# @Last Modified time: 2017-09-06 16:26:53
 
 import logging
 import warnings
@@ -34,8 +34,8 @@ class BilayerSonophore:
             :param Qm0: membrane resting charge density (C/m2)
         """
 
-        logger.info('%.1f nm BLS initialization at %.2f kHz, %.2f nC/cm2',
-                    geom['a'] * 1e9, Fdrive * 1e-3, Qm0 * 1e5)
+        logger.debug('%.1f nm BLS initialization at %.2f kHz, %.2f nC/cm2',
+                     geom['a'] * 1e9, Fdrive * 1e-3, Qm0 * 1e5)
 
         # Assign biomechanical and biophysical parameters as direct class attributes
         for key, value in params["biomech"].items():
