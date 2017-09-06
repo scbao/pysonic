@@ -4,14 +4,14 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:18:52
+# @Last Modified time: 2017-09-06 13:34:19
 
 """ Run batch acoustic titrations of specific "point-neuron" models. """
 
 import os
 import logging
 import numpy as np
-from PointNICE.solvers import checkBatchLog, titrateAStimBatch
+from PointNICE.solvers import setBatchDir, checkBatchLog, titrateAStimBatch
 from PointNICE.channels import *
 from PointNICE.utils import load_BLS_params
 from PointNICE.plt import plotBatch
@@ -43,7 +43,8 @@ stim_params = {
 
 # Select output directory
 try:
-    (batch_dir, log_filepath) = checkBatchLog('A-STIM')
+    batch_dir = setBatchDir()
+    log_filepath, _ = checkBatchLog(batch_dir, 'A-STIM')
 except AssertionError as err:
     logger.error(err)
     quit()
@@ -53,4 +54,4 @@ pkl_filepaths = titrateAStimBatch(batch_dir, log_filepath, neurons, bls_params, 
 pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
 # Plot resulting profiles
-plotBatch({'Q_m': ['Qm']}, pkl_dir, pkl_filepaths)
+plotBatch(pkl_dir, pkl_filepaths, {'Q_m': ['Qm']})

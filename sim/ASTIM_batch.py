@@ -4,14 +4,14 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-04 16:59:36
+# @Last Modified time: 2017-09-06 13:31:51
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
 import os
 import logging
 import numpy as np
-from PointNICE.solvers import checkBatchLog, runAStimBatch
+from PointNICE.solvers import setBatchDir, checkBatchLog, runAStimBatch
 from PointNICE.channels import *
 from PointNICE.utils import load_BLS_params
 from PointNICE.plt import plotBatch
@@ -44,7 +44,8 @@ stim_params['offsets'] = [100e-3] * len(stim_params['durations'])  # s
 
 # Select output directory
 try:
-    (batch_dir, log_filepath) = checkBatchLog('A-STIM')
+    batch_dir = setBatchDir()
+    log_filepath, _ = checkBatchLog(batch_dir, 'A-STIM')
 except AssertionError as err:
     logger.error(err)
     quit()

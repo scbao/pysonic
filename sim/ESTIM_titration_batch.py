@@ -2,14 +2,14 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-25 14:50:39
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 18:25:36
+# @Last Modified time: 2017-09-06 13:37:34
 
 """ Run batch electrical titrations of specific "point-neuron" models. """
 
 import os
 import logging
 import numpy as np
-from PointNICE.solvers import checkBatchLog, titrateEStimBatch
+from PointNICE.solvers import setBatchDir, checkBatchLog, titrateEStimBatch
 from PointNICE.channels import *
 from PointNICE.plt import plotBatch
 
@@ -31,7 +31,8 @@ stim_params = {
 
 # Select output directory
 try:
-    (batch_dir, log_filepath) = checkBatchLog('E-STIM')
+    batch_dir = setBatchDir()
+    log_filepath, _ = checkBatchLog(batch_dir, 'E-STIM')
 except AssertionError as err:
     logger.error(err)
     quit()
@@ -41,4 +42,4 @@ pkl_filepaths = titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params)
 pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
 # Plot resulting profiles
-plotBatch({'V_m': ['Vm']}, pkl_dir, pkl_filepaths)
+plotBatch(pkl_dir, pkl_filepaths, {'V_m': ['Vm']})

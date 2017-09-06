@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-04 16:59:20
+# @Last Modified time: 2017-09-06 13:38:46
 
 """ Utility functions used in simulations """
 
@@ -27,29 +27,14 @@ from ..constants import *
 # Get package logger
 logger = logging.getLogger('PointNICE')
 
-
-# Naming and logging settings
-
-
+# Naming nomenclature for output files
 MECH_code = 'MECH_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.1f}nCcm2'
-MECH_log = ('Mechanical simulation %u/%u (a = %.1f nm, d = %.1f um, f = %.2f kHz, '
-            'A = %.2f kPa, Q = %.1f nC/cm2)')
-
 ESTIM_CW_code = 'ESTIM_{}_CW_{:.1f}mA_per_m2_{:.0f}ms'
 ESTIM_PW_code = 'ESTIM_{}_PW_{:.1f}mA_per_m2_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}'
-
 ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
 ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.3f}_{}'
 
-# ASTIM_CW_log = ('%s neuron - CW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
-#                 'A = %.2f kPa, t = %.2f ms')
-# ASTIM_PW_log = ('%s neuron - PW A-STIM %s simulation %u/%u (a = %.1f nm, f = %.2f kHz, '
-#                 'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DF = %.3f)')
-
-ASTIM_titration_log = '%s neuron - A-STIM titration %u/%u (a = %.1f nm, %s)'
-ESTIM_titration_log = '%s neuron - E-STIM titration %u/%u (%s)'
-
-# Define parameters units
+# Parameters units
 ASTIM_params = {
     'f': {'index': 0, 'factor': 1e-3, 'unit': 'kHz'},
     'A': {'index': 1, 'factor': 1e-3, 'unit': 'kPa'},
@@ -57,6 +42,7 @@ ASTIM_params = {
     'PRF': {'index': 4, 'factor': 1e-3, 'unit': 'kHz'},
     'DF': {'index': 5, 'factor': 1e2, 'unit': '%'}
 }
+
 ESTIM_params = {
     'A': {'index': 0, 'factor': 1e0, 'unit': 'mA/m2'},
     't': {'index': 1, 'factor': 1e3, 'unit': 'ms'},
@@ -65,28 +51,38 @@ ESTIM_params = {
 }
 
 
-def checkBatchLog(batch_type):
-    ''' Determine batch directory, and add a log file to the directory if it is absent.
+def setBatchDir():
+    ''' Select batch directory for output files.α
 
-        :param batch_type: name of the log file to search for
-        :return: 2-tuple with full paths to batch directory and log file
+        :return: full path to batch directory
     '''
 
-    # Get batch directory from user
     root = tk.Tk()
     root.withdraw()
     batch_dir = filedialog.askdirectory()
     assert batch_dir, 'No batch directory chosen'
+    return batch_dir
+
+
+def checkBatchLog(batch_dir, batch_type):
+    ''' Check for appropriate log file in batch directory, and create one if it is absent.
+
+        :param batch_dir: full path to batch directory
+        :param batch_type: type of simulation batch
+        :return: 2 tuple with full path to log file and boolean stating if log file was created
+    '''
 
     # Determine log template from batch type
-    if batch_type == 'mech':
-        logfile = 'log_mech.xlsx'
+    if batch_type == 'MECH':
+        logfile = 'log_MECH.xlsx'
     elif batch_type == 'A-STIM':
         logfile = 'log_ASTIM.xlsx'
     elif batch_type == 'E-STIM':
         logfile = 'log_ESTIM.xlsx'
     else:
         raise ValueError('Unknown batch type', batch_type)
+
+    # Get template in package subdirectory
     this_dir, _ = os.path.split(__file__)
     parent_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
     logsrc = parent_dir + '/templates/' + logfile
@@ -94,10 +90,11 @@ def checkBatchLog(batch_type):
 
     # Copy template in batch directory if no appropriate log file
     logdst = batch_dir + '/' + logfile
-    if not os.path.isfile(logdst):
+    is_log = os.path.isfile(logdst)
+    if not is_log:
         shutil.copy2(logsrc, logdst)
 
-    return (batch_dir, logdst)
+    return (logdst, not is_log)
 
 
 def createSimQueue(amps, durations, offsets, PRFs, DFs):
@@ -751,6 +748,9 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, bls_params, geom, stim_p
         :param stim_params: dictionary containing sweeps for all stimulation parameters
     '''
 
+    # Define logging format
+    ASTIM_titration_log = '%s neuron - A-STIM titration %u/%u (a = %.1f nm, %s)'
+
     logger.info("Starting A-STIM titration batch")
 
     # Unpack geometrical parameters
@@ -931,6 +931,9 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
         :param stim_params: dictionary containing sweeps for all stimulation parameters
     '''
 
+    # Define logging format
+    ESTIM_titration_log = '%s neuron - E-STIM titration %u/%u (%s)'
+
     logger.info("Starting E-STIM titration batch")
 
     # Define default parameters
@@ -1088,6 +1091,11 @@ def runMechBatch(batch_dir, log_filepath, bls_params, geom, Cm0, Qm0, stim_param
         :param Qm0: membrane resting charge density (C/m2)
         :param stim_params: dictionary containing sweeps for all stimulation parameters
     '''
+
+    # Define logging format
+    MECH_log = ('Mechanical simulation %u/%u (a = %.1f nm, d = %.1f um, f = %.2f kHz, '
+                'A = %.2f kPa, Q = %.1f nC/cm2)')
+
 
     logger.info("Starting mechanical simulation batch")
 

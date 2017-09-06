@@ -2,13 +2,13 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-04 16:58:09
+# @Last Modified time: 2017-09-06 13:35:56
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
 import os
 import logging
-from PointNICE.solvers import checkBatchLog, runEStimBatch
+from PointNICE.solvers import setBatchDir, checkBatchLog, runEStimBatch
 from PointNICE.channels import *
 from PointNICE.plt import plotBatch
 
@@ -32,7 +32,8 @@ stim_params['offsets'] = [1.0] * len(stim_params['durations'])  # s
 
 # Select output directory
 try:
-    (batch_dir, log_filepath) = checkBatchLog('E-STIM')
+    batch_dir = setBatchDir()
+    log_filepath, _ = checkBatchLog(batch_dir, 'E-STIM')
 except AssertionError as err:
     logger.error(err)
     quit()

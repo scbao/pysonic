@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:18:54
+# @Last Modified time: 2017-09-06 13:40:19
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -13,7 +13,7 @@ import logging
 import numpy as np
 
 from PointNICE.utils import load_BLS_params
-from PointNICE.solvers import checkBatchLog, runMechBatch
+from PointNICE.solvers import setBatchDir, checkBatchLog, runMechBatch
 from PointNICE.plt import plotBatch
 
 # Set logging options
@@ -37,17 +37,18 @@ Qm0 = -80e-5  # membrane resting charge density (C/m2)
 stim_params = {
     'freqs': [3.5e5],  # Hz
     'amps': [100e3],  # Pa
-    'charges': [80e-5]  # C/m2
+    'charges': [50e-5]  # C/m2
 }
 
 # Select output directory
 try:
-    (batch_dir, log_filepath) = checkBatchLog('mech')
+    batch_dir = setBatchDir()
+    log_filepath, _ = checkBatchLog(batch_dir, 'MECH')
 except AssertionError as err:
     logger.error(err)
     quit()
 
-# Run mechanical batch
+# Run MECH batch
 pkl_filepaths = runMechBatch(batch_dir, log_filepath, bls_params, geom, Cm0, Qm0, stim_params)
 pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
