@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:29:56
+# @Last Modified time: 2017-09-10 18:42:42
 
 """ Script to run ASTIM simulations from command line. """
 
@@ -13,13 +13,10 @@ import os
 import logging
 from argparse import ArgumentParser
 
-from PointNICE.utils import load_BLS_params, getNeuronsDict
+from PointNICE.utils import logger, load_BLS_params, getNeuronsDict
 from PointNICE.solvers import checkBatchLog, SolverUS, runAStim
 from PointNICE.plt import plotBatch
 
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
 
 # Default parameters
 default = {

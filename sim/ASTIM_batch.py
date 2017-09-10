@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:41:41
+# @Last Modified time: 2017-09-10 18:43:13
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -12,12 +12,11 @@ import sys
 import os
 import logging
 import numpy as np
+from PointNICE.utils import logger
 from PointNICE.solvers import setBatchDir, checkBatchLog, runAStimBatch
 from PointNICE.plt import plotBatch
 
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
+# Set logging level
 logger.setLevel(logging.INFO)
 
 # Neurons
@@ -25,7 +24,7 @@ neurons = ['LTS']
 
 # Stimulation parameters
 stim_params = {
-    # 'freqs': [690e3],  # Hz
+    'freqs': [690e3],  # Hz
     'amps': [320e3],  # Pa
     'durations': [150e-3],  # s
     'PRFs': [100.0],  # Hz

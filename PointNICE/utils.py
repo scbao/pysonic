@@ -4,14 +4,14 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 14:51:02
+# @Last Modified time: 2017-09-10 18:45:22
 
 """ Definition of generic utility functions used in other modules """
 
 from enum import Enum
 from functools import partial
 import os
-import logging
+# import logging
 import tkinter as tk
 from tkinter import filedialog
 import inspect
@@ -19,13 +19,36 @@ from openpyxl import load_workbook
 import numpy as np
 import yaml
 import json
+import colorlog
 
 
 from . import channels
 
 
+def setLogger():
+    log_formatter = colorlog.ColoredFormatter(
+        '%(log_color)s %(asctime)s %(message)s',
+        datefmt='%d/%m/%Y %H:%M:%S:',
+        reset=True,
+        log_colors={
+            'DEBUG': 'green',
+            'INFO': 'white',
+            'WARNING': 'yellow',
+            'ERROR': 'red',
+            'CRITICAL': 'red,bg_white',
+        },
+        secondary_log_colors={},
+        style='%'
+    )
+    log_handler = colorlog.StreamHandler()
+    log_handler.setFormatter(log_formatter)
+    color_logger = colorlog.getLogger('PointNICE')
+    color_logger.addHandler(log_handler)
+    return color_logger
+
+
 # Get package logger
-logger = logging.getLogger('PointNICE')
+logger = setLogger()
 
 
 class PmCompMethod(Enum):

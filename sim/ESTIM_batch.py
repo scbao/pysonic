@@ -2,20 +2,19 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:52:27
+# @Last Modified time: 2017-09-10 18:45:07
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
 import sys
 import os
 import logging
+from PointNICE.utils import logger
 from PointNICE.solvers import setBatchDir, checkBatchLog, runEStimBatch
 from PointNICE.plt import plotBatch
 
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
-logger.setLevel(logging.DEBUG)
+# Set logging level
+logger.setLevel(logging.INFO)
 
 # Neurons
 neurons = ['RE', 'TC']

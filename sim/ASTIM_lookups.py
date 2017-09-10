@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-30 15:26:04
+# @Last Modified time: 2017-09-10 18:42:14
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -12,12 +12,10 @@ import logging
 import numpy as np
 
 import PointNICE
-from PointNICE.utils import load_BLS_params
+from PointNICE.utils import logger, load_BLS_params
 from PointNICE.channels import *
 
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
+# Set logging level
 logger.setLevel(logging.DEBUG)
 
 # BLS parameters

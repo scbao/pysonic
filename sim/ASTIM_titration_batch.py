@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:35:38
+# @Last Modified time: 2017-09-10 18:44:19
 
 """ Run batch acoustic titrations of specific "point-neuron" models. """
 
@@ -12,13 +12,12 @@ import sys
 import os
 import logging
 import numpy as np
+from PointNICE.utils import logger
 from PointNICE.solvers import setBatchDir, checkBatchLog, titrateAStimBatch
 from PointNICE.plt import plotBatch
 
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
-logger.setLevel(logging.DEBUG)
+# Set logging level
+logger.setLevel(logging.INFO)
 
 # Channels mechanisms
 neurons = ['RS']
