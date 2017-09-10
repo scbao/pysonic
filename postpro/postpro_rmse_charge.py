@@ -4,10 +4,11 @@
 # @Date:   2016-11-01 16:35:43
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-07-18 15:47:31
+# @Last Modified time: 2017-09-10 17:20:19
 
 """ Compute RMSE between charge profiles of NICE output. """
 
+import sys
 import pickle
 import ntpath
 import numpy as np
@@ -24,12 +25,12 @@ pkl_filepaths, pkl_dir = OpenFilesDialog('pkl')
 # Quit if no file selected
 if not pkl_filepaths:
     print('error: no input file')
-    quit()
+    sys.exit(1)
 
 # Quit if more than 2 files
 if len(pkl_filepaths) > 2:
     print('error: cannot compare more than 2 methods')
-    quit()
+    sys.exit(1)
 
 # Load data from file 1
 pkl_filename = ntpath.basename(pkl_filepaths[0])

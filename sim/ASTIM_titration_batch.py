@@ -4,10 +4,11 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 16:13:05
+# @Last Modified time: 2017-09-10 17:35:38
 
 """ Run batch acoustic titrations of specific "point-neuron" models. """
 
+import sys
 import os
 import logging
 import numpy as np
@@ -31,17 +32,18 @@ stim_params = {
     # 'DFs': [1.0]
 }
 
-# Select output directory
 try:
+    # Select output directory
     batch_dir = setBatchDir()
     log_filepath, _ = checkBatchLog(batch_dir, 'A-STIM')
+
+    # Run titration batch
+    pkl_filepaths = titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params)
+    pkl_dir, _ = os.path.split(pkl_filepaths[0])
+
+    # Plot resulting profiles
+    plotBatch(pkl_dir, pkl_filepaths, {'Q_m': ['Qm']})
+
 except AssertionError as err:
     logger.error(err)
-    quit()
-
-# Run titration batch
-pkl_filepaths = titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params)
-pkl_dir, _ = os.path.split(pkl_filepaths[0])
-
-# Plot resulting profiles
-plotBatch(pkl_dir, pkl_filepaths, {'Q_m': ['Qm']})
+    sys.exit(1)

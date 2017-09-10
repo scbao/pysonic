@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 16:12:24
+# @Last Modified time: 2017-09-10 17:48:36
 
 """ Utility functions used in simulations """
 
@@ -179,7 +179,7 @@ def xlslog(filename, sheetname, data):
         return 1
     except PermissionError:
         # If file cannot be accessed for writing because already opened
-        logger.error('Cannot write to "%s". Close the file and type "Y"', filename)
+        logger.warning('Cannot write to "%s". Close the file and type "Y"', filename)
         user_str = input()
         if user_str in ['y', 'Y']:
             return xlslog(filename, sheetname, data)
@@ -329,64 +329,59 @@ def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF
     date_str = time.strftime("%Y.%m.%d")
     daytime_str = time.strftime("%H:%M:%S")
 
-    try:
-        # Run simulation
-        tstart = time.time()
-        (t, y, states) = solver.run(neuron, Astim, tstim, toffset, PRF, DF)
-        Vm, *channels = y
-        tcomp = time.time() - tstart
-        logger.debug('completed in %.2f seconds', tcomp)
+    # Run simulation
+    tstart = time.time()
+    (t, y, states) = solver.run(neuron, Astim, tstim, toffset, PRF, DF)
+    Vm, *channels = y
+    tcomp = time.time() - tstart
+    logger.debug('completed in %.2f seconds', tcomp)
 
-        # Store data in dictionary
-        data = {
-            'Astim': Astim,
-            'tstim': tstim,
-            'toffset': toffset,
-            'PRF': PRF,
-            'DF': DF,
-            't': t,
-            'states': states,
-            'Vm': Vm
-        }
-        for j in range(len(neuron.states_names)):
-            data[neuron.states_names[j]] = channels[j]
+    # Store data in dictionary
+    data = {
+        'Astim': Astim,
+        'tstim': tstim,
+        'toffset': toffset,
+        'PRF': PRF,
+        'DF': DF,
+        't': t,
+        'states': states,
+        'Vm': Vm
+    }
+    for j in range(len(neuron.states_names)):
+        data[neuron.states_names[j]] = channels[j]
 
-        # Export data to PKL file
-        output_filepath = batch_dir + '/' + simcode + ".pkl"
-        with open(output_filepath, 'wb') as fh:
-            pickle.dump(data, fh)
-        logger.debug('simulation data exported to "%s"', output_filepath)
+    # Export data to PKL file
+    output_filepath = batch_dir + '/' + simcode + ".pkl"
+    with open(output_filepath, 'wb') as fh:
+        pickle.dump(data, fh)
+    logger.debug('simulation data exported to "%s"', output_filepath)
 
-        # Detect spikes on Vm signal
-        n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
-        logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
+    # Detect spikes on Vm signal
+    n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+    logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
 
-        # Export key metrics to log file
-        log = {
-            'A': date_str,
-            'B': daytime_str,
-            'C': neuron.name,
-            'D': Astim,
-            'E': tstim * 1e3,
-            'F': PRF * 1e-3 if DF < 1 else 'N/A',
-            'G': DF,
-            'H': t.size,
-            'I': round(tcomp, 2),
-            'J': n_spikes,
-            'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
-            'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-        }
+    # Export key metrics to log file
+    log = {
+        'A': date_str,
+        'B': daytime_str,
+        'C': neuron.name,
+        'D': Astim,
+        'E': tstim * 1e3,
+        'F': PRF * 1e-3 if DF < 1 else 'N/A',
+        'G': DF,
+        'H': t.size,
+        'I': round(tcomp, 2),
+        'J': n_spikes,
+        'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
+        'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+    }
 
-        if xlslog(log_filepath, 'Data', log) == 1:
-            logger.debug('log exported to "%s"', log_filepath)
-        else:
-            logger.error('log export to "%s" aborted', log_filepath)
+    if xlslog(log_filepath, 'Data', log) == 1:
+        logger.debug('log exported to "%s"', log_filepath)
+    else:
+        logger.error('log export to "%s" aborted', log_filepath)
 
-        return output_filepath
-
-    except AssertionError as err:
-        logger.error(err)
-        return ''
+    return output_filepath
 
 
 def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
@@ -399,6 +394,10 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :return: list of full paths to the output files
     '''
+
+    mandatory_params = ['amps', 'durations', 'offsets', 'PRFs', 'DFs']
+    for mp in mandatory_params:
+        assert mp in stim_params, 'stim_params dictionary must contain "{}" field'.format(mp)
 
     # Define logging format
     ESTIM_CW_log = 'E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms'
@@ -467,76 +466,73 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
     daytime_str = time.strftime("%H:%M:%S")
 
     # Run simulation
-    try:
-        tstart = time.time()
-        (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DF, int_method)
-        Z, ng, Qm, *channels = y
-        U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
-        tcomp = time.time() - tstart
-        logger.debug('completed in %.2f seconds', tcomp)
+    tstart = time.time()
+    (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DF, int_method)
+    Z, ng, Qm, *channels = y
+    U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
+    tcomp = time.time() - tstart
+    logger.debug('completed in %.2f seconds', tcomp)
 
-        # Store data in dictionary
-        data = {
-            'a': solver.a,
-            'd': solver.d,
-            'params': bls_params,
-            'Fdrive': Fdrive,
-            'Adrive': Adrive,
-            'phi': np.pi,
-            'tstim': tstim,
-            'toffset': toffset,
-            'PRF': PRF,
-            'DF': DF,
-            't': t,
-            'states': states,
-            'U': U,
-            'Z': Z,
-            'ng': ng,
-            'Qm': Qm,
-            'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])
-        }
-        for j in range(len(neuron.states_names)):
-            data[neuron.states_names[j]] = channels[j]
+    # Store data in dictionary
+    data = {
+        'a': solver.a,
+        'd': solver.d,
+        'params': bls_params,
+        'Fdrive': Fdrive,
+        'Adrive': Adrive,
+        'phi': np.pi,
+        'tstim': tstim,
+        'toffset': toffset,
+        'PRF': PRF,
+        'DF': DF,
+        't': t,
+        'states': states,
+        'U': U,
+        'Z': Z,
+        'ng': ng,
+        'Qm': Qm,
+        'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])
+    }
+    for j in range(len(neuron.states_names)):
+        data[neuron.states_names[j]] = channels[j]
 
-        # Export data to PKL file
-        output_filepath = batch_dir + '/' + simcode + ".pkl"
-        with open(output_filepath, 'wb') as fh:
-            pickle.dump(data, fh)
-        logger.debug('simulation data exported to "%s"', output_filepath)
+    # Export data to PKL file
+    output_filepath = batch_dir + '/' + simcode + ".pkl"
+    with open(output_filepath, 'wb') as fh:
+        pickle.dump(data, fh)
+    logger.debug('simulation data exported to "%s"', output_filepath)
 
-        # Detect spikes on Qm signal
-        n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
-        logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
+    # Detect spikes on Qm signal
+    n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+    logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
 
-        # Export key metrics to log file
-        log = {
-            'A': date_str,
-            'B': daytime_str,
-            'C': neuron.name,
-            'D': solver.a * 1e9,
-            'E': solver.d * 1e6,
-            'F': Fdrive * 1e-3,
-            'G': Adrive * 1e-3,
-            'H': tstim * 1e3,
-            'I': PRF * 1e-3 if DF < 1 else 'N/A',
-            'J': DF,
-            'K': int_method,
-            'L': t.size,
-            'M': round(tcomp, 2),
-            'N': n_spikes,
-            'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
-            'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-        }
+    # Export key metrics to log file
+    log = {
+        'A': date_str,
+        'B': daytime_str,
+        'C': neuron.name,
+        'D': solver.a * 1e9,
+        'E': solver.d * 1e6,
+        'F': Fdrive * 1e-3,
+        'G': Adrive * 1e-3,
+        'H': tstim * 1e3,
+        'I': PRF * 1e-3 if DF < 1 else 'N/A',
+        'J': DF,
+        'K': int_method,
+        'L': t.size,
+        'M': round(tcomp, 2),
+        'N': n_spikes,
+        'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
+        'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+    }
 
-        if xlslog(log_filepath, 'Data', log) == 1:
-            logger.debug('log exported to "%s"', log_filepath)
-        else:
-            logger.error('log export to "%s" aborted', log_filepath)
+    if xlslog(log_filepath, 'Data', log) == 1:
+        logger.debug('log exported to "%s"', log_filepath)
+    else:
+        logger.error('log export to "%s" aborted', log_filepath)
 
-        return output_filepath
+    return output_filepath
 
-    except AssertionError as err:
-        logger.error(err)
 
 
 def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, bls_params=load_BLS_params(),
@@ -552,6 +548,10 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, bls_params=load
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :param int_method: selected integration method
     '''
+
+    mandatory_params = ['freqs', 'amps', 'durations', 'offsets', 'PRFs', 'DFs']
+    for mp in mandatory_params:
+        assert mp in stim_params, 'stim_params dictionary must contain "{}" field'.format(mp)
 
     # Define logging format
     ASTIM_CW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '

@@ -4,10 +4,11 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 17:57:33
+# @Last Modified time: 2017-09-10 17:46:45
 
 """ Script to run ESTIM simulations from command line. """
 
+import sys
 import os
 import logging
 from argparse import ArgumentParser
@@ -74,23 +75,22 @@ def main():
         logger.setLevel(logging.INFO)
 
     PW_str = ', PRF = {:.2f} kHz, DC = {:.1f}'.format(PRF, DC * 1e2)
-    logger.info('Running E-STIM simulation on %s neuron: A = %.2f mA/m2, t = %.2f ms%s',
-                neuron_str, Astim, tstim * 1e3, PW_str if DC < 1.0 else "")
 
     try:
+        assert neuron_str in getNeuronsDict(), '{} neuron type not implemented'.format(neuron_str)
         log_filepath, _ = checkBatchLog(output_dir, 'E-STIM')
+        neuron = getNeuronsDict()[neuron_str]()
+        solver = SolverElec()
+        logger.info('Running E-STIM simulation on %s neuron: A = %.2f mA/m2, t = %.2f ms%s',
+                    neuron_str, Astim, tstim * 1e3, PW_str if DC < 1.0 else "")
+        outfile = runEStim(output_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF, DC)
+        logger.info('Finished')
+        if args.plot:
+            plotBatch(output_dir, [outfile])
+
     except AssertionError as err:
         logger.error(err)
-        quit()
-
-    neuron = getNeuronsDict()[neuron_str]()
-    solver = SolverElec()
-    outfile = runEStim(output_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF, DC)
-
-    logger.info('Finished')
-
-    if args.plot:
-        plotBatch(output_dir, [outfile])
+        sys.exit(1)
 
 
 if __name__ == '__main__':

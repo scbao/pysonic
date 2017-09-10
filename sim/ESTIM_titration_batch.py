@@ -2,10 +2,11 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-25 14:50:39
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 16:09:30
+# @Last Modified time: 2017-09-10 17:50:16
 
 """ Run batch electrical titrations of specific "point-neuron" models. """
 
+import sys
 import os
 import logging
 import numpy as np
@@ -28,17 +29,18 @@ stim_params = {
     # 'DFs': [1.0]
 }
 
-# Select output directory
 try:
+    # Select output directory
     batch_dir = setBatchDir()
     log_filepath, _ = checkBatchLog(batch_dir, 'E-STIM')
+
+    # Run titration batch
+    pkl_filepaths = titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params)
+    pkl_dir, _ = os.path.split(pkl_filepaths[0])
+
+    # Plot resulting profiles
+    plotBatch(pkl_dir, pkl_filepaths, {'V_m': ['Vm']})
+
 except AssertionError as err:
     logger.error(err)
-    quit()
-
-# Run titration batch
-pkl_filepaths = titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params)
-pkl_dir, _ = os.path.split(pkl_filepaths[0])
-
-# Plot resulting profiles
-plotBatch(pkl_dir, pkl_filepaths, {'V_m': ['Vm']})
+    sys.exit(1)

@@ -4,10 +4,11 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 17:57:17
+# @Last Modified time: 2017-09-10 17:29:56
 
 """ Script to run ASTIM simulations from command line. """
 
+import sys
 import os
 import logging
 from argparse import ArgumentParser
@@ -84,29 +85,27 @@ def main():
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
-
     PW_str = ', PRF = {:.2f} kHz, DC = {:.1f}'.format(PRF, DC * 1e2)
-    logger.info('Running A-STIM simulation on %s neuron: a = %.1f nm, f = %.2f kHz, '
-                'A = %.2f kPa, t = %.2f ms%s (%s method)', neuron_str, a * 1e9, Fdrive * 1e-3,
-                Adrive * 1e-3, tstim * 1e3, PW_str if DC < 1.0 else "", int_method)
 
     try:
+        assert neuron_str in getNeuronsDict(), '{} neuron type not implemented'.format(neuron_str)
         log_filepath, _ = checkBatchLog(output_dir, 'A-STIM')
+        geom = {'a': a, 'd': 0.0}
+        bls_params = load_BLS_params()
+        neuron = getNeuronsDict()[neuron_str]()
+        logger.info('Running A-STIM simulation on %s neuron: a = %.1f nm, f = %.2f kHz, '
+                    'A = %.2f kPa, t = %.2f ms%s (%s method)', neuron_str, a * 1e9, Fdrive * 1e-3,
+                    Adrive * 1e-3, tstim * 1e3, PW_str if DC < 1.0 else "", int_method)
+        solver = SolverUS(geom, bls_params, neuron, Fdrive)
+        outfile = runAStim(output_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim,
+                           toffset, PRF, DC, bls_params, int_method)
+        logger.info('Finished')
+        if args.plot:
+            plotBatch(output_dir, [outfile])
+
     except AssertionError as err:
         logger.error(err)
-        quit()
-
-    geom = {'a': a, 'd': 0.0}
-    bls_params = load_BLS_params()
-    neuron = getNeuronsDict()[neuron_str]()
-    solver = SolverUS(geom, bls_params, neuron, Fdrive)
-    outfile = runAStim(output_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, toffset,
-                       PRF, DC, bls_params, int_method)
-
-    logger.info('Finished')
-
-    if args.plot:
-        plotBatch(output_dir, [outfile])
+        sys.exit(1)
 
 
 if __name__ == '__main__':
