@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 17:01:45
+# @Last Modified time: 2017-09-10 17:14:21
 
 import os
 import warnings
@@ -641,12 +641,11 @@ class SolverUS(BilayerSonophore):
                     while solver_full.successful() and k <= NPC_FULL - 1:
                         solver_full.integrate(t_full[k])
                         y_full[:, k] = solver_full.y
-                        assert (y_full[1, k] > -0.5 * self.Delta), 'Deflection out of range'
                         k += 1
                 except (Warning, AssertionError) as inst:
                     sim_error = True
                     logger.error('Full system integration error at step %u', k)
-                    print(inst)
+                    logger.error(inst)
 
                 # Compare Z and ng signals over the last 2 acoustic periods
                 if j > 0 and rmse(Z_last, y_full[1, :]) < Z_ERR_MAX \
@@ -668,8 +667,6 @@ class SolverUS(BilayerSonophore):
             # Retrieve last period of the 3 mechanical variables to propagate in HH system
             t_last = t[-npc_pred:]
             mech_last = y[0:3, -npc_pred:]
-
-            # print('convergence after {} cycles'.format(j))
 
             # Downsample signals to specified HH system time step
             (_, mech_pred) = DownSample(t_last, mech_last, NPC_HH)
@@ -700,7 +697,7 @@ class SolverUS(BilayerSonophore):
                 except (Warning, AssertionError) as inst:
                     sim_error = True
                     logger.error('HH system integration error at step %u', k)
-                    print(inst)
+                    logger.error(inst)
 
                 # Concatenate time and solutions to global vectors
                 states = np.concatenate([states, np.zeros(NPC_HH)], axis=0)

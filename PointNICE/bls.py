@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 16:26:53
+# @Last Modified time: 2017-09-10 17:13:17
 
 import logging
 import warnings
@@ -498,6 +498,9 @@ class BilayerSonophore:
         # Split input vector explicitly
         (U, Z, ng) = y
 
+        # Check soundness of deflection value
+        assert Z > -0.5 * self.Delta, 'Deflection out of range'
+
         # Compute curvature radius
         R = self.curvrad(Z)
 
@@ -581,7 +584,6 @@ class BilayerSonophore:
                 while solver.successful() and k <= NPC_FULL - 1:
                     solver.integrate(t_mech[k])
                     y_mech[:, k] = solver.y
-                    assert (y_mech[1, k] > -0.5 * self.Delta), 'Deflection out of range'
                     k += 1
             except (Warning, AssertionError) as inst:
                 sim_error = True

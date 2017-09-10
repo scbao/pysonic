@@ -2,10 +2,11 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 15:59:49
+# @Last Modified time: 2017-09-10 17:01:41
 
 ''' Plotting utilities '''
 
+import sys
 import os
 import pickle
 import ntpath
@@ -233,8 +234,8 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
         elif mo2:
             mo = mo2
         else:
-            print('Error: PKL file does not match regular expression pattern')
-            quit()
+            logger.error('Error: "%s" file does not match regexp pattern', pkl_filename)
+            sys.exit(1)
         sim_type = mo.group(1)
         assert sim_type in ['MECH', 'ASTIM', 'ESTIM'], 'invalid stimulation type'
 
@@ -244,12 +245,12 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
             assert sim_type == sim_type_ref, 'Error: comparing different simulation types'
 
         # Load data
-        print('Loading data from "' + pkl_filename + '"')
+        logger.info('Loading data from "%s"', pkl_filename)
         with open(filepath, 'rb') as pkl_file:
             data = pickle.load(pkl_file)
 
         # Extract variables
-        print('Extracting variables')
+        logger.info('Extracting variables')
         t = data['t']
         states = data['states']
         nsamples = t.size
@@ -400,17 +401,17 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
             mo = mo2
         else:
             logger.error('Error: "%s" file does not match regexp pattern', pkl_filename)
-            quit()
+            sys.exit(1)
         sim_type = mo.group(1)
         assert sim_type in ['MECH', 'ASTIM', 'ESTIM'], 'invalid stimulation type'
 
         # Load data
-        print('Loading data from "' + pkl_filename + '"')
+        logger.info('Loading data from "%s"', pkl_filename)
         with open(filepath, 'rb') as pkl_file:
             data = pickle.load(pkl_file)
 
         # Extract variables
-        print('Extracting variables')
+        logger.info('Extracting variables')
         t = data['t']
         states = data['states']
         nsamples = t.size
@@ -567,7 +568,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
                 plt_filename = '{}/{}_{}.{}'.format(directory, filecode, tag, fig_ext)
             if plt_filename:
                 plt.savefig(plt_filename)
-                print('Saving figure as "{}"'.format(plt_filename))
+                logger.info('Saving figure as "{}"'.format(plt_filename))
                 plt.close()
 
     # Show all plots if needed
@@ -590,7 +591,7 @@ def plotGatingKinetics(neuron, fs=15):
     xinf_dict = {}
     taux_dict = {}
 
-    print('Computing {} neuron gating kinetics'.format(neuron.name))
+    logger.info('Computing %s neuron gating kinetics', neuron.name)
     names = neuron.states_names
     for xname in names:
         Vm_state = True
@@ -625,7 +626,7 @@ def plotGatingKinetics(neuron, fs=15):
         else:
             Vm_state = False
         if not Vm_state:
-            print('no function to compute {}-state gating kinetics'.format(xname))
+            logger.error('no function to compute %s-state gating kinetics', xname)
         else:
             xinf_dict[xname] = xinf
             taux_dict[xname] = taux
@@ -666,7 +667,7 @@ def plotRateConstants(neuron, fs=15):
     alphax_dict = {}
     betax_dict = {}
 
-    print('Computing {} neuron gating kinetics'.format(neuron.name))
+    logger.info('Computing %s neuron gating kinetics', neuron.name)
     names = neuron.states_names
     for xname in names:
         Vm_state = True
@@ -696,7 +697,7 @@ def plotRateConstants(neuron, fs=15):
         else:
             Vm_state = False
         if not Vm_state:
-            print('no function to compute {}-state gating kinetics'.format(xname))
+            logger.error('no function to compute %s-state gating kinetics', xname)
         else:
             alphax_dict[xname] = alphax
             betax_dict[xname] = betax
@@ -776,7 +777,7 @@ def plotEffCoeffs(neuron, Fdrive, a=32e-9, fs=12):
     # If Fdrive in lookup frequencies, simply project (A, Q) dataset at that frequency
     if Fdrive in freqs:
         iFdrive = np.searchsorted(freqs, Fdrive)
-        print('Using lookups directly at {:.2f} kHz'.format(freqs[iFdrive] * 1e-3))
+        logger.info('Using lookups directly at %.2f kHz', freqs[iFdrive] * 1e-3)
         for cn in coeffs_list:
             AQ_coeffs[cn] = np.squeeze(lookup_dict[cn][iFdrive, :, :])
 
@@ -785,8 +786,8 @@ def plotEffCoeffs(neuron, Fdrive, a=32e-9, fs=12):
     # interpolate between them afterwards
     else:
         ilb = np.searchsorted(freqs, Fdrive) - 1
-        print('Interpolating lookups between {:.2f} kHz and {:.2f} kHz'.format(
-            freqs[ilb] * 1e-3, freqs[ilb + 1] * 1e-3))
+        logger.info('Interpolating lookups between %.2f kHz and %.2f kHz',
+                    freqs[ilb] * 1e-3, freqs[ilb + 1] * 1e-3)
         for cn in coeffs_list:
             AQ_slice = []
             for iAdrive in range(len(amps)):
@@ -800,7 +801,7 @@ def plotEffCoeffs(neuron, Fdrive, a=32e-9, fs=12):
     AQ_coeffs['Veff'] = AQ_coeffs.pop('V')
 
     # Plotting
-    print('plotting')
+    logger.info('plotting')
 
     Amin, Amax = amps.min(), amps.max()
     ncoeffs = len(coeffs_list)

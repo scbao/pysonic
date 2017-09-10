@@ -4,7 +4,7 @@
 # @Date:   2017-06-13 09:40:02
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 16:15:50
+# @Last Modified time: 2017-09-06 18:05:55
 
 from setuptools import setup
 
@@ -34,6 +34,7 @@ setup(name='PointNICE',
       author_email='theo.lemaire@epfl.ch',
       license='MIT',
       packages=['PointNICE'],
+      scripts=['sim/ESTIM_run.py', 'sim/ASTIM_run.py'],
       install_requires=[
           'numpy>=1.10',
           'scipy>=0.17',
