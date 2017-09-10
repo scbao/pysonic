@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:01:41
+# @Last Modified time: 2017-09-10 19:04:26
 
 ''' Plotting utilities '''
 
@@ -188,7 +188,10 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
     nvars = len(yvars)
 
     # y variables plotting information
+    for key in yvars:
+        assert key in pltvars, 'unknown plot variable "{}"'.format(key)
     y_pltvars = [pltvars[key] for key in yvars]
+
 
     # Dictionary of neurons
     neurons = getNeuronsDict()
@@ -381,6 +384,11 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
         :param show_patches: boolean indicating whether to indicate periods of stimulation with
          colored rectangular patches
     '''
+
+    # Check validity of plot variables
+    yvars = list(sum(list(vars_dict.values()), []))
+    for key in yvars:
+        assert key in pltvars, 'unknown plot variable "{}"'.format(key)
 
     # Dictionary of neurons
     neurons = getNeuronsDict()

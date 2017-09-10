@@ -4,19 +4,17 @@
 # @Date:   2017-03-20 12:19:55
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:04:50
+# @Last Modified time: 2017-09-10 19:06:06
 
 """ Batch plot profiles of several specific output variables of NICE simulations. """
 
 import sys
 import logging
 
-from PointNICE.utils import OpenFilesDialog
+from PointNICE.utils import logger, OpenFilesDialog
 from PointNICE.plt import plotBatch
 
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
+# Set logging level
 logger.setLevel(logging.INFO)
 
 # Select data files
@@ -26,5 +24,9 @@ if not pkl_filepaths:
     sys.exit(1)
 
 # Plot profiles
-yvars = {'Q_m': ['Qm'], 'i_{Ca}\ kin.': ['s', 'u', 's2u'], 'I': ['iNa', 'iK', 'iT', 'iL']}
-plotBatch(pkl_dir, pkl_filepaths, yvars)
+try:
+    yvars = {'Q_m': ['Qm'], 'i_{Ca}\ kin.': ['s', 'u', 's2u'], 'I': ['iNa', 'iK', 'iT', 'iL']}
+    plotBatch(pkl_dir, pkl_filepaths, yvars)
+except AssertionError as err:
+    logger.error(err)
+    sys.exit(1)
