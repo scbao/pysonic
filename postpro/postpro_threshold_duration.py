@@ -12,12 +12,7 @@ amplitude / intensity / energy for AP generation. """
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PointNICE.utils import ImportExcelCol, load_BLS_params
-
-# Load NICE parameters
-params = load_BLS_params()
-biomech = params['biomech']
-ac_imp = biomech['rhoL'] * biomech['c']  # Rayl
+from PointNICE.utils import ImportExcelCol, Pressure2Intensity
 
 # Import data
 xls_file = "C:/Users/admin/Desktop/Model output/NBLS titration duration 0.35MHz/nbls_log_titration_duration_0.35MHz.xlsx"
@@ -31,7 +26,7 @@ N = ImportExcelCol(xls_file, sheet, 'Q', 2)
 durations = T * 1e3  # ms
 Trange = np.amax(durations) - np.amin(durations)
 amplitudes = A * 1e-3  # kPa
-intensities = A**2 / (2 * ac_imp) * 1e-4  # W/cm2
+intensities = Pressure2Intensity(A) * 1e-4  # W/cm2
 energies = intensities * durations  # mJ/cm2
 
 # Plot threshold amplitude vs. duration

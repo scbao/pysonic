@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 19:04:26
+# @Last Modified time: 2017-09-12 14:41:37
 
 ''' Plotting utilities '''
 
@@ -275,12 +275,9 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
         # Initialize BLS
         if sim_type in ['MECH', 'ASTIM']:
             global bls
-            params = data['params']
             Fdrive = data['Fdrive']
             a = data['a']
-            d = data['d']
-            geom = {"a": a, "d": d}
-            bls = BilayerSonophore(geom, params, Fdrive, Cm0, Qm0)
+            bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
 
         # Determine patches location
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
@@ -386,9 +383,10 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
     '''
 
     # Check validity of plot variables
-    yvars = list(sum(list(vars_dict.values()), []))
-    for key in yvars:
-        assert key in pltvars, 'unknown plot variable "{}"'.format(key)
+    if vars_dict:
+        yvars = list(sum(list(vars_dict.values()), []))
+        for key in yvars:
+            assert key in pltvars, 'unknown plot variable "{}"'.format(key)
 
     # Dictionary of neurons
     neurons = getNeuronsDict()
@@ -441,12 +439,9 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
         # Initialize BLS
         if sim_type in ['MECH', 'ASTIM']:
             global bls
-            params = data['params']
             Fdrive = data['Fdrive']
             a = data['a']
-            d = data['d']
-            geom = {"a": a, "d": d}
-            bls = BilayerSonophore(geom, params, Fdrive, Cm0, Qm0)
+            bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
 
         # Determine patches location
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)

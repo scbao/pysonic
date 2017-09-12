@@ -13,7 +13,7 @@ import os
 import logging
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, load_BLS_params, getNeuronsDict
+from PointNICE.utils import logger, getNeuronsDict
 from PointNICE.solvers import checkBatchLog, SolverUS, runAStim
 from PointNICE.plt import plotBatch
 
@@ -87,15 +87,13 @@ def main():
     try:
         assert neuron_str in getNeuronsDict(), '{} neuron type not implemented'.format(neuron_str)
         log_filepath, _ = checkBatchLog(output_dir, 'A-STIM')
-        geom = {'a': a, 'd': 0.0}
-        bls_params = load_BLS_params()
         neuron = getNeuronsDict()[neuron_str]()
         logger.info('Running A-STIM simulation on %s neuron: a = %.1f nm, f = %.2f kHz, '
                     'A = %.2f kPa, t = %.2f ms%s (%s method)', neuron_str, a * 1e9, Fdrive * 1e-3,
                     Adrive * 1e-3, tstim * 1e3, PW_str if DC < 1.0 else "", int_method)
-        solver = SolverUS(geom, bls_params, neuron, Fdrive)
+        solver = SolverUS(a, neuron, Fdrive)
         outfile = runAStim(output_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim,
-                           toffset, PRF, DC, bls_params, int_method)
+                           toffset, PRF, DC, int_method)
         logger.info('Finished')
         if args.plot:
             plotBatch(output_dir, [outfile])

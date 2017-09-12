@@ -13,7 +13,6 @@ from pycallgraph import PyCallGraph
 from pycallgraph.output import GraphvizOutput
 
 from PointNICE import BilayerSonophore, SolverUS, SolverElec
-from PointNICE.utils import load_BLS_params
 from PointNICE.channels import CorticalRS
 
 
@@ -25,10 +24,8 @@ logger.setLevel(logging.DEBUG)
 # Create Graphviz output object
 graphviz = GraphvizOutput()
 
-# Geometry parameters of BLS structure
-geom = {"a": 32e-9, "d": 0.0e-6}
-params = load_BLS_params()
-
+# BLS diameter
+a =  32e-9
 
 def graph_BLS():
     logger.info('Graph 1: BLS initialization')
@@ -37,7 +34,7 @@ def graph_BLS():
     Qm0 = -80e-5  # membrane resting charge density (C/m2)
     graphviz.output_file = 'graphs/bls_init.png'
     with PyCallGraph(output=graphviz):
-        bls = BilayerSonophore(geom, params, Fdrive, Cm0, Qm0)
+        bls = BilayerSonophore(a, params, Fdrive, Cm0, Qm0)
     logger.info('Graph 2: Mechanical simulation')
     Adrive = 1e5  # Pa
     graphviz.output_file = 'graphs/MECH_sim.png'
@@ -78,7 +75,7 @@ def graph_ASTIM():
     logger.info('Graph 1: SolverUS initialization')
     graphviz.output_file = 'graphs/ASTIM_solver_init.png'
     with PyCallGraph(output=graphviz):
-        solver = SolverUS(geom, params, rs_neuron, Fdrive)
+        solver = SolverUS(a, rs_neuron, Fdrive)
 
     logger.info('Graph 2: A-STIM classic simulation')
     tstim = 1e-6  # s

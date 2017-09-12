@@ -28,13 +28,13 @@ class SolverUS(BilayerSonophore):
     """ This class extends the BilayerSonophore class by adding a biophysical
         Hodgkin-Huxley model on top of the mechanical BLS model. """
 
-    def __init__(self, geom, params, ch_mech, Fdrive):
+    def __init__(self, diameter, ch_mech, Fdrive, embedding_depth=0.0):
         """ Constructor of the class.
 
-            :param geom: BLS geometric constants dictionary
-            :param params: BLS biomechanical and biophysical parameters dictionary
+            :param diameter: in-plane diameter of the sonophore structure within the membrane (m)
             :param ch_mech: channels mechanism object
             :param Fdrive: frequency of acoustic perturbation (Hz)
+            :param embedding_depth: depth of the embedding tissue around the membrane (m)
         """
 
         # Check validity of input parameters
@@ -46,7 +46,7 @@ class SolverUS(BilayerSonophore):
         # Initialize BLS object
         Cm0 = ch_mech.Cm0
         Vm0 = ch_mech.Vm0
-        BilayerSonophore.__init__(self, geom, params, Fdrive, Cm0, Cm0 * Vm0 * 1e-3)
+        BilayerSonophore.__init__(self, diameter, Fdrive, Cm0, Cm0 * Vm0 * 1e-3, embedding_depth)
 
         logger.debug('US solver initialization with %s channel mechanism', ch_mech.name)
 

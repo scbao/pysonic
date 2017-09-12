@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 17:07:24
+# @Last Modified time: 2017-09-12 12:59:43
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -13,7 +13,7 @@ import logging
 from argparse import ArgumentParser
 import numpy as np
 
-from PointNICE.utils import load_BLS_params, getNeuronsDict
+from PointNICE.utils import getNeuronsDict
 from PointNICE import BilayerSonophore, SolverElec, SolverUS
 from PointNICE.solvers import detectSpikes, titrateEStim, titrateAStim
 from PointNICE.constants import *
@@ -34,15 +34,12 @@ def test_MECH():
 
     logger.info('Starting test: Mechanical simulation')
 
-    # BLS geometry and parameters
-    geom = {"a": 32e-9, "d": 0.0e-6}
-    params = load_BLS_params()
-
     # Create BLS instance
+    a = 32e-9  # m
     Fdrive = 350e3  # Hz
     Cm0 = 1e-2  # membrane resting capacitance (F/m2)
     Qm0 = -80e-5  # membrane resting charge density (C/m2)
-    bls = BilayerSonophore(geom, params, Fdrive, Cm0, Qm0)
+    bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
 
     # Run mechanical simulation
     Adrive = 100e3  # Pa
@@ -152,9 +149,8 @@ def test_ASTIM():
 
     logger.info('Starting test: A-STIM titration')
 
-    # BLS geometry and parameters
-    geom = {"a": 32e-9, "d": 0.0e-6}
-    params = load_BLS_params()
+    # BLS diameter
+    a = 32e-9  # m
 
     # Stimulation parameters
     Fdrive = 350e3  # Hz
@@ -177,7 +173,7 @@ def test_ASTIM():
         logger.info('%s neuron titration', neuron.name)
 
         # Initialize solver
-        solver = SolverUS(geom, params, neuron, Fdrive)
+        solver = SolverUS(a, neuron, Fdrive)
 
         # Perform titration
         (Athr, t, y, _, latency) = titrateAStim(solver, neuron, Fdrive, Arange, tstim, toffset,

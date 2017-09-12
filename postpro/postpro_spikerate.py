@@ -12,18 +12,13 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
-from PointNICE.utils import ImportExcelCol, load_BLS_params
+from PointNICE.utils import ImportExcelCol, Pressure2Intensity
 
 
 def fitfunc(x, a, b):
     """ Fitting function """
     return a * np.power(x, b)
 
-
-# Load NICE parameters
-params = load_BLS_params()
-biomech = params['biomech']
-ac_imp = biomech['rhoL'] * biomech['c']  # Rayl
 
 # Import data
 xls_file = "C:/Users/admin/Desktop/Model output/NBLS spikes 0.35MHz/nbls_log_spikes_0.35MHz.xlsx"
@@ -41,7 +36,7 @@ spikerates = np.delete(FR, iremove).astype(np.float)
 amplitudes = np.delete(A, iremove)
 
 # Convert amplitudes to intensities
-intensities = amplitudes**2 / (2 * ac_imp) * 1e-4  # W/cm2
+intensities = Pressure2Intensity(amplitudes) * 1e-4  # W/cm2
 
 # Power law least square fitting
 popt, pcov = curve_fit(fitfunc, intensities, spikerates)

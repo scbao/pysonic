@@ -12,19 +12,14 @@ import logging
 import numpy as np
 
 import PointNICE
-from PointNICE.utils import logger, load_BLS_params
+from PointNICE.utils import logger
 from PointNICE.channels import *
 
 # Set logging level
 logger.setLevel(logging.DEBUG)
 
-# BLS parameters
-params = load_BLS_params()
-
-# Geometry of NBLS structure
-a = 32e-9  # in-plane radius (m)
-d = 0.0e-6  # embedding tissue thickness (m)
-geom = {"a": a, "d": d}
+# BLS diameter (m)
+a = 32e-9  
 
 # Channel mechanisms
 neurons = [CorticalRS()]
@@ -38,7 +33,7 @@ logger.info('Starting batch lookup creation')
 
 for ch_mech in neurons:
     # Create a SolverUS instance (with dummy frequency parameter)
-    solver = PointNICE.SolverUS(geom, params, ch_mech, 0.0)
+    solver = PointNICE.SolverUS(a, ch_mech, 0.0)
     charges = np.arange(np.round(ch_mech.Vm0 - 10.0), 50.0 + 1.0, 1.0) * 1e-5  # C/m2
 
     # Create lookup file

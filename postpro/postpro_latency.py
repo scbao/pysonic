@@ -11,12 +11,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PointNICE.utils import ImportExcelCol, load_BLS_params
+from PointNICE.utils import ImportExcelCol, Presssure2Intensity
 
-# Load NICE parameters
-params = load_BLS_params()
-biomech = params['biomech']
-ac_imp = biomech['rhoL'] * biomech['c']  # Rayl
 
 # Define import settings
 xls_file = "C:/Users/admin/Desktop/Model output/NBLS spikes 0.35MHz/nbls_log_spikes_0.35MHz.xlsx"
@@ -37,7 +33,7 @@ latencies, indices = np.unique(L_true, return_index=True)
 amplitudes = A_true[indices]
 
 # Convert amplitudes to intensities
-intensities = amplitudes**2 / (2 * ac_imp) * 1e-4  # W/cm2
+intensities = Pressure2Intensity(amplitudes) * 1e-4  # W/cm2
 
 # Plot latency vs. amplitude
 fig1, ax = plt.subplots(figsize=(12, 9))

@@ -23,31 +23,50 @@ class BilayerSonophore:
     """ This class contains the geometric and mechanical parameters of the
         Bilayer Sonophore Model, as well as all the core functions needed to
         compute the dynamics (kinetics and kinematics) of the bilayer membrane
-        cavitation, and run dynamic BLS simulations. """
+        cavitation, and run dynamic BLS simulations. 
+    """
 
-    def __init__(self, geom, params, Fdrive, Cm0, Qm0):
+    # BIOMECHANICAL PARAMETERS
+    T = 309.15  # Temperature (K)
+    Rg = 8.314  # Universal gas constant (Pa.m^3.mol^-1.K^-1)
+    delta0 = 2.0e-9  # Thickness of the leaflet (m)
+    Delta_ = 1.4e-9  # Initial gap between the two leaflets on a non-charged membrane at equilibrium (m)
+    pDelta = 1.0e5  # Attraction/repulsion pressure coefficient (Pa)
+    m = 5.0  # Exponent in the repulsion term (dimensionless)
+    n = 3.3  # Exponent in the attraction term (dimensionless)
+    rhoL = 1075.0  # Density of the surrounding fluid (kg/m^3)
+    muL = 7.0e-4  # Dynamic viscosity of the surrounding fluid (Pa.s)
+    muS = 0.035  # Dynamic viscosity of the leaflet (Pa.s)
+    kA = 0.24  # Area compression modulus of the leaflet (N/m)
+    alpha = 7.56  # Tissue shear loss modulus frequency coefficient (Pa.s)
+    C0 = 0.62  # Initial gas molar concentration in the surrounding fluid (mol/m^3)
+    kH = 1.613e5  # Henry's constant (Pa.m^3/mol)
+    P0 = 1.0e5  # Static pressure in the surrounding fluid (Pa)
+    Dgl = 3.68e-9  # Diffusion coefficient of gas in the fluid (m^2/s)
+    xi = 0.5e-9  # Boundary layer thickness for gas transport across leaflet (m)
+    c = 1515.0  # Speed of sound in medium (m/s)
+
+    # BIOPHYSICAL PARAMETERS
+    epsilon0 = 8.854e-12 # Vacuum permittivity (F/m)
+    epsilonR = 1.0 # Relative permittivity of intramembrane cavity (dimensionless)
+
+    def __init__(self, diameter, Fdrive, Cm0, Qm0, embedding_depth=0.0):
         """ Constructor of the class.
-            :param geom: BLS geometric constants dictionary
-            :param params: BLS biomechanical and biophysical parameters dictionary
+            :param diameter: in-plane diameter of the sonophore structure within the membrane (m)
             :param Fdrive: frequency of acoustic perturbation (Hz)
             :param Cm0: membrane resting capacitance (F/m2)
             :param Qm0: membrane resting charge density (C/m2)
+            :param embedding_depth: depth of the embedding tissue around the membrane (m)  
         """
 
         logger.debug('%.1f nm BLS initialization at %.2f kHz, %.2f nC/cm2',
-                     geom['a'] * 1e9, Fdrive * 1e-3, Qm0 * 1e5)
-
-        # Assign biomechanical and biophysical parameters as direct class attributes
-        for key, value in params["biomech"].items():
-            setattr(self, key, value)
-        for key, value in params["biophys"].items():
-            setattr(self, key, value)
+                     diameter * 1e9, Fdrive * 1e-3, Qm0 * 1e5)
 
         # Extract resting constants and geometry
         self.Cm0 = Cm0
         self.Qm0 = Qm0
-        self.a = geom['a']
-        self.d = geom['d']
+        self.a = diameter
+        self.d = embedding_depth
         self.S0 = np.pi * self.a**2
 
         # Derive frequency-dependent tissue elastic modulus
@@ -55,7 +74,7 @@ class BilayerSonophore:
         self.kA_tissue = 2 * G_tissue * self.d  # kA of the tissue layer (N/m)
 
         # Check existence of lookups for derived parameters
-        lookups = get_BLS_lookups(geom['a'])
+        lookups = get_BLS_lookups(self.a)
         Qkey = '{:.2f}'.format(Qm0 * 1e5)
 
         # If no lookup, compute parameters and store them in lookup
@@ -76,7 +95,7 @@ class BilayerSonophore:
             self.LJ_approx = LJ_approx
             lookups[Qkey] = {'LJ_approx': LJ_approx, 'Delta_eq': D_eq}
             logger.debug('Saving BLS derived parameters to lookup file')
-            save_BLS_lookups(geom['a'], lookups)
+            save_BLS_lookups(self.a, lookups)
 
         # If lookup exists, load parameters from it
         else:

@@ -22,7 +22,7 @@ from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
 from .SolverElec import SolverElec
 from ..constants import *
-from ..utils import load_BLS_params, getNeuronsDict
+from ..utils import getNeuronsDict
 
 
 # Get package logger
@@ -52,7 +52,8 @@ ESTIM_params = {
 }
 
 # Default geometry
-default_geom = {'a': 32e-9, 'd': 0.0}
+default_diam = 32e-9
+default_embedding = 0.0e-6
 
 
 def setBatchDir():
@@ -436,7 +437,7 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
 
 
 def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, toffset, PRF, DF,
-             bls_params=load_BLS_params(), int_method='effective'):
+             int_method='effective'):
     ''' Run a single A-STIM simulation a given neuron for specific stimulation parameters,
         and save the results in a PKL file.
 
@@ -449,7 +450,6 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
         :param toffset: duration of the offset (s)
         :param PRF: pulse repetition frequency (Hz)
         :param DF: pulse duty factor (-)
-        :param bls_params: BLS biomechanical and biophysical parameters dictionary
         :param int_method: selected integration method
         :return: full path to the output file
     '''
@@ -477,7 +477,6 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
     data = {
         'a': solver.a,
         'd': solver.d,
-        'params': bls_params,
         'Fdrive': Fdrive,
         'Adrive': Adrive,
         'phi': np.pi,
@@ -535,18 +534,17 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
 
 
 
-def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, bls_params=load_BLS_params(),
-                  geom=default_geom, int_method='effective'):
+def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam, int_method='effective'):
     ''' Run batch simulations of the system for various neuron types, sonophore and
         stimulation parameters.
 
         :param batch_dir: full path to output directory of batch
         :param log_filepath: full path log file of batch
         :param neurons: list of neurons names
-        :param bls_params: BLS biomechanical and biophysical parameters dictionary
-        :param geom: BLS geometric constants dictionary
         :param stim_params: dictionary containing sweeps for all stimulation parameters
+        :param a: BLS structure diameter (m)
         :param int_method: selected integration method
+        :return: list of full paths to the output files
     '''
 
     mandatory_params = ['freqs', 'amps', 'durations', 'offsets', 'PRFs', 'DFs']
@@ -561,9 +559,6 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, bls_params=load
 
     logger.info("Starting A-STIM simulation batch")
 
-    # Unpack geometrical parameters
-    a = geom['a']
-
     # Generate simulations queue
     sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
                                stim_params['offsets'], stim_params['PRFs'], stim_params['DFs'])
@@ -576,12 +571,15 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, bls_params=load
     for nname in neurons:
         neuron = getNeuronsDict()[nname]()
         for Fdrive in stim_params['freqs']:
+            
             # Initialize SolverUS
-            solver = SolverUS(geom, bls_params, neuron, Fdrive)
+            solver = SolverUS(a, neuron, Fdrive)
 
             for i in range(nqueue):
+                
                 simcount += 1
                 Adrive, tstim, toffset, PRF, DF = sim_queue[i, :]
+                
                 # Log and define naming
                 if DF == 1.0:
                     logger.info(ASTIM_CW_log, int_method, simcount, nsims, neuron.name,
@@ -590,9 +588,12 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, bls_params=load
                     logger.info(ASTIM_PW_log, int_method, simcount, nsims, neuron.name, a * 1e9,
                                 Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF * 1e-3, DF)
 
+                # Run simulation
                 output_filepath = runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
-                                           tstim, toffset, PRF, DF, bls_params, int_method)
+                                           tstim, toffset, PRF, DF, int_method)
+                
                 filepaths.append(output_filepath)
+    
     return filepaths
 
 
@@ -741,8 +742,7 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
         return titrateAStim(solver, ch_mech, *stim_params, int_method)
 
 
-def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
-                      bls_params=load_BLS_params(), geom=default_geom):
+def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam, int_method='effective'):
     ''' Run batch acoustic titrations of the system for various neuron types, sonophore and
         stimulation parameters, to determine the threshold of a specific stimulus parameter
         for neural excitation.
@@ -751,18 +751,15 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
         :param log_filepath: full path log file of batch
         :param neurons: list of neurons names
         :param stim_params: dictionary containing sweeps for all stimulation parameters
-        :param bls_params: BLS biomechanical and biophysical parameters dictionary
-        :param geom: BLS geometric constants dictionary
+        :param a: BLS structure diameter (m)
+        :param int_method: selected integration method
+        :return: list of full paths to the output files
     '''
 
     # Define logging format
     ASTIM_titration_log = '%s neuron - A-STIM titration %u/%u (a = %.1f nm, %s)'
 
     logger.info("Starting A-STIM titration batch")
-
-    # Unpack geometrical parameters
-    a = geom['a']
-    d = geom['d']
 
     # Define default parameters
     int_method = 'effective'
@@ -797,7 +794,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
         for Fdrive in stim_params['freqs']:
             try:
                 # Create SolverUS instance (modulus of embedding tissue depends on frequency)
-                solver = SolverUS(geom, bls_params, neuron, Fdrive)
+                solver = SolverUS(a, neuron, Fdrive)
 
                 for i in range(nqueue):
                     simcount += 1
@@ -867,7 +864,6 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
                     data = {
                         'a': a,
                         'd': d,
-                        'params': bls_params,
                         'Fdrive': Fdrive,
                         'Adrive': Adrive,
                         'phi': np.pi,
@@ -902,8 +898,8 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons,  stim_params,
                         'A': date_str,
                         'B': daytime_str,
                         'C': neuron.name,
-                        'D': a * 1e9,
-                        'E': d * 1e6,
+                        'D': solver.a * 1e9,
+                        'E': solver.d * 1e6,
                         'F': Fdrive * 1e-3,
                         'G': Adrive * 1e-3,
                         'H': tstim * 1e3,
@@ -937,6 +933,7 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
         :param log_filepath: full path log file of batch
         :param neurons: list of neurons names
         :param stim_params: dictionary containing sweeps for all stimulation parameters
+        :return: list of full paths to the output files
     '''
 
     # Define logging format
@@ -1088,8 +1085,7 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     return filepaths
 
 
-def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, bls_params=load_BLS_params(),
-                 geom=default_geom):
+def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam, d=default_embedding):
     ''' Run batch simulations of the mechanical system with imposed values of charge density,
         for various sonophore spans and stimulation parameters.
 
@@ -1098,8 +1094,8 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, bls_params=load
         :param Cm0: membrane resting capacitance (F/m2)
         :param Qm0: membrane resting charge density (C/m2)
         :param stim_params: dictionary containing sweeps for all stimulation parameters
-        :param bls_params: BLS biomechanical and biophysical parameters dictionary
-        :param geom: BLS geometric constants dictionary
+        :param a: BLS in-plane diameter (m)
+        :param d: depth of embedding tissue around plasma membrane (m)
     '''
 
     # Define logging format
@@ -1109,9 +1105,7 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, bls_params=load
 
     logger.info("Starting mechanical simulation batch")
 
-    # Unpack geometrical and stimulation parameters
-    a = geom['a']
-    d = geom['d']
+    # Unpack stimulation parameters
     amps = np.array(stim_params['amps'])
     charges = np.array(stim_params['charges'])
 
@@ -1128,7 +1122,7 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, bls_params=load
     for Fdrive in stim_params['freqs']:
         try:
             # Create BilayerSonophore instance (modulus of embedding tissue depends on frequency)
-            bls = BilayerSonophore(geom, bls_params, Fdrive, Cm0, Qm0)
+            bls = BilayerSonophore(a, Fdrive, Cm0, Qm0, d)
 
             for i in range(nqueue):
                 simcount += 1
@@ -1158,7 +1152,6 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, bls_params=load
                     'd': d,
                     'Cm0': Cm0,
                     'Qm0': Qm0,
-                    'params': bls_params,
                     'Fdrive': Fdrive,
                     'Adrive': Adrive,
                     'phi': np.pi,

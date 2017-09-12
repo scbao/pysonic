@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 18:45:22
+# @Last Modified time: 2017-09-12 14:43:42
 
 """ Definition of generic utility functions used in other modules """
 
@@ -70,9 +70,6 @@ def loadYAML(filepath):
         stream = f.read()
     params = yaml.load(stream)
     return ParseNestedDict(params)
-
-
-load_BLS_params = partial(loadYAML, filepath=os.path.split(__file__)[0] + '/params.yaml')
 
 
 def getLookupDir():
@@ -225,7 +222,7 @@ def DownSample(t_dense, y, nsparse):
     return (t_ds, y_ds)
 
 
-def Pressure2Intensity(p, rho, c):
+def Pressure2Intensity(p, rho=1075.0, c=1515.0):
     """ Return the spatial peak, pulse average acoustic intensity (ISPPA)
         associated with the specified pressure amplitude.
 
@@ -237,7 +234,7 @@ def Pressure2Intensity(p, rho, c):
     return p**2 / (2 * rho * c)
 
 
-def Intensity2Pressure(I, rho, c):
+def Intensity2Pressure(I, rho=1075.0, c=1515.0):
     """ Return the pressure amplitude associated with the specified
         spatial peak, pulse average acoustic intensity (ISPPA).
 

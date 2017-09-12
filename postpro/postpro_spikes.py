@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from mpl_toolkits.mplot3d import Axes3D
 
-from PointNICE.utils import ImportExcelCol, ConstructMatrix, load_BLS_params
+from PointNICE.utils import ImportExcelCol, ConstructMatrix, Pressure2Intensity
 
 
 # Define options
@@ -22,12 +22,6 @@ plot3d_show = 1
 plot3d_save = 0
 plt_root = "../Output/effective spikes 2D/"
 plt_save_ext = '.png'
-
-
-# Load NICE parameters
-params = load_BLS_params()
-biomech = params['biomech']
-ac_imp = biomech['rhoL'] * biomech['c']  # Rayl
 
 # Import data
 xls_file = "../../Output/effective spikes 2D/nbls_log_spikes.xlsx"
@@ -51,7 +45,7 @@ for Fdrive in freqs:
     nspikes2 = nspikes.conj().T  # conjugate tranpose of nspikes matrix (for surface plot)
 
     # Convert to appropriate units
-    intensities = amps**2 / (2 * ac_imp) * 1e-4  # W/cm2
+    intensities = Pressure2Intensity(amplitudes) * 1e-4  # W/cm2
     durations = durations * 1e3  # ms
 
     nDurations = durations.size

@@ -14,21 +14,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import PointNICE
-from PointNICE.utils import load_BLS_params, PmCompMethod
+from PointNICE.utils import PmCompMethod
 
 
 plt_bool = 1
 
 # Initialization: create a BLS instance
-params = load_BLS_params()
 a = 32e-9  # in-plane radius (m)
-d = 0.0e-6  # embedding tissue thickness (m)
-geom = {"a": a, "d": d}
 Fdrive = 0.0  # dummy stimulation frequency
 Cm0 = 1e-2  # membrane resting capacitance (F/m2)
 Qm0 = -71.9e-5  # membrane resting charge density (C/m2)
-
-bls = PointNICE.BilayerSonophore(geom, params, Fdrive, Cm0, Qm0)
+bls = PointNICE.BilayerSonophore(a, Fdrive, Cm0, Qm0)
 
 
 # Input 1: leaflet deflections

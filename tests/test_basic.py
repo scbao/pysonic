@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 17:03:06
+# @Last Modified time: 2017-09-12 12:59:18
 
 ''' Test the basic functionalities of the package. '''
 
@@ -16,7 +16,6 @@ import cProfile
 import pstats
 from argparse import ArgumentParser
 
-from PointNICE.utils import load_BLS_params
 from PointNICE import BilayerSonophore, SolverElec, SolverUS
 from PointNICE.channels import *
 
@@ -29,15 +28,12 @@ def test_MECH(is_profiled=False):
     ''' Mechanical simulation. '''
     logger.info('Test: running MECH simulation')
 
-    # BLS geometry and parameters
-    geom = {"a": 32e-9, "d": 0.0e-6}
-    params = load_BLS_params()
-
     # Create BLS instance
+    a = 32e-9  # m
     Fdrive = 350e3  # Hz
     Cm0 = 1e-2  # membrane resting capacitance (F/m2)
     Qm0 = -80e-5  # membrane resting charge density (C/m2)
-    bls = BilayerSonophore(geom, params, Fdrive, Cm0, Qm0)
+    bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
 
     # Stimulation parameters
     Adrive = 100e3  # Pa
@@ -92,10 +88,6 @@ def test_ASTIM_effective(is_profiled=False):
 
     logger.info('Test: running ASTIM effective simulation')
 
-    # BLS geometry and parameters
-    geom = {"a": 32e-9, "d": 0.0e-6}
-    params = load_BLS_params()
-
     # Initialize neuron
     neuron = CorticalRS()
 
@@ -106,7 +98,8 @@ def test_ASTIM_effective(is_profiled=False):
     toffset = 30e-3  # s
 
     # Initialize solver
-    solver = SolverUS(geom, params, neuron, Fdrive)
+    a = 32e-9  # m
+    solver = SolverUS(a, neuron, Fdrive)
 
     # Run simulation
     if is_profiled:
@@ -128,10 +121,6 @@ def test_ASTIM_classic(is_profiled=False):
 
     logger.info('Test: running ASTIM classic simulation')
 
-    # BLS geometry and parameters
-    geom = {"a": 32e-9, "d": 0.0e-6}
-    params = load_BLS_params()
-
     # Initialize neuron
     neuron = CorticalRS()
 
@@ -142,7 +131,8 @@ def test_ASTIM_classic(is_profiled=False):
     toffset = 1e-6  # s
 
     # Initialize solver
-    solver = SolverUS(geom, params, neuron, Fdrive)
+    a = 32e-9  # m
+    solver = SolverUS(a, neuron, Fdrive)
 
     # Run simulation
     if is_profiled:
@@ -163,10 +153,6 @@ def test_ASTIM_hybrid(is_profiled=False):
 
     logger.info('Test: running ASTIM hybrid simulation')
 
-    # BLS geometry and parameters
-    geom = {"a": 32e-9, "d": 0.0e-6}
-    params = load_BLS_params()
-
     # Initialize neuron
     neuron = CorticalRS()
 
@@ -177,7 +163,8 @@ def test_ASTIM_hybrid(is_profiled=False):
     toffset = 1e-3  # s
 
     # Initialize solver
-    solver = SolverUS(geom, params, neuron, Fdrive)
+    a = 32e-9  # m
+    solver = SolverUS(a, neuron, Fdrive)
 
     # Run simulation
     if is_profiled:

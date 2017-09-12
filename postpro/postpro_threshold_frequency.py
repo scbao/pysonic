@@ -13,12 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-from PointNICE.utils import ImportExcelCol, load_BLS_params
-
-# Load NICE parameters
-params = load_BLS_params()
-biomech = params['biomech']
-ac_imp = biomech['rhoL'] * biomech['c']  # Rayl
+from PointNICE.utils import ImportExcelCol, Pressure2Intensity
 
 # Import data
 xls_file = "C:/Users/admin/Desktop/Model output/NBLS titration frequency 30ms/nbls_log_titration_frequency_30ms.xlsx"
@@ -31,7 +26,7 @@ N = ImportExcelCol(xls_file, sheet, 'Q', 2)
 # Convert to appropriate units
 frequencies = f * 1e-6  # MHz
 amplitudes = A * 1e-3  # kPa
-intensities = A**2 / (2 * ac_imp) * 1e-4  # W/cm2
+intensities = Pressure2Intensity(A) * 1e-4  # W/cm2
 
 # Plot threshold amplitude vs. duration
 fig1, ax = plt.subplots(figsize=(12, 9))
