@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-12 14:43:42
+# @Last Modified time: 2017-09-12 18:38:39
 
 """ Definition of generic utility functions used in other modules """
 
@@ -37,7 +37,6 @@ def setLogger():
             'ERROR': 'red',
             'CRITICAL': 'red,bg_white',
         },
-        secondary_log_colors={},
         style='%'
     )
     log_handler = colorlog.StreamHandler()

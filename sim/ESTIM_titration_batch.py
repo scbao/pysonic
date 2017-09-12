@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-25 14:50:39
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:50:16
+# @Last Modified time: 2017-09-12 18:49:28
 
 """ Run batch electrical titrations of specific "point-neuron" models. """
 
@@ -10,12 +10,12 @@ import sys
 import os
 import logging
 import numpy as np
+
+from PointNICE.utils import logger
 from PointNICE.solvers import setBatchDir, checkBatchLog, titrateEStimBatch
 from PointNICE.plt import plotBatch
 
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
+# Set logging level
 logger.setLevel(logging.DEBUG)
 
 # Neurons

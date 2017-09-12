@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:51:56
+# @Last Modified time: 2017-09-12 18:49:52
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -13,12 +13,11 @@ import os
 import logging
 import numpy as np
 
+from PointNICE.utils import logger
 from PointNICE.solvers import setBatchDir, checkBatchLog, runMechBatch
 from PointNICE.plt import plotBatch
 
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
+# Set logging level
 logger.setLevel(logging.DEBUG)
 
 # Electrical properties of the membrane

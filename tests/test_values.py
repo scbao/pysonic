@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-12 12:59:43
+# @Last Modified time: 2017-09-12 18:52:17
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -13,14 +13,13 @@ import logging
 from argparse import ArgumentParser
 import numpy as np
 
-from PointNICE.utils import getNeuronsDict
+from PointNICE.utils import logger, getNeuronsDict
 from PointNICE import BilayerSonophore, SolverElec, SolverUS
 from PointNICE.solvers import detectSpikes, titrateEStim, titrateAStim
 from PointNICE.constants import *
 
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
+# Set logging level
+logger.setLevel(logging.INFO)
 
 # List of implemented neurons
 neurons = getNeuronsDict()

@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 15:20:18
+# @Last Modified time: 2017-09-12 18:51:18
 
 ''' Test the basic functionalities of the package and output graphs of the call flows. '''
 
@@ -12,29 +12,27 @@ import logging
 from pycallgraph import PyCallGraph
 from pycallgraph.output import GraphvizOutput
 
+from PointNICE.utils import logger
 from PointNICE import BilayerSonophore, SolverUS, SolverElec
 from PointNICE.channels import CorticalRS
 
 
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
+# Set logging level
 logger.setLevel(logging.DEBUG)
 
 # Create Graphviz output object
 graphviz = GraphvizOutput()
 
-# BLS diameter
-a =  32e-9
 
 def graph_BLS():
     logger.info('Graph 1: BLS initialization')
+    a = 32e-9  # nm
     Fdrive = 3.5e5  # Hz
     Cm0 = 1e-2  # membrane resting capacitance (F/m2)
     Qm0 = -80e-5  # membrane resting charge density (C/m2)
     graphviz.output_file = 'graphs/bls_init.png'
     with PyCallGraph(output=graphviz):
-        bls = BilayerSonophore(a, params, Fdrive, Cm0, Qm0)
+        bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
     logger.info('Graph 2: Mechanical simulation')
     Adrive = 1e5  # Pa
     graphviz.output_file = 'graphs/MECH_sim.png'
@@ -69,6 +67,7 @@ def graph_ESTIM():
 def graph_ASTIM():
     rs_neuron = CorticalRS()
 
+    a = 32e-9  # nm
     Fdrive = 3.5e5  # Hz
     Adrive = 1e5  # Pa
 

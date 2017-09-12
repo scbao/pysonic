@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-12 12:59:18
+# @Last Modified time: 2017-09-12 18:48:35
 
 ''' Test the basic functionalities of the package. '''
 
@@ -16,12 +16,9 @@ import cProfile
 import pstats
 from argparse import ArgumentParser
 
+from PointNICE.utils import logger
 from PointNICE import BilayerSonophore, SolverElec, SolverUS
 from PointNICE.channels import *
-
-# Set logging options
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S:')
-logger = logging.getLogger('PointNICE')
 
 
 def test_MECH(is_profiled=False):
