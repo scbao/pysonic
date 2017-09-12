@@ -4,13 +4,13 @@
 # @Date:   2017-06-13 09:40:02
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-06 18:05:55
+# @Last Modified time: 2017-09-12 17:18:11
 
 from setuptools import setup
 
 
 def readme():
-    with open('README.rst', encoding="utf8") as f:
+    with open('README.md', encoding="utf8") as f:
         return f.read()
 
 

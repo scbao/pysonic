@@ -1,3 +1,6 @@
+Description
+============
+
 PointNICE is a Python implementation of the *Neuronal Intramembrane Cavitation Excitation* (NICE) model introduced by Plaksin et. al in 2014 and initially developed in MATLAB by its authors. It contains optimized methods to predict the electrical response of point-neuron models to both acoustic and electrical stimuli.
 
 This package contains several core modules:
@@ -13,3 +16,39 @@ The **SolverUS** class incorporates optimized numerical integration methods to p
 	- a newly developed **effective** method that neglects the high amplitude oscillations of mechanical and electrical variables during each acoustic cycle, to instead grasp the net effect of the acoustic stimulus on the electrical system. To do so, the sole electrical system is solved using pre-computed coefficients that depend on membrane charge and acoustic amplitude. This method allows to run simulations of the electrical system in only a few seconds, with very accurate results of the net membrane charge density evolution.
 
 This package is meant to be easy to use as a predictive and comparative tool for researchers investigating ultrasonic and/or electrical neuro-stimulation experimentally.
+
+
+Installation
+==================
+
+PointNICE is only compatible with Python 3, hence make sure to have it up-and-running before carrying on with the install.
+
+To install PointNICE on your machine, simply open a terminal at the package root directory (where the setup.py file is located) and type in:
+
+	pip install -e .
+
+The package and all its dependencies will be installed.
+
+Usage
+=======
+
+# Command line scripts
+
+To run single simulations of a given point-neuron model under specific stimulation parameters, you can use the ASTIM_run.py and ESTIM_run.py command-line scripts provided by the package.
+
+For instance, to simulate a regular-spiking neuron under continuous wave ultrasonic stimulation at 500kHz and 100kPa, for 150 ms:
+
+	python ASTIM_run.py -n=RS -f=500 -A=100 -t=150
+
+Similarly, to simulate the electrical stimulation of a thalamo-cortical neuron at 10 mA/m2 for 150 ms:
+
+	python ESTIM_run.py -n=TC -A=10 -t=150
+
+The simulation results will be save in an output PKL file in the current working directory. To view these results, you can use the dedicated
+
+
+# Batch scripts
+
+To run a batch of simulations on different neuron types and spanning ranges of several stimulation parameters, you can run the ASTIM_batch.py and ESTIM_batch.py scripts. To do so, simply modify the **stim_params** and **neurons** variables with your own neuron types and parameter sweeps, and then run the scripts (without command-line arguments).
+
+
