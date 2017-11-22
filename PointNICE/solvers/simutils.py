@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:48:36
+# @Last Modified time: 2017-09-24 23:17:06
 
 """ Utility functions used in simulations """
 
@@ -351,6 +351,7 @@ def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF
     for j in range(len(neuron.states_names)):
         data[neuron.states_names[j]] = channels[j]
 
+
     # Export data to PKL file
     output_filepath = batch_dir + '/' + simcode + ".pkl"
     with open(output_filepath, 'wb') as fh:
@@ -571,15 +572,15 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
     for nname in neurons:
         neuron = getNeuronsDict()[nname]()
         for Fdrive in stim_params['freqs']:
-            
+
             # Initialize SolverUS
             solver = SolverUS(a, neuron, Fdrive)
 
             for i in range(nqueue):
-                
+
                 simcount += 1
                 Adrive, tstim, toffset, PRF, DF = sim_queue[i, :]
-                
+
                 # Log and define naming
                 if DF == 1.0:
                     logger.info(ASTIM_CW_log, int_method, simcount, nsims, neuron.name,
@@ -591,9 +592,9 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
                 # Run simulation
                 output_filepath = runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
                                            tstim, toffset, PRF, DF, int_method)
-                
+
                 filepaths.append(output_filepath)
-    
+
     return filepaths
 
 

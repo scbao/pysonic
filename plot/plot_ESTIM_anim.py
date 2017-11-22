@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-25 10:42:24
+# @Last Modified time: 2017-09-24 23:18:50
 
 """ Run simulations of the HH system with injected electric current,
 and plot resulting dynamics. """
@@ -22,7 +22,7 @@ from PointNICE.channels import *
 
 
 # Create channels mechanism
-neuron = ThalamoCortical()
+neuron = LeechTouch()
 for i in range(len(neuron.states_names)):
     print('{}0 = {:.2f}'.format(neuron.states_names[i], neuron.states0[i]))
 
@@ -30,8 +30,8 @@ for i in range(len(neuron.states_names)):
 # Set pulse parameters
 tstim = 500e-3  # s
 toffset = 300e-3  # s
-Amin = -20.0
-Amax = 20.0
+Amin = -40.0
+Amax = 40.0
 amps = np.arange(Amin, Amax + 0.5, 1.0)
 nA = len(amps)
 
@@ -50,8 +50,8 @@ for Astim in amps:
     # Run simulation
     print('sim {}/{} ({:.2f} mA/m2, {:.0f} ms)'.format(i, nA, Astim, tstim * 1e3))
     solver = SolverElec()
-    (t, y) = solver.run(neuron, Astim, tstim, toffset)
-    Vm = y[:, 0]
+    t, y, _ = solver.run(neuron, Astim, tstim, toffset)
+    Vm = y[0, :]
 
     # Plot membrane potential profile
     fs = 12

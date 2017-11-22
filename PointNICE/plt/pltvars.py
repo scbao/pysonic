@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-02 17:24:19
+# @Last Modified time: 2017-09-24 23:31:06
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -119,6 +119,16 @@ pltvars = {
         'min': -0.1,
         'max': 1.1,
         'alias': 'data["m"]**2 * data["h"]'
+    },
+
+    'm3h': {
+        'desc': 'iNa relative conductance',
+        'label': 'm^3h',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1,
+        'alias': 'data["m"]**3 * data["h"]'
     },
 
     'n': {
@@ -241,7 +251,7 @@ pltvars = {
     'C_Ca_arb_activation': {
         'key': 'A_Ca',
         'desc': 'Ca2+ dependent Potassium current activation',
-        'label': 'A_{Na^{2+}}',
+        'label': 'A_{Ca^{2+}}',
         'unit': 'arb',
         'factor': 1
     },

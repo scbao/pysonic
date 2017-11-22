@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 17:57:49
+# @Last Modified time: 2017-11-22 11:37:14
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -39,7 +39,7 @@ class LeechTouch(BaseMech):
 
     # Cell-specific biophysical parameters
     Cm0 = 1e-2  # Cell membrane resting capacitance (F/m2)
-    Vm0 = -53.0  # Cell membrane resting potential (mV)
+    Vm0 = -53.58  # Cell membrane resting potential (mV)
     VNa = 45.0  # Sodium Nernst potential (mV)
     VK = -62.0  # Potassium Nernst potential (mV)
     VCa = 60.0  # Calcium Nernst potential (mV)
@@ -52,23 +52,33 @@ class LeechTouch(BaseMech):
     GKCaMax = 236.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
     GL = 1.0  # Conductance of non-specific leakage current (S/m^2)
     GPumpNa = 20.0  # Max. conductance of Sodium pump current (S/m^2)
-
     taum = 0.1e-3  # Sodium activation time constant (s)
     taus = 0.6e-3  # Calcium activation time constant (s)
 
 
-    surface = 6434.0  # surface of cell assumed as a single soma (um2)
-    curr_factor = 1e6  # 1/nA to 1/mA
+    # Original conversion constants from inward ion current (nA) to build-up of
+    # intracellular ion concentration (arb.)
+    K_Na_original = 0.016  # iNa to intracellular [Na+]
+    K_Ca_original = 0.1  # iCa to intracellular [Ca2+]
 
-    tau_Na_removal = 16.0  # Time constant for the removal of Sodium ions from the pool (s)
-    tau_Ca_removal = 1.25  # Time constant for the removal of Calcium ions from the pool (s)
+    # Constants needed to convert K from original model (soma compartment)
+    # to current model (point-neuron)
+    surface = 6434.0e-12  # surface of cell assumed as a single soma (m2)
+    curr_factor = 1e6  # mA to nA
 
-    tau_PumpNa_act = 0.1  # Time constant for the PumpNa current activation from Sodium ions (s)
-    tau_KCa_act = 0.01  # Time constant for the KCa current activation from Calcium ions (s)
+    # Time constants for the removal of ions from intracellular pools (s)
+    tau_Na_removal = 16.0  # Na+ removal
+    tau_Ca_removal = 1.25  # Ca2+ removal
+
+    # Time constants for the iPumpNa and iKCa currents activation
+    # from specific intracellular ions (s)
+    tau_PumpNa_act = 0.1  # iPumpNa activation from intracellular Na+
+    tau_KCa_act = 0.01  # iKCa activation from intracellular Ca2+
+
 
     # Default plotting scheme
     pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
+        'i_{Na}\ kin.': ['m', 'h', 'm3h'],
         'i_K\ kin.': ['n'],
         'i_{Ca}\ kin.': ['s'],
         'pools': ['C_Na_arb', 'C_Na_arb_activation', 'C_Ca_arb', 'C_Ca_arb_activation'],
@@ -87,8 +97,8 @@ class LeechTouch(BaseMech):
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphas', 'betas']
 
-        self.K_Na = 0.016 * self.surface / self.curr_factor
-        self.K_Ca = 0.1 * self.surface / self.curr_factor
+        self.K_Na = self.K_Na_original * self.surface * self.curr_factor
+        self.K_Ca = self.K_Ca_original * self.surface * self.curr_factor
 
         # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)

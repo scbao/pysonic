@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 18:45:07
+# @Last Modified time: 2017-09-28 16:23:35
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
@@ -17,14 +17,14 @@ from PointNICE.plt import plotBatch
 logger.setLevel(logging.INFO)
 
 # Neurons
-neurons = ['RE', 'TC']
+neurons = ['LeechT']
 
 # Stimulation parameters
 stim_params = {
-    'amps': [3.1],  # mA/m2
+    'amps': [-40.],  # mA/m2
     'durations': [0.5],  # s
     'PRFs': [1e2],  # Hz
-    'DFs': [0.1]
+    'DFs': [1.0]
 }
 stim_params['offsets'] = [1.0] * len(stim_params['durations'])  # s
 

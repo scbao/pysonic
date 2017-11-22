@@ -4,23 +4,20 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-12 18:38:39
+# @Last Modified time: 2017-09-12 19:15:05
 
 """ Definition of generic utility functions used in other modules """
 
 from enum import Enum
-from functools import partial
 import os
-# import logging
 import tkinter as tk
 from tkinter import filedialog
 import inspect
+import json
+import yaml
 from openpyxl import load_workbook
 import numpy as np
-import yaml
-import json
 import colorlog
-
 
 from . import channels
 

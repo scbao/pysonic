@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 18:56:42
+# @Last Modified time: 2017-11-22 11:55:10
 
 """ Compare profiles of several specific output variables of NICE simulations. """
 
@@ -27,8 +27,9 @@ if not pkl_filepaths:
 # Comparative plot
 try:
     yvars = ['Qm']
-    labels = ['normal last pulse', 'delayed -1ms', 'delayed +1ms']
-    plotComp(yvars, pkl_filepaths[::-1])
+    # labels = ['classic', 'effective']
+    # labels = ['FS neuron', 'LTS neuron', 'RE neuron', 'RS neuron', 'TC neuron']
+    plotComp(yvars, pkl_filepaths)
 except AssertionError as err:
     logger.error(err)
     sys.exit(1)

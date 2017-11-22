@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 18:42:14
+# @Last Modified time: 2017-09-27 20:36:49
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -19,10 +19,10 @@ from PointNICE.channels import *
 logger.setLevel(logging.DEBUG)
 
 # BLS diameter (m)
-a = 32e-9  
+a = 32e-9
 
 # Channel mechanisms
-neurons = [CorticalRS()]
+neurons = [LeechTouch()]
 
 # Stimulation parameters
 freqs = np.arange(100, 1001, 100) * 1e3  # Hz

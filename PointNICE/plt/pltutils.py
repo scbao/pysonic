@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-12 14:41:37
+# @Last Modified time: 2017-09-24 22:03:04
 
 ''' Plotting utilities '''
 
@@ -596,6 +596,7 @@ def plotGatingKinetics(neuron, fs=15):
 
     logger.info('Computing %s neuron gating kinetics', neuron.name)
     names = neuron.states_names
+    print(names)
     for xname in names:
         Vm_state = True
 
@@ -611,7 +612,10 @@ def plotGatingKinetics(neuron, fs=15):
             xinf_func = getattr(neuron, xinf_func_str)
             taux_func = getattr(neuron, taux_func_str)
             xinf = np.array([xinf_func(v) for v in Vm])
-            taux = np.array([taux_func(v) for v in Vm])
+            if isinstance(taux_func, float):
+                taux = taux_func * np.ones(len(Vm))
+            else:
+                taux = np.array([taux_func(v) for v in Vm])
 
         # 2nd choice: use alphax and betax functions
         elif hasattr(neuron, alphax_func_str) and hasattr(neuron, betax_func_str):

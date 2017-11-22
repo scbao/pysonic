@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-12 18:46:48
+# @Last Modified time: 2017-11-22 11:58:00
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -12,6 +12,7 @@ import sys
 import os
 import logging
 import numpy as np
+
 from PointNICE.utils import logger
 from PointNICE.solvers import setBatchDir, checkBatchLog, runAStimBatch
 from PointNICE.plt import plotBatch
@@ -20,7 +21,7 @@ from PointNICE.plt import plotBatch
 logger.setLevel(logging.INFO)
 
 # Neurons
-neurons = ['LTS']
+neurons = ['LeechT']
 
 # Stimulation parameters
 stim_params = {
@@ -28,7 +29,7 @@ stim_params = {
     'amps': [320e3],  # Pa
     'durations': [150e-3],  # s
     'PRFs': [100.0],  # Hz
-    'DFs': [0.05]
+    'DFs': [1.0]
 }
 stim_params['offsets'] = [100e-3] * len(stim_params['durations'])  # s
 
@@ -38,11 +39,11 @@ try:
     log_filepath, _ = checkBatchLog(batch_dir, 'A-STIM')
 
     # Run A-STIM batch
-    pkl_filepaths = runAStimBatch(batch_dir, log_filepath, neurons, stim_params)
+    pkl_filepaths = runAStimBatch(batch_dir, log_filepath, neurons, stim_params, int_method='hybrid')
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    yvars = {'Q_m': ['Qm'], 'i_{Ca}\ kin.': ['s', 'u', 's2u']}
+    yvars = {'Q_m': ['Qm']}
     plotBatch(pkl_dir, pkl_filepaths, yvars)
 
 except AssertionError as err:
