@@ -9,12 +9,6 @@ conf.py
 # Sublime Workspace files
 *.sublime-workspace
 
-# PKL files
-*.pkl
-
-# Excel files
-*.xlsx
-
 # PNG images
 *.png
 
