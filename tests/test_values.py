@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-12 18:52:17
+# @Last Modified time: 2017-11-27 13:11:08
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -23,7 +23,6 @@ logger.setLevel(logging.INFO)
 
 # List of implemented neurons
 neurons = getNeuronsDict()
-del neurons['LeechT']
 neurons = list(neurons.values())
 
 
@@ -109,8 +108,8 @@ def test_ESTIM():
     toffset = 50e-3  # s
 
     # Reference values
-    Athr_refs = {'FS': 6.91, 'LTS': 1.54, 'RS': 5.03, 'LeechT': 5.54, 'RE': 3.61, 'TC': 4.05}
-    latency_refs = {'FS': 101.00e-3, 'LTS': 128.56e-3, 'RS': 103.81e-3, 'LeechT': 20.22e-3,
+    Athr_refs = {'FS': 6.91, 'LTS': 1.54, 'RS': 5.03, 'LeechT': 4.66, 'RE': 3.61, 'TC': 4.05}
+    latency_refs = {'FS': 101.00e-3, 'LTS': 128.56e-3, 'RS': 103.81e-3, 'LeechT': 21.32e-3,
                     'RE': 148.50e-3, 'TC': 63.46e-3}
 
     for neuron_class in neurons:
@@ -160,9 +159,9 @@ def test_ASTIM():
 
     # Reference values
     Athr_refs = {'FS': 38.67e3, 'LTS': 24.80e3, 'RS': 51.17e3, 'RE': 46.36e3, 'TC': 23.24e3,
-                 'LeechT': None}
+                 'LeechT': 21.48e3}
     latency_refs = {'FS': 63.72e-3, 'LTS': 61.92e-3, 'RS': 62.52e-3, 'RE': 79.20e-3,
-                    'TC': 67.38e-3, 'LeechT': None}
+                    'TC': 67.38e-3, 'LeechT': 23.9e-3}
 
     # Titration for each neuron
     for neuron_class in neurons:

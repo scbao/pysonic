@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-24 22:03:04
+# @Last Modified time: 2017-11-27 11:48:06
 
 ''' Plotting utilities '''
 
@@ -353,7 +353,7 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
 
     iLegends = []
     for k in range(nvars):
-        axes[k].legend(loc='upper left', fontsize=fs)
+        axes[k].legend(loc=7, fontsize=fs)
         iLegends.append(InteractiveLegend(axes[k].legend_, aliases))
 
     plt.show()
