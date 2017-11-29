@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-29 14:50:02
+# @Last Modified time: 2017-11-29 19:26:25
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -409,10 +409,12 @@ class LeechPressure(BaseMech):
     GCaMax = 0.02  # Max. conductance of Calcium current (S/m^2)
     GKCaMax = 8.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
     GL = 5.0  # Conductance of non-specific leakage current (S/m^2)
+    betaw = 1e-4  # beta rate for the open-probability of Calcium-dependent Potassium channels (s-1)
 
     T = 309.15  # Temperature (K, same as in the BilayerSonophore class)
     Rg = 8.314  # Universal gas constant (J.mol^-1.K^-1)
     F = 9.6485e4  # Faraday constant (C/mol)
+    diam = 50e-6  # Cell soma diameter (m)
 
 
     # Default plotting scheme
@@ -428,6 +430,8 @@ class LeechPressure(BaseMech):
 
     def __init__(self):
         ''' Constructor of the class. '''
+
+        self.K = 4 / (self.diam * self.F) * 10  # M/s
 
         # Names and initial states of the channels state probabilities
         self.states_names = ['m', 'h', 'n', 's', 'w', 'C_Na', 'C_Ca']
@@ -542,27 +546,15 @@ class LeechPressure(BaseMech):
         return beta * 1e3  # s-1
 
 
-    def alphaw(self, Vm, C_Ca_in):
+    def alphaw(self, C_Ca_in):
         ''' Compute the alpha rate for the open-probability of Calcium-dependent Potassium channels.
 
-            :param Vm: membrane potential (mV)
             :param C_Ca_in: intracellular Calcium concentration (M)
             :return: rate constant (s-1)
         '''
 
         alpha = 0.1 * C_Ca_in / 10  # ms-1
         return alpha * 1e3  # s-1
-
-
-    def betaw(self, Vm):
-        ''' Compute the beta rate for the open-probability of Calcium-dependent Potassium channels.
-
-            :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
-        '''
-
-        beta = 0.1  # ms-1
-        return beta * 1e3  # s-1
 
 
     def derM(self, Vm, m):
@@ -609,16 +601,15 @@ class LeechPressure(BaseMech):
         return self.alphas(Vm) * (1 - s) - self.betas(Vm) * s
 
 
-    def derW(self, Vm, w, C_Ca_in):
+    def derW(self, w, C_Ca_in):
         ''' Compute the evolution of the open-probability of Calcium-dependent Potassium channels.
 
-            :param Vm: membrane potential (mV)
             :param w: open-probability of Calcium-dependent Potassium channels (prob)
             :param C_Ca_in: intracellular Calcium concentration (M)
             :return: derivative of open-probability w.r.t. time (prob/s)
         '''
 
-        return self.alphaw(Vm, C_Ca_in) * (1 - w) - self.betaw(Vm) * w
+        return self.alphaw(C_Ca_in) * (1 - w) - self.betaw * w
 
 
     def currNa(self, m, h, Vm, C_Na_in):
@@ -718,7 +709,7 @@ class LeechPressure(BaseMech):
         heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
         neq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
         seq = self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm))
-        weq = self.alphaw(Vm, C_Ca_eq) / (self.alphaw(Vm, C_Ca_eq) + self.betaw(Vm))
+        weq = self.alphaw(C_Ca_eq) / (self.alphaw(C_Ca_eq) + self.betaw)
 
         return np.array([meq, heq, neq, seq, weq, C_Na_eq, C_Ca_eq])
 
@@ -734,11 +725,11 @@ class LeechPressure(BaseMech):
         dhdt = self.derH(Vm, h)
         dndt = self.derN(Vm, n)
         dsdt = self.derS(Vm, s)
-        dwdt = self.derW(Vm, w, C_Ca_in)
+        dwdt = self.derW(w, C_Ca_in)
 
         # Intracellular concentrations
-        dCNa_dt = 0.0 * C_Na_in
-        dCCa_dt = 0.0 * C_Ca_in
+        dCNa_dt = -self.currNa(m, h, Vm, C_Na_in) * self.K  # M/s
+        dCCa_dt = -self.currCa(s, Vm, C_Ca_in) * self.K  # M/s
 
         # Pack derivatives and return
         return [dmdt, dhdt, dndt, dsdt, dwdt, dCNa_dt, dCCa_dt]
@@ -756,12 +747,9 @@ class LeechPressure(BaseMech):
         bn_avg = np.mean(self.betan(Vm))
         as_avg = np.mean(self.alphas(Vm))
         bs_avg = np.mean(self.betas(Vm))
-        aw_avg = np.mean(self.alphaw(Vm, self.C_Ca_in0))
-        bw_avg = np.mean(self.betaw(Vm))
 
         # Return array of coefficients
-        return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg, as_avg, bs_avg,
-                         aw_avg, bw_avg])
+        return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg, as_avg, bs_avg])
 
 
 
@@ -770,7 +758,7 @@ class LeechPressure(BaseMech):
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.coeff_names])
-        # Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
+        Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         # Unpack states
         m, h, n, s, w, C_Na_in, C_Ca_in = states
@@ -780,11 +768,13 @@ class LeechPressure(BaseMech):
         dhdt = rates[2] * (1 - h) - rates[3] * h
         dndt = rates[4] * (1 - n) - rates[5] * n
         dsdt = rates[6] * (1 - s) - rates[7] * s
-        dwdt = rates[8] * (1 - w) - rates[9] * w
+
+        # KCa current gating state derivative
+        dwdt = self.derW(w, C_Ca_in)
 
         # Intracellular concentrations
-        dCNa_dt = 0.0 * C_Na_in
-        dCCa_dt = 0.0 * C_Ca_in
+        dCNa_dt = -self.currNa(m, h, Vmeff, C_Na_in) * self.K  # M/s
+        dCCa_dt = -self.currCa(s, Vmeff, C_Ca_in) * self.K  # M/s
 
         # Pack derivatives and return
         return [dmdt, dhdt, dndt, dsdt, dwdt, dCNa_dt, dCCa_dt]
