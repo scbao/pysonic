@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:13:17
+# @Last Modified time: 2017-11-29 13:40:18
 
 import logging
 import warnings
@@ -23,14 +23,14 @@ class BilayerSonophore:
     """ This class contains the geometric and mechanical parameters of the
         Bilayer Sonophore Model, as well as all the core functions needed to
         compute the dynamics (kinetics and kinematics) of the bilayer membrane
-        cavitation, and run dynamic BLS simulations. 
+        cavitation, and run dynamic BLS simulations.
     """
 
     # BIOMECHANICAL PARAMETERS
     T = 309.15  # Temperature (K)
     Rg = 8.314  # Universal gas constant (Pa.m^3.mol^-1.K^-1)
     delta0 = 2.0e-9  # Thickness of the leaflet (m)
-    Delta_ = 1.4e-9  # Initial gap between the two leaflets on a non-charged membrane at equilibrium (m)
+    Delta_ = 1.4e-9  # Initial gap between the two leaflets on a non-charged membrane at equil. (m)
     pDelta = 1.0e5  # Attraction/repulsion pressure coefficient (Pa)
     m = 5.0  # Exponent in the repulsion term (dimensionless)
     n = 3.3  # Exponent in the attraction term (dimensionless)
@@ -47,8 +47,8 @@ class BilayerSonophore:
     c = 1515.0  # Speed of sound in medium (m/s)
 
     # BIOPHYSICAL PARAMETERS
-    epsilon0 = 8.854e-12 # Vacuum permittivity (F/m)
-    epsilonR = 1.0 # Relative permittivity of intramembrane cavity (dimensionless)
+    epsilon0 = 8.854e-12  # Vacuum permittivity (F/m)
+    epsilonR = 1.0  # Relative permittivity of intramembrane cavity (dimensionless)
 
     def __init__(self, diameter, Fdrive, Cm0, Qm0, embedding_depth=0.0):
         """ Constructor of the class.
@@ -56,7 +56,7 @@ class BilayerSonophore:
             :param Fdrive: frequency of acoustic perturbation (Hz)
             :param Cm0: membrane resting capacitance (F/m2)
             :param Qm0: membrane resting charge density (C/m2)
-            :param embedding_depth: depth of the embedding tissue around the membrane (m)  
+            :param embedding_depth: depth of the embedding tissue around the membrane (m)
         """
 
         logger.debug('%.1f nm BLS initialization at %.2f kHz, %.2f nC/cm2',

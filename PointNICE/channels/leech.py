@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-22 11:37:14
+# @Last Modified time: 2017-11-29 14:50:02
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -275,15 +275,11 @@ class LeechTouch(BaseMech):
         INa_eq = self.currNa(meq, heq, Vm)
         CNa_eq = self.K_Na * (-INa_eq)
         ANa_eq = CNa_eq
-        # print('initial Na current: {:.2f} mA/m2'.format(INa_eq))
-        # print('initial Na concentration in pool: {:.2f} arb. unit'.format(CNa_eq))
 
         # KCa current pool concentration and activation steady-state
         ICa_eq = self.currCa(seq, Vm)
         CCa_eq = self.K_Ca * (-ICa_eq)
         ACa_eq = CCa_eq
-        # print('initial Ca current: {:.2f} mA/m2'.format(ICa_eq))
-        # print('initial Ca concentration in pool: {:.2f} arb. unit'.format(CCa_eq))
 
         return np.array([meq, heq, neq, seq, CNa_eq, ANa_eq, CCa_eq, ACa_eq])
 
@@ -357,7 +353,7 @@ class LeechTouch(BaseMech):
         dmdt = rates[0] * (1 - m) - rates[1] * m
         dhdt = rates[2] * (1 - h) - rates[3] * h
         dndt = rates[4] * (1 - n) - rates[5] * n
-        dsdt = rates[6] * (1 - m) - rates[7] * s
+        dsdt = rates[6] * (1 - s) - rates[7] * s
 
         # PumpNa current pool concentration and activation state
         I_Na = self.currNa(m, h, Vmeff)
@@ -371,3 +367,424 @@ class LeechTouch(BaseMech):
 
         # Pack derivatives and return
         return [dmdt, dhdt, dndt, dsdt, dCNa_dt, dANa_dt, dCCa_dt, dACa_dt]
+
+
+
+class LeechPressure(BaseMech):
+    ''' Class defining the membrane channel dynamics of a leech pressure sensory neuron.
+        with 4 different current types:
+            - Inward Sodium current
+            - Outward Potassium current
+            - Inward high-voltage-activated Calcium current
+            - Non-specific leakage current
+            - Calcium-dependent, outward Potassium current
+            - Sodium pump current
+            - Calcium pump current
+
+        Reference:
+        *Baccus, S.A. (1998). Synaptic facilitation by reflected action potentials: enhancement
+        of transmission when nerve impulses reverse direction at axon branch points. Proc. Natl.
+        Acad. Sci. U.S.A. 95, 8345–8350.*
+    '''
+
+    # Name of channel mechanism
+    name = 'LeechP'
+
+    # Cell-specific biophysical parameters
+    Cm0 = 1e-2  # Cell membrane resting capacitance (F/m2)
+    Vm0 = 0.0  # Cell membrane resting potential (mV)
+    C_Na_out = 0.11  # Sodium extracellular concentration (M)
+    C_Ca_out = 1.8e-3  # Calcium extracellular concentration (M)
+    C_Na_in0 = 0.01  # Initial Sodium intracellular concentration (M)
+    C_Ca_in0 = 1e-7  # Initial Calcium intracellular concentration (M)
+    VK = -68.0  # Potassium Nernst potential (mV)
+    VL = -49.0  # Non-specific leakage Nernst potential (mV)
+    INaPmax = 70  # Sodium pump current parameter (mA/m2)
+    khalf_Na = 0.012  # Sodium pump current parameter (M)
+    ksteep_Na = 1e-3  # Sodium pump current parameter (M)
+    iCaS = 0.1  # Calcium pump current parameter (mA/m2)
+    C_Ca_rest = 1e-7  # Calcium pump current parameter (M)
+    GNaMax = 3500.0  # Max. conductance of Sodium current (S/m^2)
+    GKMax = 60.0  # Max. conductance of Potassium current (S/m^2)
+    GCaMax = 0.02  # Max. conductance of Calcium current (S/m^2)
+    GKCaMax = 8.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
+    GL = 5.0  # Conductance of non-specific leakage current (S/m^2)
+
+    T = 309.15  # Temperature (K, same as in the BilayerSonophore class)
+    Rg = 8.314  # Universal gas constant (J.mol^-1.K^-1)
+    F = 9.6485e4  # Faraday constant (C/mol)
+
+
+    # Default plotting scheme
+    pltvars_scheme = {
+        'i_{Na}\ kin.': ['m', 'h', 'm4h'],
+        'i_K\ kin.': ['n'],
+        'i_{Ca}\ kin.': ['s'],
+        'i_{KCa}\ kin.': ['w'],
+        'pools': ['C_Na', 'C_Ca'],
+        'I': ['iNa', 'iK', 'iCa', 'iKCa', 'iPumpNa', 'iPumpCa', 'iL', 'iNet']
+    }
+
+
+    def __init__(self):
+        ''' Constructor of the class. '''
+
+        # Names and initial states of the channels state probabilities
+        self.states_names = ['m', 'h', 'n', 's', 'w', 'C_Na', 'C_Ca']
+        self.states0 = np.array([])
+
+        # Names of the channels effective coefficients
+        self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
+                            'alphas', 'betas', 'alphaw', 'betaw']
+
+        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
+        self.states0 = self.steadyStates(self.Vm0)
+
+
+    def nernst(self, z_ion, C_ion_in, C_ion_out):
+        ''' Return the Nernst potential of a specific ion given its intra and extracellular
+            concentrations.
+
+            :param z_ion: ion valence
+            :param C_ion_in: intracellular ion concentration (M)
+            :param C_ion_out: extracellular ion concentration (M)
+            :return: ion Nernst potential (mV)
+        '''
+
+        return (self.R * self.T) / (z_ion * self.F) * np.log(C_ion_out / C_ion_in) * 1e3
+
+
+    def alpham(self, Vm):
+        ''' Compute the alpha rate for the open-probability of Sodium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        alpha = -0.03 * (Vm + 28) / (np.exp(- (Vm + 28) / 15) - 1)  # ms-1
+        return alpha * 1e3  # s-1
+
+
+    def betam(self, Vm):
+        ''' Compute the beta rate for the open-probability of Sodium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        beta = 2.7 * np.exp(-(Vm + 53) / 18)  # ms-1
+        return beta * 1e3  # s-1
+
+
+    def alphah(self, Vm):
+        ''' Compute the alpha rate for the inactivation-probability of Sodium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        alpha = 0.045 * np.exp(-(Vm + 58) / 18)  # ms-1
+        return alpha * 1e3  # s-1
+
+
+    def betah(self, Vm):
+        ''' Compute the beta rate for the inactivation-probability of Sodium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        beta = 0.72 * (np.exp(-(Vm + 23) / 14) + 1)  # ms-1
+        return beta * 1e3  # s-1
+
+
+    def alphan(self, Vm):
+        ''' Compute the alpha rate for the open-probability of delayed-rectifier Potassium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        alpha = -0.024 * (Vm - 17) / (np.exp(-(Vm - 17) / 8) - 1)  # ms-1
+        return alpha * 1e3  # s-1
+
+
+    def betan(self, Vm):
+        ''' Compute the beta rate for the open-probability of delayed-rectifier Potassium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        beta = 0.2 * np.exp(-(Vm + 48) / 35)  # ms-1
+        return beta * 1e3  # s-1
+
+
+    def alphas(self, Vm):
+        ''' Compute the alpha rate for the open-probability of Calcium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        alpha = -1.5 * (Vm - 20) / (np.exp(-(Vm - 20) / 5) - 1)  # ms-1
+        return alpha * 1e3  # s-1
+
+
+    def betas(self, Vm):
+        ''' Compute the beta rate for the open-probability of Calcium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        beta = 1.5 * np.exp(-(Vm + 25) / 10)  # ms-1
+        return beta * 1e3  # s-1
+
+
+    def alphaw(self, Vm, C_Ca_in):
+        ''' Compute the alpha rate for the open-probability of Calcium-dependent Potassium channels.
+
+            :param Vm: membrane potential (mV)
+            :param C_Ca_in: intracellular Calcium concentration (M)
+            :return: rate constant (s-1)
+        '''
+
+        alpha = 0.1 * C_Ca_in / 10  # ms-1
+        return alpha * 1e3  # s-1
+
+
+    def betaw(self, Vm):
+        ''' Compute the beta rate for the open-probability of Calcium-dependent Potassium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        beta = 0.1  # ms-1
+        return beta * 1e3  # s-1
+
+
+    def derM(self, Vm, m):
+        ''' Compute the evolution of the open-probability of Sodium channels.
+
+            :param Vm: membrane potential (mV)
+            :param m: open-probability of Sodium channels (prob)
+            :return: derivative of open-probability w.r.t. time (prob/s)
+        '''
+
+        return self.alpham(Vm) * (1 - m) - self.betam(Vm) * m
+
+
+    def derH(self, Vm, h):
+        ''' Compute the evolution of the inactivation-probability of Sodium channels.
+
+            :param Vm: membrane potential (mV)
+            :param h: inactivation-probability of Sodium channels (prob)
+            :return: derivative of open-probability w.r.t. time (prob/s)
+        '''
+
+        return self.alphah(Vm) * (1 - h) - self.betah(Vm) * h
+
+
+    def derN(self, Vm, n):
+        ''' Compute the evolution of the open-probability of delayed-rectifier Potassium channels.
+
+            :param Vm: membrane potential (mV)
+            :param n: open-probability of delayed-rectifier Potassium channels (prob)
+            :return: derivative of open-probability w.r.t. time (prob/s)
+        '''
+
+        return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
+
+
+    def derS(self, Vm, s):
+        ''' Compute the evolution of the open-probability of Calcium channels.
+
+            :param Vm: membrane potential (mV)
+            :param s: open-probability of Calcium channels (prob)
+            :return: derivative of open-probability w.r.t. time (prob/s)
+        '''
+
+        return self.alphas(Vm) * (1 - s) - self.betas(Vm) * s
+
+
+    def derW(self, Vm, w, C_Ca_in):
+        ''' Compute the evolution of the open-probability of Calcium-dependent Potassium channels.
+
+            :param Vm: membrane potential (mV)
+            :param w: open-probability of Calcium-dependent Potassium channels (prob)
+            :param C_Ca_in: intracellular Calcium concentration (M)
+            :return: derivative of open-probability w.r.t. time (prob/s)
+        '''
+
+        return self.alphaw(Vm, C_Ca_in) * (1 - w) - self.betaw(Vm) * w
+
+
+    def currNa(self, m, h, Vm, C_Na_in):
+        ''' Compute the inward Sodium current per unit area.
+
+            :param m: open-probability of Sodium channels
+            :param h: inactivation-probability of Sodium channels
+            :param Vm: membrane potential (mV)
+            :param C_Na_in: intracellular Sodium concentration (M)
+            :return: current per unit area (mA/m2)
+        '''
+
+        GNa = self.GNaMax * m**4 * h
+        VNa = self.nernst(1, C_Na_in, self.C_Na_out)  # Sodium Nernst potential
+        return GNa * (Vm - VNa)
+
+
+    def currK(self, n, Vm):
+        ''' Compute the outward, delayed-rectifier Potassium current per unit area.
+
+            :param n: open-probability of delayed-rectifier Potassium channels
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
+
+        GK = self.GKMax * n**2
+        return GK * (Vm - self.VK)
+
+
+    def currCa(self, s, Vm, C_Ca_in):
+        ''' Compute the inward Calcium current per unit area.
+
+            :param s: open-probability of Calcium channels
+            :param Vm: membrane potential (mV)
+            :param C_Ca_in: intracellular Calcium concentration (M)
+            :return: current per unit area (mA/m2)
+        '''
+
+        GCa = self.GCaMax * s
+        VCa = self.nernst(1, C_Ca_in, self.C_Ca_out)  # Calcium Nernst potential
+        return GCa * (Vm - VCa)
+
+
+    def currKCa(self, w, Vm):
+        ''' Compute the outward Calcium-dependent Potassium current per unit area.
+
+            :param w: open-probability of Calcium-dependent Potassium channels
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
+
+        GKCa = self.GKCaMax * w
+        return GKCa * (Vm - self.VK)
+
+
+    def currL(self, Vm):
+        ''' Compute the non-specific leakage current per unit area.
+
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
+
+        return self.GL * (Vm - self.VL)
+
+
+    def currPumpNa(self, C_Na_in):
+        ''' Outward current mimicking the activity of the NaK-ATPase pump. '''
+
+        INaPump = self.iNaPmax / (1 + np.exp((self.khalf_Na - C_Na_in) / self.ksteep_Na))
+        return INaPump / 3
+
+
+    def currPumpCa(self, C_Ca_in):
+        ''' Outward current representing the intracellular Calcium removal. '''
+
+        return self.iCaS * (C_Ca_in - self.C_Ca_rest) / 1.5
+
+
+    def currNet(self, Vm, states):
+        ''' Concrete implementation of the abstract API method. '''
+
+        m, h, n, s, w, C_Na_in, C_Ca_in = states
+        return (self.currNa(m, h, Vm, C_Na_in) + self.currK(n, Vm) + self.currCa(s, Vm, C_Ca_in)
+                + self.currKCa(w, Vm) + self.currL(Vm)
+                + self.currPumpNa(C_Na_in) + self.currPumpCa(C_Ca_in))  # mA/m2
+
+
+    def steadyStates(self, Vm):
+        ''' Concrete implementation of the abstract API method. '''
+
+        # Intracellular concentrations
+        C_Na_eq = self.C_Na_in0
+        C_Ca_eq = self.C_Ca_in0
+
+        # Standard gating dynamics: Solve the equation dx/dt = 0 at Vm for each x-state
+        meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
+        heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
+        neq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
+        seq = self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm))
+        weq = self.alphaw(Vm, C_Ca_eq) / (self.alphaw(Vm, C_Ca_eq) + self.betaw(Vm))
+
+        return np.array([meq, heq, neq, seq, weq, C_Na_eq, C_Ca_eq])
+
+
+    def derStates(self, Vm, states):
+        ''' Concrete implementation of the abstract API method. '''
+
+        # Unpack states
+        m, h, n, s, w, C_Na_in, C_Ca_in = states
+
+        # Standard gating states derivatives
+        dmdt = self.derM(Vm, m)
+        dhdt = self.derH(Vm, h)
+        dndt = self.derN(Vm, n)
+        dsdt = self.derS(Vm, s)
+        dwdt = self.derW(Vm, w, C_Ca_in)
+
+        # Intracellular concentrations
+        dCNa_dt = 0.0 * C_Na_in
+        dCCa_dt = 0.0 * C_Ca_in
+
+        # Pack derivatives and return
+        return [dmdt, dhdt, dndt, dsdt, dwdt, dCNa_dt, dCCa_dt]
+
+
+    def getEffRates(self, Vm):
+        ''' Concrete implementation of the abstract API method. '''
+
+        # Compute average cycle value for rate constants
+        am_avg = np.mean(self.alpham(Vm))
+        bm_avg = np.mean(self.betam(Vm))
+        ah_avg = np.mean(self.alphah(Vm))
+        bh_avg = np.mean(self.betah(Vm))
+        an_avg = np.mean(self.alphan(Vm))
+        bn_avg = np.mean(self.betan(Vm))
+        as_avg = np.mean(self.alphas(Vm))
+        bs_avg = np.mean(self.betas(Vm))
+        aw_avg = np.mean(self.alphaw(Vm, self.C_Ca_in0))
+        bw_avg = np.mean(self.betaw(Vm))
+
+        # Return array of coefficients
+        return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg, as_avg, bs_avg,
+                         aw_avg, bw_avg])
+
+
+
+    def derStatesEff(self, Qm, states, interp_data):
+        ''' Concrete implementation of the abstract API method. '''
+
+        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
+                          for rn in self.coeff_names])
+        # Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
+
+        # Unpack states
+        m, h, n, s, w, C_Na_in, C_Ca_in = states
+
+        # Standard gating states derivatives
+        dmdt = rates[0] * (1 - m) - rates[1] * m
+        dhdt = rates[2] * (1 - h) - rates[3] * h
+        dndt = rates[4] * (1 - n) - rates[5] * n
+        dsdt = rates[6] * (1 - s) - rates[7] * s
+        dwdt = rates[8] * (1 - w) - rates[9] * w
+
+        # Intracellular concentrations
+        dCNa_dt = 0.0 * C_Na_in
+        dCCa_dt = 0.0 * C_Ca_in
+
+        # Pack derivatives and return
+        return [dmdt, dhdt, dndt, dsdt, dwdt, dCNa_dt, dCCa_dt]

@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-24 15:08:45
+# @Last Modified time: 2017-11-29 14:47:42
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -29,7 +29,7 @@ stim_params = {
     'amps': [100e3],  # Pa
     'durations': [150e-3],  # s
     'PRFs': [100.0],  # Hz
-    'DFs': [1.0]
+    'DFs': [0.05]
 }
 stim_params['offsets'] = [100e-3] * len(stim_params['durations'])  # s
 
@@ -40,7 +40,7 @@ try:
 
     # Run A-STIM batch
     pkl_filepaths = runAStimBatch(batch_dir, log_filepath, neurons, stim_params,
-                                  int_method='classic')
+                                  int_method='effective')
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles

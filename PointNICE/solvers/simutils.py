@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-24 23:17:06
+# @Last Modified time: 2017-11-29 14:54:07
 
 """ Utility functions used in simulations """
 
@@ -32,8 +32,8 @@ logger = logging.getLogger('PointNICE')
 MECH_code = 'MECH_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.1f}nCcm2'
 ESTIM_CW_code = 'ESTIM_{}_CW_{:.1f}mA_per_m2_{:.0f}ms'
 ESTIM_PW_code = 'ESTIM_{}_PW_{:.1f}mA_per_m2_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}'
-ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
-ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.3f}_{}'
+ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
+ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}_{}'
 
 # Parameters units
 ASTIM_params = {
@@ -456,10 +456,10 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
     '''
 
     if DF == 1.0:
-        simcode = ASTIM_CW_code.format(neuron.name, Fdrive * 1e-3, Adrive * 1e-3,
+        simcode = ASTIM_CW_code.format(neuron.name, solver.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3,
                                        tstim * 1e3, int_method)
     else:
-        simcode = ASTIM_PW_code.format(neuron.name, Fdrive * 1e-3, Adrive * 1e-3,
+        simcode = ASTIM_PW_code.format(neuron.name, solver.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3,
                                        tstim * 1e3, PRF * 1e-3, DF, int_method)
 
     # Get date and time info
