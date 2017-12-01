@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-29 19:26:25
+# @Last Modified time: 2017-12-01 08:59:02
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -392,14 +392,14 @@ class LeechPressure(BaseMech):
 
     # Cell-specific biophysical parameters
     Cm0 = 1e-2  # Cell membrane resting capacitance (F/m2)
-    Vm0 = 0.0  # Cell membrane resting potential (mV)
+    Vm0 = -53.9  # Cell membrane resting potential (mV)
     C_Na_out = 0.11  # Sodium extracellular concentration (M)
     C_Ca_out = 1.8e-3  # Calcium extracellular concentration (M)
     C_Na_in0 = 0.01  # Initial Sodium intracellular concentration (M)
     C_Ca_in0 = 1e-7  # Initial Calcium intracellular concentration (M)
     VK = -68.0  # Potassium Nernst potential (mV)
     VL = -49.0  # Non-specific leakage Nernst potential (mV)
-    INaPmax = 70  # Sodium pump current parameter (mA/m2)
+    INaPmax = 70.0  # Sodium pump current parameter (mA/m2)
     khalf_Na = 0.012  # Sodium pump current parameter (M)
     ksteep_Na = 1e-3  # Sodium pump current parameter (M)
     iCaS = 0.1  # Calcium pump current parameter (mA/m2)
@@ -424,13 +424,15 @@ class LeechPressure(BaseMech):
         'i_{Ca}\ kin.': ['s'],
         'i_{KCa}\ kin.': ['w'],
         'pools': ['C_Na', 'C_Ca'],
-        'I': ['iNa', 'iK', 'iCa', 'iKCa', 'iPumpNa', 'iPumpCa', 'iL', 'iNet']
+        'I': ['iNa2', 'iK', 'iCa2', 'iKCa2', 'iPumpNa2', 'iPumpCa2', 'iL', 'iNet']
     }
 
 
     def __init__(self):
         ''' Constructor of the class. '''
 
+        # Conversion constant from membrane ionic current into
+        # change rate of intracellular ionic concentration
         self.K = 4 / (self.diam * self.F) * 10  # M/s
 
         # Names and initial states of the channels state probabilities
@@ -455,7 +457,7 @@ class LeechPressure(BaseMech):
             :return: ion Nernst potential (mV)
         '''
 
-        return (self.R * self.T) / (z_ion * self.F) * np.log(C_ion_out / C_ion_in) * 1e3
+        return (self.Rg * self.T) / (z_ion * self.F) * np.log(C_ion_out / C_ion_in) * 1e3
 
 
     def alpham(self, Vm):
@@ -678,7 +680,7 @@ class LeechPressure(BaseMech):
     def currPumpNa(self, C_Na_in):
         ''' Outward current mimicking the activity of the NaK-ATPase pump. '''
 
-        INaPump = self.iNaPmax / (1 + np.exp((self.khalf_Na - C_Na_in) / self.ksteep_Na))
+        INaPump = self.INaPmax / (1 + np.exp((self.khalf_Na - C_Na_in) / self.ksteep_Na))
         return INaPump / 3
 
 

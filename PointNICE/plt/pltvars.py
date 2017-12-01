@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-24 23:31:06
+# @Last Modified time: 2017-12-01 08:55:35
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -131,6 +131,16 @@ pltvars = {
         'alias': 'data["m"]**3 * data["h"]'
     },
 
+    'm4h': {
+        'desc': 'iNa relative conductance',
+        'label': 'm^4h',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1,
+        'alias': 'data["m"]**4 * data["h"]'
+    },
+
     'n': {
         'desc': 'iK activation gate opening',
         'label': 'n-gate',
@@ -177,6 +187,15 @@ pltvars = {
         'alias': 'data["s"]**2 * data["u"]'
     },
 
+    'w': {
+        'desc': 'iKCa activation gates opening',
+        'label': 'w-gate',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1
+    },
+
     'O': {
         'desc': 'iH activation gate opening',
         'label': 'O',
@@ -218,6 +237,15 @@ pltvars = {
     'C_Ca': {
         'desc': 'sumbmembrane Ca2+ concentration',
         'label': '[Ca^{2+}]_i',
+        'unit': 'uM',
+        'factor': 1e6,
+        'min': 0,
+        'max': 150.0
+    },
+
+    'C_Na': {
+        'desc': 'sumbmembrane Na+ concentration',
+        'label': '[Na^+]_i',
         'unit': 'uM',
         'factor': 1e6,
         'min': 0,
@@ -280,6 +308,14 @@ pltvars = {
         'alias': 'neuron.currNa(data["m"], data["h"], data["Vm"])'
     },
 
+    'iNa2': {
+        'desc': 'Sodium current',
+        'label': 'I_{Na}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currNa(data["m"], data["h"], data["Vm"], data["C_Na"])'
+    },
+
     'iK': {
         'desc': 'delayed-rectifier Potassium current',
         'label': 'I_K',
@@ -313,11 +349,19 @@ pltvars = {
     },
 
     'iCa': {
-        'desc': 'leech low-threshold Calcium current',
+        'desc': 'leech Calcium current',
         'label': 'I_{Ca}',
         'unit': 'A/m^2',
         'factor': 1e-3,
         'alias': 'neuron.currCa(data["s"], data["Vm"])'
+    },
+
+    'iCa2': {
+        'desc': 'leech Calcium current',
+        'label': 'I_{Ca}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currCa(data["s"], data["Vm"], data["C_Ca"])'
     },
 
     'iH': {
@@ -344,12 +388,36 @@ pltvars = {
         'alias': 'neuron.currKCa(data["A_Ca"], data["Vm"])'
     },
 
+    'iKCa2': {
+        'desc': 'Calcium-activated Potassium current',
+        'label': 'I_{KCa}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currKCa(data["w"], data["Vm"])'
+    },
+
     'iPumpNa': {
         'desc': 'Outward current mimicking the activity of the NaK-ATPase pump',
         'label': 'I_{PumpNa}',
         'unit': 'A/m^2',
         'factor': 1e-3,
         'alias': 'neuron.currPumpNa(data["A_Na"], data["Vm"])'
+    },
+
+    'iPumpNa2': {
+        'desc': 'Outward current mimicking the activity of the NaK-ATPase pump',
+        'label': 'I_{PumpNa}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currPumpNa(data["C_Na"])'
+    },
+
+    'iPumpCa2': {
+        'desc': 'Outward current describing the removal of Ca2+ from the intracellular space',
+        'label': 'I_{PumpCa}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currPumpCa(data["C_Ca"])'
     },
 
     'iNet': {
