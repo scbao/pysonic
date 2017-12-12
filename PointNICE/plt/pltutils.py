@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-27 11:48:06
+# @Last Modified time: 2017-12-01 21:53:11
 
 ''' Plotting utilities '''
 
@@ -622,7 +622,10 @@ def plotGatingKinetics(neuron, fs=15):
             alphax_func = getattr(neuron, alphax_func_str)
             betax_func = getattr(neuron, betax_func_str)
             alphax = np.array([alphax_func(v) for v in Vm])
-            betax = np.array([betax_func(v) for v in Vm])
+            if isinstance(betax_func, float):
+                betax = betax_func * np.ones(len(Vm))
+            else:
+                betax = np.array([betax_func(v) for v in Vm])
             taux = 1.0 / (alphax + betax)
             xinf = taux * alphax
 
@@ -643,7 +646,7 @@ def plotGatingKinetics(neuron, fs=15):
 
     ax = axes[0]
     ax.get_xaxis().set_ticklabels([])
-    ax.set_ylabel('$X_{\infty}\ (mV)$', fontsize=fs)
+    ax.set_ylabel('$X_{\infty}$', fontsize=fs)
     for xname in names:
         if xname in xinf_dict:
             ax.plot(Vm, xinf_dict[xname], lw=2, label='$' + xname + '_{\infty}$')

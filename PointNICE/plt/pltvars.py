@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-12-01 08:55:35
+# @Last Modified time: 2017-12-11 16:55:26
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -187,9 +187,9 @@ pltvars = {
         'alias': 'data["s"]**2 * data["u"]'
     },
 
-    'w': {
+    'c': {
         'desc': 'iKCa activation gates opening',
-        'label': 'w-gate',
+        'label': 'c-gate',
         'unit': None,
         'factor': 1,
         'min': -0.1,
@@ -238,18 +238,18 @@ pltvars = {
         'desc': 'sumbmembrane Ca2+ concentration',
         'label': '[Ca^{2+}]_i',
         'unit': 'uM',
-        'factor': 1e6,
-        'min': 0,
-        'max': 150.0
+        'factor': 1e6
+        # 'min': 0,
+        # 'max': 150.0
     },
 
     'C_Na': {
         'desc': 'sumbmembrane Na+ concentration',
         'label': '[Na^+]_i',
         'unit': 'uM',
-        'factor': 1e6,
-        'min': 0,
-        'max': 150.0
+        'factor': 1e6
+        # 'min': 0,
+        # 'max': 150.0
     },
 
     'C_Na_arb': {
@@ -393,7 +393,7 @@ pltvars = {
         'label': 'I_{KCa}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currKCa(data["w"], data["Vm"])'
+        'alias': 'neuron.currKCa(data["c"], data["Vm"])'
     },
 
     'iPumpNa': {

@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-12-01 08:59:02
+# @Last Modified time: 2017-12-12 14:53:35
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -392,24 +392,28 @@ class LeechPressure(BaseMech):
 
     # Cell-specific biophysical parameters
     Cm0 = 1e-2  # Cell membrane resting capacitance (F/m2)
-    Vm0 = -53.9  # Cell membrane resting potential (mV)
-    C_Na_out = 0.11  # Sodium extracellular concentration (M)
-    C_Ca_out = 1.8e-3  # Calcium extracellular concentration (M)
+    Vm0 = -48.865  # Cell membrane resting potential (mV)
+
+    # C_Na_out = 0.11  # Sodium extracellular concentration (M)
+    # C_Ca_out = 1.8e-3  # Calcium extracellular concentration (M)
     C_Na_in0 = 0.01  # Initial Sodium intracellular concentration (M)
     C_Ca_in0 = 1e-7  # Initial Calcium intracellular concentration (M)
+
+    VNa = 60  # Sodium Nernst potential, from MOD file on ModelDB (mV)
+    VCa = 125  # Calcium Nernst potential, from MOD file on ModelDB (mV)
     VK = -68.0  # Potassium Nernst potential (mV)
     VL = -49.0  # Non-specific leakage Nernst potential (mV)
     INaPmax = 70.0  # Sodium pump current parameter (mA/m2)
     khalf_Na = 0.012  # Sodium pump current parameter (M)
     ksteep_Na = 1e-3  # Sodium pump current parameter (M)
     iCaS = 0.1  # Calcium pump current parameter (mA/m2)
-    C_Ca_rest = 1e-7  # Calcium pump current parameter (M)
     GNaMax = 3500.0  # Max. conductance of Sodium current (S/m^2)
     GKMax = 60.0  # Max. conductance of Potassium current (S/m^2)
     GCaMax = 0.02  # Max. conductance of Calcium current (S/m^2)
     GKCaMax = 8.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
     GL = 5.0  # Conductance of non-specific leakage current (S/m^2)
-    betaw = 1e-4  # beta rate for the open-probability of Calcium-dependent Potassium channels (s-1)
+    alphaC_sf = 1e-5  # Calcium activation rate constant scaling factor (M)
+    betaC = 0.1e3  # beta rate for the open-probability of Ca2+-dependent Potassium channels (s-1)
 
     T = 309.15  # Temperature (K, same as in the BilayerSonophore class)
     Rg = 8.314  # Universal gas constant (J.mol^-1.K^-1)
@@ -422,9 +426,9 @@ class LeechPressure(BaseMech):
         'i_{Na}\ kin.': ['m', 'h', 'm4h'],
         'i_K\ kin.': ['n'],
         'i_{Ca}\ kin.': ['s'],
-        'i_{KCa}\ kin.': ['w'],
+        'i_{KCa}\ kin.': ['c'],
         'pools': ['C_Na', 'C_Ca'],
-        'I': ['iNa2', 'iK', 'iCa2', 'iKCa2', 'iPumpNa2', 'iPumpCa2', 'iL', 'iNet']
+        'I': ['iNa', 'iK', 'iCa', 'iKCa2', 'iPumpNa2', 'iPumpCa2', 'iL', 'iNet']
     }
 
 
@@ -433,15 +437,15 @@ class LeechPressure(BaseMech):
 
         # Conversion constant from membrane ionic current into
         # change rate of intracellular ionic concentration
-        self.K = 4 / (self.diam * self.F) * 10  # M/s
+        self.K = 4 / (self.diam * self.F) * 1e-6  # M/s
 
         # Names and initial states of the channels state probabilities
-        self.states_names = ['m', 'h', 'n', 's', 'w', 'C_Na', 'C_Ca']
+        self.states_names = ['m', 'h', 'n', 's', 'c', 'C_Na', 'C_Ca']
         self.states0 = np.array([])
 
         # Names of the channels effective coefficients
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                            'alphas', 'betas', 'alphaw', 'betaw']
+                            'alphas', 'betas', 'alphac', 'betac']
 
         # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
@@ -498,9 +502,12 @@ class LeechPressure(BaseMech):
 
             :param Vm: membrane potential (mV)
             :return: rate constant (s-1)
+
+            .. warning:: the original paper contains an error (multiplication) in the
+            expression of this rate constant, corrected in the mod file on ModelDB (division).
         '''
 
-        beta = 0.72 * (np.exp(-(Vm + 23) / 14) + 1)  # ms-1
+        beta = 0.72 / (np.exp(-(Vm + 23) / 14) + 1)  # ms-1
         return beta * 1e3  # s-1
 
 
@@ -548,14 +555,14 @@ class LeechPressure(BaseMech):
         return beta * 1e3  # s-1
 
 
-    def alphaw(self, C_Ca_in):
+    def alphaC(self, C_Ca_in):
         ''' Compute the alpha rate for the open-probability of Calcium-dependent Potassium channels.
 
             :param C_Ca_in: intracellular Calcium concentration (M)
             :return: rate constant (s-1)
         '''
 
-        alpha = 0.1 * C_Ca_in / 10  # ms-1
+        alpha = 0.1 * C_Ca_in / self.alphaC_sf  # ms-1
         return alpha * 1e3  # s-1
 
 
@@ -603,30 +610,29 @@ class LeechPressure(BaseMech):
         return self.alphas(Vm) * (1 - s) - self.betas(Vm) * s
 
 
-    def derW(self, w, C_Ca_in):
+    def derC(self, c, C_Ca_in):
         ''' Compute the evolution of the open-probability of Calcium-dependent Potassium channels.
 
-            :param w: open-probability of Calcium-dependent Potassium channels (prob)
+            :param c: open-probability of Calcium-dependent Potassium channels (prob)
             :param C_Ca_in: intracellular Calcium concentration (M)
             :return: derivative of open-probability w.r.t. time (prob/s)
         '''
 
-        return self.alphaw(C_Ca_in) * (1 - w) - self.betaw * w
+        return self.alphaC(C_Ca_in) * (1 - c) - self.betaC * c
 
 
-    def currNa(self, m, h, Vm, C_Na_in):
+    def currNa(self, m, h, Vm):
         ''' Compute the inward Sodium current per unit area.
 
             :param m: open-probability of Sodium channels
             :param h: inactivation-probability of Sodium channels
             :param Vm: membrane potential (mV)
-            :param C_Na_in: intracellular Sodium concentration (M)
             :return: current per unit area (mA/m2)
         '''
 
         GNa = self.GNaMax * m**4 * h
-        VNa = self.nernst(1, C_Na_in, self.C_Na_out)  # Sodium Nernst potential
-        return GNa * (Vm - VNa)
+        # VNa = self.nernst(1, C_Na_in, self.C_Na_out)  # Sodium Nernst potential
+        return GNa * (Vm - self.VNa)
 
 
     def currK(self, n, Vm):
@@ -641,29 +647,28 @@ class LeechPressure(BaseMech):
         return GK * (Vm - self.VK)
 
 
-    def currCa(self, s, Vm, C_Ca_in):
+    def currCa(self, s, Vm):
         ''' Compute the inward Calcium current per unit area.
 
             :param s: open-probability of Calcium channels
             :param Vm: membrane potential (mV)
-            :param C_Ca_in: intracellular Calcium concentration (M)
             :return: current per unit area (mA/m2)
         '''
 
         GCa = self.GCaMax * s
-        VCa = self.nernst(1, C_Ca_in, self.C_Ca_out)  # Calcium Nernst potential
-        return GCa * (Vm - VCa)
+        # VCa = self.nernst(1, C_Ca_in, self.C_Ca_out)  # Calcium Nernst potential
+        return GCa * (Vm - self.VCa)
 
 
-    def currKCa(self, w, Vm):
+    def currKCa(self, c, Vm):
         ''' Compute the outward Calcium-dependent Potassium current per unit area.
 
-            :param w: open-probability of Calcium-dependent Potassium channels
+            :param c: open-probability of Calcium-dependent Potassium channels
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
 
-        GKCa = self.GKCaMax * w
+        GKCa = self.GKCaMax * c
         return GKCa * (Vm - self.VK)
 
 
@@ -678,25 +683,32 @@ class LeechPressure(BaseMech):
 
 
     def currPumpNa(self, C_Na_in):
-        ''' Outward current mimicking the activity of the NaK-ATPase pump. '''
+        ''' Outward current mimicking the activity of the NaK-ATPase pump.
 
-        INaPump = self.INaPmax / (1 + np.exp((self.khalf_Na - C_Na_in) / self.ksteep_Na))
-        return INaPump / 3
+            :param C_Na_in: intracellular Sodium concentration (M)
+            :return: current per unit area (mA/m2)
+        '''
+
+        return self.INaPmax / (1 + np.exp((self.khalf_Na - C_Na_in) / self.ksteep_Na))
 
 
     def currPumpCa(self, C_Ca_in):
-        ''' Outward current representing the intracellular Calcium removal. '''
+        ''' Outward current representing the activity of a Calcium pump.
 
-        return self.iCaS * (C_Ca_in - self.C_Ca_rest) / 1.5
+            :param C_Na_in: intracellular Sodium concentration (M)
+            :return: current per unit area (mA/m2)
+        '''
+
+        return self.iCaS * (C_Ca_in - self.C_Ca_in0) / 1.5
 
 
     def currNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
-        m, h, n, s, w, C_Na_in, C_Ca_in = states
-        return (self.currNa(m, h, Vm, C_Na_in) + self.currK(n, Vm) + self.currCa(s, Vm, C_Ca_in)
-                + self.currKCa(w, Vm) + self.currL(Vm)
-                + self.currPumpNa(C_Na_in) + self.currPumpCa(C_Ca_in))  # mA/m2
+        m, h, n, s, c, C_Na_in, C_Ca_in = states
+        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm)
+                + self.currKCa(c, Vm) + self.currL(Vm)
+                + (self.currPumpNa(C_Na_in) / 3.) + self.currPumpCa(C_Ca_in))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -711,30 +723,30 @@ class LeechPressure(BaseMech):
         heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
         neq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
         seq = self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm))
-        weq = self.alphaw(C_Ca_eq) / (self.alphaw(C_Ca_eq) + self.betaw)
+        ceq = self.alphaC(C_Ca_eq) / (self.alphaC(C_Ca_eq) + self.betaC)
 
-        return np.array([meq, heq, neq, seq, weq, C_Na_eq, C_Ca_eq])
+        return np.array([meq, heq, neq, seq, ceq, C_Na_eq, C_Ca_eq])
 
 
     def derStates(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         # Unpack states
-        m, h, n, s, w, C_Na_in, C_Ca_in = states
+        m, h, n, s, c, C_Na_in, C_Ca_in = states
 
         # Standard gating states derivatives
         dmdt = self.derM(Vm, m)
         dhdt = self.derH(Vm, h)
         dndt = self.derN(Vm, n)
         dsdt = self.derS(Vm, s)
-        dwdt = self.derW(w, C_Ca_in)
+        dcdt = self.derC(c, C_Ca_in)
 
         # Intracellular concentrations
-        dCNa_dt = -self.currNa(m, h, Vm, C_Na_in) * self.K  # M/s
-        dCCa_dt = -self.currCa(s, Vm, C_Ca_in) * self.K  # M/s
+        dCNa_dt = - (self.currNa(m, h, Vm) + self.currPumpNa(C_Na_in)) * self.K  # M/s
+        dCCa_dt = -(self.currCa(s, Vm) + self.currPumpCa(C_Ca_in)) * self.K  # M/s
 
         # Pack derivatives and return
-        return [dmdt, dhdt, dndt, dsdt, dwdt, dCNa_dt, dCCa_dt]
+        return [dmdt, dhdt, dndt, dsdt, dcdt, dCNa_dt, dCCa_dt]
 
 
     def getEffRates(self, Vm):
@@ -763,7 +775,7 @@ class LeechPressure(BaseMech):
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         # Unpack states
-        m, h, n, s, w, C_Na_in, C_Ca_in = states
+        m, h, n, s, c, C_Na_in, C_Ca_in = states
 
         # Standard gating states derivatives
         dmdt = rates[0] * (1 - m) - rates[1] * m
@@ -772,11 +784,11 @@ class LeechPressure(BaseMech):
         dsdt = rates[6] * (1 - s) - rates[7] * s
 
         # KCa current gating state derivative
-        dwdt = self.derW(w, C_Ca_in)
+        dcdt = self.derC(c, C_Ca_in)
 
         # Intracellular concentrations
-        dCNa_dt = -self.currNa(m, h, Vmeff, C_Na_in) * self.K  # M/s
-        dCCa_dt = -self.currCa(s, Vmeff, C_Ca_in) * self.K  # M/s
+        dCNa_dt = - (self.currNa(m, h, Vmeff) + self.currPumpNa(C_Na_in)) * self.K  # M/s
+        dCCa_dt = -(self.currCa(s, Vmeff) + self.currPumpCa(C_Ca_in)) * self.K  # M/s
 
         # Pack derivatives and return
-        return [dmdt, dhdt, dndt, dsdt, dwdt, dCNa_dt, dCCa_dt]
+        return [dmdt, dhdt, dndt, dsdt, dcdt, dCNa_dt, dCCa_dt]
