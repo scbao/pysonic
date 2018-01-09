@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-12-01 15:45:07
+# @Last Modified time: 2017-12-13 11:06:51
 
 """ Plot the voltage-dependent steady-states and time constants of activation and inactivation
     gates of the different ionic currents involved in the neuron's membrane. """
@@ -13,7 +13,7 @@ from PointNICE.plt import plotGatingKinetics
 from PointNICE.channels import *
 
 # Instantiate neuron(s)
-neurons = [LeechPressure()]
+neurons = [LeechRetzius()]
 
 # Plot gating kinetics for each neuron(s)
 for neuron in neurons:

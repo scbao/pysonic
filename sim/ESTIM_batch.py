@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-12-12 15:10:12
+# @Last Modified time: 2018-01-09 14:28:57
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
@@ -21,10 +21,10 @@ neurons = ['LeechP']
 
 # Stimulation parameters
 stim_params = {
-    'amps': [15.],  # mA/m2
+    'amps': [15.0],  # mA/m2
     'durations': [0.5],  # s
-    'PRFs': [1e2],  # Hz
-    'DFs': [1.0]
+    'PRFs': [100],  # Hz
+    'DFs': [1.]
 }
 stim_params['offsets'] = [1.0] * len(stim_params['durations'])  # s
 

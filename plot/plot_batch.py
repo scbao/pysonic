@@ -4,7 +4,7 @@
 # @Date:   2017-03-20 12:19:55
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-24 14:02:31
+# @Last Modified time: 2017-12-18 18:52:01
 
 """ Batch plot profiles of several specific output variables of NICE simulations. """
 

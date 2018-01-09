@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-12-11 16:55:26
+# @Last Modified time: 2017-12-13 11:26:44
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -196,6 +196,34 @@ pltvars = {
         'max': 1.1
     },
 
+    'a': {
+        'desc': 'iKA activation gates opening',
+        'label': 'a-gate',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1
+    },
+
+    'b': {
+        'desc': 'iKA inactivation gates opening',
+        'label': 'b-gate',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1
+    },
+
+    'ab': {
+        'desc': 'iKA relative conductance',
+        'label': 'ab',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1,
+        'alias': 'data["a"] * data["b"]'
+    },
+
     'O': {
         'desc': 'iH activation gate opening',
         'label': 'O',
@@ -330,6 +358,14 @@ pltvars = {
         'unit': 'A/m^2',
         'factor': 1e-3,
         'alias': 'neuron.currM(data["p"], data["Vm"])'
+    },
+
+    'iA': {
+        'desc': 'transient Potassium current',
+        'label': 'I_A',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currA(data["a"], data["b"], data["Vm"])'
     },
 
     'iT': {

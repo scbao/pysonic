@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-24 23:18:50
+# @Last Modified time: 2017-12-12 15:28:23
 
 """ Run simulations of the HH system with injected electric current,
 and plot resulting dynamics. """
@@ -22,7 +22,7 @@ from PointNICE.channels import *
 
 
 # Create channels mechanism
-neuron = LeechTouch()
+neuron = LeechPressure()
 for i in range(len(neuron.states_names)):
     print('{}0 = {:.2f}'.format(neuron.states_names[i], neuron.states0[i]))
 
