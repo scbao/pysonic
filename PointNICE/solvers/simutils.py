@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-29 14:54:07
+# @Last Modified time: 2018-01-16 20:05:34
 
 """ Utility functions used in simulations """
 
@@ -295,7 +295,7 @@ def detectSpikes(t, Qm, min_amp, min_dt):
         n_spikes = i_spikes.size
         if n_spikes > 1:
             first_to_last_spike = t[i_spikes[-1]] - t[i_spikes[0]]  # s
-            spike_rate = n_spikes / first_to_last_spike  # spikes/s
+            spike_rate = (n_spikes - 1) / first_to_last_spike  # spikes/s
         else:
             spike_rate = 'N/A'
     else:
