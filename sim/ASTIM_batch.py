@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-29 14:47:42
+# @Last Modified time: 2018-02-27 15:15:46
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -21,7 +21,7 @@ from PointNICE.plt import plotBatch
 logger.setLevel(logging.DEBUG)
 
 # Neurons
-neurons = ['LeechT']
+neurons = ['LeechP']
 
 # Stimulation parameters
 stim_params = {
@@ -29,7 +29,7 @@ stim_params = {
     'amps': [100e3],  # Pa
     'durations': [150e-3],  # s
     'PRFs': [100.0],  # Hz
-    'DFs': [0.05]
+    'DFs': [1]
 }
 stim_params['offsets'] = [100e-3] * len(stim_params['durations'])  # s
 

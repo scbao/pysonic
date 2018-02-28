@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 18:44:19
+# @Last Modified time: 2018-01-26 10:46:35
 
 """ Run batch acoustic titrations of specific "point-neuron" models. """
 
@@ -17,18 +17,18 @@ from PointNICE.solvers import setBatchDir, checkBatchLog, titrateAStimBatch
 from PointNICE.plt import plotBatch
 
 # Set logging level
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # Channels mechanisms
 neurons = ['RS']
 
 # Stimulation parameters
 stim_params = {
-    'freqs': [3.5e5],  # Hz
-    'amps': [100e3],  # Pa
-    'durations': [50e-3],  # s
+    'freqs': [5e5],  # Hz
+    # 'amps': [100e3],  # Pa
+    'durations': [100e-3],  # s
     'PRFs': [1e2],  # Hz
-    # 'DFs': [1.0]
+    'DFs': [1.0, 0.05]
 }
 
 try:

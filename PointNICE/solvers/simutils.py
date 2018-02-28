@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-01-16 20:05:34
+# @Last Modified time: 2018-01-26 12:07:01
 
 """ Utility functions used in simulations """
 
@@ -729,7 +729,10 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
                  n_spikes, "s" if n_spikes > 1 else "")
 
     # If accurate threshold is found, return simulation results
-    if (interval[1] - interval[0]) <= thr and n_spikes == 1:
+    if (interval[1] - interval[0]) <= thr:
+        if n_spikes == 0:
+            value = np.nan
+            logger.warning('no spikes detected within titration interval')
         return (value, t, y, states, latency)
 
     # Otherwise, refine titration interval and iterate recursively
@@ -764,23 +767,22 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
 
     # Define default parameters
     int_method = 'effective'
-    offset = 30e-3
 
     # Determine titration parameter and titrations list
     if 'durations' not in stim_params:
         t_type = 't'
-        sim_queue = createSimQueue(stim_params['amps'], [None], [offset],
+        sim_queue = createSimQueue(stim_params['amps'], [None], [TITRATION_T_OFFSET],
                                    stim_params['PRFs'], stim_params['DFs'])
         # sim_queue = np.delete(sim_queue, 1, axis=1)
     elif 'amps' not in stim_params:
         t_type = 'A'
         sim_queue = createSimQueue([None], stim_params['durations'],
-                                   [offset] * len(stim_params['durations']),
+                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
                                    stim_params['PRFs'], stim_params['DFs'])
     elif 'DF' not in stim_params:
         t_type = 'DF'
         sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
-                                   [offset] * len(stim_params['durations']),
+                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
                                    stim_params['PRFs'], [None])
 
     nqueue = sim_queue.shape[0]
@@ -861,10 +863,9 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
                                                        DF, int_method)
 
                     # Store data in dictionary
-                    bls_params['biophys']['Qm0'] = solver.Qm0
                     data = {
-                        'a': a,
-                        'd': d,
+                        'a': solver.a,
+                        'd': solver.d,
                         'Fdrive': Fdrive,
                         'Adrive': Adrive,
                         'phi': np.pi,
@@ -942,23 +943,20 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
 
     logger.info("Starting E-STIM titration batch")
 
-    # Define default parameters
-    offset = 30e-3
-
     # Determine titration parameter and titrations list
     if 'durations' not in stim_params:
         t_type = 't'
-        sim_queue = createSimQueue(stim_params['amps'], [None], [offset],
+        sim_queue = createSimQueue(stim_params['amps'], [None], [TITRATION_T_OFFSET],
                                    stim_params['PRFs'], stim_params['DFs'])
     elif 'amps' not in stim_params:
         t_type = 'A'
         sim_queue = createSimQueue([None], stim_params['durations'],
-                                   [offset] * len(stim_params['durations']),
+                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
                                    stim_params['PRFs'], stim_params['DFs'])
     elif 'DF' not in stim_params:
         t_type = 'DF'
         sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
-                                   [offset] * len(stim_params['durations']),
+                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
                                    stim_params['PRFs'], [None])
 
     nqueue = sim_queue.shape[0]

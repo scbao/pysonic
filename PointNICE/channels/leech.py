@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-01-09 14:52:03
+# @Last Modified time: 2018-02-26 19:28:53
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -684,7 +684,7 @@ class LeechPressure(LeechMech):
 
         # Names of the channels effective coefficients
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                            'alphas', 'betas', 'alphac', 'betac']
+                            'alphas', 'betas']
 
         # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)

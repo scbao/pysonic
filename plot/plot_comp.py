@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-29 14:43:12
+# @Last Modified time: 2018-02-27 15:14:54
 
 """ Compare profiles of several specific output variables of NICE simulations. """
 
@@ -26,8 +26,8 @@ if not pkl_filepaths:
 
 # Comparative plot
 try:
-    yvars = ['Qm', 's']
-    labels = ['classic', 'effective']
+    yvars = ['Qm']
+    # labels = ['classic', 'effective']
     # labels = ['FS neuron', 'LTS neuron', 'RE neuron', 'RS neuron', 'TC neuron']
     plotComp(yvars, pkl_filepaths)
 except AssertionError as err:
