@@ -11,7 +11,7 @@
 	"folders":
 	[
 		{
-			"file_exclude_patterns":
+			"file_exclude_patcomterns":
 			[
 				"*.sublime-workspace",
 				"MANIFEST.in",
