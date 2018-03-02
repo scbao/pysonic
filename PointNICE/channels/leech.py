@@ -3,8 +3,8 @@
 # @Author: Theo Lemaire
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
-# @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-02-26 19:28:53
+# @Last Modified by:   Theo
+# @Last Modified time: 2018-03-02 12:46:33
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -54,7 +54,6 @@ class LeechTouch(BaseMech):
     taum = 0.1e-3  # Sodium activation time constant (s)
     taus = 0.6e-3  # Calcium activation time constant (s)
 
-
     # Original conversion constants from inward ion current (nA) to build-up of
     # intracellular ion concentration (arb.)
     K_Na_original = 0.016  # iNa to intracellular [Na+]
@@ -73,7 +72,6 @@ class LeechTouch(BaseMech):
     # from specific intracellular ions (s)
     tau_PumpNa_act = 0.1  # iPumpNa activation from intracellular Na+
     tau_KCa_act = 0.01  # iKCa activation from intracellular Ca2+
-
 
     # Default plotting scheme
     pltvars_scheme = {
@@ -146,7 +144,6 @@ class LeechTouch(BaseMech):
         return (Kion * (-Iion) - Cion) / tau
 
 
-
     def _derA_ion(self, Aion, Cion, tau):
         ''' Generic function computing the time derivative of the concentration and time
             dependent activation function, for a specific pool-dependent ionic current.
@@ -158,9 +155,7 @@ class LeechTouch(BaseMech):
         '''
         return (Cion - Aion) / tau
 
-
     # ------------------ Na -------------------
-
 
     minf = partialmethod(_xinf, halfmax=-35.0, slope=-5.0, power=1)
     hinf = partialmethod(_xinf, halfmax=-50.0, slope=9.0, power=2)
@@ -257,8 +252,8 @@ class LeechTouch(BaseMech):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, _, A_Na, _, A_Ca = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm)
-                + self.currL(Vm) + self.currPumpNa(A_Na, Vm) + self.currKCa(A_Ca, Vm))  # mA/m2
+        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm) +
+                self.currL(Vm) + self.currPumpNa(A_Na, Vm) + self.currKCa(A_Ca, Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -727,9 +722,9 @@ class LeechPressure(LeechMech):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, c, C_Na_in, C_Ca_in = states
-        return (self.currNa(m, h, Vm, C_Na_in) + self.currK(n, Vm) + self.currCa(s, Vm, C_Ca_in)
-                + self.currKCa(c, Vm) + self.currL(Vm)
-                + (self.currPumpNa(C_Na_in) / 3.) + self.currPumpCa(C_Ca_in))  # mA/m2
+        return (self.currNa(m, h, Vm, C_Na_in) + self.currK(n, Vm) + self.currCa(s, Vm, C_Ca_in) +
+                self.currKCa(c, Vm) + self.currL(Vm) +
+                (self.currPumpNa(C_Na_in) / 3.) + self.currPumpCa(C_Ca_in))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -988,8 +983,8 @@ class LeechRetzius(LeechMech):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, c, a, b = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm) + self.currL(Vm)
-                + self.currKCa(c, Vm) + self.currA(a, b, Vm))  # mA/m2
+        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm) + self.currL(Vm) +
+                self.currKCa(c, Vm) + self.currA(a, b, Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):

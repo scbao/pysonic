@@ -18,16 +18,25 @@ The **SolverUS** class incorporates optimized numerical integration methods to p
 This package is meant to be easy to use as a predictive and comparative tool for researchers investigating ultrasonic and/or electrical neuro-stimulation experimentally.
 
 
-Installation
+Installation &
 ==================
 
-PointNICE is only compatible with Python 3, hence make sure to have it up-and-running before carrying on with the install.
+Install Python 3 if not already done.
 
-To install PointNICE on your machine, simply open a terminal at the package root directory (where the setup.py file is located) and type in:
+Open a terminal.
 
-`pip install -e .`
+Activate a Python3 environment if needed, e.g. on the tnesrv5 machine: 
+`>> source /opt/apps/anaconda3/bin activate`
 
-The package and all its dependencies will be installed.
+Check that the appropriate version of pip is activated:
+`>>> pip --version
+pip x.x.x from <path_to_python3>/site-packages (python 3.x)`
+
+Go to the PointNICE directory (where the setup.py file is located) and install it as a package:
+`>> cd <path_to_directory>
+>> pip install -e .`
+PointNICE and all its dependencies will be installed.
+
 
 Usage
 =======

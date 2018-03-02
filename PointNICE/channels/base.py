@@ -3,8 +3,8 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
-# @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-29 10:26:30
+# @Last Modified by:   Theo
+# @Last Modified time: 2018-03-02 12:26:05
 
 ''' Module standard API for all neuron mechanisms.
 
@@ -76,7 +76,6 @@ class BaseMech(metaclass=abc.ABCMeta):
     # @abc.abstractmethod
     # def coeff_names(self):
     #     return 'Should never reach here'
-
 
     @abc.abstractmethod
     def currNet(self, Vm, states):
