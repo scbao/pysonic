@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 18:45:14
+# @Last Modified time: 2018-03-07 18:51:34
 
 """ Script to run ESTIM simulations from command line. """
 
@@ -71,7 +71,7 @@ def main():
     else:
         logger.setLevel(logging.INFO)
 
-    PW_str = ', PRF = {:.2f} kHz, DC = {:.1f}'.format(PRF, DC * 1e2)
+    PW_str = ', PRF = {:.2f} Hz, DC = {:.1f}'.format(PRF, DC * 1e2)
 
     try:
         assert neuron_str in getNeuronsDict(), '{} neuron type not implemented'.format(neuron_str)
