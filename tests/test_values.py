@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-27 13:11:08
+# @Last Modified time: 2018-03-07 15:21:22
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -65,7 +65,7 @@ def test_resting_potential():
     value_err_msg = ('{} neuron steady-state membrane potential in free conditions differs '
                      'significantly from specified resting potential (gap = {:.2f} mV)')
 
-    logger.info('Starting test: neurons in free conditions')
+    logger.info('Starting test: neurons resting potential')
 
     # Initialize solver
     solver = SolverElec()
@@ -73,6 +73,9 @@ def test_resting_potential():
 
         # Simulate each neuron in free conditions
         neuron = neuron_class()
+
+        logger.info('%s neuron simulation in free conditions', neuron.name)
+
         _, y, _ = solver.run(neuron, Astim=0.0, tstim=20.0, toffset=0.0)
         Vm_free, *_ = y
 
@@ -85,7 +88,7 @@ def test_resting_potential():
         Vm_free_diff = Vm_free_last - neuron.Vm0
         assert np.abs(Vm_free_diff) < 0.1, value_err_msg.format(neuron.name, Vm_free_diff)
 
-    logger.info('Passed test: neurons in free conditions')
+    logger.info('Passed test: neurons resting potential')
 
 
 def test_ESTIM():
@@ -108,9 +111,10 @@ def test_ESTIM():
     toffset = 50e-3  # s
 
     # Reference values
-    Athr_refs = {'FS': 6.91, 'LTS': 1.54, 'RS': 5.03, 'LeechT': 4.66, 'RE': 3.61, 'TC': 4.05}
-    latency_refs = {'FS': 101.00e-3, 'LTS': 128.56e-3, 'RS': 103.81e-3, 'LeechT': 21.32e-3,
-                    'RE': 148.50e-3, 'TC': 63.46e-3}
+    Athr_refs = {'FS': 6.91, 'LTS': 1.54, 'RS': 5.03, 'RE': 3.61, 'TC': 4.05,
+                 'LeechT': 4.66, 'LeechP': 13.72}
+    latency_refs = {'FS': 101.00e-3, 'LTS': 128.56e-3, 'RS': 103.81e-3, 'RE': 148.50e-3,
+                    'TC': 63.46e-3, 'LeechT': 21.32e-3, 'LeechP': 36.84e-3}
 
     for neuron_class in neurons:
 
@@ -158,10 +162,10 @@ def test_ASTIM():
     Arange = (0.0, 2 * TITRATION_ASTIM_A_MAX)  # Pa
 
     # Reference values
-    Athr_refs = {'FS': 38.67e3, 'LTS': 24.80e3, 'RS': 51.17e3, 'RE': 46.36e3, 'TC': 23.24e3,
-                 'LeechT': 21.48e3}
-    latency_refs = {'FS': 63.72e-3, 'LTS': 61.92e-3, 'RS': 62.52e-3, 'RE': 79.20e-3,
-                    'TC': 67.38e-3, 'LeechT': 23.9e-3}
+    Athr_refs = {'FS': 38.66e3, 'LTS': 24.90e3, 'RS': 50.90e3, 'RE': 46.36e3, 'TC': 23.29e3,
+                 'LeechT': 21.39e3, 'LeechP': 22.56e3}
+    latency_refs = {'FS': 69.58e-3, 'LTS': 57.56e-3, 'RS': 71.59e-3, 'RE': 79.20e-3,
+                    'TC': 63.67e-3, 'LeechT': 25.45e-3, 'LeechP': 54.76e-3}
 
     # Titration for each neuron
     for neuron_class in neurons:

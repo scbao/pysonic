@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-01-26 12:07:01
+# @Last Modified time: 2018-03-07 15:22:18
 
 """ Utility functions used in simulations """
 
@@ -622,14 +622,17 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DF=1.0):
         t_type = 'A'
         interval = Astim
         thr = TITRATION_ESTIM_DA_MAX
+        maxval = TITRATION_ESTIM_A_MAX
     elif isinstance(tstim, tuple):
         t_type = 't'
         interval = tstim
         thr = TITRATION_DT_THR
+        maxval = TITRATION_T_MAX
     elif isinstance(DF, tuple):
         t_type = 'DF'
         interval = DF
         thr = TITRATION_DDF_THR
+        maxval = TITRATION_DF_MAX
     else:
         logger.error('Invalid titration type')
         return 0.
@@ -661,6 +664,9 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DF=1.0):
     # Otherwise, refine titration interval and iterate recursively
     else:
         if n_spikes == 0:
+            if (maxval - interval[1]) <= thr:  # if upper bound too close to max then stop
+                logger.warning('no spikes detected within titration interval')
+                return (np.nan, t, y, states, latency)
             new_interval = (value, interval[1])
         else:
             new_interval = (interval[0], value)
@@ -696,14 +702,17 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
         t_type = 'A'
         interval = Adrive
         thr = TITRATION_ASTIM_DA_MAX
+        maxval = TITRATION_ASTIM_A_MAX
     elif isinstance(tstim, tuple):
         t_type = 't'
         interval = tstim
         thr = TITRATION_DT_THR
+        maxval = TITRATION_T_MAX
     elif isinstance(DF, tuple):
         t_type = 'DF'
         interval = DF
         thr = TITRATION_DDF_THR
+        maxval = TITRATION_DF_MAX
     else:
         logger.error('Invalid titration type')
         return 0.
@@ -729,15 +738,15 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
                  n_spikes, "s" if n_spikes > 1 else "")
 
     # If accurate threshold is found, return simulation results
-    if (interval[1] - interval[0]) <= thr:
-        if n_spikes == 0:
-            value = np.nan
-            logger.warning('no spikes detected within titration interval')
+    if (interval[1] - interval[0]) <= thr and n_spikes == 1:
         return (value, t, y, states, latency)
 
     # Otherwise, refine titration interval and iterate recursively
     else:
         if n_spikes == 0:
+            if (maxval - interval[1]) <= thr:  # if upper bound too close to max then stop
+                logger.warning('no spikes detected within titration interval')
+                return (np.nan, t, y, states, latency)
             new_interval = (value, interval[1])
         else:
             new_interval = (interval[0], value)

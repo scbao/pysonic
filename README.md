@@ -18,23 +18,26 @@ The **SolverUS** class incorporates optimized numerical integration methods to p
 This package is meant to be easy to use as a predictive and comparative tool for researchers investigating ultrasonic and/or electrical neuro-stimulation experimentally.
 
 
-Installation &
+Installation
 ==================
 
 Install Python 3 if not already done.
 
 Open a terminal.
 
-Activate a Python3 environment if needed, e.g. on the tnesrv5 machine: 
-`>> source /opt/apps/anaconda3/bin activate`
+Activate a Python3 environment if needed, e.g. on the tnesrv5 machine:
+
+	source /opt/apps/anaconda3/bin activate
 
 Check that the appropriate version of pip is activated:
-`>>> pip --version
-pip x.x.x from <path_to_python3>/site-packages (python 3.x)`
+
+	pip --version
 
 Go to the PointNICE directory (where the setup.py file is located) and install it as a package:
-`>> cd <path_to_directory>
->> pip install -e .`
+
+	cd <path_to_directory>
+	pip install -e .
+
 PointNICE and all its dependencies will be installed.
 
 
@@ -48,11 +51,11 @@ To run single simulations of a given point-neuron model under specific stimulati
 
 For instance, to simulate a regular-spiking neuron under continuous wave ultrasonic stimulation at 500kHz and 100kPa, for 150 ms:
 
-	`python ASTIM_run.py -n=RS -f=500 -A=100 -t=150`
+	python ASTIM_run.py -n=RS -f=500 -A=100 -t=150
 
 Similarly, to simulate the electrical stimulation of a thalamo-cortical neuron at 10 mA/m2 for 150 ms:
 
-	`python ESTIM_run.py -n=TC -A=10 -t=150`
+	python ESTIM_run.py -n=TC -A=10 -t=150
 
 The simulation results will be save in an output PKL file in the current working directory. To view these results, you can use the dedicated
 

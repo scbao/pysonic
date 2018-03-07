@@ -3,8 +3,8 @@
 # @Author: Theo Lemaire
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
-# @Last Modified by:   Theo
-# @Last Modified time: 2018-03-02 12:46:33
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2018-03-07 14:46:54
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -827,7 +827,7 @@ class LeechRetzius(LeechMech):
     '''
 
     # Name of channel mechanism
-    name = 'LeechR'
+    # name = 'LeechR'
 
     # Cell-specific biophysical parameters
     Cm0 = 5e-2  # Cell membrane resting capacitance (F/m2)
