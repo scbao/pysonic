@@ -2,13 +2,14 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-01-09 14:28:57
+# @Last Modified time: 2018-03-08 10:02:17
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
 import sys
 import os
 import logging
+import numpy as np
 from PointNICE.utils import logger
 from PointNICE.solvers import setBatchDir, checkBatchLog, runEStimBatch
 from PointNICE.plt import plotBatch
@@ -21,12 +22,13 @@ neurons = ['LeechP']
 
 # Stimulation parameters
 stim_params = {
-    'amps': [15.0],  # mA/m2
-    'durations': [0.5],  # s
-    'PRFs': [100],  # Hz
-    'DFs': [1.]
+    'amps': [2.0],  # mA/m2
+    'durations': np.array([20, 40, 60, 80, 100, 150, 200, 250, 300]) * 1e-3,  # s
+    'PRFs': np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]) * 1e3,  # Hz
+    'DFs': np.array([1, 2, 5, 10, 25, 50, 75, 100]) * 1e-2
 }
-stim_params['offsets'] = [1.0] * len(stim_params['durations'])  # s
+stim_params['offsets'] = 350e-3 - stim_params['durations']  # s
+
 
 try:
     # Select output directory
@@ -38,7 +40,7 @@ try:
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    plotBatch(pkl_dir, pkl_filepaths)
+    # plotBatch(pkl_dir, pkl_filepaths)
 
 except AssertionError as err:
     logger.error(err)
