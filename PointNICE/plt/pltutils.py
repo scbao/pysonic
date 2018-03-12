@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-12-01 21:53:11
+# @Last Modified time: 2018-03-12 19:49:12
 
 ''' Plotting utilities '''
 
@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.cm as cm
 
-from .. import channels
+from .. import neurons
 from ..utils import getNeuronsDict, getLookupDir, rescale
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
@@ -194,7 +194,7 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
 
 
     # Dictionary of neurons
-    neurons = getNeuronsDict()
+    neurons_dict = getNeuronsDict()
 
     # Initialize figure and axes
     if nvars == 1:
@@ -262,7 +262,7 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
         if sim_type in ['ASTIM', 'ESTIM']:
             neuron_name = mo.group(2)
             global neuron
-            neuron = neurons[neuron_name]()
+            neuron = neurons_dict[neuron_name]()
             neuron_states = [data[sn] for sn in neuron.states_names]
             Cm0 = neuron.Cm0
             Qm0 = Cm0 * neuron.Vm0 * 1e-3
@@ -426,7 +426,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
         if sim_type in ['ASTIM', 'ESTIM']:
             neuron_name = mo.group(2)
             global neuron
-            neuron = neurons[neuron_name]()
+            neuron = neurons_dict[neuron_name]()
             neuron_states = [data[sn] for sn in neuron.states_names]
             Cm0 = neuron.Cm0
             Qm0 = Cm0 * neuron.Vm0 * 1e-3

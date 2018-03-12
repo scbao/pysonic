@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-01-23 16:28:18
+# @Last Modified time: 2018-03-12 19:47:10
 
 """ Definition of generic utility functions used in other modules """
 
@@ -19,7 +19,7 @@ from openpyxl import load_workbook
 import numpy as np
 import colorlog
 
-from . import channels
+from . import neurons
 
 
 def setLogger():
@@ -273,11 +273,11 @@ def LennardJones(x, beta, alpha, C, m, n):
 
 def getNeuronsDict():
     ''' Return dictionary of neurons classes that can be instantiated. '''
-    neurons = {}
-    for _, obj in inspect.getmembers(channels):
+    neurons_dict = {}
+    for _, obj in inspect.getmembers(neurons):
         if inspect.isclass(obj) and isinstance(obj.name, str):
-            neurons[obj.name] = obj
-    return neurons
+            neurons_dict[obj.name] = obj
+    return neurons_dict
 
 
 def get_BLS_lookups(a):

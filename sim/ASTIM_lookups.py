@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-02-26 19:14:53
+# @Last Modified time: 2018-03-12 19:45:18
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -13,7 +13,7 @@ import numpy as np
 
 import PointNICE
 from PointNICE.utils import logger
-from PointNICE.channels import *
+from PointNICE.neurons import *
 
 # Set logging level
 logger.setLevel(logging.DEBUG)

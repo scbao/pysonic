@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-12 18:48:35
+# @Last Modified time: 2018-03-12 19:45:42
 
 ''' Test the basic functionalities of the package. '''
 
@@ -18,7 +18,7 @@ from argparse import ArgumentParser
 
 from PointNICE.utils import logger
 from PointNICE import BilayerSonophore, SolverElec, SolverUS
-from PointNICE.channels import *
+from PointNICE.neurons import *
 
 
 def test_MECH(is_profiled=False):

@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-12 18:51:18
+# @Last Modified time: 2018-03-12 19:45:32
 
 ''' Test the basic functionalities of the package and output graphs of the call flows. '''
 
@@ -14,7 +14,7 @@ from pycallgraph.output import GraphvizOutput
 
 from PointNICE.utils import logger
 from PointNICE import BilayerSonophore, SolverUS, SolverElec
-from PointNICE.channels import CorticalRS
+from PointNICE.neurons import CorticalRS
 
 
 # Set logging level
