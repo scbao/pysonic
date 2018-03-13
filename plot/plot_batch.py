@@ -4,7 +4,7 @@
 # @Date:   2017-03-20 12:19:55
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-05 19:06:17
+# @Last Modified time: 2018-03-13 22:42:38
 
 """ Batch plot profiles of several specific output variables of NICE simulations. """
 
@@ -27,7 +27,7 @@ if not pkl_filepaths:
 try:
     # yvars = {'Q_m': ['Qm'], 'i_{Ca}\ kin.': ['s', 'u', 's2u'], 'I': ['iNa', 'iK', 'iT', 'iL']}
     yvars = {'Q_m': ['Qm']}
-    plotBatch(pkl_dir, pkl_filepaths, title=False)
+    plotBatch(pkl_dir, pkl_filepaths, title=False, vars_dict=yvars)
 except AssertionError as err:
     logger.error(err)
     sys.exit(1)
