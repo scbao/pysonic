@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 00:42:38
+# @Last Modified time: 2018-03-13 12:41:44
 
 """ Utility functions used in simulations """
 
@@ -341,7 +341,8 @@ def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF
     df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm})
     for j in range(len(neuron.states_names)):
         df[neuron.states_names[j]] = channels[j]
-    meta = {'Astim': Astim, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC}
+    meta = {'Astim': Astim, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC,
+            'tcomp': tcomp}
 
     # Export into to PKL file
     output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
@@ -471,7 +472,7 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
     for j in range(len(neuron.states_names)):
         df[neuron.states_names[j]] = channels[j]
     meta = {'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive, 'Adrive': Adrive, 'phi': np.pi,
-            'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC}
+            'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC, 'tcomp': tcomp}
 
     # Export into to PKL file
     output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
@@ -854,7 +855,8 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
                     for j in range(len(neuron.states_names)):
                         df[neuron.states_names[j]] = channels[j]
                     meta = {'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive, 'Adrive': Adrive,
-                            'phi': np.pi, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC}
+                            'phi': np.pi, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC,
+                            'tcomp': tcomp}
 
                     # Export into to PKL file
                     output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
@@ -1008,7 +1010,8 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                 df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm})
                 for j in range(len(neuron.states_names)):
                     df[neuron.states_names[j]] = channels[j]
-                meta = {'Astim': Astim, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC}
+                meta = {'Astim': Astim, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC,
+                        'tcomp': tcomp}
 
                 # Export into to PKL file
                 output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
@@ -1112,7 +1115,7 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
                 # Store dataframe and metadata
                 df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng})
                 meta = {'a': solver.a, 'd': solver.d, 'Cm0': Cm0, 'Qm0': Qm0, 'Fdrive': Fdrive,
-                        'Adrive': Adrive, 'phi': np.pi, 'Qm': Qm}
+                        'Adrive': Adrive, 'phi': np.pi, 'Qm': Qm, 'tcomp': tcomp}
 
                 # Export into to PKL file
                 output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
