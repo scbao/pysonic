@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-07 15:21:22
+# @Last Modified time: 2018-03-12 20:19:24
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -122,7 +122,7 @@ def test_ESTIM():
         neuron = neuron_class()
         logger.info('%s neuron titration', neuron.name)
         (Athr, t, y, _, latency) = titrateEStim(solver, neuron, Arange, tstim, toffset,
-                                                PRF=None, DF=1.0)
+                                                PRF=None, DC=1.0)
         Vm = y[0, :]
 
         # Check that final number of spikes is 1
@@ -179,7 +179,7 @@ def test_ASTIM():
 
         # Perform titration
         (Athr, t, y, _, latency) = titrateAStim(solver, neuron, Fdrive, Arange, tstim, toffset,
-                                                PRF=None, DF=1.0)
+                                                PRF=None, DC=1.0)
         Qm = y[2]
 
         # Check that final number of spikes is 1

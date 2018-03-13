@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 19:50:10
+# @Last Modified time: 2018-03-12 20:16:52
 
 import os
 import warnings
@@ -213,7 +213,7 @@ class SolverUS(BilayerSonophore):
             pickle.dump(lookup_dict, fh)
 
 
-    def __runClassic(self, ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, phi=np.pi):
+    def __runClassic(self, ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
         """ Compute solutions of the system for a specific set of
             US stimulation parameters, using a classic integration scheme.
 
@@ -227,7 +227,7 @@ class SolverUS(BilayerSonophore):
             :param tstim: duration of US stimulation (s)
             :param toffset: duration of the offset (s)
             :param PRF: pulse repetition frequency (Hz)
-            :param DF: pulse duty factor (-)
+            :param DC: pulse duty cycle (-)
             :param phi: acoustic drive phase (rad)
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         """
@@ -244,13 +244,13 @@ class SolverUS(BilayerSonophore):
         dt = Tdrive / NPC_FULL
 
         # if CW stimulus: divide integration during stimulus into 100 intervals
-        if DF == 1.0:
+        if DC == 1.0:
             PRF = 100 / tstim
 
         # Compute vector sizes
         npulses = int(np.round(PRF * tstim))
-        Tpulse_on = DF / PRF
-        Tpulse_off = (1 - DF) / PRF
+        Tpulse_on = DC / PRF
+        Tpulse_off = (1 - DC) / PRF
         n_pulse_on = int(np.round(Tpulse_on / dt))
         n_pulse_off = int(np.round(Tpulse_off / dt))
         n_off = int(np.round(toffset / dt))
@@ -349,7 +349,7 @@ class SolverUS(BilayerSonophore):
         return (t, y[1:, :], states)
 
 
-    def __runEffective(self, ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DF, dt=DT_EFF):
+    def __runEffective(self, ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
         """ Compute solutions of the system for a specific set of
             US stimulation parameters, using charge-predicted "effective"
             coefficients to solve the HH equations at each step.
@@ -360,7 +360,7 @@ class SolverUS(BilayerSonophore):
             :param tstim: duration of US stimulation (s)
             :param toffset: duration of the offset (s)
             :param PRF: pulse repetition frequency (Hz)
-            :param DF: pulse duty factor (-)
+            :param DC: pulse duty cycle (-)
             :param dt: integration time step (s)
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         """
@@ -446,13 +446,13 @@ class SolverUS(BilayerSonophore):
         solver_off.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
 
         # if CW stimulus: change PRF to have exactly one integration interval during stimulus
-        if DF == 1.0:
+        if DC == 1.0:
             PRF = 1 / tstim
 
         # Compute vector sizes
         npulses = int(np.round(PRF * tstim))
-        Tpulse_on = DF / PRF
-        Tpulse_off = (1 - DF) / PRF
+        Tpulse_on = DC / PRF
+        Tpulse_off = (1 - DC) / PRF
         n_pulse_on = int(np.round(Tpulse_on / dt)) + 1
         n_pulse_off = int(np.round(Tpulse_off / dt))
 
@@ -740,7 +740,7 @@ class SolverUS(BilayerSonophore):
         return (t, y[1:, :], states)
 
 
-    def run(self, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=None, DF=1.0,
+    def run(self, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0,
             sim_type='effective'):
         """ Run simulation of the system for a specific set of
             US stimulation parameters.
@@ -751,7 +751,7 @@ class SolverUS(BilayerSonophore):
             :param tstim: duration of US stimulation (s)
             :param toffset: duration of the offset (s)
             :param PRF: pulse repetition frequency (Hz)
-            :param DF: pulse duty factor (-)
+            :param DC: pulse duty cycle (-)
             :param sim_type: selected integration method
             :return: 3-tuple with the time profile, the solution matrix and a state vector
         """
@@ -763,14 +763,14 @@ class SolverUS(BilayerSonophore):
         # Check validity of stimulation parameters
         assert isinstance(ch_mech, BaseMech), ('channel mechanism must be inherited '
                                                'from the BaseMech class')
-        for param in [Fdrive, Adrive, tstim, toffset, DF]:
+        for param in [Fdrive, Adrive, tstim, toffset, DC]:
             assert isinstance(param, float), 'stimulation parameters must be float typed'
         assert Fdrive > 0, 'Driving frequency must be strictly positive'
         assert Adrive >= 0, 'Acoustic pressure amplitude must be positive'
         assert tstim > 0, 'Stimulus duration must be strictly positive'
         assert toffset >= 0, 'Stimulus offset must be positive or null'
-        assert DF > 0 and DF <= 1, 'Duty cycle must be within [0; 1)'
-        if DF < 1.0:
+        assert DC > 0 and DC <= 1, 'Duty cycle must be within [0; 1)'
+        if DC < 1.0:
             assert isinstance(PRF, float), 'if provided, the PRF parameter must be float typed'
             assert PRF is not None, 'PRF must be provided when using duty cycles smaller than 1'
             assert PRF >= 1 / tstim, 'PR interval must be smaller than stimulus duration'
@@ -778,10 +778,10 @@ class SolverUS(BilayerSonophore):
 
         # Call appropriate simulation function
         if sim_type == 'classic':
-            return self.__runClassic(ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DF)
+            return self.__runClassic(ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DC)
         elif sim_type == 'effective':
-            return self.__runEffective(ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DF)
+            return self.__runEffective(ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DC)
         elif sim_type == 'hybrid':
-            assert DF == 1.0, 'Hybrid method can only handle continuous wave stimuli'
+            assert DC == 1.0, 'Hybrid method can only handle continuous wave stimuli'
             return self.__runHybrid(ch_mech, Fdrive, Adrive, tstim, toffset)
 

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-07 15:22:18
+# @Last Modified time: 2018-03-13 00:42:38
 
 """ Utility functions used in simulations """
 
@@ -16,7 +16,7 @@ from tkinter import filedialog
 import numpy as np
 from openpyxl import load_workbook
 import lockfile
-
+import pandas as pd
 
 from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
@@ -31,9 +31,9 @@ logger = logging.getLogger('PointNICE')
 # Naming nomenclature for output files
 MECH_code = 'MECH_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.1f}nCcm2'
 ESTIM_CW_code = 'ESTIM_{}_CW_{:.1f}mA_per_m2_{:.0f}ms'
-ESTIM_PW_code = 'ESTIM_{}_PW_{:.1f}mA_per_m2_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}'
+ESTIM_PW_code = 'ESTIM_{}_PW_{:.1f}mA_per_m2_{:.0f}ms_PRF{:.2f}kHz_DC{:.2f}'
 ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
-ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DF{:.2f}_{}'
+ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}kHz_DC{:.2f}_{}'
 
 # Parameters units
 ASTIM_params = {
@@ -41,14 +41,14 @@ ASTIM_params = {
     'A': {'index': 1, 'factor': 1e-3, 'unit': 'kPa'},
     't': {'index': 2, 'factor': 1e3, 'unit': 'ms'},
     'PRF': {'index': 4, 'factor': 1e-3, 'unit': 'kHz'},
-    'DF': {'index': 5, 'factor': 1e2, 'unit': '%'}
+    'DC': {'index': 5, 'factor': 1e2, 'unit': '%'}
 }
 
 ESTIM_params = {
     'A': {'index': 0, 'factor': 1e0, 'unit': 'mA/m2'},
     't': {'index': 1, 'factor': 1e3, 'unit': 'ms'},
     'PRF': {'index': 3, 'factor': 1e-3, 'unit': 'kHz'},
-    'DF': {'index': 4, 'factor': 1e2, 'unit': '%'}
+    'DC': {'index': 4, 'factor': 1e2, 'unit': '%'}
 }
 
 # Default geometry
@@ -102,7 +102,7 @@ def checkBatchLog(batch_dir, batch_type):
     return (logdst, not is_log)
 
 
-def createSimQueue(amps, durations, offsets, PRFs, DFs):
+def createSimQueue(amps, durations, offsets, PRFs, DCs):
     ''' Create a serialized 2D array of all parameter combinations for a series of individual
         parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 
@@ -110,8 +110,8 @@ def createSimQueue(amps, durations, offsets, PRFs, DFs):
         :param durations: list (or 1D-array) of stimulus durations
         :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
         :param PRFs: list (or 1D-array) of pulse-repetition frequencies
-        :param DFs: list (or 1D-array) of duty cycle values
-        :return: 2D-array with (amplitude, duration, offset, PRF, DF) for each stimulation protocol
+        :param DCs: list (or 1D-array) of duty cycle values
+        :return: 2D-array with (amplitude, duration, offset, PRF, DC) for each stimulation protocol
     '''
 
     # Convert input to 1D-arrays
@@ -119,7 +119,7 @@ def createSimQueue(amps, durations, offsets, PRFs, DFs):
     durations = np.array(durations)
     offsets = np.array(offsets)
     PRFs = np.array(PRFs)
-    DFs = np.array(DFs)
+    DCs = np.array(DCs)
 
     # Create index arrays
     iamps = range(len(amps))
@@ -129,7 +129,7 @@ def createSimQueue(amps, durations, offsets, PRFs, DFs):
     queue = np.empty((1, 5))
 
     # Continuous protocols
-    if 1.0 in DFs:
+    if 1.0 in DCs:
         nCW = len(amps) * len(durations)
         arr1 = np.ones(nCW)
         iCW_queue = np.array(np.meshgrid(iamps, idurs)).T.reshape(nCW, 2)
@@ -139,15 +139,15 @@ def createSimQueue(amps, durations, offsets, PRFs, DFs):
 
 
     # Pulsed protocols
-    if np.any(DFs != 1.0):
-        pulsed_DFs = DFs[DFs != 1.0]
+    if np.any(DCs != 1.0):
+        pulsed_DCs = DCs[DCs != 1.0]
         iPRFs = range(len(PRFs))
-        ipulsed_DFs = range(len(pulsed_DFs))
-        nPW = len(amps) * len(durations) * len(PRFs) * len(pulsed_DFs)
-        iPW_queue = np.array(np.meshgrid(iamps, idurs, iPRFs, ipulsed_DFs)).T.reshape(nPW, 4)
+        ipulsed_DCs = range(len(pulsed_DCs))
+        nPW = len(amps) * len(durations) * len(PRFs) * len(pulsed_DCs)
+        iPW_queue = np.array(np.meshgrid(iamps, idurs, iPRFs, ipulsed_DCs)).T.reshape(nPW, 4)
         PW_queue = np.vstack((amps[iPW_queue[:, 0]], durations[iPW_queue[:, 1]],
                               offsets[iPW_queue[:, 1]], PRFs[iPW_queue[:, 2]],
-                              pulsed_DFs[iPW_queue[:, 3]])).T
+                              pulsed_DCs[iPW_queue[:, 3]])).T
         queue = np.vstack((queue, PW_queue))
 
     # Return
@@ -306,7 +306,7 @@ def detectSpikes(t, Qm, min_amp, min_dt):
 
 
 
-def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF, DF):
+def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF, DC):
     ''' Run a single E-STIM simulation a given neuron for specific stimulation parameters,
         and save the results in a PKL file.
 
@@ -317,14 +317,14 @@ def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF
         :param tstim: pulse duration (s)
         :param toffset: offset duration (s)
         :param PRF: pulse repetition frequency (Hz)
-        :param DF: pulse duty factor (-)
+        :param DC: pulse duty cycle (-)
         :return: full path to the output file
     '''
 
-    if DF == 1.0:
+    if DC == 1.0:
         simcode = ESTIM_CW_code.format(neuron.name, Astim, tstim * 1e3)
     else:
-        simcode = ESTIM_PW_code.format(neuron.name, Astim, tstim * 1e3, PRF * 1e-3, DF)
+        simcode = ESTIM_PW_code.format(neuron.name, Astim, tstim * 1e3, PRF * 1e-3, DC)
 
     # Get date and time info
     date_str = time.strftime("%Y.%m.%d")
@@ -332,30 +332,21 @@ def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF
 
     # Run simulation
     tstart = time.time()
-    (t, y, states) = solver.run(neuron, Astim, tstim, toffset, PRF, DF)
+    (t, y, states) = solver.run(neuron, Astim, tstim, toffset, PRF, DC)
     Vm, *channels = y
     tcomp = time.time() - tstart
     logger.debug('completed in %.2f seconds', tcomp)
 
-    # Store data in dictionary
-    data = {
-        'Astim': Astim,
-        'tstim': tstim,
-        'toffset': toffset,
-        'PRF': PRF,
-        'DF': DF,
-        't': t,
-        'states': states,
-        'Vm': Vm
-    }
+    # Store dataframe and metadata
+    df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm})
     for j in range(len(neuron.states_names)):
-        data[neuron.states_names[j]] = channels[j]
+        df[neuron.states_names[j]] = channels[j]
+    meta = {'Astim': Astim, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC}
 
-
-    # Export data to PKL file
-    output_filepath = batch_dir + '/' + simcode + ".pkl"
+    # Export into to PKL file
+    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
     with open(output_filepath, 'wb') as fh:
-        pickle.dump(data, fh)
+        pickle.dump({'meta': meta, 'data': df}, fh)
     logger.debug('simulation data exported to "%s"', output_filepath)
 
     # Detect spikes on Vm signal
@@ -369,8 +360,8 @@ def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF
         'C': neuron.name,
         'D': Astim,
         'E': tstim * 1e3,
-        'F': PRF * 1e-3 if DF < 1 else 'N/A',
-        'G': DF,
+        'F': PRF * 1e-3 if DC < 1 else 'N/A',
+        'G': DC,
         'H': t.size,
         'I': round(tcomp, 2),
         'J': n_spikes,
@@ -397,20 +388,20 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
         :return: list of full paths to the output files
     '''
 
-    mandatory_params = ['amps', 'durations', 'offsets', 'PRFs', 'DFs']
+    mandatory_params = ['amps', 'durations', 'offsets', 'PRFs', 'DCs']
     for mp in mandatory_params:
         assert mp in stim_params, 'stim_params dictionary must contain "{}" field'.format(mp)
 
     # Define logging format
     ESTIM_CW_log = 'E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms'
     ESTIM_PW_log = ('E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms, '
-                    'PRF = %.2f kHz, DF = %.2f')
+                    'PRF = %.2f kHz, DC = %.2f')
 
     logger.info("Starting E-STIM simulation batch")
 
     # Generate simulations queue
     sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
-                               stim_params['offsets'], stim_params['PRFs'], stim_params['DFs'])
+                               stim_params['offsets'], stim_params['PRFs'], stim_params['DCs'])
     nqueue = sim_queue.shape[0]
 
     # Initialize solver
@@ -424,20 +415,20 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
         neuron = getNeuronsDict()[nname]()
         for i in range(nqueue):
             simcount += 1
-            Astim, tstim, toffset, PRF, DF = sim_queue[i, :]
-            if DF == 1.0:
+            Astim, tstim, toffset, PRF, DC = sim_queue[i, :]
+            if DC == 1.0:
                 logger.info(ESTIM_CW_log, simcount, nsims, neuron.name, Astim, tstim * 1e3)
             else:
                 logger.info(ESTIM_PW_log, simcount, nsims, neuron.name, Astim, tstim * 1e3,
-                            PRF * 1e-3, DF)
+                            PRF * 1e-3, DC)
             output_filepath = runEStim(batch_dir, log_filepath, solver, neuron,
-                                       Astim, tstim, toffset, PRF, DF)
+                                       Astim, tstim, toffset, PRF, DC)
             filepaths.append(output_filepath)
     return filepaths
 
 
 
-def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, toffset, PRF, DF,
+def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC,
              int_method='effective'):
     ''' Run a single A-STIM simulation a given neuron for specific stimulation parameters,
         and save the results in a PKL file.
@@ -450,17 +441,17 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
         :param tstim: duration of US stimulation (s)
         :param toffset: duration of the offset (s)
         :param PRF: pulse repetition frequency (Hz)
-        :param DF: pulse duty factor (-)
+        :param DC: pulse duty cycle (-)
         :param int_method: selected integration method
         :return: full path to the output file
     '''
 
-    if DF == 1.0:
+    if DC == 1.0:
         simcode = ASTIM_CW_code.format(neuron.name, solver.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3,
                                        tstim * 1e3, int_method)
     else:
         simcode = ASTIM_PW_code.format(neuron.name, solver.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3,
-                                       tstim * 1e3, PRF * 1e-3, DF, int_method)
+                                       tstim * 1e3, PRF * 1e-3, DC, int_method)
 
     # Get date and time info
     date_str = time.strftime("%Y.%m.%d")
@@ -468,38 +459,24 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
 
     # Run simulation
     tstart = time.time()
-    (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DF, int_method)
+    (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, int_method)
     Z, ng, Qm, *channels = y
     U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
     tcomp = time.time() - tstart
     logger.debug('completed in %.2f seconds', tcomp)
 
-    # Store data in dictionary
-    data = {
-        'a': solver.a,
-        'd': solver.d,
-        'Fdrive': Fdrive,
-        'Adrive': Adrive,
-        'phi': np.pi,
-        'tstim': tstim,
-        'toffset': toffset,
-        'PRF': PRF,
-        'DF': DF,
-        't': t,
-        'states': states,
-        'U': U,
-        'Z': Z,
-        'ng': ng,
-        'Qm': Qm,
-        'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])
-    }
+    # Store dataframe and metadata
+    df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
+                       'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])})
     for j in range(len(neuron.states_names)):
-        data[neuron.states_names[j]] = channels[j]
+        df[neuron.states_names[j]] = channels[j]
+    meta = {'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive, 'Adrive': Adrive, 'phi': np.pi,
+            'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC}
 
-    # Export data to PKL file
-    output_filepath = batch_dir + '/' + simcode + ".pkl"
+    # Export into to PKL file
+    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
     with open(output_filepath, 'wb') as fh:
-        pickle.dump(data, fh)
+        pickle.dump({'meta': meta, 'data': df}, fh)
     logger.debug('simulation data exported to "%s"', output_filepath)
 
     # Detect spikes on Qm signal
@@ -516,8 +493,8 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
         'F': Fdrive * 1e-3,
         'G': Adrive * 1e-3,
         'H': tstim * 1e3,
-        'I': PRF * 1e-3 if DF < 1 else 'N/A',
-        'J': DF,
+        'I': PRF * 1e-3 if DC < 1 else 'N/A',
+        'J': DC,
         'K': int_method,
         'L': t.size,
         'M': round(tcomp, 2),
@@ -548,7 +525,7 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
         :return: list of full paths to the output files
     '''
 
-    mandatory_params = ['freqs', 'amps', 'durations', 'offsets', 'PRFs', 'DFs']
+    mandatory_params = ['freqs', 'amps', 'durations', 'offsets', 'PRFs', 'DCs']
     for mp in mandatory_params:
         assert mp in stim_params, 'stim_params dictionary must contain "{}" field'.format(mp)
 
@@ -556,13 +533,13 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
     ASTIM_CW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
                     'A = %.2f kPa, t = %.2f ms')
     ASTIM_PW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
-                    'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DF = %.3f')
+                    'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DC = %.3f')
 
     logger.info("Starting A-STIM simulation batch")
 
     # Generate simulations queue
     sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
-                               stim_params['offsets'], stim_params['PRFs'], stim_params['DFs'])
+                               stim_params['offsets'], stim_params['PRFs'], stim_params['DCs'])
     nqueue = sim_queue.shape[0]
 
     # Run simulations
@@ -579,26 +556,26 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
             for i in range(nqueue):
 
                 simcount += 1
-                Adrive, tstim, toffset, PRF, DF = sim_queue[i, :]
+                Adrive, tstim, toffset, PRF, DC = sim_queue[i, :]
 
                 # Log and define naming
-                if DF == 1.0:
+                if DC == 1.0:
                     logger.info(ASTIM_CW_log, int_method, simcount, nsims, neuron.name,
                                 a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3)
                 else:
                     logger.info(ASTIM_PW_log, int_method, simcount, nsims, neuron.name, a * 1e9,
-                                Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF * 1e-3, DF)
+                                Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF * 1e-3, DC)
 
                 # Run simulation
                 output_filepath = runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
-                                           tstim, toffset, PRF, DF, int_method)
+                                           tstim, toffset, PRF, DC, int_method)
 
                 filepaths.append(output_filepath)
 
     return filepaths
 
 
-def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DF=1.0):
+def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
     """ Use a dichotomic recursive search to determine the threshold value of a specific
         electric stimulation parameter needed to obtain neural excitation, keeping all other
         parameters fixed. The titration parameter can be stimulation amplitude, duration or
@@ -612,7 +589,7 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DF=1.0):
         :param tstim: duration of US stimulation (s)
         :param toffset: duration of the offset (s)
         :param PRF: pulse repetition frequency (Hz)
-        :param DF: pulse duty factor (-)
+        :param DC: pulse duty cycle (-)
         :return: 5-tuple with the determined amplitude threshold, time profile,
                  solution matrix, state vector and response latency
     """
@@ -628,11 +605,11 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DF=1.0):
         interval = tstim
         thr = TITRATION_DT_THR
         maxval = TITRATION_T_MAX
-    elif isinstance(DF, tuple):
-        t_type = 'DF'
-        interval = DF
-        thr = TITRATION_DDF_THR
-        maxval = TITRATION_DF_MAX
+    elif isinstance(DC, tuple):
+        t_type = 'DC'
+        interval = DC
+        thr = TITRATION_DDC_THR
+        maxval = TITRATION_DC_MAX
     else:
         logger.error('Invalid titration type')
         return 0.
@@ -645,10 +622,10 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DF=1.0):
 
     # Define stimulation parameters
     if t_type == 'A':
-        stim_params = [value, tstim, toffset, PRF, DF]
+        stim_params = [value, tstim, toffset, PRF, DC]
     elif t_type == 't':
-        stim_params = [Astim, value, toffset, PRF, DF]
-    elif t_type == 'DF':
+        stim_params = [Astim, value, toffset, PRF, DC]
+    elif t_type == 'DC':
         stim_params = [Astim, tstim, toffset, PRF, value]
 
     # Run simulation and detect spikes
@@ -675,7 +652,7 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DF=1.0):
         return titrateEStim(solver, ch_mech, *stim_params)
 
 
-def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=1.0,
+def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=1.0,
                  int_method='effective'):
     """ Use a dichotomic recursive search to determine the threshold value of a specific
         acoustic stimulation parameter needed to obtain neural excitation, keeping all other
@@ -691,7 +668,7 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
         :param tstim: duration of US stimulation (s)
         :param toffset: duration of the offset (s)
         :param PRF: pulse repetition frequency (Hz)
-        :param DF: pulse duty factor (-)
+        :param DC: pulse duty cycle (-)
         :param int_method: selected integration method
         :return: 5-tuple with the determined amplitude threshold, time profile,
                  solution matrix, state vector and response latency
@@ -708,11 +685,11 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
         interval = tstim
         thr = TITRATION_DT_THR
         maxval = TITRATION_T_MAX
-    elif isinstance(DF, tuple):
-        t_type = 'DF'
-        interval = DF
-        thr = TITRATION_DDF_THR
-        maxval = TITRATION_DF_MAX
+    elif isinstance(DC, tuple):
+        t_type = 'DC'
+        interval = DC
+        thr = TITRATION_DDC_THR
+        maxval = TITRATION_DC_MAX
     else:
         logger.error('Invalid titration type')
         return 0.
@@ -725,10 +702,10 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DF=
 
     # Define stimulation parameters
     if t_type == 'A':
-        stim_params = [Fdrive, value, tstim, toffset, PRF, DF]
+        stim_params = [Fdrive, value, tstim, toffset, PRF, DC]
     elif t_type == 't':
-        stim_params = [Fdrive, Adrive, value, toffset, PRF, DF]
-    elif t_type == 'DF':
+        stim_params = [Fdrive, Adrive, value, toffset, PRF, DC]
+    elif t_type == 'DC':
         stim_params = [Fdrive, Adrive, tstim, toffset, PRF, value]
 
     # Run simulation and detect spikes
@@ -781,15 +758,15 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
     if 'durations' not in stim_params:
         t_type = 't'
         sim_queue = createSimQueue(stim_params['amps'], [None], [TITRATION_T_OFFSET],
-                                   stim_params['PRFs'], stim_params['DFs'])
+                                   stim_params['PRFs'], stim_params['DCs'])
         # sim_queue = np.delete(sim_queue, 1, axis=1)
     elif 'amps' not in stim_params:
         t_type = 'A'
         sim_queue = createSimQueue([None], stim_params['durations'],
                                    [TITRATION_T_OFFSET] * len(stim_params['durations']),
-                                   stim_params['PRFs'], stim_params['DFs'])
-    elif 'DF' not in stim_params:
-        t_type = 'DF'
+                                   stim_params['PRFs'], stim_params['DCs'])
+    elif 'DC' not in stim_params:
+        t_type = 'DC'
         sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
                                    [TITRATION_T_OFFSET] * len(stim_params['durations']),
                                    stim_params['PRFs'], [None])
@@ -812,14 +789,14 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
                     simcount += 1
 
                     # Extract parameters
-                    Adrive, tstim, toffset, PRF, DF = sim_queue[i, :]
+                    Adrive, tstim, toffset, PRF, DC = sim_queue[i, :]
                     if Adrive is None:
                         Adrive = (0., 2 * TITRATION_ASTIM_A_MAX)
                     elif tstim is None:
                         tstim = (0., 2 * TITRATION_T_MAX)
-                    elif DF is None:
-                        DF = (0., 2 * TITRATION_DF_MAX)
-                    curr_params = [Fdrive, Adrive, tstim, PRF, DF]
+                    elif DC is None:
+                        DC = (0., 2 * TITRATION_DC_MAX)
+                    curr_params = [Fdrive, Adrive, tstim, PRF, DC]
 
                     # Generate log str
                     log_str = ''
@@ -846,7 +823,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
                     tstart = time.time()
 
                     (output_thr, t, y, states, lat) = titrateAStim(solver, neuron, Fdrive, Adrive,
-                                                                   tstim, toffset, PRF, DF)
+                                                                   tstim, toffset, PRF, DC)
 
                     Z, ng, Qm, *channels = y
                     U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
@@ -859,45 +836,31 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
                         Adrive = output_thr
                     elif t_type == 't':
                         tstim = output_thr
-                    elif t_type == 'DF':
-                        DF = output_thr
+                    elif t_type == 'DC':
+                        DC = output_thr
 
                     # Define output naming
-                    if DF == 1.0:
+                    if DC == 1.0:
                         simcode = ASTIM_CW_code.format(neuron.name, a * 1e9, Fdrive * 1e-3,
                                                        Adrive * 1e-3, tstim * 1e3, int_method)
                     else:
                         simcode = ASTIM_PW_code.format(neuron.name, a * 1e9, Fdrive * 1e-3,
                                                        Adrive * 1e-3, tstim * 1e3, PRF * 1e-3,
-                                                       DF, int_method)
+                                                       DC, int_method)
 
-                    # Store data in dictionary
-                    data = {
-                        'a': solver.a,
-                        'd': solver.d,
-                        'Fdrive': Fdrive,
-                        'Adrive': Adrive,
-                        'phi': np.pi,
-                        'tstim': tstim,
-                        'toffset': toffset,
-                        'PRF': PRF,
-                        'DF': DF,
-                        't': t,
-                        'states': states,
-                        'U': U,
-                        'Z': Z,
-                        'ng': ng,
-                        'Qm': Qm,
-                        'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])
-                    }
+                    # Store dataframe and metadata
+                    df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
+                                       'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])})
                     for j in range(len(neuron.states_names)):
-                        data[neuron.states_names[j]] = channels[j]
+                        df[neuron.states_names[j]] = channels[j]
+                    meta = {'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive, 'Adrive': Adrive,
+                            'phi': np.pi, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC}
 
-                    # Export data to PKL file
-                    output_filepath = batch_dir + '/' + simcode + ".pkl"
+                    # Export into to PKL file
+                    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
                     with open(output_filepath, 'wb') as fh:
-                        pickle.dump(data, fh)
-                    logger.info('simulation data exported to "%s"', output_filepath)
+                        pickle.dump({'meta': meta, 'data': df}, fh)
+                    logger.debug('simulation data exported to "%s"', output_filepath)
                     filepaths.append(output_filepath)
 
                     # Detect spikes on Qm signal
@@ -914,8 +877,8 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
                         'F': Fdrive * 1e-3,
                         'G': Adrive * 1e-3,
                         'H': tstim * 1e3,
-                        'I': PRF * 1e-3 if DF < 1 else 'N/A',
-                        'J': DF,
+                        'I': PRF * 1e-3 if DC < 1 else 'N/A',
+                        'J': DC,
                         'K': int_method,
                         'L': t.size,
                         'M': round(tcomp, 2),
@@ -956,14 +919,14 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     if 'durations' not in stim_params:
         t_type = 't'
         sim_queue = createSimQueue(stim_params['amps'], [None], [TITRATION_T_OFFSET],
-                                   stim_params['PRFs'], stim_params['DFs'])
+                                   stim_params['PRFs'], stim_params['DCs'])
     elif 'amps' not in stim_params:
         t_type = 'A'
         sim_queue = createSimQueue([None], stim_params['durations'],
                                    [TITRATION_T_OFFSET] * len(stim_params['durations']),
-                                   stim_params['PRFs'], stim_params['DFs'])
-    elif 'DF' not in stim_params:
-        t_type = 'DF'
+                                   stim_params['PRFs'], stim_params['DCs'])
+    elif 'DC' not in stim_params:
+        t_type = 'DC'
         sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
                                    [TITRATION_T_OFFSET] * len(stim_params['durations']),
                                    stim_params['PRFs'], [None])
@@ -986,14 +949,14 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                 simcount += 1
 
                 # Extract parameters
-                Astim, tstim, toffset, PRF, DF = sim_queue[i, :]
+                Astim, tstim, toffset, PRF, DC = sim_queue[i, :]
                 if Astim is None:
                     Astim = (0., 2 * TITRATION_ESTIM_A_MAX)
                 elif tstim is None:
                     tstim = (0., 2 * TITRATION_T_MAX)
-                elif DF is None:
-                    DF = (0., 2 * TITRATION_DF_MAX)
-                curr_params = [Astim, tstim, PRF, DF]
+                elif DC is None:
+                    DC = (0., 2 * TITRATION_DC_MAX)
+                curr_params = [Astim, tstim, PRF, DC]
 
                 # Generate log str
                 log_str = ''
@@ -1019,7 +982,7 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                 tstart = time.time()
 
                 (output_thr, t, y, states, lat) = titrateEStim(solver, neuron, Astim,
-                                                               tstim, toffset, PRF, DF)
+                                                               tstim, toffset, PRF, DC)
 
                 Vm, *channels = y
                 tcomp = time.time() - tstart
@@ -1031,34 +994,26 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                     Astim = output_thr
                 elif t_type == 't':
                     tstim = output_thr
-                elif t_type == 'DF':
-                    DF = output_thr
+                elif t_type == 'DC':
+                    DC = output_thr
 
                 # Define output naming
-                if DF == 1.0:
+                if DC == 1.0:
                     simcode = ESTIM_CW_code.format(neuron.name, Astim, tstim * 1e3)
                 else:
                     simcode = ESTIM_PW_code.format(neuron.name, Astim, tstim * 1e3,
-                                                   PRF * 1e-3, DF)
+                                                   PRF * 1e-3, DC)
 
-                # Store data in dictionary
-                data = {
-                    'Astim': Astim,
-                    'tstim': tstim,
-                    'toffset': toffset,
-                    'PRF': PRF,
-                    'DF': DF,
-                    't': t,
-                    'states': states,
-                    'Vm': Vm
-                }
+                # Store dataframe and metadata
+                df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm})
                 for j in range(len(neuron.states_names)):
-                    data[neuron.states_names[j]] = channels[j]
+                    df[neuron.states_names[j]] = channels[j]
+                meta = {'Astim': Astim, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC}
 
-                # Export data to PKL file
-                output_filepath = batch_dir + '/' + simcode + ".pkl"
+                # Export into to PKL file
+                output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
                 with open(output_filepath, 'wb') as fh:
-                    pickle.dump(data, fh)
+                    pickle.dump({'meta': meta, 'data': df}, fh)
                 logger.info('simulation data exported to "%s"', output_filepath)
                 filepaths.append(output_filepath)
 
@@ -1073,8 +1028,8 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                     'C': neuron.name,
                     'D': Astim,
                     'E': tstim * 1e3,
-                    'F': PRF * 1e-3 if DF < 1 else 'N/A',
-                    'G': DF,
+                    'F': PRF * 1e-3 if DC < 1 else 'N/A',
+                    'G': DC,
                     'H': t.size,
                     'I': round(tcomp, 2),
                     'J': n_spikes,
@@ -1154,29 +1109,16 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
                 tcomp = time.time() - tstart
                 logger.info('completed in %.2f seconds', tcomp)
 
-                # Store data in dictionary
-                data = {
-                    'a': a,
-                    'd': d,
-                    'Cm0': Cm0,
-                    'Qm0': Qm0,
-                    'Fdrive': Fdrive,
-                    'Adrive': Adrive,
-                    'phi': np.pi,
-                    'Qm': Qm,
-                    't': t,
-                    'states': states,
-                    'U': U,
-                    'Z': Z,
-                    'ng': ng
-                }
+                # Store dataframe and metadata
+                df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng})
+                meta = {'a': solver.a, 'd': solver.d, 'Cm0': Cm0, 'Qm0': Qm0, 'Fdrive': Fdrive,
+                        'Adrive': Adrive, 'phi': np.pi, 'Qm': Qm}
 
-                # Export data to PKL file
-                output_filepath = batch_dir + '/' + simcode + ".pkl"
+                # Export into to PKL file
+                output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
                 with open(output_filepath, 'wb') as fh:
-                    pickle.dump(data, fh)
-                logger.info('simulation data exported to "%s"', output_filepath)
-                filepaths.append(output_filepath)
+                    pickle.dump({'meta': meta, 'data': df}, fh)
+                logger.debug('simulation data exported to "%s"', output_filepath)
 
                 # Compute key output metrics
                 Zmax = np.amax(Z)

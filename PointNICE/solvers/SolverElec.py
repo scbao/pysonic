@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-08 09:49:06
+# @Last Modified time: 2018-03-12 20:16:06
 
 
 import warnings
@@ -43,7 +43,7 @@ class SolverElec:
         return [dVmdt, *dstates]
 
 
-    def run(self, ch_mech, Astim, tstim, toffset, PRF=None, DF=1.0):
+    def run(self, ch_mech, Astim, tstim, toffset, PRF=None, DC=1.0):
         ''' Compute solutions of a neuron's HH system for a specific set of
             electrical stimulation parameters, using a classic integration scheme.
 
@@ -52,17 +52,17 @@ class SolverElec:
             :param tstim: pulse duration (s)
             :param toffset: offset duration (s)
             :param PRF: pulse repetition frequency (Hz)
-            :param DF: pulse duty factor (-)
+            :param DC: pulse duty cycle (-)
             :return: 3-tuple with the time profile and solution matrix and a state vector
         '''
 
         # Check validity of stimulation parameters
-        for param in [Astim, tstim, toffset, DF]:
+        for param in [Astim, tstim, toffset, DC]:
             assert isinstance(param, float), 'stimulation parameters must be float typed'
         assert tstim > 0, 'Stimulus duration must be strictly positive'
         assert toffset >= 0, 'Stimulus offset must be positive or null'
-        assert DF > 0 and DF <= 1, 'Duty cycle must be within [0; 1)'
-        if DF < 1.0:
+        assert DC > 0 and DC <= 1, 'Duty cycle must be within [0; 1)'
+        if DC < 1.0:
             assert isinstance(PRF, float), 'if provided, the PRF parameter must be float typed'
             assert PRF is not None, 'PRF must be provided when using duty cycles smaller than 1'
             assert PRF >= 1 / tstim, 'PR interval must be smaller than stimulus duration'
@@ -78,13 +78,13 @@ class SolverElec:
         dt = DT_ESTIM
 
         # if CW stimulus: divide integration during stimulus into single interval
-        if DF == 1.0:
+        if DC == 1.0:
             PRF = 1 / tstim
 
         # Compute vector sizes
         npulses = int(np.round(PRF * tstim))
-        Tpulse_on = DF / PRF
-        Tpulse_off = (1 - DF) / PRF
+        Tpulse_on = DC / PRF
+        Tpulse_off = (1 - DC) / PRF
         n_pulse_on = int(np.round(Tpulse_on / dt))
         n_pulse_off = int(np.round(Tpulse_off / dt))
 

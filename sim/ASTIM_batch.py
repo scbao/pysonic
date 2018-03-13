@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-08 10:00:50
+# @Last Modified time: 2018-03-12 20:17:05
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -29,7 +29,7 @@ stim_params = {
     'amps': np.array([10, 20, 40, 80, 150, 300, 600]) * 1e3,  # Pa
     'durations': np.array([20, 40, 60, 80, 100, 150, 200, 250, 300]) * 1e-3,  # s
     'PRFs': np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]) * 1e3,  # Hz
-    'DFs': np.array([1, 2, 5, 10, 25, 50, 75, 100]) * 1e-2
+    'DCs': np.array([1, 2, 5, 10, 25, 50, 75, 100]) * 1e-2
 }
 stim_params['offsets'] = 350e-3 - stim_params['durations']  # s
 

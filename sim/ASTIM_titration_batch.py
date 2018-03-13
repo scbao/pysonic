@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-01-26 10:46:35
+# @Last Modified time: 2018-03-12 20:17:31
 
 """ Run batch acoustic titrations of specific "point-neuron" models. """
 
@@ -28,7 +28,7 @@ stim_params = {
     # 'amps': [100e3],  # Pa
     'durations': [100e-3],  # s
     'PRFs': [1e2],  # Hz
-    'DFs': [1.0, 0.05]
+    'DCs': [1.0, 0.05]
 }
 
 try:

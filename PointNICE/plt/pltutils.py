@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 19:49:12
+# @Last Modified time: 2018-03-13 00:44:39
 
 ''' Plotting utilities '''
 
@@ -20,6 +20,7 @@ from scipy.interpolate import interp2d
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.cm as cm
+import pandas as pd
 
 from .. import neurons
 from ..utils import getNeuronsDict, getLookupDir, rescale
@@ -41,7 +42,7 @@ rgxp_mech = re.compile('(MECH)_(.*).pkl')
 # nb = '[0-9]*[.]?[0-9]+'
 # rgxp_ASTIM = re.compile('(ASTIM)_(\w+)_(PW|CW)_({0})nm_({0})kHz_({0})kPa_({0})ms(.*)_(\w+).pkl'.format(nb))
 # rgxp_ESTIM = re.compile('(ESTIM)_(\w+)_(PW|CW)_({0})mA_per_m2_({0})ms(.*).pkl'.format(nb))
-# rgxp_PW = re.compile('_PRF({0})kHz_DF({0})_(PW|CW)_(\d+)kHz_(\d+)kPa_(\d+)ms_(.*).pkl'.format(nb))
+# rgxp_PW = re.compile('_PRF({0})kHz_DC({0})_(PW|CW)_(\d+)kHz_(\d+)kPa_(\d+)ms_(.*).pkl'.format(nb))
 
 
 # Figure naming conventions
@@ -249,13 +250,15 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
 
         # Load data
         logger.info('Loading data from "%s"', pkl_filename)
-        with open(filepath, 'rb') as pkl_file:
-            data = pickle.load(pkl_file)
+        with open(filepath, 'rb') as fh:
+            frame = pickle.load(fh)
+            df = frame['data']
+            meta = frame['meta']
 
         # Extract variables
         logger.info('Extracting variables')
-        t = data['t']
-        states = data['states']
+        t = df['t'].values
+        states = df['states'].values
         nsamples = t.size
 
         # Initialize channel mechanism
@@ -263,20 +266,20 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
             neuron_name = mo.group(2)
             global neuron
             neuron = neurons_dict[neuron_name]()
-            neuron_states = [data[sn] for sn in neuron.states_names]
+            # neuron_states = [df[sn].values for sn in neuron.states_names]
             Cm0 = neuron.Cm0
             Qm0 = Cm0 * neuron.Vm0 * 1e-3
             t_plt = pltvars['t_ms']
         else:
-            Cm0 = data['Cm0']
-            Qm0 = data['Qm0']
+            Cm0 = meta['Cm0']
+            Qm0 = meta['Qm0']
             t_plt = pltvars['t_us']
 
         # Initialize BLS
         if sim_type in ['MECH', 'ASTIM']:
             global bls
-            Fdrive = data['Fdrive']
-            a = data['a']
+            Fdrive = meta['Fdrive']
+            a = meta['a']
             bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
 
         # Determine patches location
@@ -294,11 +297,11 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
             if 'alias' in pltvar:
                 var = eval(pltvar['alias'])
             elif 'key' in pltvar:
-                var = data[pltvar['key']]
+                var = df[pltvar['key']].values
             elif 'constant' in pltvar:
                 var = eval(pltvar['constant']) * np.ones(nsamples)
             else:
-                var = data[yvars[i]]
+                var = df[yvars[i]].values
             if var.size == t.size - 1:
                 var = np.insert(var, 0, var[0])
             vrs.append(var)
@@ -308,21 +311,21 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
             label = labels[j]
         else:
             if sim_type == 'ESTIM':
-                if data['DF'] == 1.0:
-                    label = ESTIM_CW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3)
+                if meta['DC'] == 1.0:
+                    label = ESTIM_CW_title.format(neuron.name, meta['Astim'], meta['tstim'] * 1e3)
                 else:
-                    label = ESTIM_PW_title.format(neuron.name, data['Astim'], data['tstim'] * 1e3,
-                                                  data['PRF'] * 1e-3, data['DF'] * 1e2)
+                    label = ESTIM_PW_title.format(neuron.name, meta['Astim'], meta['tstim'] * 1e3,
+                                                  meta['PRF'] * 1e-3, meta['DC'] * 1e2)
             elif sim_type == 'ASTIM':
-                if data['DF'] == 1.0:
+                if meta['DC'] == 1.0:
                     label = ASTIM_CW_title.format(neuron.name, Fdrive * 1e-3,
-                                                  data['Adrive'] * 1e-3, data['tstim'] * 1e3)
+                                                  meta['Adrive'] * 1e-3, meta['tstim'] * 1e3)
                 else:
                     label = ASTIM_PW_title.format(neuron.name, Fdrive * 1e-3,
-                                                  data['Adrive'] * 1e-3, data['tstim'] * 1e3,
-                                                  data['PRF'] * 1e-3, data['DF'] * 1e2)
+                                                  meta['Adrive'] * 1e-3, meta['tstim'] * 1e3,
+                                                  meta['PRF'] * 1e-3, meta['DC'] * 1e2)
             elif sim_type == 'MECH':
-                label = MECH_title.format(a * 1e9, Fdrive * 1e-3, data['Adrive'] * 1e-3)
+                label = MECH_title.format(a * 1e9, Fdrive * 1e-3, meta['Adrive'] * 1e-3)
 
         # Plotting
         handles = [axes[i].plot(t * t_plt['factor'], vrs[i] * y_pltvars[i]['factor'],
@@ -389,7 +392,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
             assert key in pltvars, 'unknown plot variable "{}"'.format(key)
 
     # Dictionary of neurons
-    neurons = getNeuronsDict()
+    neurons_dict = getNeuronsDict()
 
     # Loop through data files
     for filepath in filepaths:
@@ -413,13 +416,15 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
 
         # Load data
         logger.info('Loading data from "%s"', pkl_filename)
-        with open(filepath, 'rb') as pkl_file:
-            data = pickle.load(pkl_file)
+        with open(filepath, 'rb') as fh:
+            frame = pickle.load(fh)
+            df = frame['data']
+            meta = frame['meta']
 
         # Extract variables
         logger.info('Extracting variables')
-        t = data['t']
-        states = data['states']
+        t = df['t'].values
+        states = df['states'].values
         nsamples = t.size
 
         # Initialize channel mechanism
@@ -427,20 +432,20 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
             neuron_name = mo.group(2)
             global neuron
             neuron = neurons_dict[neuron_name]()
-            neuron_states = [data[sn] for sn in neuron.states_names]
+            # neuron_states = [df[sn].values for sn in neuron.states_names]
             Cm0 = neuron.Cm0
             Qm0 = Cm0 * neuron.Vm0 * 1e-3
             t_plt = pltvars['t_ms']
         else:
-            Cm0 = data['Cm0']
-            Qm0 = data['Qm0']
+            Cm0 = meta['Cm0']
+            Qm0 = meta['Qm0']
             t_plt = pltvars['t_us']
 
         # Initialize BLS
         if sim_type in ['MECH', 'ASTIM']:
             global bls
-            Fdrive = data['Fdrive']
-            a = data['a']
+            Fdrive = meta['Fdrive']
+            a = meta['a']
             bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
 
         # Determine patches location
@@ -508,11 +513,11 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
                 if 'alias' in pltvar:
                     var = eval(pltvar['alias'])
                 elif 'key' in pltvar:
-                    var = data[pltvar['key']]
+                    var = df[pltvar['key']].values
                 elif 'constant' in pltvar:
                     var = eval(pltvar['constant']) * np.ones(nsamples)
                 else:
-                    var = data[vars_dict[labels[i]][j]]
+                    var = df[vars_dict[labels[i]][j]].values
                 if var.size == t.size - 1:
                     var = np.insert(var, 0, var[0])
 
@@ -541,23 +546,23 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
         # Title
         if title:
             if sim_type == 'ESTIM':
-                if data['DF'] == 1.0:
-                    fig_title = ESTIM_CW_title.format(neuron.name, data['Astim'],
-                                                      data['tstim'] * 1e3)
+                if meta['DC'] == 1.0:
+                    fig_title = ESTIM_CW_title.format(neuron.name, meta['Astim'],
+                                                      meta['tstim'] * 1e3)
                 else:
-                    fig_title = ESTIM_PW_title.format(neuron.name, data['Astim'],
-                                                      data['tstim'] * 1e3, data['PRF'] * 1e-3,
-                                                      data['DF'] * 1e2)
+                    fig_title = ESTIM_PW_title.format(neuron.name, meta['Astim'],
+                                                      meta['tstim'] * 1e3, meta['PRF'] * 1e-3,
+                                                      meta['DC'] * 1e2)
             elif sim_type == 'ASTIM':
-                if data['DF'] == 1.0:
+                if meta['DC'] == 1.0:
                     fig_title = ASTIM_CW_title.format(neuron.name, Fdrive * 1e-3,
-                                                      data['Adrive'] * 1e-3, data['tstim'] * 1e3)
+                                                      meta['Adrive'] * 1e-3, meta['tstim'] * 1e3)
                 else:
                     fig_title = ASTIM_PW_title.format(neuron.name, Fdrive * 1e-3,
-                                                      data['Adrive'] * 1e-3, data['tstim'] * 1e3,
-                                                      data['PRF'] * 1e-3, data['DF'] * 1e2)
+                                                      meta['Adrive'] * 1e-3, meta['tstim'] * 1e3,
+                                                      meta['PRF'] * 1e-3, meta['DC'] * 1e2)
             elif sim_type == 'MECH':
-                fig_title = MECH_title.format(a * 1e9, Fdrive * 1e-3, data['Adrive'] * 1e-3)
+                fig_title = MECH_title.format(a * 1e9, Fdrive * 1e-3, meta['Adrive'] * 1e-3)
 
             axes[0].set_title(fig_title, fontsize=fs)
 

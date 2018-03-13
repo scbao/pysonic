@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-25 14:50:39
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-12 18:49:28
+# @Last Modified time: 2018-03-12 20:17:56
 
 """ Run batch electrical titrations of specific "point-neuron" models. """
 
@@ -26,7 +26,7 @@ stim_params = {
     'amps': [20.0],  # mA/m2
     'durations': [0.5],  # s
     'PRFs': [1e2],  # Hz
-    # 'DFs': [1.0]
+    # 'DCs': [1.0]
 }
 
 try:

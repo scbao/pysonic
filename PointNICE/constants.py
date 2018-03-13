@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-07 14:55:04
+# @Last Modified time: 2018-03-12 20:06:26
 
 ''' Algorithmic constants used in the package. '''
 
@@ -48,5 +48,5 @@ TITRATION_ESTIM_A_MAX = 50.0  # initial current density upper bound for titratio
 TITRATION_ESTIM_DA_MAX = 0.1  # current density search range threshold for titration (mA/m2)
 TITRATION_T_MAX = 2e-1  # initial stimulus duration upper bound for titration (s)
 TITRATION_DT_THR = 1e-3  # stimulus duration search range threshold for titration (s)
-TITRATION_DDF_THR = 0.01  # stimulus duty cycle search range threshold for titration (-)
-TITRATION_DF_MAX = 1.0  # initial stimulus duty cycle upper bound for titration (-)
+TITRATION_DDC_THR = 0.01  # stimulus duty cycle search range threshold for titration (-)
+TITRATION_DC_MAX = 1.0  # initial stimulus duty cycle upper bound for titration (-)
