@@ -4,7 +4,7 @@
 # @Date:   2016-11-01 16:35:43
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-10 17:20:19
+# @Last Modified time: 2018-03-13 12:35:30
 
 """ Compute RMSE between charge profiles of NICE output. """
 
@@ -35,30 +35,34 @@ if len(pkl_filepaths) > 2:
 # Load data from file 1
 pkl_filename = ntpath.basename(pkl_filepaths[0])
 print('Loading data from "' + pkl_filename + '"')
-with open(pkl_filepaths[0], 'rb') as pkl_file:
-    data = pickle.load(pkl_file)
+with open(pkl_filepaths[0], 'rb') as fh:
+    frame = pickle.load(fh)
+    df = frame['data']
+    meta = frame['meta']
 
-t1 = data['t']
-tstim1 = data['tstim']
-toffset1 = data['toffset']
-f1 = data['Fdrive']
-A1 = data['Adrive']
-Q1 = data['Qm'] * 1e2  # nC/cm2
-states1 = data['states']
+tstim1 = meta['tstim']
+toffset1 = meta['toffset']
+f1 = meta['Fdrive']
+A1 = meta['Adrive']
+t1 = df['t'].values
+Q1 = df['Qm'].values * 1e2  # nC/cm2
+states1 = df['states'].values
 
 # Load data from file 2
 pkl_filename = ntpath.basename(pkl_filepaths[1])
 print('Loading data from "' + pkl_filename + '"')
-with open(pkl_filepaths[1], 'rb') as pkl_file:
-    data = pickle.load(pkl_file)
+with open(pkl_filepaths[1], 'rb') as fh:
+    frame = pickle.load(fh)
+    df = frame['data']
+    meta = frame['meta']
 
-t2 = data['t']
-tstim2 = data['tstim']
-toffset2 = data['toffset']
-f2 = data['Fdrive']
-A2 = data['Adrive']
-Q2 = data['Qm'] * 1e2  # nC/cm2
-states2 = data['states']
+tstim2 = meta['tstim']
+toffset2 = meta['toffset']
+f2 = meta['Fdrive']
+A2 = meta['Adrive']
+t2 = df['t'].values
+Q2 = df['Qm'].values * 1e2  # nC/cm2
+states2 = df['states'].values
 
 if tstim1 != tstim2 or f1 != f2 or A1 != A2 or toffset1 != toffset2:
     print('error: different stimulation conditions')

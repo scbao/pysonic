@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-12-13 11:26:44
+# @Last Modified time: 2018-03-13 12:27:12
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -48,7 +48,7 @@ pltvars = {
         'label': 'P_{AC}',
         'unit': 'kPa',
         'factor': 1e-3,
-        'alias': 'bls.Pacoustic(t, data["Adrive"] * states, Fdrive)'
+        'alias': 'bls.Pacoustic(t, meta["Adrive"] * states, Fdrive)'
     },
 
     'Pmavg': {
@@ -56,7 +56,7 @@ pltvars = {
         'label': 'P_M',
         'unit': 'kPa',
         'factor': 1e-3,
-        'alias': 'bls.PMavgpred(data["Z"])'
+        'alias': 'bls.PMavgpred(df["Z"].values)'
     },
 
     'Telastic': {
@@ -64,7 +64,7 @@ pltvars = {
         'label': 'T_E',
         'unit': 'mN/m',
         'factor': 1e3,
-        'alias': 'bls.TEleaflet(data["Z"])'
+        'alias': 'bls.TEleaflet(df["Z"].values)'
     },
 
     'Qm': {
@@ -83,7 +83,7 @@ pltvars = {
         'factor': 1e2,
         'min': 0.0,
         'max': 1.5,
-        'alias': 'np.array([bls.Capct(ZZ) for ZZ in data["Z"]])'
+        'alias': 'np.array([bls.Capct(ZZ) for ZZ in df["Z"].values])'
     },
 
     'Vm': {
@@ -118,7 +118,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'data["m"]**2 * data["h"]'
+        'alias': 'df["m"].values**2 * df["h"].values'
     },
 
     'm3h': {
@@ -128,7 +128,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'data["m"]**3 * data["h"]'
+        'alias': 'df["m"].values**3 * df["h"].values'
     },
 
     'm4h': {
@@ -138,7 +138,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'data["m"]**4 * data["h"]'
+        'alias': 'df["m"].values**4 * df["h"].values'
     },
 
     'n': {
@@ -184,7 +184,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'data["s"]**2 * data["u"]'
+        'alias': 'df["s"].values**2 * df["u"].values'
     },
 
     'c': {
@@ -221,7 +221,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'data["a"] * data["b"]'
+        'alias': 'df["a"].values * df["b"].values'
     },
 
     'O': {
@@ -240,7 +240,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': '1 - data["O"] - data["C"]'
+        'alias': '1 - df["O"].values - df["C"].values'
     },
 
     'O + 2OL': {
@@ -250,7 +250,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 2.1,
-        'alias': 'data["O"] + 2 * (1 - data["O"] - data["C"])'
+        'alias': 'df["O"].values + 2 * (1 - df["O"].values - df["C"].values)'
     },
 
     'P0': {
@@ -325,7 +325,7 @@ pltvars = {
         'label': 'I_L',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currL(data["Vm"])'
+        'alias': 'neuron.currL(df["Vm"].values)'
     },
 
     'iNa': {
@@ -333,7 +333,7 @@ pltvars = {
         'label': 'I_{Na}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currNa(data["m"], data["h"], data["Vm"])'
+        'alias': 'neuron.currNa(df["m"].values, df["h"].values, df["Vm"].values)'
     },
 
     'iNa2': {
@@ -341,7 +341,7 @@ pltvars = {
         'label': 'I_{Na}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currNa(data["m"], data["h"], data["Vm"], data["C_Na"])'
+        'alias': 'neuron.currNa(df["m"].values, df["h"].values, df["Vm"].values, df["C_Na"].values)'
     },
 
     'iK': {
@@ -349,7 +349,7 @@ pltvars = {
         'label': 'I_K',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currK(data["n"], data["Vm"])'
+        'alias': 'neuron.currK(df["n"].values, df["Vm"].values)'
     },
 
     'iM': {
@@ -357,7 +357,7 @@ pltvars = {
         'label': 'I_M',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currM(data["p"], data["Vm"])'
+        'alias': 'neuron.currM(df["p"].values, df["Vm"].values)'
     },
 
     'iA': {
@@ -365,7 +365,7 @@ pltvars = {
         'label': 'I_A',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currA(data["a"], data["b"], data["Vm"])'
+        'alias': 'neuron.currA(df["a"].values, df["b"].values, df["Vm"].values)'
     },
 
     'iT': {
@@ -373,7 +373,7 @@ pltvars = {
         'label': 'I_T',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currCa(data["s"], data["u"], data["Vm"])'
+        'alias': 'neuron.currCa(df["s"].values, df["u"].values, df["Vm"].values)'
     },
 
     'iTs': {
@@ -381,7 +381,7 @@ pltvars = {
         'label': 'I_{TS}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currCa(data["s"], data["u"], data["Vm"])'
+        'alias': 'neuron.currCa(df["s"].values, df["u"].values, df["Vm"].values)'
     },
 
     'iCa': {
@@ -389,7 +389,7 @@ pltvars = {
         'label': 'I_{Ca}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currCa(data["s"], data["Vm"])'
+        'alias': 'neuron.currCa(df["s"].values, df["Vm"].values)'
     },
 
     'iCa2': {
@@ -397,7 +397,7 @@ pltvars = {
         'label': 'I_{Ca}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currCa(data["s"], data["Vm"], data["C_Ca"])'
+        'alias': 'neuron.currCa(df["s"].values, df["Vm"].values, df["C_Ca"].values)'
     },
 
     'iH': {
@@ -405,7 +405,7 @@ pltvars = {
         'label': 'I_h',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currH(data["O"], data["C"], data["Vm"])'
+        'alias': 'neuron.currH(df["O"].values, df["C"].values, df["Vm"].values)'
     },
 
     'iKL': {
@@ -413,7 +413,7 @@ pltvars = {
         'label': 'I_{KL}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currKL(data["Vm"])'
+        'alias': 'neuron.currKL(df["Vm"].values)'
     },
 
     'iKCa': {
@@ -421,7 +421,7 @@ pltvars = {
         'label': 'I_{KCa}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currKCa(data["A_Ca"], data["Vm"])'
+        'alias': 'neuron.currKCa(df["A_Ca"].values, df["Vm"].values)'
     },
 
     'iKCa2': {
@@ -429,7 +429,7 @@ pltvars = {
         'label': 'I_{KCa}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currKCa(data["c"], data["Vm"])'
+        'alias': 'neuron.currKCa(df["c"].values, df["Vm"].values)'
     },
 
     'iPumpNa': {
@@ -437,7 +437,7 @@ pltvars = {
         'label': 'I_{PumpNa}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currPumpNa(data["A_Na"], data["Vm"])'
+        'alias': 'neuron.currPumpNa(df["A_Na"].values, df["Vm"].values)'
     },
 
     'iPumpNa2': {
@@ -445,7 +445,7 @@ pltvars = {
         'label': 'I_{PumpNa}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currPumpNa(data["C_Na"])'
+        'alias': 'neuron.currPumpNa(df["C_Na"].values)'
     },
 
     'iPumpCa2': {
@@ -453,7 +453,7 @@ pltvars = {
         'label': 'I_{PumpCa}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currPumpCa(data["C_Ca"])'
+        'alias': 'neuron.currPumpCa(df["C_Ca"].values)'
     },
 
     'iNet': {
@@ -461,7 +461,7 @@ pltvars = {
         'label': 'I_{net}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currNet(data["Vm"], neuron_states)'
+        'alias': 'neuron.currNet(df["Vm"].values, neuron_states)'
     },
 
     'Veff': {

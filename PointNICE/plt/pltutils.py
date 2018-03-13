@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 00:44:39
+# @Last Modified time: 2018-03-13 12:27:43
 
 ''' Plotting utilities '''
 
@@ -266,7 +266,7 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
             neuron_name = mo.group(2)
             global neuron
             neuron = neurons_dict[neuron_name]()
-            # neuron_states = [df[sn].values for sn in neuron.states_names]
+            neuron_states = [df[sn].values for sn in neuron.states_names]
             Cm0 = neuron.Cm0
             Qm0 = Cm0 * neuron.Vm0 * 1e-3
             t_plt = pltvars['t_ms']
@@ -432,7 +432,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
             neuron_name = mo.group(2)
             global neuron
             neuron = neurons_dict[neuron_name]()
-            # neuron_states = [df[sn].values for sn in neuron.states_names]
+            neuron_states = [df[sn].values for sn in neuron.states_names]
             Cm0 = neuron.Cm0
             Qm0 = Cm0 * neuron.Vm0 * 1e-3
             t_plt = pltvars['t_ms']
