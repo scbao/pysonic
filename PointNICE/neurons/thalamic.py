@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-30 19:26:17
+# @Last Modified time: 2018-03-13 15:02:14
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -48,6 +48,9 @@ class Thalamic(BaseMech):
         # Names of the different coefficients to be averaged in a lookup table.
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphas', 'betas', 'alphau', 'betau']
+
+        # Charge interval bounds for lookup creation
+        self.Qbounds = (np.round(self.Vm0 - 10.0) * 1e-5, 50.0e-5)
 
 
     def alpham(self, Vm):

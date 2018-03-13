@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-07 14:46:54
+# @Last Modified time: 2018-03-13 15:04:00
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -99,6 +99,9 @@ class LeechTouch(BaseMech):
 
         # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
+
+        # Charge interval bounds for lookup creation
+        self.Qbounds = (np.round(self.Vm0 - 10.0) * 1e-5, 50.0e-5)
 
 
     # ----------------- Generic -----------------
@@ -683,6 +686,9 @@ class LeechPressure(LeechMech):
 
         # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
+
+        # Charge interval bounds for lookup creation
+        self.Qbounds = (np.round(self.Vm0 - 10.0) * 1e-5, 60.0e-5)
 
 
     def nernst(self, z_ion, C_ion_in, C_ion_out):

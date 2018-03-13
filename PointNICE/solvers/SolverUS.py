@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 14:29:47
+# @Last Modified time: 2018-03-13 15:08:52
 
 import os
 import warnings
@@ -156,7 +156,7 @@ class SolverUS(BilayerSonophore):
         return (Vm_eff, ng_eff, *rates_eff)
 
 
-    def createLookup(self, neuron, freqs, amps, charges, phi=np.pi):
+    def createLookup(self, neuron, freqs, amps, phi=np.pi):
         """ Run simulations of the mechanical system for a multiple combinations of
             imposed charge densities and acoustic amplitudes, compute effective coefficients
             and store them as 2D arrays in a lookup file.
@@ -164,15 +164,22 @@ class SolverUS(BilayerSonophore):
             :param neuron: neuron object
             :param freqs: array of acoustic drive frequencies (Hz)
             :param amps: array of acoustic drive amplitudes (Pa)
-            :param charges: array of charge densities (C/m2)
             :param phi: acoustic drive phase (rad)
         """
+
+        # Check if lookup file already exists
+        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
+        lookup_filepath = '{0}/{1}'.format(getLookupDir(), lookup_file)
+        assert not os.path.isfile(lookup_filepath), '"{}" file already exists'.format(lookup_file)
 
         # Check validity of stimulation parameters
         assert freqs.min() > 0, 'Driving frequencies must be strictly positive'
         assert amps.min() >= 0, 'Acoustic pressure amplitudes must be positive'
 
         logger.info('Creating lookup table for %s neuron', neuron.name)
+
+        # Create neuron-specific charge vector
+        charges = np.arange(neuron.Qbounds[0], neuron.Qbounds[1] + 1e-5, 1e-5)  # C/m2
 
         # Initialize lookup dictionary of 3D array to store effective coefficients
         nf = freqs.size
@@ -204,10 +211,7 @@ class SolverUS(BilayerSonophore):
         lookup_dict['Q'] = charges  # C/m2
 
         # Save dictionary in lookup file
-        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
         logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_file)
-
-        lookup_filepath = '{0}/{1}'.format(getLookupDir(), lookup_file)
         with open(lookup_filepath, 'wb') as fh:
             pickle.dump(lookup_dict, fh)
 

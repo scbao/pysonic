@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 14:32:29
+# @Last Modified time: 2018-03-13 17:13:16
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -22,10 +22,10 @@ logger.setLevel(logging.DEBUG)
 a = 32e-9
 
 # Channel mechanisms
-neurons = [LeechPressure()]
+neurons = [CorticalRS()]
 
 # Stimulation parameters
-freqs = np.arange(100, 1001, 100) * 1e3  # Hz
+freqs = np.array([20., 100., 500., 1000., 2000., 3000., 4000.]) * 1e3  # Hz
 amps = np.logspace(np.log10(0.1), np.log10(600), num=50) * 1e3  # Pa
 amps = np.insert(amps, 0, 0.0)  # adding amplitude 0
 
@@ -34,9 +34,10 @@ logger.info('Starting batch lookup creation')
 for neuron in neurons:
     # Create a SolverUS instance (with dummy frequency parameter)
     solver = PointNICE.SolverUS(a, neuron, 0.0)
-    charges = np.arange(np.round(neuron.Vm0 - 10.0), 50.0 + 1.0, 1.0) * 1e-5  # C/m2
 
     # Create lookup file
-    solver.createLookup(neuron, freqs, amps, charges)
-
-logger.info('Lookup tables successfully created')
+    try:
+        solver.createLookup(neuron, freqs, amps)
+        logger.info('%s Lookup table successfully created', neuron.name)
+    except AssertionError as err:
+        logger.error(err)

@@ -4,7 +4,7 @@
 # @Date:   2017-07-17 11:47:50
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-07-21 18:40:04
+# @Last Modified time: 2018-03-13 15:21:18
 
 ''' plot profile of acoustic Intensity (in W/cm^2) vs Pressure (in kPa) '''
 
@@ -14,15 +14,14 @@ from PointNICE.utils import Pressure2Intensity
 
 rho = 1075  # kg/m3
 c = 1515  # m/s
+P = np.logspace(np.log10(1e1), np.log10(1e7), num=500)  # Pa
+Int = Pressure2Intensity(P, rho, c)  # W/m2
 
 fig, ax = plt.subplots()
 ax.set_xlabel('$Pressure\ (kPa)$')
 ax.set_ylabel('$I_{SPPA}\ (W/cm^2)$')
 ax.set_xscale('log')
 ax.set_yscale('log')
-
-P = np.logspace(np.log10(1e1), np.log10(1e7), num=500)  # Pa
-Int = Pressure2Intensity(P, rho, c)  # W/m2
 ax.plot(P * 1e-3, Int * 1e-4)
 
 
