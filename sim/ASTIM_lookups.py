@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 19:45:18
+# @Last Modified time: 2018-03-13 14:32:29
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -31,12 +31,12 @@ amps = np.insert(amps, 0, 0.0)  # adding amplitude 0
 
 logger.info('Starting batch lookup creation')
 
-for ch_mech in neurons:
+for neuron in neurons:
     # Create a SolverUS instance (with dummy frequency parameter)
-    solver = PointNICE.SolverUS(a, ch_mech, 0.0)
-    charges = np.arange(np.round(ch_mech.Vm0 - 10.0), 50.0 + 1.0, 1.0) * 1e-5  # C/m2
+    solver = PointNICE.SolverUS(a, neuron, 0.0)
+    charges = np.arange(np.round(neuron.Vm0 - 10.0), 50.0 + 1.0, 1.0) * 1e-5  # C/m2
 
     # Create lookup file
-    solver.createLookup(ch_mech, freqs, amps, charges)
+    solver.createLookup(neuron, freqs, amps, charges)
 
 logger.info('Lookup tables successfully created')

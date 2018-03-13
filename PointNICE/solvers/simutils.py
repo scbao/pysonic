@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 12:48:28
+# @Last Modified time: 2018-03-13 14:32:07
 
 """ Utility functions used in simulations """
 
@@ -577,7 +577,7 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
     return filepaths
 
 
-def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
+def titrateEStim(solver, neuron, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
     """ Use a dichotomic recursive search to determine the threshold value of a specific
         electric stimulation parameter needed to obtain neural excitation, keeping all other
         parameters fixed. The titration parameter can be stimulation amplitude, duration or
@@ -586,7 +586,7 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
         This function is called recursively until an accurate threshold is found.
 
         :param solver: solver instance
-        :param ch_mech: channels mechanism object
+        :param neuron: neuron object
         :param Astim: injected current density amplitude (mA/m2)
         :param tstim: duration of US stimulation (s)
         :param toffset: duration of the offset (s)
@@ -631,7 +631,7 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
         stim_params = [Astim, tstim, toffset, PRF, value]
 
     # Run simulation and detect spikes
-    (t, y, states) = solver.run(ch_mech, *stim_params)
+    (t, y, states) = solver.run(neuron, *stim_params)
     n_spikes, latency, _ = detectSpikes(t, y[0, :], SPIKE_MIN_VAMP, SPIKE_MIN_DT)
     logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
                  n_spikes, "s" if n_spikes > 1 else "")
@@ -651,10 +651,10 @@ def titrateEStim(solver, ch_mech, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
             new_interval = (interval[0], value)
 
         stim_params[t_var['index']] = new_interval
-        return titrateEStim(solver, ch_mech, *stim_params)
+        return titrateEStim(solver, neuron, *stim_params)
 
 
-def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=1.0,
+def titrateAStim(solver, neuron, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=1.0,
                  int_method='effective'):
     """ Use a dichotomic recursive search to determine the threshold value of a specific
         acoustic stimulation parameter needed to obtain neural excitation, keeping all other
@@ -664,7 +664,7 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=
         This function is called recursively until an accurate threshold is found.
 
         :param solver: solver instance
-        :param ch_mech: channels mechanism object
+        :param neuron: neuron object
         :param Fdrive: acoustic drive frequency (Hz)
         :param Adrive: acoustic drive amplitude (Pa)
         :param tstim: duration of US stimulation (s)
@@ -711,7 +711,7 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=
         stim_params = [Fdrive, Adrive, tstim, toffset, PRF, value]
 
     # Run simulation and detect spikes
-    (t, y, states) = solver.run(ch_mech, *stim_params, int_method)
+    (t, y, states) = solver.run(neuron, *stim_params, int_method)
     n_spikes, latency, _ = detectSpikes(t, y[2, :], SPIKE_MIN_QAMP, SPIKE_MIN_DT)
     logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
                  n_spikes, "s" if n_spikes > 1 else "")
@@ -731,7 +731,7 @@ def titrateAStim(solver, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=
             new_interval = (interval[0], value)
 
         stim_params[t_var['index']] = new_interval
-        return titrateAStim(solver, ch_mech, *stim_params, int_method)
+        return titrateAStim(solver, neuron, *stim_params, int_method)
 
 
 def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam, int_method='effective'):

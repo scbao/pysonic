@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 20:16:52
+# @Last Modified time: 2018-03-13 14:29:47
 
 import os
 import warnings
@@ -28,37 +28,37 @@ class SolverUS(BilayerSonophore):
     """ This class extends the BilayerSonophore class by adding a biophysical
         Hodgkin-Huxley model on top of the mechanical BLS model. """
 
-    def __init__(self, diameter, ch_mech, Fdrive, embedding_depth=0.0):
+    def __init__(self, diameter, neuron, Fdrive, embedding_depth=0.0):
         """ Constructor of the class.
 
             :param diameter: in-plane diameter of the sonophore structure within the membrane (m)
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param Fdrive: frequency of acoustic perturbation (Hz)
             :param embedding_depth: depth of the embedding tissue around the membrane (m)
         """
 
         # Check validity of input parameters
-        assert isinstance(ch_mech, BaseMech), ('channel mechanism must be inherited '
-                                               'from the BaseMech class')
+        assert isinstance(neuron, BaseMech), ('neuron mechanism must be inherited '
+                                              'from the BaseMech class')
         assert Fdrive >= 0., 'Driving frequency must be positive'
         # TODO: check parameters dictionary (float type, mandatory members)
 
         # Initialize BLS object
-        Cm0 = ch_mech.Cm0
-        Vm0 = ch_mech.Vm0
+        Cm0 = neuron.Cm0
+        Vm0 = neuron.Vm0
         BilayerSonophore.__init__(self, diameter, Fdrive, Cm0, Cm0 * Vm0 * 1e-3, embedding_depth)
 
-        logger.debug('US solver initialization with %s channel mechanism', ch_mech.name)
+        logger.debug('US solver initialization with %s neuron', neuron.name)
 
 
-    def eqHH(self, t, y, ch_mech, Cm):
+    def eqHH(self, t, y, neuron, Cm):
         """ Compute the derivatives of the n-ODE HH system variables,
             based on a value of membrane capacitance.
 
 
             :param t: specific instant in time (s)
             :param y: vector of HH system variables at time t
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param Cm: membrane capacitance (F/m2)
             :return: vector of HH system derivatives at time t
         """
@@ -70,19 +70,19 @@ class SolverUS(BilayerSonophore):
         Vm = Qm / Cm * 1e3  # mV
 
         # Compute derivatives
-        dQm = - ch_mech.currNet(Vm, states) * 1e-3  # A/m2
-        dstates = ch_mech.derStates(Vm, states)
+        dQm = - neuron.currNet(Vm, states) * 1e-3  # A/m2
+        dstates = neuron.derStates(Vm, states)
 
         # Return derivatives vector
         return [dQm, *dstates]
 
 
-    def eqFull(self, t, y, ch_mech, Adrive, Fdrive, phi):
+    def eqFull(self, t, y, neuron, Adrive, Fdrive, phi):
         """ Compute the derivatives of the (n+3) ODE full NBLS system variables.
 
             :param t: specific instant in time (s)
             :param y: vector of state variables
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param Adrive: acoustic drive amplitude (Pa)
             :param Fdrive: acoustic drive frequency (Hz)
             :param phi: acoustic drive phase (rad)
@@ -91,21 +91,20 @@ class SolverUS(BilayerSonophore):
 
         # Compute derivatives of mechanical and electrical systems
         dydt_mech = self.eqMech(t, y[:3], Adrive, Fdrive, y[3], phi)
-        dydt_elec = self.eqHH(t, y[3:], ch_mech, self.Capct(y[1]))
+        dydt_elec = self.eqHH(t, y[3:], neuron, self.Capct(y[1]))
 
         # return concatenated output
         return dydt_mech + dydt_elec
 
 
-    def eqHHeff(self, t, y, ch_mech, interp_data):
+    def eqHHeff(self, t, y, neuron, interp_data):
         """ Compute the derivatives of the n-ODE effective HH system variables,
             based on 1-dimensional linear interpolation of "effective" coefficients
             that summarize the system's behaviour over an acoustic cycle.
 
             :param t: specific instant in time (s)
             :param y: vector of HH system variables at time t
-            :param ch_mech: channels mechanism object
-            :param channels: Channel object to compute a specific electrical membrane dynamics
+            :param neuron: neuron object
             :param interp_data: dictionary of 1D data points of "effective" coefficients
              over the charge domain, for specific frequency and amplitude values.
             :return: vector of effective system derivatives at time t
@@ -116,14 +115,14 @@ class SolverUS(BilayerSonophore):
 
         # Compute charge and channel states variation
         Vm = np.interp(Qm, interp_data['Q'], interp_data['V'])  # mV
-        dQmdt = - ch_mech.currNet(Vm, states) * 1e-3
-        dstates = ch_mech.derStatesEff(Qm, states, interp_data)
+        dQmdt = - neuron.currNet(Vm, states) * 1e-3
+        dstates = neuron.derStatesEff(Qm, states, interp_data)
 
         # Return derivatives vector
         return [dQmdt, *dstates]
 
 
-    def getEffCoeffs(self, ch_mech, Fdrive, Adrive, Qm, phi=np.pi):
+    def getEffCoeffs(self, neuron, Fdrive, Adrive, Qm, phi=np.pi):
         """ Compute "effective" coefficients of the HH system for a specific combination
             of stimulus frequency, stimulus amplitude and charge density.
 
@@ -131,7 +130,7 @@ class SolverUS(BilayerSonophore):
             until periodic stabilization. The HH coefficients are then averaged over the last
             acoustic cycle to yield "effective" coefficients.
 
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
             :param Qm: imposed charge density (C/m2)
@@ -149,7 +148,7 @@ class SolverUS(BilayerSonophore):
 
         # Compute average cycle value for membrane potential and rate constants
         Vm_eff = np.mean(Vm)  # mV
-        rates_eff = ch_mech.getEffRates(Vm)
+        rates_eff = neuron.getEffRates(Vm)
 
         # Take final cycle value for gas content
         ng_eff = ng[-1]  # mole
@@ -157,12 +156,12 @@ class SolverUS(BilayerSonophore):
         return (Vm_eff, ng_eff, *rates_eff)
 
 
-    def createLookup(self, ch_mech, freqs, amps, charges, phi=np.pi):
+    def createLookup(self, neuron, freqs, amps, charges, phi=np.pi):
         """ Run simulations of the mechanical system for a multiple combinations of
             imposed charge densities and acoustic amplitudes, compute effective coefficients
             and store them as 2D arrays in a lookup file.
 
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param freqs: array of acoustic drive frequencies (Hz)
             :param amps: array of acoustic drive amplitudes (Pa)
             :param charges: array of charge densities (C/m2)
@@ -173,13 +172,13 @@ class SolverUS(BilayerSonophore):
         assert freqs.min() > 0, 'Driving frequencies must be strictly positive'
         assert amps.min() >= 0, 'Acoustic pressure amplitudes must be positive'
 
-        logger.info('Creating lookup table for %s neuron', ch_mech.name)
+        logger.info('Creating lookup table for %s neuron', neuron.name)
 
         # Initialize lookup dictionary of 3D array to store effective coefficients
         nf = freqs.size
         nA = amps.size
         nQ = charges.size
-        coeffs_names = ['V', 'ng', *ch_mech.coeff_names]
+        coeffs_names = ['V', 'ng', *neuron.coeff_names]
         ncoeffs = len(coeffs_names)
         lookup_dict = {cn: np.empty((nf, nA, nQ)) for cn in coeffs_names}
 
@@ -194,7 +193,7 @@ class SolverUS(BilayerSonophore):
                     # Run short simulation and store effective coefficients
                     logger.info(log_str, isim, nsims, freqs[i] * 1e-3, amps[j] * 1e-3,
                                 charges[k] * 1e5)
-                    sim_coeffs = self.getEffCoeffs(ch_mech, freqs[i], amps[j], charges[k], phi)
+                    sim_coeffs = self.getEffCoeffs(neuron, freqs[i], amps[j], charges[k], phi)
                     for icoeff in range(ncoeffs):
                         lookup_dict[coeffs_names[icoeff]][i, j, k] = sim_coeffs[icoeff]
 
@@ -205,15 +204,15 @@ class SolverUS(BilayerSonophore):
         lookup_dict['Q'] = charges  # C/m2
 
         # Save dictionary in lookup file
-        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(ch_mech.name, self.a * 1e9)
-        logger.info('Saving %s neuron lookup table in file: "%s"', ch_mech.name, lookup_file)
+        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
+        logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_file)
 
         lookup_filepath = '{0}/{1}'.format(getLookupDir(), lookup_file)
         with open(lookup_filepath, 'wb') as fh:
             pickle.dump(lookup_dict, fh)
 
 
-    def __runClassic(self, ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
+    def __runClassic(self, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
         """ Compute solutions of the system for a specific set of
             US stimulation parameters, using a classic integration scheme.
 
@@ -221,7 +220,7 @@ class SolverUS(BilayerSonophore):
             the initiation of motion from a flat leaflet configuration. Afterwards,
             the ODE system is solved iteratively until completion.
 
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
             :param tstim: duration of US stimulation (s)
@@ -266,7 +265,7 @@ class SolverUS(BilayerSonophore):
         states = np.array([1, 1])
         t = np.array([0., dt])
         y_membrane = np.array([[0., (Z1 - Z0) / dt], [Z0, Z1], [ng0, ng0], [Qm0, Qm0]])
-        y_channels = np.tile(ch_mech.states0, (2, 1)).T
+        y_channels = np.tile(neuron.states0, (2, 1)).T
         y = np.vstack((y_membrane, y_channels))
         nvar = y.shape[0]
 
@@ -293,7 +292,7 @@ class SolverUS(BilayerSonophore):
             k = 0
 
             # Integrate ON system
-            solver_full.set_f_params(ch_mech, Adrive, Fdrive, phi)
+            solver_full.set_f_params(neuron, Adrive, Fdrive, phi)
             solver_full.set_initial_value(y_pulse[:, k], t_pulse[k])
             while solver_full.successful() and k < n_pulse_on - 1:
                 k += 1
@@ -301,7 +300,7 @@ class SolverUS(BilayerSonophore):
                 y_pulse[:, k] = solver_full.y
 
             # Integrate OFF system
-            solver_full.set_f_params(ch_mech, 0.0, 0.0, 0.0)
+            solver_full.set_f_params(neuron, 0.0, 0.0, 0.0)
             solver_full.set_initial_value(y_pulse[:, k], t_pulse[k])
             while solver_full.successful() and k < n_pulse_on + n_pulse_off - 1:
                 k += 1
@@ -324,7 +323,7 @@ class SolverUS(BilayerSonophore):
             y_off = np.empty((nvar, n_off))
             y_off[:, 0] = y[:, -1]
             solver_full.set_initial_value(y_off[:, 0], t_off[0])
-            solver_full.set_f_params(ch_mech, 0.0, 0.0, 0.0)
+            solver_full.set_f_params(neuron, 0.0, 0.0, 0.0)
             k = 0
             while solver_full.successful() and k < n_off - 1:
                 k += 1
@@ -349,12 +348,12 @@ class SolverUS(BilayerSonophore):
         return (t, y[1:, :], states)
 
 
-    def __runEffective(self, ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
+    def __runEffective(self, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
         """ Compute solutions of the system for a specific set of
             US stimulation parameters, using charge-predicted "effective"
             coefficients to solve the HH equations at each step.
 
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
             :param tstim: duration of US stimulation (s)
@@ -369,10 +368,10 @@ class SolverUS(BilayerSonophore):
         warnings.filterwarnings('error')
 
         # Check lookup file existence
-        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(ch_mech.name, self.a * 1e9)
+        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
         lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
         assert os.path.isfile(lookup_path), ('No lookup file available for {} '
-                                             'neuron type').format(ch_mech.name)
+                                             'neuron type').format(neuron.name)
 
         # Load coefficients
         with open(lookup_path, 'rb') as fh:
@@ -394,7 +393,7 @@ class SolverUS(BilayerSonophore):
             'Adrive must be within [{:.1f}, {:.1f}] kPa'.format(*[A * 1e-3 for A in Arange])
 
         # Define interpolation datasets to be projected
-        coeffs_list = ['V', 'ng', *ch_mech.coeff_names]
+        coeffs_list = ['V', 'ng', *neuron.coeff_names]
 
         # If Fdrive in lookup frequencies, simply project (A, Q) interpolation dataset
         # at Fdrive index onto 1D charge-based interpolation dataset
@@ -441,7 +440,7 @@ class SolverUS(BilayerSonophore):
         # Initialize system solvers
         solver_on = integrate.ode(self.eqHHeff)
         solver_on.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
-        solver_on.set_f_params(ch_mech, coeffs1d)
+        solver_on.set_f_params(neuron, coeffs1d)
         solver_off = integrate.ode(self.eqHH)
         solver_off.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
 
@@ -475,7 +474,7 @@ class SolverUS(BilayerSonophore):
         # Initialize global arrays
         states = np.array([1])
         t = np.array([0.0])
-        y = np.atleast_2d(np.insert(ch_mech.states0, 0, self.Qm0)).T
+        y = np.atleast_2d(np.insert(neuron.states0, 0, self.Qm0)).T
         nvar = y.shape[0]
         Zeff = np.array([0.0])
         ngeff = np.array([self.ng0])
@@ -512,14 +511,14 @@ class SolverUS(BilayerSonophore):
 
             # Integrate OFF system
             solver_off.set_initial_value(y_pulse[:, k], t_pulse[k])
-            solver_off.set_f_params(ch_mech, self.Capct(Zeff_pulse[k]))
+            solver_off.set_f_params(neuron, self.Capct(Zeff_pulse[k]))
             while solver_off.successful() and k < n_pulse_on + n_pulse_off - 1:
                 k += 1
                 solver_off.integrate(t_pulse[k])
                 y_pulse[:, k] = solver_off.y
                 ngeff_pulse[k] = np.interp(y_pulse[0, k], coeffs1d['Q'], coeffs1d['ng0'])  # mole
                 Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
-                solver_off.set_f_params(ch_mech, self.Capct(Zeff_pulse[k]))
+                solver_off.set_f_params(neuron, self.Capct(Zeff_pulse[k]))
 
             # Append pulse arrays to global arrays
             states = np.concatenate([states[:-1], states_pulse])
@@ -540,7 +539,7 @@ class SolverUS(BilayerSonophore):
             ngeff_off[0] = ngeff[-1]
             Zeff_off[0] = Zeff[-1]
             solver_off.set_initial_value(y_off[:, 0], t_off[0])
-            solver_off.set_f_params(ch_mech, self.Capct(Zeff_pulse[k]))
+            solver_off.set_f_params(neuron, self.Capct(Zeff_pulse[k]))
             k = 0
             while solver_off.successful() and k < n_off - 1:
                 k += 1
@@ -548,7 +547,7 @@ class SolverUS(BilayerSonophore):
                 y_off[:, k] = solver_off.y
                 ngeff_off[k] = np.interp(y_off[0, k], coeffs1d['Q'], coeffs1d['ng0'])  # mole
                 Zeff_off[k] = self.balancedefQS(ngeff_off[k], y_off[0, k])  # m
-                solver_off.set_f_params(ch_mech, self.Capct(Zeff_off[k]))
+                solver_off.set_f_params(neuron, self.Capct(Zeff_off[k]))
 
             # Concatenate offset arrays to global arrays
             states = np.concatenate([states, states_off[1:]])
@@ -564,7 +563,7 @@ class SolverUS(BilayerSonophore):
         return (t, y, states)
 
 
-    def __runHybrid(self, ch_mech, Fdrive, Adrive, tstim, toffset, phi=np.pi):
+    def __runHybrid(self, neuron, Fdrive, Adrive, tstim, toffset, phi=np.pi):
         """ Compute solutions of the system for a specific set of
             US stimulation parameters, using a hybrid integration scheme.
 
@@ -581,7 +580,7 @@ class SolverUS(BilayerSonophore):
               slice, using periodic expansion of the mechanical signals to precompute
               the values of capacitance.
 
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
             :param tstim: duration of US stimulation (s)
@@ -597,7 +596,7 @@ class SolverUS(BilayerSonophore):
 
         # Initialize full and HH systems solvers
         solver_full = integrate.ode(self.eqFull)
-        solver_full.set_f_params(ch_mech, Adrive, Fdrive, phi)
+        solver_full.set_f_params(neuron, Adrive, Fdrive, phi)
         solver_full.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
         solver_hh = integrate.ode(self.eqHH)
         solver_hh.set_integrator('dop853', nsteps=SOLVER_NSTEPS, atol=1e-12)
@@ -624,7 +623,7 @@ class SolverUS(BilayerSonophore):
         states = np.array([1, 1])
         t = np.array([0., dt_full])
         y_membrane = np.array([[0., (Z1 - Z0) / dt_full], [Z0, Z1], [ng0, ng0], [Qm0, Qm0]])
-        y_channels = np.tile(ch_mech.states0, (2, 1)).T
+        y_channels = np.tile(neuron.states0, (2, 1)).T
         y = np.vstack((y_membrane, y_channels))
         nvar = y.shape[0]
 
@@ -646,7 +645,7 @@ class SolverUS(BilayerSonophore):
             Z_last = None
             while not sim_error and not periodic_conv:
                 if t[-1] > tstim:
-                    solver_full.set_f_params(ch_mech, 0.0, 0.0, 0.0)
+                    solver_full.set_f_params(neuron, 0.0, 0.0, 0.0)
                 t_full = t_full_cycle + t[-1] + dt_full
                 y_full = np.empty((nvar, NPC_FULL))
                 y0_full = y[:, -1]
@@ -705,7 +704,7 @@ class SolverUS(BilayerSonophore):
                 k = 0
                 try:  # try to integrate and catch errors/warnings
                     while solver_hh.successful() and k <= NPC_HH - 1:
-                        solver_hh.set_f_params(ch_mech, self.Capct(mech_pred[1, k]))
+                        solver_hh.set_f_params(neuron, self.Capct(mech_pred[1, k]))
                         solver_hh.integrate(t_hh[k])
                         y_hh[:, k] = solver_hh.y
                         k += 1
@@ -740,12 +739,12 @@ class SolverUS(BilayerSonophore):
         return (t, y[1:, :], states)
 
 
-    def run(self, ch_mech, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0,
+    def run(self, neuron, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0,
             sim_type='effective'):
         """ Run simulation of the system for a specific set of
             US stimulation parameters.
 
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
             :param tstim: duration of US stimulation (s)
@@ -761,8 +760,8 @@ class SolverUS(BilayerSonophore):
         assert sim_type in sim_types, 'Allowed simulation types are {}'.format(sim_types)
 
         # Check validity of stimulation parameters
-        assert isinstance(ch_mech, BaseMech), ('channel mechanism must be inherited '
-                                               'from the BaseMech class')
+        assert isinstance(neuron, BaseMech), ('neuron mechanism must be inherited '
+                                              'from the BaseMech class')
         for param in [Fdrive, Adrive, tstim, toffset, DC]:
             assert isinstance(param, float), 'stimulation parameters must be float typed'
         assert Fdrive > 0, 'Driving frequency must be strictly positive'
@@ -778,10 +777,10 @@ class SolverUS(BilayerSonophore):
 
         # Call appropriate simulation function
         if sim_type == 'classic':
-            return self.__runClassic(ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DC)
+            return self.__runClassic(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC)
         elif sim_type == 'effective':
-            return self.__runEffective(ch_mech, Fdrive, Adrive, tstim, toffset, PRF, DC)
+            return self.__runEffective(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC)
         elif sim_type == 'hybrid':
             assert DC == 1.0, 'Hybrid method can only handle continuous wave stimuli'
-            return self.__runHybrid(ch_mech, Fdrive, Adrive, tstim, toffset)
+            return self.__runHybrid(neuron, Fdrive, Adrive, tstim, toffset)
 

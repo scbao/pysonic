@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 20:16:06
+# @Last Modified time: 2018-03-13 14:30:51
 
 
 import warnings
@@ -25,29 +25,29 @@ class SolverElec:
         pass
 
 
-    def eqHH(self, _, y, ch_mech, Iinj):
+    def eqHH(self, _, y, neuron, Iinj):
         ''' Compute the derivatives of a HH system variables for a
             specific value of injected current.
 
             :param t: time value (s, unused)
             :param y: vector of HH system variables at time t
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param Iinj: injected current (mA/m2)
             :return: vector of HH system derivatives at time t
         '''
 
         Vm, *states = y
-        Iionic = ch_mech.currNet(Vm, states)  # mA/m2
-        dVmdt = (- Iionic + Iinj) / ch_mech.Cm0  # mV/s
-        dstates = ch_mech.derStates(Vm, states)
+        Iionic = neuron.currNet(Vm, states)  # mA/m2
+        dVmdt = (- Iionic + Iinj) / neuron.Cm0  # mV/s
+        dstates = neuron.derStates(Vm, states)
         return [dVmdt, *dstates]
 
 
-    def run(self, ch_mech, Astim, tstim, toffset, PRF=None, DC=1.0):
+    def run(self, neuron, Astim, tstim, toffset, PRF=None, DC=1.0):
         ''' Compute solutions of a neuron's HH system for a specific set of
             electrical stimulation parameters, using a classic integration scheme.
 
-            :param ch_mech: channels mechanism object
+            :param neuron: neuron object
             :param Astim: pulse amplitude (mA/m2)
             :param tstim: pulse duration (s)
             :param toffset: offset duration (s)
@@ -105,7 +105,7 @@ class SolverElec:
         n_off = int(np.round(toffset / dt))
 
         # Set initial conditions
-        y0 = [ch_mech.Vm0, *ch_mech.states0]
+        y0 = [neuron.Vm0, *neuron.states0]
         nvar = len(y0)
 
         # Initialize global arrays
@@ -129,7 +129,7 @@ class SolverElec:
             k = 0
 
             # Integrate ON system
-            solver.set_f_params(ch_mech, Astim)
+            solver.set_f_params(neuron, Astim)
             solver.set_initial_value(y_pulse[:, k], t_pulse[k])
             while solver.successful() and k < n_pulse_on - 1:
                 k += 1
@@ -137,7 +137,7 @@ class SolverElec:
                 y_pulse[:, k] = solver.y
 
             # Integrate OFF system
-            solver.set_f_params(ch_mech, 0.0)
+            solver.set_f_params(neuron, 0.0)
             solver.set_initial_value(y_pulse[:, k], t_pulse[k])
             while solver.successful() and k < n_pulse_on + n_pulse_off - 1:
                 k += 1
@@ -156,7 +156,7 @@ class SolverElec:
             y_off = np.empty((nvar, n_off))
             y_off[:, 0] = y[:, -1]
             solver.set_initial_value(y_off[:, 0], t_off[0])
-            solver.set_f_params(ch_mech, 0.0)
+            solver.set_f_params(neuron, 0.0)
             k = 0
             while solver.successful() and k < n_off - 1:
                 k += 1
