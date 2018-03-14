@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 23:14:30
+# @Last Modified time: 2018-03-14 19:24:59
 
 import os
 import warnings
@@ -51,13 +51,13 @@ class SolverUS(BilayerSonophore):
         logger.debug('US solver initialization with %s neuron', neuron.name)
 
 
-    def eqHH(self, t, y, neuron, Cm):
+    def eqHH(self, y, t, neuron, Cm):
         """ Compute the derivatives of the n-ODE HH system variables,
             based on a value of membrane capacitance.
 
 
-            :param t: specific instant in time (s)
             :param y: vector of HH system variables at time t
+            :param t: specific instant in time (s)
             :param neuron: neuron object
             :param Cm: membrane capacitance (F/m2)
             :return: vector of HH system derivatives at time t
@@ -76,28 +76,11 @@ class SolverUS(BilayerSonophore):
         # Return derivatives vector
         return [dQm, *dstates]
 
-
-    def eqFull(self, t, y, neuron, Adrive, Fdrive, phi):
-        """ Compute the derivatives of the (n+3) ODE full NBLS system variables.
-
-            :param t: specific instant in time (s)
-            :param y: vector of state variables
-            :param neuron: neuron object
-            :param Adrive: acoustic drive amplitude (Pa)
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param phi: acoustic drive phase (rad)
-            :return: vector of derivatives
-        """
-
-        # Compute derivatives of mechanical and electrical systems
-        dydt_mech = self.eqMech(t, y[:3], Adrive, Fdrive, y[3], phi)
-        dydt_elec = self.eqHH(t, y[3:], neuron, self.Capct(y[1]))
-
-        # return concatenated output
-        return dydt_mech + dydt_elec
+    def eqHH2(self, t, y, neuron, Cm):
+        return self.eqHH(y, t, neuron, Cm)
 
 
-    def eqFull2(self, y, t, neuron, Adrive, Fdrive, phi):
+    def eqFull(self, y, t, neuron, Adrive, Fdrive, phi):
         """ Compute the derivatives of the (n+3) ODE full NBLS system variables.
 
             :param y: vector of state variables
@@ -110,11 +93,14 @@ class SolverUS(BilayerSonophore):
         """
 
         # Compute derivatives of mechanical and electrical systems
-        dydt_mech = self.eqMech(t, y[:3], Adrive, Fdrive, y[3], phi)
-        dydt_elec = self.eqHH(t, y[3:], neuron, self.Capct(y[1]))
+        dydt_mech = self.eqMech(y[:3], t, Adrive, Fdrive, y[3], phi)
+        dydt_elec = self.eqHH(y[3:], t, neuron, self.Capct(y[1]))
 
         # return concatenated output
         return dydt_mech + dydt_elec
+
+    def eqFull2(self, t, y, neuron, Adrive, Fdrive, phi):
+        return self.eqFull(y, t, neuron, Adrive, Fdrive, phi)
 
 
     def eqHHeff(self, t, y, neuron, interp_data):
@@ -258,10 +244,6 @@ class SolverUS(BilayerSonophore):
         # Raise warnings as error
         warnings.filterwarnings('error')
 
-        # Initialize system solver
-        # solver_full = integrate.ode(self.eqFull)
-        # solver_full.set_integrator('lsoda', nsteps=SOLVER_NSTEPS, ixpr=True)
-
         # Determine system time step
         Tdrive = 1 / Fdrive
         dt = Tdrive / NPC_FULL
@@ -309,39 +291,17 @@ class SolverUS(BilayerSonophore):
 
             # Construct and initialize arrays
             t_pulse = t_pulse0 + t[-1]
-            # y_pulse = np.empty((nvar, n_pulse_on + n_pulse_off))
-            # y_pulse[:, 0] = y[:, -1]
-
-            # Initialize iterator
-            # k = 0
+            y_pulse = np.empty((nvar, n_pulse_on + n_pulse_off))
 
             # Integrate ON system
-            t_on = t_pulse[:n_pulse_on]
-            y_on = integrate.odeint(self.eqFull2, y[:, -1], t_on, args=(neuron, Adrive, Fdrive, phi)).T
+            y_pulse[:, :n_pulse_on] = integrate.odeint(self.eqFull, y[:, -1], t_pulse[:n_pulse_on],
+                                                       args=(neuron, Adrive, Fdrive, phi)).T
 
-            # solver_full.set_f_params(neuron, Adrive, Fdrive, phi)
-            # solver_full.set_initial_value(y_pulse[:, k], t_pulse[k])
-            # while solver_full.successful() and k < n_pulse_on - 1:
-            #     k += 1
-            #     solver_full.integrate(t_pulse[k])
-            #     y_pulse[:, k] = solver_full.y
-
+            # Integrate OFF system
             if n_pulse_off > 0:
-
-                t_off = t_pulse[n_pulse_on:]
-                y_off = integrate.odeint(self.eqFull2, y_on[:, -1], t_off, args=(neuron, 0.0, 0.0, 0.0)).T
-
-                # Integrate OFF system
-                # solver_full.set_f_params(neuron, 0.0, 0.0, 0.0)
-                # solver_full.set_initial_value(y_pulse[:, k], t_pulse[k])
-                # while solver_full.successful() and k < n_pulse_on + n_pulse_off - 1:
-                #     k += 1
-                #     solver_full.integrate(t_pulse[k])
-                #     y_pulse[:, k] = solver_full.y
-
-                y_pulse = np.concatenate([y_on, y_off], axis=1)
-            else:
-                y_pulse = y_on
+                y_pulse_off[:, n_pulse_on:] = integrate.odeint(self.eqFull, y_pulse[:, -1],
+                                                               t_pulse[n_pulse_on:],
+                                                               args=(neuron, 0.0, 0.0, 0.0)).T
 
             # Append pulse arrays to global arrays
             states = np.concatenate([states, states_pulse[1:]])
@@ -356,17 +316,7 @@ class SolverUS(BilayerSonophore):
         if n_off > 0:
             t_off = np.linspace(0, toffset, n_off) + t[-1]
             states_off = np.zeros(n_off)
-            # y_off = np.empty((nvar, n_off))
-            # y_off[:, 0] = y[:, -1]
-            # solver_full.set_initial_value(y_off[:, 0], t_off[0])
-            # solver_full.set_f_params(neuron, 0.0, 0.0, 0.0)
-            # k = 0
-            # while solver_full.successful() and k < n_off - 1:
-            #     k += 1
-            #     solver_full.integrate(t_off[k])
-            #     y_off[:, k] = solver_full.y
-
-            y_off = integrate.odeint(self.eqFull2, y[:, -1], t_off, args=(neuron, 0.0, 0.0, 0.0)).T
+            y_off = integrate.odeint(self.eqFull, y[:, -1], t_off, args=(neuron, 0.0, 0.0, 0.0)).T
 
             # Concatenate offset arrays to global arrays
             states = np.concatenate([states, states_off[1:]])
@@ -479,7 +429,7 @@ class SolverUS(BilayerSonophore):
         solver_on = integrate.ode(self.eqHHeff)
         solver_on.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
         solver_on.set_f_params(neuron, coeffs1d)
-        solver_off = integrate.ode(self.eqHH)
+        solver_off = integrate.ode(self.eqHH2)
         solver_off.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
 
         # if CW stimulus: change PRF to have exactly one integration interval during stimulus
@@ -548,15 +498,16 @@ class SolverUS(BilayerSonophore):
                 Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
 
             # Integrate OFF system
-            solver_off.set_initial_value(y_pulse[:, k], t_pulse[k])
-            solver_off.set_f_params(neuron, self.Capct(Zeff_pulse[k]))
-            while solver_off.successful() and k < n_pulse_on + n_pulse_off - 1:
-                k += 1
-                solver_off.integrate(t_pulse[k])
-                y_pulse[:, k] = solver_off.y
-                ngeff_pulse[k] = np.interp(y_pulse[0, k], coeffs1d['Q'], coeffs1d['ng0'])  # mole
-                Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
+            if n_pulse_off > 0:
+                solver_off.set_initial_value(y_pulse[:, k], t_pulse[k])
                 solver_off.set_f_params(neuron, self.Capct(Zeff_pulse[k]))
+                while solver_off.successful() and k < n_pulse_on + n_pulse_off - 1:
+                    k += 1
+                    solver_off.integrate(t_pulse[k])
+                    y_pulse[:, k] = solver_off.y
+                    ngeff_pulse[k] = np.interp(y_pulse[0, k], coeffs1d['Q'], coeffs1d['ng0'])  # mole
+                    Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
+                    solver_off.set_f_params(neuron, self.Capct(Zeff_pulse[k]))
 
             # Append pulse arrays to global arrays
             states = np.concatenate([states[:-1], states_pulse])
@@ -577,7 +528,7 @@ class SolverUS(BilayerSonophore):
             ngeff_off[0] = ngeff[-1]
             Zeff_off[0] = Zeff[-1]
             solver_off.set_initial_value(y_off[:, 0], t_off[0])
-            solver_off.set_f_params(neuron, self.Capct(Zeff_pulse[k]))
+            solver_off.set_f_params(neuron, self.Capct(Zeff_pulse[-1]))
             k = 0
             while solver_off.successful() and k < n_off - 1:
                 k += 1
@@ -633,10 +584,10 @@ class SolverUS(BilayerSonophore):
         warnings.filterwarnings('error')
 
         # Initialize full and HH systems solvers
-        solver_full = integrate.ode(self.eqFull)
+        solver_full = integrate.ode(self.eqFull2)
         solver_full.set_f_params(neuron, Adrive, Fdrive, phi)
         solver_full.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
-        solver_hh = integrate.ode(self.eqHH)
+        solver_hh = integrate.ode(self.eqHH2)
         solver_hh.set_integrator('dop853', nsteps=SOLVER_NSTEPS, atol=1e-12)
 
         # Determine full and HH systems time steps

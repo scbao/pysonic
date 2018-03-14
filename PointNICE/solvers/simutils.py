@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 14:32:07
+# @Last Modified time: 2018-03-14 18:20:06
 
 """ Utility functions used in simulations """
 
@@ -1115,7 +1115,7 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
 
                 # Store dataframe and metadata
                 df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng})
-                meta = {'a': solver.a, 'd': solver.d, 'Cm0': Cm0, 'Qm0': Qm0, 'Fdrive': Fdrive,
+                meta = {'a': a, 'd': d, 'Cm0': Cm0, 'Qm0': Qm0, 'Fdrive': Fdrive,
                         'Adrive': Adrive, 'phi': np.pi, 'Qm': Qm, 'tcomp': tcomp}
 
                 # Export into to PKL file
@@ -1123,6 +1123,7 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
                 with open(output_filepath, 'wb') as fh:
                     pickle.dump({'meta': meta, 'data': df}, fh)
                 logger.debug('simulation data exported to "%s"', output_filepath)
+                filepaths.append(output_filepath)
 
                 # Compute key output metrics
                 Zmax = np.amax(Z)

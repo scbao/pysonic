@@ -4,7 +4,7 @@
 # @Date:   2017-06-13 09:40:02
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-22 14:25:50
+# @Last Modified time: 2018-03-13 23:31:27
 
 from setuptools import setup
 
@@ -38,7 +38,8 @@ setup(name='PointNICE',
       install_requires=[
           'numpy>=1.10',
           'scipy>=0.17',
-          'matplotlib>=2',
+          'matplotlib>=2'
+          'pandas>=0.21',
           'openpyxl>=2.4',
           'pyyaml>=3.11',
           'pycallgraph>=1.0.1',

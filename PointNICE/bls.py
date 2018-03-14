@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-11-29 13:40:18
+# @Last Modified time: 2018-03-14 18:21:48
 
 import logging
 import warnings
@@ -501,12 +501,12 @@ class BilayerSonophore:
         return -(3 * U**2) / (2 * R)
 
 
-    def eqMech(self, t, y, Adrive, Fdrive, Qm, phi):
+    def eqMech(self, y, t, Adrive, Fdrive, Qm, phi):
         """ Compute the derivatives of the 3-ODE mechanical system variables,
             with an imposed constant charge density.
 
-            :param t: specific instant in time (s)
             :param y: vector of HH system variables at time t
+            :param t: specific instant in time (s)
             :param Adrive: acoustic drive amplitude (Pa)
             :param Fdrive: acoustic drive frequency (Hz)
             :param Qm: membrane charge density (F/m2)
@@ -525,9 +525,8 @@ class BilayerSonophore:
 
         # Compute total pressure
         Pg = self.gasmol2Pa(ng, self.volume(Z))
-        Ptot = (self.PMavgpred(Z) + Pg - self.P0 - self.Pacoustic(t, Adrive, Fdrive, phi)
-                + self.PEtot(Z, R) + self.PVleaflet(U, R) + self.PVfluid(U, R)
-                + self.Pelec(Z, Qm))
+        Ptot = (self.PMavgpred(Z) + Pg - self.P0 - self.Pacoustic(t, Adrive, Fdrive, phi) +
+                self.PEtot(Z, R) + self.PVleaflet(U, R) + self.PVfluid(U, R) + self.Pelec(Z, Qm))
 
         # Compute derivatives
         dUdt = self.accP(Ptot, R) + self.accNL(U, R)
@@ -561,11 +560,6 @@ class BilayerSonophore:
         # Raise warnings as error
         warnings.filterwarnings('error')
 
-        # Initialize mechanical system solvers
-        solver = integrate.ode(self.eqMech)
-        solver.set_f_params(Adrive, Fdrive, Qm, phi)
-        solver.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
-
         # Determine mechanical system time step
         Tdrive = 1 / Fdrive
         dt_mech = Tdrive / NPC_FULL
@@ -588,47 +582,41 @@ class BilayerSonophore:
         y = np.array([[U0, U1], [Z0, Z1], [ng0, ng0]])
 
         # Integrate mechanical system for a few acoustic cycles until stabilization
-        sim_error = False
-        periodic_conv = False
         j = 0
         ng_last = None
         Z_last = None
-        while not sim_error and not periodic_conv:
-            t_mech = t_mech_cycle + t[-1] + dt_mech
-            y_mech = np.empty((3, NPC_FULL))
-            y0_mech = y[:, -1]
-            solver.set_initial_value(y0_mech, t[-1])
-            k = 0
-            try:  # try to integrate and catch errors/warnings
-                while solver.successful() and k <= NPC_FULL - 1:
-                    solver.integrate(t_mech[k])
-                    y_mech[:, k] = solver.y
-                    k += 1
-            except (Warning, AssertionError) as inst:
-                sim_error = True
-                logger.error('Mech. system integration error at step %u', k, extra={inst})
+        periodic_conv = False
 
-            # Compare Z and ng signals over the last 2 acoustic periods
-            if j > 0:
-                Z_rmse = rmse(Z_last, y_mech[1, :])
-                ng_rmse = rmse(ng_last, y_mech[2, :])
-                logger.debug('step %u: Z_rmse = %.2e m, ng_rmse = %.2e mol', j, Z_rmse, ng_rmse)
-                if Z_rmse < Z_ERR_MAX and ng_rmse < NG_ERR_MAX:
-                    periodic_conv = True
+        try:
+            while not periodic_conv:
+                t_mech = t_mech_cycle + t[-1] + dt_mech
+                y_mech = integrate.odeint(self.eqMech, y[:, -1], t_mech,
+                                          args=(Adrive, Fdrive, Qm, phi)).T
 
-            # Update last vectors for next comparison
-            Z_last = y_mech[1, :]
-            ng_last = y_mech[2, :]
+                # Compare Z and ng signals over the last 2 acoustic periods
+                if j > 0:
+                    Z_rmse = rmse(Z_last, y_mech[1, :])
+                    ng_rmse = rmse(ng_last, y_mech[2, :])
+                    logger.debug('step %u: Z_rmse = %.2e m, ng_rmse = %.2e mol', j, Z_rmse, ng_rmse)
+                    if Z_rmse < Z_ERR_MAX and ng_rmse < NG_ERR_MAX:
+                        periodic_conv = True
 
-            # Concatenate time and solutions to global vectors
-            states = np.concatenate([states, np.ones(NPC_FULL)], axis=0)
-            t = np.concatenate([t, t_mech], axis=0)
-            y = np.concatenate([y, y_mech], axis=1)
+                # Update last vectors for next comparison
+                Z_last = y_mech[1, :]
+                ng_last = y_mech[2, :]
 
-            # Increment loop index
-            j += 1
+                # Concatenate time and solutions to global vectors
+                states = np.concatenate([states, np.ones(NPC_FULL)], axis=0)
+                t = np.concatenate([t, t_mech], axis=0)
+                y = np.concatenate([y, y_mech], axis=1)
 
-        logger.debug('Periodic convergence after %u cycles', j)
+                # Increment loop index
+                j += 1
+
+            logger.debug('Periodic convergence after %u cycles', j)
+
+        except (Warning, AssertionError) as inst:
+            logger.error('Mech. system integration error at step %u', k, extra={inst})
 
         states[-1] = 0
 

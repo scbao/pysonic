@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-07 11:03:12
+# @Last Modified time: 2018-03-14 18:20:44
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -15,21 +15,26 @@ import numpy as np
 
 from PointNICE.utils import logger
 from PointNICE.solvers import setBatchDir, checkBatchLog, runMechBatch
+from PointNICE.neurons import *
 from PointNICE.plt import plotBatch
 
 # Set logging level
 logger.setLevel(logging.DEBUG)
 
+a = 32e-9  # in-plane diameter (m)
+
 # Electrical properties of the membrane
-Cm0 = 1e-2  # membrane resting capacitance (F/m2)
-Qm0 = -80e-5  # membrane resting charge density (C/m2)
-a = 500e-9  # in-plane diameter (m)
+neuron = CorticalRS()
+Cm0 = neuron.Cm0
+Qm0 = neuron.Vm0 * 1e-5
+# Cm0 = 1e-2  # membrane resting capacitance (F/m2)
+# Qm0 = -80e-5  # membrane resting charge density (C/m2)
 
 # Stimulation parameters
 stim_params = {
-    'freqs': [3.5e5],  # Hz
-    'amps': [500e3],  # Pa
-    'charges': [-80e-5]  # C/m2
+    'freqs': [20.0e3],  # Hz
+    'amps': [352.24e3],  # Pa
+    'charges': [-70e-5]  # np.arange(-80.0, 60.0) * 1e-5  # C/m2
 }
 
 # Select output directory

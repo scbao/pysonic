@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 14:30:51
+# @Last Modified time: 2018-03-14 19:19:13
 
 
 import warnings
@@ -25,12 +25,12 @@ class SolverElec:
         pass
 
 
-    def eqHH(self, _, y, neuron, Iinj):
+    def eqHH(self, y, _, neuron, Iinj):
         ''' Compute the derivatives of a HH system variables for a
             specific value of injected current.
 
-            :param t: time value (s, unused)
             :param y: vector of HH system variables at time t
+            :param t: time value (s, unused)
             :param neuron: neuron object
             :param Iinj: injected current (mA/m2)
             :return: vector of HH system derivatives at time t
@@ -69,10 +69,6 @@ class SolverElec:
 
         # Raise warnings as error
         warnings.filterwarnings('error')
-
-        # Initialize system solver
-        solver = integrate.ode(self.eqHH)
-        solver.set_integrator('lsoda', nsteps=1000)
 
         # Determine system time step
         dt = DT_ESTIM
@@ -123,26 +119,16 @@ class SolverElec:
             # Construct and initialize arrays
             t_pulse = t_pulse0 + t[-1]
             y_pulse = np.empty((nvar, n_pulse_on + n_pulse_off))
-            y_pulse[:, 0] = y[:, -1]
-
-            # Initialize iterator
-            k = 0
 
             # Integrate ON system
-            solver.set_f_params(neuron, Astim)
-            solver.set_initial_value(y_pulse[:, k], t_pulse[k])
-            while solver.successful() and k < n_pulse_on - 1:
-                k += 1
-                solver.integrate(t_pulse[k])
-                y_pulse[:, k] = solver.y
+            y_pulse[:, :n_pulse_on] = integrate.odeint(self.eqHH, y[:, -1], t_pulse[:n_pulse_on],
+                                                       args=(neuron, Astim)).T
 
             # Integrate OFF system
-            solver.set_f_params(neuron, 0.0)
-            solver.set_initial_value(y_pulse[:, k], t_pulse[k])
-            while solver.successful() and k < n_pulse_on + n_pulse_off - 1:
-                k += 1
-                solver.integrate(t_pulse[k])
-                y_pulse[:, k] = solver.y
+            if n_pulse_off > 0:
+                y_pulse[:, n_pulse_on:] = integrate.odeint(self.eqHH, y_pulse[:, -1],
+                                                           t_pulse[n_pulse_on:],
+                                                           args=(neuron, 0.0, 0.0, 0.0)).T
 
             # Append pulse arrays to global arrays
             states = np.concatenate([states, states_pulse[1:]])
@@ -153,16 +139,7 @@ class SolverElec:
         if n_off > 0:
             t_off = np.linspace(0, toffset, n_off) + t[-1]
             states_off = np.zeros(n_off)
-            y_off = np.empty((nvar, n_off))
-            y_off[:, 0] = y[:, -1]
-            solver.set_initial_value(y_off[:, 0], t_off[0])
-            solver.set_f_params(neuron, 0.0)
-            k = 0
-            while solver.successful() and k < n_off - 1:
-                k += 1
-                solver.integrate(t_off[k])
-                y_off[:, k] = solver.y
-
+            y_off = integrate.odeint(self.eqHH, y[:, -1], t_off, args=(neuron, 0.0)).T
 
             # Concatenate offset arrays to global arrays
             states = np.concatenate([states, states_off[1:]])
