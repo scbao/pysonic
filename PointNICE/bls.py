@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-14 18:21:48
+# @Last Modified time: 2018-03-15 11:00:42
 
 import logging
 import warnings
@@ -517,8 +517,10 @@ class BilayerSonophore:
         # Split input vector explicitly
         (U, Z, ng) = y
 
-        # Check soundness of deflection value
-        assert Z > -0.5 * self.Delta, 'Deflection out of range'
+        # Check that deflection value is above critical compression
+        # assert Z > -0.5 * self.Delta, 'Deflection out of range'
+        if Z < -0.5 * self.Delta:
+            logger.warning('Deflection out of range: Z = %.2f nm', Z * 1e9)
 
         # Compute curvature radius
         R = self.curvrad(Z)
@@ -588,7 +590,7 @@ class BilayerSonophore:
         periodic_conv = False
 
         try:
-            while not periodic_conv:
+            while not periodic_conv and j < NCYCLES_MAX:
                 t_mech = t_mech_cycle + t[-1] + dt_mech
                 y_mech = integrate.odeint(self.eqMech, y[:, -1], t_mech,
                                           args=(Adrive, Fdrive, Qm, phi)).T
@@ -613,10 +615,14 @@ class BilayerSonophore:
                 # Increment loop index
                 j += 1
 
-            logger.debug('Periodic convergence after %u cycles', j)
+            if j == NCYCLES_MAX:
+                logger.warning('No convergence: stopping after %u cycles', j)
+            else:
+                logger.debug('Periodic convergence after %u cycles', j)
+
 
         except (Warning, AssertionError) as inst:
-            logger.error('Mech. system integration error at step %u', k, extra={inst})
+            logger.error('Mech. system integration error:', extra={inst})
 
         states[-1] = 0
 

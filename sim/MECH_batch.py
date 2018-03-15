@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-14 18:20:44
+# @Last Modified time: 2018-03-14 19:44:51
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -34,7 +34,7 @@ Qm0 = neuron.Vm0 * 1e-5
 stim_params = {
     'freqs': [20.0e3],  # Hz
     'amps': [352.24e3],  # Pa
-    'charges': [-70e-5]  # np.arange(-80.0, 60.0) * 1e-5  # C/m2
+    'charges': np.arange(-80.0, 60.0) * 1e-5  # C/m2
 }
 
 # Select output directory
@@ -47,7 +47,7 @@ try:
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    plotBatch(pkl_dir, pkl_filepaths)
+    # plotBatch(pkl_dir, pkl_filepaths)
 
 except AssertionError as err:
     logger.error(err)

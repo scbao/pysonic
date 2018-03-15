@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 17:13:16
+# @Last Modified time: 2018-03-15 11:02:55
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -16,7 +16,7 @@ from PointNICE.utils import logger
 from PointNICE.neurons import *
 
 # Set logging level
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # BLS diameter (m)
 a = 32e-9
