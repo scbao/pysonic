@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 11:00:42
+# @Last Modified time: 2018-03-15 13:55:01
 
 import logging
 import warnings
@@ -517,10 +517,10 @@ class BilayerSonophore:
         # Split input vector explicitly
         (U, Z, ng) = y
 
-        # Check that deflection value is above critical compression
-        # assert Z > -0.5 * self.Delta, 'Deflection out of range'
+        # Correct deflection value is below critical compression
         if Z < -0.5 * self.Delta:
             logger.warning('Deflection out of range: Z = %.2f nm', Z * 1e9)
+            Z = -0.5 * self.Delta
 
         # Compute curvature radius
         R = self.curvrad(Z)
