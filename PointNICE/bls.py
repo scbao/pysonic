@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 15:08:31
+# @Last Modified time: 2018-03-15 19:21:21
 
 import logging
 import warnings
@@ -82,11 +82,11 @@ class BilayerSonophore:
 
             # Find Delta that cancels out Pm + Pec at Z = 0 (m)
             if self.Qm0 == 0.0:
-                self.Delta = self.Delta_
+                D_eq = self.Delta_
             else:
                 (D_eq, Pnet_eq) = self.findDeltaEq(self.Qm0)
                 assert Pnet_eq < PNET_EQ_MAX, 'High Pnet at Z = 0 with ∆ = %.2f nm' % (D_eq * 1e9)
-                self.Delta = D_eq
+            self.Delta = D_eq
 
             # Find optimal Lennard-Jones parameters to approximate PMavg
             (LJ_approx, std_err, _) = self.LJfitPMavg()

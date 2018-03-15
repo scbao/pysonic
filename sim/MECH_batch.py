@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 17:02:02
+# @Last Modified time: 2018-03-15 19:01:19
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -33,8 +33,8 @@ Qm0 = neuron.Vm0 * 1e-5
 # Stimulation parameters
 stim_params = {
     'freqs': [20.0e3],  # Hz
-    'amps': [352.24e3],  # Pa
-    # 'charges': np.arange(-80.0, 60.0) * 1e-5  # C/m2
+    'amps': [6e3],  # Pa
+    'charges': np.arange(-80.0, 60.0, 10.0) * 1e-5  # C/m2
 }
 
 # Select output directory

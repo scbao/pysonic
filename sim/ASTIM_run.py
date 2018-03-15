@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 15:23:11
+# @Last Modified time: 2018-03-15 18:35:50
 
 """ Script to run ASTIM simulations from command line. """
 
@@ -41,7 +41,7 @@ def main():
     ap.add_argument('-n', '--neuron', type=str, default=default['neuron'],
                     help='Neuron name (string)')
     ap.add_argument('-a', '--diameter', type=float, default=default['a'],
-                    help='BLS diameter (nm)')
+                    help='Sonophore diameter (nm)')
     ap.add_argument('-f', '--frequency', type=float, default=default['f'],
                     help='Acoustic drive frequency (kHz)')
     ap.add_argument('-A', '--amplitude', type=float, default=default['A'],

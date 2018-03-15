@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 17:01:53
+# @Last Modified time: 2018-03-15 19:13:10
 
 """ Utility functions used in simulations """
 
@@ -1063,6 +1063,74 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     return filepaths
 
 
+def runMechSingle(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm):
+    ''' Run single simulation of the mechanical system with an imposed value of charge density.
+    '''
+
+    simcode = MECH_code.format(bls.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
+
+    # Get date and time info
+    date_str = time.strftime("%Y.%m.%d")
+    daytime_str = time.strftime("%H:%M:%S")
+
+    # Run simulation
+    tstart = time.time()
+    (t, y, states) = bls.runMech(Fdrive, Adrive, Qm)
+    (Z, ng) = y
+
+    U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
+    tcomp = time.time() - tstart
+    logger.info('completed in %.2f seconds', tcomp)
+
+    # Store dataframe and metadata
+    df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng})
+    meta = {'a': bls.a, 'd': bls.d, 'Cm0': bls.Cm0, 'Qm0': bls.Qm0, 'Fdrive': Fdrive,
+            'Adrive': Adrive, 'phi': np.pi, 'Qm': Qm, 'tcomp': tcomp}
+
+    # Export into to PKL file
+    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
+    with open(output_filepath, 'wb') as fh:
+        pickle.dump({'meta': meta, 'data': df}, fh)
+    logger.debug('simulation data exported to "%s"', output_filepath)
+
+    # Compute key output metrics
+    Zmax = np.amax(Z)
+    Zmin = np.amin(Z)
+    Zabs_max = np.amax(np.abs([Zmin, Zmax]))
+    eAmax = bls.arealstrain(Zabs_max)
+    Tmax = bls.TEtot(Zabs_max)
+    Pmmax = bls.PMavgpred(Zmin)
+    ngmax = np.amax(ng)
+    dUdtmax = np.amax(np.abs(np.diff(U) / np.diff(t)**2))
+
+    # Export key metrics to log file
+    log = {
+        'A': date_str,
+        'B': daytime_str,
+        'C': bls.a * 1e9,
+        'D': bls.d * 1e6,
+        'E': Fdrive * 1e-3,
+        'F': Adrive * 1e-3,
+        'G': Qm * 1e5,
+        'H': t.size,
+        'I': tcomp,
+        'J': bls.kA + bls.kA_tissue,
+        'K': Zmax * 1e9,
+        'L': eAmax,
+        'M': Tmax * 1e3,
+        'N': (ngmax - bls.ng0) / bls.ng0,
+        'O': Pmmax * 1e-3,
+        'P': dUdtmax
+    }
+
+    if xlslog(log_filepath, 'Data', log) == 1:
+        logger.info('log exported to "%s"', log_filepath)
+    else:
+        logger.error('log export to "%s" aborted', log_filepath)
+
+    return output_filepath
+
+
 def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam, d=default_embedding):
     ''' Run batch simulations of the mechanical system with imposed values of charge density,
         for various sonophore spans and stimulation parameters.
@@ -1104,80 +1172,20 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
     simcount = 0
     filepaths = []
     for Fdrive in stim_params['freqs']:
-        try:
-            # Create BilayerSonophore instance (modulus of embedding tissue depends on frequency)
-            bls = BilayerSonophore(a, Fdrive, Cm0, Qm0, d)
 
-            for i in range(nqueue):
-                simcount += 1
-                Adrive, Qm = sim_queue[i, :]
+        # Create BilayerSonophore instance (modulus of embedding tissue depends on frequency)
+        bls = BilayerSonophore(a, Fdrive, Cm0, Qm0, d)
 
-                # Get date and time info
-                date_str = time.strftime("%Y.%m.%d")
-                daytime_str = time.strftime("%H:%M:%S")
+        for i in range(nqueue):
+            simcount += 1
+            Adrive, Qm = sim_queue[i, :]
 
-                # Log and define naming
-                logger.info(MECH_log, simcount, nsims, a * 1e9, d * 1e6, Fdrive * 1e-3,
-                            Adrive * 1e-3, Qm * 1e5)
-                simcode = MECH_code.format(a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
+            # Log
+            logger.info(MECH_log, simcount, nsims, a * 1e9, d * 1e6, Fdrive * 1e-3,
+                        Adrive * 1e-3, Qm * 1e5)
 
-                # Run simulation
-                tstart = time.time()
-                (t, y, states) = bls.runMech(Fdrive, Adrive, Qm)
-                (Z, ng) = y
-
-                U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
-                tcomp = time.time() - tstart
-                logger.info('completed in %.2f seconds', tcomp)
-
-                # Store dataframe and metadata
-                df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng})
-                meta = {'a': a, 'd': d, 'Cm0': Cm0, 'Qm0': Qm0, 'Fdrive': Fdrive,
-                        'Adrive': Adrive, 'phi': np.pi, 'Qm': Qm, 'tcomp': tcomp}
-
-                # Export into to PKL file
-                output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
-                with open(output_filepath, 'wb') as fh:
-                    pickle.dump({'meta': meta, 'data': df}, fh)
-                logger.debug('simulation data exported to "%s"', output_filepath)
-                filepaths.append(output_filepath)
-
-                # Compute key output metrics
-                Zmax = np.amax(Z)
-                Zmin = np.amin(Z)
-                Zabs_max = np.amax(np.abs([Zmin, Zmax]))
-                eAmax = bls.arealstrain(Zabs_max)
-                Tmax = bls.TEtot(Zabs_max)
-                Pmmax = bls.PMavgpred(Zmin)
-                ngmax = np.amax(ng)
-                dUdtmax = np.amax(np.abs(np.diff(U) / np.diff(t)**2))
-
-                # Export key metrics to log file
-                log = {
-                    'A': date_str,
-                    'B': daytime_str,
-                    'C': a * 1e9,
-                    'D': d * 1e6,
-                    'E': Fdrive * 1e-3,
-                    'F': Adrive * 1e-3,
-                    'G': Qm * 1e5,
-                    'H': t.size,
-                    'I': tcomp,
-                    'J': bls.kA + bls.kA_tissue,
-                    'K': Zmax * 1e9,
-                    'L': eAmax,
-                    'M': Tmax * 1e3,
-                    'N': (ngmax - bls.ng0) / bls.ng0,
-                    'O': Pmmax * 1e-3,
-                    'P': dUdtmax
-                }
-
-                if xlslog(log_filepath, 'Data', log) == 1:
-                    logger.info('log exported to "%s"', log_filepath)
-                else:
-                    logger.error('log export to "%s" aborted', log_filepath)
-
-        except AssertionError as err:
-            logger.error(err)
+            # Run simulation
+            output_filepath = runMechSingle(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm)
+            filepaths.append(output_filepath)
 
     return filepaths

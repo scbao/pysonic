@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 17:34:48
+# @Last Modified time: 2018-03-15 18:35:43
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -18,11 +18,11 @@ from PointNICE.neurons import *
 # Set logging level
 logger.setLevel(logging.INFO)
 
-# BLS diameter (m)
+# Sonophore diameter (m)
 a = 32e-9
 
 # Channel mechanisms
-neurons = [CorticalRS()]
+neurons = [CorticalLTS()]
 
 # Stimulation parameters
 freqs = np.array([20., 100., 500., 1000., 2000., 3000., 4000.]) * 1e3  # Hz
