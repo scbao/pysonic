@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 16:20:17
+# @Last Modified time: 2018-03-15 17:34:48
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -37,7 +37,10 @@ for neuron in neurons:
 
     # Create lookup file
     try:
-        solver.createLookup(neuron, freqs, amps)
-        logger.info('%s Lookup table successfully created', neuron.name)
+        status = solver.createLookup(neuron, freqs, amps)
+        if status == -1:
+            logger.info('Lookup creation canceled')
+        elif status == 1:
+            logger.info('%s Lookup table successfully created', neuron.name)
     except InputError as err:
         logger.error(err)

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 16:48:35
+# @Last Modified time: 2018-03-15 17:42:45
 
 import os
 import warnings
@@ -182,9 +182,12 @@ class SolverUS(BilayerSonophore):
         # Check if lookup file already exists
         lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
         lookup_filepath = '{0}/{1}'.format(getLookupDir(), lookup_file)
-        # assert not os.path.isfile(lookup_filepath), '"{}" file already exists'.format(lookup_file)
         if os.path.isfile(lookup_filepath):
-            logger.warning('"%s" file already exists', lookup_file)
+            logger.warning('"%s" file already exists and will be overwritten. ' +
+                           'Continue? (y/n)', lookup_file)
+            user_str = input()
+            if user_str not in ['y', 'Y']:
+                return -1
 
         # Check validity of input parameters
         if not isinstance(neuron, BaseMech):
@@ -252,6 +255,8 @@ class SolverUS(BilayerSonophore):
         logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_file)
         with open(lookup_filepath, 'wb') as fh:
             pickle.dump(lookup_dict, fh)
+
+        return 1
 
 
     def __runClassic(self, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
