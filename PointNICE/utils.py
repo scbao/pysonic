@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 19:47:10
+# @Last Modified time: 2018-03-15 15:21:07
 
 """ Definition of generic utility functions used in other modules """
 
@@ -45,6 +45,11 @@ def setLogger():
 
 # Get package logger
 logger = setLogger()
+
+
+class InputError(Exception):
+    ''' Exception raised for errors in the input. '''
+    pass
 
 
 class PmCompMethod(Enum):

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-14 18:20:06
+# @Last Modified time: 2018-03-15 17:01:53
 
 """ Utility functions used in simulations """
 
@@ -22,7 +22,7 @@ from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
 from .SolverElec import SolverElec
 from ..constants import *
-from ..utils import getNeuronsDict
+from ..utils import getNeuronsDict, InputError
 
 
 # Get package logger
@@ -65,7 +65,8 @@ def setBatchDir():
     root = tk.Tk()
     root.withdraw()
     batch_dir = filedialog.askdirectory()
-    assert batch_dir, 'No batch directory chosen'
+    if not batch_dir:
+        raise InputError('No output directory chosen')
     return batch_dir
 
 
@@ -77,6 +78,10 @@ def checkBatchLog(batch_dir, batch_type):
         :return: 2 tuple with full path to log file and boolean stating if log file was created
     '''
 
+    # Check for directory existence
+    if not os.path.isdir(batch_dir):
+        raise InputError('"{}" output directory does not exist'.format(batch_dir))
+
     # Determine log template from batch type
     if batch_type == 'MECH':
         logfile = 'log_MECH.xlsx'
@@ -85,7 +90,7 @@ def checkBatchLog(batch_dir, batch_type):
     elif batch_type == 'E-STIM':
         logfile = 'log_ESTIM.xlsx'
     else:
-        raise ValueError('Unknown batch type', batch_type)
+        raise InputError('Unknown batch type', batch_type)
 
     # Get template in package subdirectory
     this_dir, _ = os.path.split(__file__)
@@ -391,7 +396,8 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
 
     mandatory_params = ['amps', 'durations', 'offsets', 'PRFs', 'DCs']
     for mp in mandatory_params:
-        assert mp in stim_params, 'stim_params dictionary must contain "{}" field'.format(mp)
+        if mp not in stim_params:
+            raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
 
     # Define logging format
     ESTIM_CW_log = 'E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms'
@@ -529,7 +535,8 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
 
     mandatory_params = ['freqs', 'amps', 'durations', 'offsets', 'PRFs', 'DCs']
     for mp in mandatory_params:
-        assert mp in stim_params, 'stim_params dictionary must contain "{}" field'.format(mp)
+        if mp not in stim_params:
+            raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
 
     # Define logging format
     ASTIM_CW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
@@ -619,7 +626,9 @@ def titrateEStim(solver, neuron, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
     t_var = ESTIM_params[t_type]
 
     # Check amplitude interval and define current value
-    assert interval[0] < interval[1], '{} interval must be defined as (lb, ub)'.format(t_type)
+    if interval[0] >= interval[1]:
+        raise InputError('Invaid {} interval: {} (must be defined as [lb, ub])'
+                         .format(t_type, interval))
     value = (interval[0] + interval[1]) / 2
 
     # Define stimulation parameters
@@ -699,7 +708,9 @@ def titrateAStim(solver, neuron, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=1
     t_var = ASTIM_params[t_type]
 
     # Check amplitude interval and define current value
-    assert interval[0] < interval[1], '{} interval must be defined as (lb, ub)'.format(t_type)
+    if interval[0] >= interval[1]:
+        raise InputError('Invaid {} interval: {} (must be defined as [lb, ub])'
+                         .format(t_type, interval))
     value = (interval[0] + interval[1]) / 2
 
     # Define stimulation parameters
@@ -1064,6 +1075,12 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
         :param a: BLS in-plane diameter (m)
         :param d: depth of embedding tissue around plasma membrane (m)
     '''
+
+    # Checking validity of stimulation parameters
+    mandatory_params = ['freqs', 'amps', 'charges']
+    for mp in mandatory_params:
+        if mp not in stim_params:
+            raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
 
     # Define logging format
     MECH_log = ('Mechanical simulation %u/%u (a = %.1f nm, d = %.1f um, f = %.2f kHz, '

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 20:17:41
+# @Last Modified time: 2018-03-15 15:36:58
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
@@ -10,7 +10,7 @@ import sys
 import os
 import logging
 import numpy as np
-from PointNICE.utils import logger
+from PointNICE.utils import logger, InputError
 from PointNICE.solvers import setBatchDir, checkBatchLog, runEStimBatch
 from PointNICE.plt import plotBatch
 
@@ -42,6 +42,6 @@ try:
     # Plot resulting profiles
     # plotBatch(pkl_dir, pkl_filepaths)
 
-except AssertionError as err:
+except InputError as err:
     logger.error(err)
     sys.exit(1)

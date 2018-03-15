@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 12:27:43
+# @Last Modified time: 2018-03-15 16:52:26
 
 ''' Plotting utilities '''
 
@@ -23,7 +23,7 @@ import matplotlib.cm as cm
 import pandas as pd
 
 from .. import neurons
-from ..utils import getNeuronsDict, getLookupDir, rescale
+from ..utils import getNeuronsDict, getLookupDir, rescale, InputError
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
 
@@ -183,14 +183,18 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
 
     # check labels if given
     if labels:
-        assert len(labels) == len(filepaths), 'labels do not match number of compared files'
-        assert all(isinstance(x, str) for x in labels), 'labels must be string typed'
+        if len(labels) != len(filepaths):
+            raise InputError('Invalid labels ({}): not matching number of compared files ({})'
+                             .format(len(labels), len(filepaths)))
+        if not all(isinstance(x, str) for x in labels):
+            raise InputError('Invalid labels: must be string typed')
 
     nvars = len(yvars)
 
     # y variables plotting information
     for key in yvars:
-        assert key in pltvars, 'unknown plot variable "{}"'.format(key)
+        if key not in pltvars:
+            raise InputError('Unknown plot variable: "{}"'.format(key))
     y_pltvars = [pltvars[key] for key in yvars]
 
 
@@ -241,12 +245,13 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
             logger.error('Error: "%s" file does not match regexp pattern', pkl_filename)
             sys.exit(1)
         sim_type = mo.group(1)
-        assert sim_type in ['MECH', 'ASTIM', 'ESTIM'], 'invalid stimulation type'
+        if sim_type not in ('MECH', 'ASTIM', 'ESTIM'):
+            raise InputError('Invalid simulation type: {}'.format(sim_type))
 
         if j == 0:
             sim_type_ref = sim_type
-        else:
-            assert sim_type == sim_type_ref, 'Error: comparing different simulation types'
+        elif sim_type != sim_type_ref:
+            raise InputError('Invalid comparison: different simulation types')
 
         # Load data
         logger.info('Loading data from "%s"', pkl_filename)
@@ -389,7 +394,8 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
     if vars_dict:
         yvars = list(sum(list(vars_dict.values()), []))
         for key in yvars:
-            assert key in pltvars, 'unknown plot variable "{}"'.format(key)
+            if key not in pltvars:
+                raise InputError('Unknown plot variable: "{}"'.format(key))
 
     # Dictionary of neurons
     neurons_dict = getNeuronsDict()
@@ -412,7 +418,8 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
             logger.error('Error: "%s" file does not match regexp pattern', pkl_filename)
             sys.exit(1)
         sim_type = mo.group(1)
-        assert sim_type in ['MECH', 'ASTIM', 'ESTIM'], 'invalid stimulation type'
+        if sim_type not in ('MECH', 'ASTIM', 'ESTIM'):
+            raise InputError('Invalid simulation type: {}'.format(sim_type))
 
         # Load data
         logger.info('Loading data from "%s"', pkl_filename)
@@ -767,8 +774,8 @@ def plotEffCoeffs(neuron, Fdrive, a=32e-9, fs=12):
     # Check lookup file existence
     lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, a * 1e9)
     lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
-    assert os.path.isfile(lookup_path), ('No lookup file available for {} '
-                                         'neuron type').format(neuron.name)
+    if not os.path.isfile(lookup_path):
+        raise InputError('Missing lookup file: "{}"'.format(lookup_file))
 
     # Load coefficients
     with open(lookup_path, 'rb') as fh:
@@ -782,8 +789,10 @@ def plotEffCoeffs(neuron, Fdrive, a=32e-9, fs=12):
     # Check that frequency is within lookup range
     margin = 1e-9  # adding margin to compensate for eventual round error
     frange = (freqs.min() - margin, freqs.max() + margin)
-    assert frange[0] <= Fdrive <= frange[1], \
-        'Fdrive must be within [{:.1f}, {:.1f}] kHz'.format(*[f * 1e-3 for f in frange])
+    if Fdrive < frange[0] or Fdrive > frange[1]:
+        raise InputError(('Invalid frequency: {:.2f} kHz (must be within ' +
+                          '{:.1f} kHz - {:.1f} MHz lookup interval)')
+                         .format(Fdrive * 1e-3, frange[0] * 1e-3, frange[1] * 1e-6))
 
     # Define coefficients list
     coeffs_list = ['V', 'ng', *neuron.coeff_names]

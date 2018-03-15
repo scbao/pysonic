@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-14 19:44:51
+# @Last Modified time: 2018-03-15 17:02:02
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -13,7 +13,7 @@ import os
 import logging
 import numpy as np
 
-from PointNICE.utils import logger
+from PointNICE.utils import logger, InputError
 from PointNICE.solvers import setBatchDir, checkBatchLog, runMechBatch
 from PointNICE.neurons import *
 from PointNICE.plt import plotBatch
@@ -34,7 +34,7 @@ Qm0 = neuron.Vm0 * 1e-5
 stim_params = {
     'freqs': [20.0e3],  # Hz
     'amps': [352.24e3],  # Pa
-    'charges': np.arange(-80.0, 60.0) * 1e-5  # C/m2
+    # 'charges': np.arange(-80.0, 60.0) * 1e-5  # C/m2
 }
 
 # Select output directory
@@ -49,6 +49,6 @@ try:
     # Plot resulting profiles
     # plotBatch(pkl_dir, pkl_filepaths)
 
-except AssertionError as err:
+except InputError as err:
     logger.error(err)
     sys.exit(1)

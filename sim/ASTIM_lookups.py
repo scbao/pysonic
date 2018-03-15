@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 11:02:55
+# @Last Modified time: 2018-03-15 16:20:17
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -12,7 +12,7 @@ import logging
 import numpy as np
 
 import PointNICE
-from PointNICE.utils import logger
+from PointNICE.utils import logger, InputError
 from PointNICE.neurons import *
 
 # Set logging level
@@ -39,5 +39,5 @@ for neuron in neurons:
     try:
         solver.createLookup(neuron, freqs, amps)
         logger.info('%s Lookup table successfully created', neuron.name)
-    except AssertionError as err:
+    except InputError as err:
         logger.error(err)

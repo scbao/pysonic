@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-25 14:50:39
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 20:17:56
+# @Last Modified time: 2018-03-15 17:03:59
 
 """ Run batch electrical titrations of specific "point-neuron" models. """
 
@@ -11,7 +11,7 @@ import os
 import logging
 import numpy as np
 
-from PointNICE.utils import logger
+from PointNICE.utils import logger, InputError
 from PointNICE.solvers import setBatchDir, checkBatchLog, titrateEStimBatch
 from PointNICE.plt import plotBatch
 
@@ -41,6 +41,6 @@ try:
     # Plot resulting profiles
     plotBatch(pkl_dir, pkl_filepaths, {'V_m': ['Vm']})
 
-except AssertionError as err:
+except InputError as err:
     logger.error(err)
     sys.exit(1)

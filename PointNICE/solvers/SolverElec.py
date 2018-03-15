@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-14 19:19:13
+# @Last Modified time: 2018-03-15 15:32:02
 
 
 import warnings
@@ -13,6 +13,8 @@ import numpy as np
 import scipy.integrate as integrate
 
 from ..constants import *
+from ..neurons import BaseMech
+from ..utils import InputError
 
 # Get package logger
 logger = logging.getLogger('PointNICE')
@@ -57,15 +59,27 @@ class SolverElec:
         '''
 
         # Check validity of stimulation parameters
-        for param in [Astim, tstim, toffset, DC]:
-            assert isinstance(param, float), 'stimulation parameters must be float typed'
-        assert tstim > 0, 'Stimulus duration must be strictly positive'
-        assert toffset >= 0, 'Stimulus offset must be positive or null'
-        assert DC > 0 and DC <= 1, 'Duty cycle must be within [0; 1)'
+        if not isinstance(neuron, BaseMech):
+            raise InputError('Invalid neuron type: "{}" (must inherit from BaseMech class)'
+                             .format(neuron.name))
+        if not all(isinstance(param, float) for param in [Astim, tstim, toffset, DC]):
+            raise InputError('Invalid stimulation parameters (must be float typed)')
+        if tstim <= 0:
+            raise InputError('Invalid stimulus duration: {} ms (must be strictly positive)'
+                             .format(tstim * 1e3))
+        if toffset < 0:
+            raise InputError('Invalid stimulus offset: {} ms (must be positive or null)'
+                             .format(toffset * 1e3))
+        if DC <= 0.0 or DC > 1.0:
+            raise InputError('Invalid duty cycle: {} (must be within ]0; 1])'.format(DC))
         if DC < 1.0:
-            assert isinstance(PRF, float), 'if provided, the PRF parameter must be float typed'
-            assert PRF is not None, 'PRF must be provided when using duty cycles smaller than 1'
-            assert PRF >= 1 / tstim, 'PR interval must be smaller than stimulus duration'
+            if not isinstance(PRF, float):
+                raise InputError('Invalid PRF value (must be float typed)')
+            if PRF is None:
+                raise InputError('Missing PRF value (must be provided when DC < 1)')
+            if PRF < 1 / tstim:
+                raise InputError('Invalid PRF: {} Hz (PR interval exceeds stimulus duration'
+                                 .format(PRF))
 
         # Raise warnings as error
         warnings.filterwarnings('error')

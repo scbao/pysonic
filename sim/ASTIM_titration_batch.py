@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 20:17:31
+# @Last Modified time: 2018-03-15 17:03:43
 
 """ Run batch acoustic titrations of specific "point-neuron" models. """
 
@@ -12,7 +12,7 @@ import sys
 import os
 import logging
 import numpy as np
-from PointNICE.utils import logger
+from PointNICE.utils import logger, InputError
 from PointNICE.solvers import setBatchDir, checkBatchLog, titrateAStimBatch
 from PointNICE.plt import plotBatch
 
@@ -43,6 +43,6 @@ try:
     # Plot resulting profiles
     plotBatch(pkl_dir, pkl_filepaths, {'Q_m': ['Qm']})
 
-except AssertionError as err:
+except InputError as err:
     logger.error(err)
     sys.exit(1)

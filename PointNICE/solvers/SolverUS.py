@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 11:54:35
+# @Last Modified time: 2018-03-15 16:48:35
 
 import os
 import warnings
@@ -38,9 +38,15 @@ class SolverUS(BilayerSonophore):
         """
 
         # Check validity of input parameters
-        assert isinstance(neuron, BaseMech), ('neuron mechanism must be inherited '
-                                              'from the BaseMech class')
-        assert Fdrive >= 0., 'Driving frequency must be positive'
+        if not isinstance(neuron, BaseMech):
+            raise InputError('Invalid neuron type: "{}" (must inherit from BaseMech class)'
+                             .format(neuron.name))
+        if not isinstance(Fdrive, float):
+            raise InputError('Invalid US driving frequency (must be float typed)')
+        if Fdrive < 0:
+            raise InputError('Invalid US driving frequency: {} kHz (must be positive or null)'
+                             .format(Fdrive * 1e-3))
+
         # TODO: check parameters dictionary (float type, mandatory members)
 
         # Initialize BLS object
@@ -177,10 +183,38 @@ class SolverUS(BilayerSonophore):
         lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
         lookup_filepath = '{0}/{1}'.format(getLookupDir(), lookup_file)
         # assert not os.path.isfile(lookup_filepath), '"{}" file already exists'.format(lookup_file)
+        if os.path.isfile(lookup_filepath):
+            logger.warning('"%s" file already exists', lookup_file)
 
-        # Check validity of stimulation parameters
-        assert freqs.min() > 0, 'Driving frequencies must be strictly positive'
-        assert amps.min() >= 0, 'Acoustic pressure amplitudes must be positive'
+        # Check validity of input parameters
+        if not isinstance(neuron, BaseMech):
+            raise InputError('Invalid neuron type: "{}" (must inherit from BaseMech class)'
+                             .format(neuron.name))
+        if not isinstance(freqs, np.ndarray):
+            if isinstance(freqs, list):
+                if not all(isinstance(x, float) for x in freqs):
+                    raise InputError('Invalid frequencies (must all be float typed)')
+                freqs = np.array(freqs)
+            else:
+                raise InputError('Invalid frequencies (must be provided as list or numpy array)')
+        if not isinstance(amps, np.ndarray):
+            if isinstance(amps, list):
+                if not all(isinstance(x, float) for x in amps):
+                    raise InputError('Invalid amplitudes (must all be float typed)')
+                amps = np.array(amps)
+            else:
+                raise InputError('Invalid amplitudes (must be provided as list or numpy array)')
+
+        nf = freqs.size
+        nA = amps.size
+        if nf == 0:
+            raise InputError('Empty frequencies array')
+        if nA == 0:
+            raise InputError('Empty amplitudes array')
+        if freqs.min() <= 0:
+            raise InputError('Invalid US driving frequencies (must all be strictly positive)')
+        if amps.min() < 0:
+            raise InputError('Invalid US pressure amplitudes (must all be positive or null)')
 
         logger.info('Creating lookup table for %s neuron', neuron.name)
 
@@ -188,8 +222,6 @@ class SolverUS(BilayerSonophore):
         charges = np.arange(neuron.Qbounds[0], neuron.Qbounds[1] + 1e-5, 1e-5)  # C/m2
 
         # Initialize lookup dictionary of 3D array to store effective coefficients
-        nf = freqs.size
-        nA = amps.size
         nQ = charges.size
         coeffs_names = ['V', 'ng', *neuron.coeff_names]
         ncoeffs = len(coeffs_names)
@@ -363,8 +395,8 @@ class SolverUS(BilayerSonophore):
         # Check lookup file existence
         lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
         lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
-        assert os.path.isfile(lookup_path), ('No lookup file available for {} '
-                                             'neuron type').format(neuron.name)
+        if not os.path.isfile(lookup_path):
+            raise InputError('Missing lookup file: "{}"'.format(lookup_file))
 
         # Load coefficients
         with open(lookup_path, 'rb') as fh:
@@ -380,10 +412,15 @@ class SolverUS(BilayerSonophore):
         margin = 1e-9  # adding margin to compensate for eventual round error
         frange = (freqs.min() - margin, freqs.max() + margin)
         Arange = (amps.min() - margin, amps.max() + margin)
-        assert frange[0] <= Fdrive <= frange[1], \
-            'Fdrive must be within [{:.1f}, {:.1f}] kHz'.format(*[f * 1e-3 for f in frange])
-        assert Arange[0] <= Adrive <= Arange[1], \
-            'Adrive must be within [{:.1f}, {:.1f}] kPa'.format(*[A * 1e-3 for A in Arange])
+
+        if Fdrive < frange[0] or Fdrive > frange[1]:
+            raise InputError(('Invalid frequency: {:.2f} kHz (must be within ' +
+                              '{:.1f} kHz - {:.1f} MHz lookup interval)')
+                             .format(Fdrive * 1e-3, frange[0] * 1e-3, frange[1] * 1e-6))
+        if Adrive < Arange[0] or Adrive > Arange[1]:
+            raise InputError(('Invalid amplitude: {:.2f} kPa (must be within ' +
+                              '{:.1f} - {:.1f} kPa lookup interval)')
+                             .format(Adrive * 1e-3, Arange[0] * 1e-3, Arange[1] * 1e-3))
 
         # Define interpolation datasets to be projected
         coeffs_list = ['V', 'ng', *neuron.coeff_names]
@@ -749,25 +786,41 @@ class SolverUS(BilayerSonophore):
             :return: 3-tuple with the time profile, the solution matrix and a state vector
         """
 
-        # # Check validity of simulation type
-        sim_types = ('classic, effective, hybrid')
-        assert sim_type in sim_types, 'Allowed simulation types are {}'.format(sim_types)
+        # Check validity of simulation type
+        if sim_type not in ('classic', 'effective', 'hybrid'):
+            raise InputError('Invalid integration method: "{}"'.format(sim_type))
 
         # Check validity of stimulation parameters
-        assert isinstance(neuron, BaseMech), ('neuron mechanism must be inherited '
-                                              'from the BaseMech class')
-        for param in [Fdrive, Adrive, tstim, toffset, DC]:
-            assert isinstance(param, float), 'stimulation parameters must be float typed'
-        assert Fdrive > 0, 'Driving frequency must be strictly positive'
-        assert Adrive >= 0, 'Acoustic pressure amplitude must be positive'
-        assert tstim > 0, 'Stimulus duration must be strictly positive'
-        assert toffset >= 0, 'Stimulus offset must be positive or null'
-        assert DC > 0 and DC <= 1, 'Duty cycle must be within [0; 1)'
+        if not isinstance(neuron, BaseMech):
+            raise InputError('Invalid neuron type: "{}" (must inherit from BaseMech class)'
+                             .format(neuron.name))
+        if not all(isinstance(param, float) for param in [Fdrive, Adrive, tstim, toffset, DC]):
+            raise InputError('Invalid stimulation parameters (must be float typed)')
+        if Fdrive <= 0:
+            raise InputError('Invalid US driving frequency: {} kHz (must be strictly positive)'
+                             .format(Fdrive * 1e-3))
+        if Adrive < 0:
+            raise InputError('Invalid US pressure amplitude: {} kPa (must be positive or null)'
+                             .format(Adrive * 1e-3))
+        if tstim <= 0:
+            raise InputError('Invalid stimulus duration: {} ms (must be strictly positive)'
+                             .format(tstim * 1e3))
+        if toffset < 0:
+            raise InputError('Invalid stimulus offset: {} ms (must be positive or null)'
+                             .format(toffset * 1e3))
+        if DC <= 0.0 or DC > 1.0:
+            raise InputError('Invalid duty cycle: {} (must be within ]0; 1])'.format(DC))
         if DC < 1.0:
-            assert isinstance(PRF, float), 'if provided, the PRF parameter must be float typed'
-            assert PRF is not None, 'PRF must be provided when using duty cycles smaller than 1'
-            assert PRF >= 1 / tstim, 'PR interval must be smaller than stimulus duration'
-            assert PRF < Fdrive, 'PRF must be smaller than driving frequency'
+            if not isinstance(PRF, float):
+                raise InputError('Invalid PRF value (must be float typed)')
+            if PRF is None:
+                raise InputError('Missing PRF value (must be provided when DC < 1)')
+            if PRF < 1 / tstim:
+                raise InputError('Invalid PRF: {} Hz (PR interval exceeds stimulus duration'
+                                 .format(PRF))
+            if PRF >= Fdrive:
+                raise InputError('Invalid PRF: {} Hz (must be smaller than driving frequency)'
+                                 .format(PRF))
 
         # Call appropriate simulation function
         if sim_type == 'classic':
@@ -775,6 +828,6 @@ class SolverUS(BilayerSonophore):
         elif sim_type == 'effective':
             return self.__runEffective(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC)
         elif sim_type == 'hybrid':
-            assert DC == 1.0, 'Hybrid method can only handle continuous wave stimuli'
+            if DC < 1.0:
+                raise InputError('Pulsed protocol incompatible with hybrid integration method')
             return self.__runHybrid(neuron, Fdrive, Adrive, tstim, toffset)
-

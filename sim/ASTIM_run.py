@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-07 18:51:31
+# @Last Modified time: 2018-03-15 15:23:11
 
 """ Script to run ASTIM simulations from command line. """
 
@@ -13,7 +13,7 @@ import os
 import logging
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, getNeuronsDict
+from PointNICE.utils import logger, getNeuronsDict, InputError
 from PointNICE.solvers import checkBatchLog, SolverUS, runAStim
 from PointNICE.plt import plotBatch
 
@@ -85,7 +85,8 @@ def main():
     PW_str = ', PRF = {:.2f} Hz, DC = {:.1f}'.format(PRF, DC * 1e2)
 
     try:
-        assert neuron_str in getNeuronsDict(), '{} neuron type not implemented'.format(neuron_str)
+        if neuron_str not in getNeuronsDict():
+            raise InputError('Unknown neuron type: "{}"'.format(neuron_str))
         log_filepath, _ = checkBatchLog(output_dir, 'A-STIM')
         neuron = getNeuronsDict()[neuron_str]()
         logger.info('Running A-STIM simulation on %s neuron: a = %.1f nm, f = %.2f kHz, '
@@ -98,7 +99,7 @@ def main():
         if args.plot:
             plotBatch(output_dir, [outfile])
 
-    except AssertionError as err:
+    except InputError as err:
         logger.error(err)
         sys.exit(1)
 

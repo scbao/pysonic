@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 20:17:05
+# @Last Modified time: 2018-03-15 16:55:31
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -13,7 +13,7 @@ import os
 import logging
 import numpy as np
 
-from PointNICE.utils import logger
+from PointNICE.utils import logger, InputError
 from PointNICE.solvers import setBatchDir, checkBatchLog, runAStimBatch
 from PointNICE.plt import plotBatch
 
@@ -21,7 +21,7 @@ from PointNICE.plt import plotBatch
 logger.setLevel(logging.INFO)
 
 # Neurons
-neurons = ['LeechP']
+neurons = ['RS']
 
 # Stimulation parameters
 stim_params = {
@@ -41,13 +41,13 @@ try:
 
     # Run A-STIM batch
     pkl_filepaths = runAStimBatch(batch_dir, log_filepath, neurons, stim_params,
-                                  int_method='classic')
+                                  int_method='effective')
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
     # yvars = {'Q_m': ['Qm']}
     # plotBatch(pkl_dir, pkl_filepaths, yvars)
 
-except AssertionError as err:
+except InputError as err:
     logger.error(err)
     sys.exit(1)

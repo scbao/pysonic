@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 14:01:36
+# @Last Modified time: 2018-03-15 15:08:31
 
 import logging
 import warnings
@@ -551,13 +551,20 @@ class BilayerSonophore:
         """
 
         # Check validity of stimulation parameters
-        for param in [Fdrive, Adrive, Qm, phi]:
-            assert isinstance(param, float), 'stimulation parameters must be float typed'
-        assert Fdrive > 0, 'Driving frequency must be strictly positive'
-        assert Adrive >= 0, 'Acoustic pressure amplitude must be positive'
-        assert CHARGE_RANGE[0] <= Qm <= CHARGE_RANGE[1], ('Applied charge must be '
-                                                          'within physiological range')
-        assert phi >= 0 and phi < 2 * np.pi, 'US phase must be within [0, 2 PI)'
+        if not all(isinstance(param, float) for param in [Fdrive, Adrive, Qm, phi]):
+            raise InputError('Invalid stimulation parameters (must be float typed)')
+        if Fdrive <= 0:
+            raise InputError('Invalid US driving frequency: {} kHz (must be strictly positive)'
+                             .format(Fdrive * 1e-3))
+        if Adrive < 0:
+            raise InputError('Invalid US pressure amplitude: {} kPa (must be positive or null)'
+                             .format(Adrive * 1e-3))
+        if Qm < CHARGE_RANGE[0] or Qm > CHARGE_RANGE[1]:
+            raise InputError('Invalid applied charge: {} nC/cm2 (must be within [{}, {}] interval'
+                             .format(Qm * 1e5, CHARGE_RANGE[0] * 1e5, CHARGE_RANGE[1] * 1e5))
+        if phi < 0 or phi >= 2 * np.pi:
+            raise InputError('Invalid US pressure phase: {:.2f} rad (must be within [0, 2 PI[ rad'
+                             .format(phi))
 
         # Raise warnings as error
         warnings.filterwarnings('error')
