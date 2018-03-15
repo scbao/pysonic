@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 10:57:44
+# @Last Modified time: 2018-03-15 11:57:14
 
 ''' Algorithmic constants used in the package. '''
 
@@ -27,7 +27,7 @@ DT_ESTIM = 1e-4
 
 # A-STIM simulations
 SOLVER_NSTEPS = 1000  # maximum number of steps allowed during one call to the LSODA/DOP853 solvers
-CLASSIC_DS_FACTOR = 3  # time downsampling factor applied to output arrays of classic simulations
+CLASSIC_TARGET_DT = 1e-8  # target temporal resolution for output arrays of classic simulations
 NPC_FULL = 1000  # nb of samples per acoustic period in full system
 NPC_HH = 40  # nb of samples per acoustic period in HH system
 DQ_UPDATE = 1e-5  # charge evolution threshold between two hybrid integrations (C/m2)

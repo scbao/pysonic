@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 11:18:59
+# @Last Modified time: 2018-03-15 11:54:35
 
 import os
 import warnings
@@ -280,7 +280,7 @@ class SolverUS(BilayerSonophore):
         states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
 
         # Initialize progress bar
-        if logger.getEffectiveLevel() == logging.DEBUG:
+        if logger.getEffectiveLevel() == logging.INFO:
             widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
             pbar = pb.ProgressBar(widgets=widgets,
                                   max_value=int(npulses * (toffset + tstim) / tstim))
@@ -309,7 +309,7 @@ class SolverUS(BilayerSonophore):
             y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
 
             # Update progress bar
-            if logger.getEffectiveLevel() == logging.DEBUG:
+            if logger.getEffectiveLevel() == logging.INFO:
                 pbar.update(i)
 
         # Integrate offset interval
@@ -324,13 +324,18 @@ class SolverUS(BilayerSonophore):
             y = np.concatenate([y, y_off[:, 1:]], axis=1)
 
         # Terminate progress bar
-        if logger.getEffectiveLevel() == logging.DEBUG:
+        if logger.getEffectiveLevel() == logging.INFO:
             pbar.finish()
 
-        # Downsample arrays in time-domain to reduce overall size
-        t = t[::CLASSIC_DS_FACTOR]
-        y = y[:, ::CLASSIC_DS_FACTOR]
-        states = states[::CLASSIC_DS_FACTOR]
+        # Downsample arrays in time-domain accordgin to target temporal resolution
+        ds_factor = int(np.round(CLASSIC_TARGET_DT / dt))
+        if ds_factor > 1:
+            Fs = 1 / (dt * ds_factor)
+            logger.info('Downsampling output arrays by factor %u (Fs = %.2f MHz)',
+                        ds_factor, Fs * 1e-6)
+            t = t[::ds_factor]
+            y = y[:, ::ds_factor]
+            states = states[::ds_factor]
 
         # Return output variables
         return (t, y[1:, :], states)
@@ -684,8 +689,8 @@ class SolverUS(BilayerSonophore):
                 tlim = tstim
             else:
                 tlim = tstim + toffset
-            while (not sim_error and t[-1] < tlim
-                   and (np.abs(dQ) < DQ_UPDATE or dt_interval < DT_UPDATE)):
+            while (not sim_error and t[-1] < tlim and
+                   (np.abs(dQ) < DQ_UPDATE or dt_interval < DT_UPDATE)):
                 t_hh = t_hh_cycle + t[-1] + dt_hh
                 y_hh = np.empty((nvar - 3, NPC_HH))
                 y0_hh = y[3:, -1]
