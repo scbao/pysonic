@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-14 19:24:59
+# @Last Modified time: 2018-03-15 11:18:59
 
 import os
 import warnings
@@ -176,7 +176,7 @@ class SolverUS(BilayerSonophore):
         # Check if lookup file already exists
         lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
         lookup_filepath = '{0}/{1}'.format(getLookupDir(), lookup_file)
-        assert not os.path.isfile(lookup_filepath), '"{}" file already exists'.format(lookup_file)
+        # assert not os.path.isfile(lookup_filepath), '"{}" file already exists'.format(lookup_file)
 
         # Check validity of stimulation parameters
         assert freqs.min() > 0, 'Driving frequencies must be strictly positive'
