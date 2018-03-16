@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 19:13:10
+# @Last Modified time: 2018-03-16 12:04:25
 
 """ Utility functions used in simulations """
 
@@ -1063,8 +1063,17 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     return filepaths
 
 
-def runMechSingle(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm):
-    ''' Run single simulation of the mechanical system with an imposed value of charge density.
+def runMech(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm):
+    ''' Run a single simulation of the mechanical system with specific parameters and
+        an imposed value of charge density, and save the results in a PKL file.
+
+        :param batch_dir: full path to output directory of batch
+        :param log_filepath: full path log file of batch
+        :param bls: BilayerSonophore instance
+        :param Fdrive: acoustic drive frequency (Hz)
+        :param Adrive: acoustic drive amplitude (Pa)
+        :param Qm: applided membrane charge density (C/m2)
+        :return: full path to the output file
     '''
 
     simcode = MECH_code.format(bls.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
@@ -1075,7 +1084,7 @@ def runMechSingle(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm):
 
     # Run simulation
     tstart = time.time()
-    (t, y, states) = bls.runMech(Fdrive, Adrive, Qm)
+    (t, y, states) = bls.run(Fdrive, Adrive, Qm)
     (Z, ng) = y
 
     U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
@@ -1185,7 +1194,7 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
                         Adrive * 1e-3, Qm * 1e5)
 
             # Run simulation
-            output_filepath = runMechSingle(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm)
+            output_filepath = runMech(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm)
             filepaths.append(output_filepath)
 
     return filepaths

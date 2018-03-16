@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 11:50:53
+# @Last Modified time: 2018-03-16 11:59:30
 
 import logging
 import warnings
@@ -520,7 +520,7 @@ class BilayerSonophore:
         # Correct deflection value is below critical compression
         if Z < -0.5 * self.Delta:
             logger.warning('Deflection out of range: Z = %.2f nm', Z * 1e9)
-            Z = -0.49 * self.Delta 
+            Z = -0.49 * self.Delta
 
         # Compute curvature radius
         R = self.curvrad(Z)
@@ -539,7 +539,7 @@ class BilayerSonophore:
         return [dUdt, dZdt, dngdt]
 
 
-    def runMech(self, Fdrive, Adrive, Qm, phi=np.pi):
+    def run(self, Fdrive, Adrive, Qm, phi=np.pi):
         """ Compute short solutions of the mechanical system for specific
             US stimulation parameters and with an imposed membrane charge density.
 

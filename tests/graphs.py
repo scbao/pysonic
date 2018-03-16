@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 19:45:32
+# @Last Modified time: 2018-03-16 12:01:22
 
 ''' Test the basic functionalities of the package and output graphs of the call flows. '''
 
@@ -37,7 +37,7 @@ def graph_BLS():
     Adrive = 1e5  # Pa
     graphviz.output_file = 'graphs/MECH_sim.png'
     with PyCallGraph(output=graphviz):
-        bls.runMech(Fdrive, Adrive, Qm0)
+        bls.run(Fdrive, Adrive, Qm0)
 
 
 def graph_neuron_init():

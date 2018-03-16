@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 20:18:14
+# @Last Modified time: 2018-03-16 12:00:44
 
 ''' Test the basic functionalities of the package. '''
 
@@ -39,14 +39,14 @@ def test_MECH(is_profiled=False):
     # Run simulation
     if is_profiled:
         pfile = 'tmp.stats'
-        cProfile.runctx('bls.runMech(Fdrive, Adrive, Qm)', globals(), locals(), pfile)
+        cProfile.runctx('bls.run(Fdrive, Adrive, Qm)', globals(), locals(), pfile)
         stats = pstats.Stats(pfile)
         os.remove(pfile)
         stats.strip_dirs()
         stats.sort_stats('cumulative')
         stats.print_stats()
     else:
-        bls.runMech(Fdrive, Adrive, Qm)
+        bls.run(Fdrive, Adrive, Qm)
 
 
 

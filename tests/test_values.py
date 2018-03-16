@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 18:36:11
+# @Last Modified time: 2018-03-16 12:01:10
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -42,7 +42,7 @@ def test_MECH():
     # Run mechanical simulation
     Adrive = 100e3  # Pa
     Qm = 50e-5  # C/m2
-    _, y, _ = bls.runMech(Fdrive, Adrive, Qm)
+    _, y, _ = bls.run(Fdrive, Adrive, Qm)
 
     # Check validity of deflection extrema
     Z, _ = y
@@ -50,8 +50,8 @@ def test_MECH():
     Zmin, Zmax = (Zlast.min(), Zlast.max())
     logger.info('Zmin = %.2f nm, Zmax = %.2f nm', Zmin * 1e9, Zmax * 1e9)
     Zmin_ref, Zmax_ref = (-0.116e-9, 5.741e-9)
-    assert np.abs(Zmin - Zmin_ref) < 1e-12, 'Unexpected BLS compression amplitude'
-    assert np.abs(Zmax - Zmax_ref) < 1e-12, 'Unexpected BLS expansion amplitude'
+    assert np.abs(Zmin - Zmin_ref) < 1e-12, 'Unexpected sonophore compression amplitude'
+    assert np.abs(Zmax - Zmax_ref) < 1e-12, 'Unexpected sonophore expansion amplitude'
 
     logger.info('Passed test: Mechanical simulation')
 
