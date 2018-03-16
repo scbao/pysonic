@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 17:42:45
+# @Last Modified time: 2018-03-16 13:22:37
 
 import os
 import warnings
@@ -241,10 +241,15 @@ class SolverUS(BilayerSonophore):
                     # Run short simulation and store effective coefficients
                     logger.info(log_str, isim, nsims, freqs[i] * 1e-3, amps[j] * 1e-3,
                                 charges[k] * 1e5)
-                    sim_coeffs = self.getEffCoeffs(neuron, freqs[i], amps[j], charges[k], phi)
-                    for icoeff in range(ncoeffs):
-                        lookup_dict[coeffs_names[icoeff]][i, j, k] = sim_coeffs[icoeff]
-
+                    try:
+                        sim_coeffs = self.getEffCoeffs(neuron, freqs[i], amps[j], charges[k], phi)
+                        for icoeff in range(ncoeffs):
+                            lookup_dict[coeffs_names[icoeff]][i, j, k] = sim_coeffs[icoeff]
+                    except (Warning, AssertionError) as inst:
+                        logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+                        user_str = input()
+                        if user_str not in ['y', 'Y']:
+                            return -1
 
         # Add input frequency, amplitude and charge arrays to lookup dictionary
         lookup_dict['f'] = freqs  # Hz
@@ -687,15 +692,10 @@ class SolverUS(BilayerSonophore):
                 y0_full = y[:, -1]
                 solver_full.set_initial_value(y0_full, t[-1])
                 k = 0
-                try:  # try to integrate and catch errors/warnings
-                    while solver_full.successful() and k <= NPC_FULL - 1:
-                        solver_full.integrate(t_full[k])
-                        y_full[:, k] = solver_full.y
-                        k += 1
-                except (Warning, AssertionError) as inst:
-                    sim_error = True
-                    logger.error('Full system integration error at step %u', k)
-                    logger.error(inst)
+                while solver_full.successful() and k <= NPC_FULL - 1:
+                    solver_full.integrate(t_full[k])
+                    y_full[:, k] = solver_full.y
+                    k += 1
 
                 # Compare Z and ng signals over the last 2 acoustic periods
                 if j > 0 and rmse(Z_last, y_full[1, :]) < Z_ERR_MAX \
@@ -738,16 +738,11 @@ class SolverUS(BilayerSonophore):
                 y0_hh = y[3:, -1]
                 solver_hh.set_initial_value(y0_hh, t[-1])
                 k = 0
-                try:  # try to integrate and catch errors/warnings
-                    while solver_hh.successful() and k <= NPC_HH - 1:
-                        solver_hh.set_f_params(neuron, self.Capct(mech_pred[1, k]))
-                        solver_hh.integrate(t_hh[k])
-                        y_hh[:, k] = solver_hh.y
-                        k += 1
-                except (Warning, AssertionError) as inst:
-                    sim_error = True
-                    logger.error('HH system integration error at step %u', k)
-                    logger.error(inst)
+                while solver_hh.successful() and k <= NPC_HH - 1:
+                    solver_hh.set_f_params(neuron, self.Capct(mech_pred[1, k]))
+                    solver_hh.integrate(t_hh[k])
+                    y_hh[:, k] = solver_hh.y
+                    k += 1
 
                 # Concatenate time and solutions to global vectors
                 states = np.concatenate([states, np.zeros(NPC_HH)], axis=0)

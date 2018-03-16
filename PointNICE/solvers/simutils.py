@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 12:04:25
+# @Last Modified time: 2018-03-16 13:29:27
 
 """ Utility functions used in simulations """
 
@@ -310,759 +310,6 @@ def detectSpikes(t, Qm, min_amp, min_dt):
     return (n_spikes, latency, spike_rate)
 
 
-
-def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF, DC):
-    ''' Run a single E-STIM simulation a given neuron for specific stimulation parameters,
-        and save the results in a PKL file.
-
-        :param batch_dir: full path to output directory of batch
-        :param log_filepath: full path log file of batch
-        :param solver: SolverElec instance
-        :param Astim: pulse amplitude (mA/m2)
-        :param tstim: pulse duration (s)
-        :param toffset: offset duration (s)
-        :param PRF: pulse repetition frequency (Hz)
-        :param DC: pulse duty cycle (-)
-        :return: full path to the output file
-    '''
-
-    if DC == 1.0:
-        simcode = ESTIM_CW_code.format(neuron.name, Astim, tstim * 1e3)
-    else:
-        simcode = ESTIM_PW_code.format(neuron.name, Astim, tstim * 1e3, PRF * 1e-3, DC)
-
-    # Get date and time info
-    date_str = time.strftime("%Y.%m.%d")
-    daytime_str = time.strftime("%H:%M:%S")
-
-    # Run simulation
-    tstart = time.time()
-    (t, y, states) = solver.run(neuron, Astim, tstim, toffset, PRF, DC)
-    Vm, *channels = y
-    tcomp = time.time() - tstart
-    logger.debug('completed in %.2f seconds', tcomp)
-
-    # Store dataframe and metadata
-    df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm})
-    for j in range(len(neuron.states_names)):
-        df[neuron.states_names[j]] = channels[j]
-    meta = {'neuron': neuron.name, 'Astim': Astim, 'tstim': tstim, 'toffset': toffset,
-            'PRF': PRF, 'DC': DC, 'tcomp': tcomp}
-
-    # Export into to PKL file
-    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
-    with open(output_filepath, 'wb') as fh:
-        pickle.dump({'meta': meta, 'data': df}, fh)
-    logger.debug('simulation data exported to "%s"', output_filepath)
-
-    # Detect spikes on Vm signal
-    n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
-    logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
-
-    # Export key metrics to log file
-    log = {
-        'A': date_str,
-        'B': daytime_str,
-        'C': neuron.name,
-        'D': Astim,
-        'E': tstim * 1e3,
-        'F': PRF * 1e-3 if DC < 1 else 'N/A',
-        'G': DC,
-        'H': t.size,
-        'I': round(tcomp, 2),
-        'J': n_spikes,
-        'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
-        'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-    }
-
-    if xlslog(log_filepath, 'Data', log) == 1:
-        logger.debug('log exported to "%s"', log_filepath)
-    else:
-        logger.error('log export to "%s" aborted', log_filepath)
-
-    return output_filepath
-
-
-def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
-    ''' Run batch E-STIM simulations of the system for various neuron types and
-        stimulation parameters.
-
-        :param batch_dir: full path to output directory of batch
-        :param log_filepath: full path log file of batch
-        :param neurons: list of neurons names
-        :param stim_params: dictionary containing sweeps for all stimulation parameters
-        :return: list of full paths to the output files
-    '''
-
-    mandatory_params = ['amps', 'durations', 'offsets', 'PRFs', 'DCs']
-    for mp in mandatory_params:
-        if mp not in stim_params:
-            raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
-
-    # Define logging format
-    ESTIM_CW_log = 'E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms'
-    ESTIM_PW_log = ('E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms, '
-                    'PRF = %.2f kHz, DC = %.2f')
-
-    logger.info("Starting E-STIM simulation batch")
-
-    # Generate simulations queue
-    sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
-                               stim_params['offsets'], stim_params['PRFs'], stim_params['DCs'])
-    nqueue = sim_queue.shape[0]
-
-    # Initialize solver
-    solver = SolverElec()
-
-    # Run simulations
-    nsims = len(neurons) * nqueue
-    simcount = 0
-    filepaths = []
-    for nname in neurons:
-        neuron = getNeuronsDict()[nname]()
-        for i in range(nqueue):
-            simcount += 1
-            Astim, tstim, toffset, PRF, DC = sim_queue[i, :]
-            if DC == 1.0:
-                logger.info(ESTIM_CW_log, simcount, nsims, neuron.name, Astim, tstim * 1e3)
-            else:
-                logger.info(ESTIM_PW_log, simcount, nsims, neuron.name, Astim, tstim * 1e3,
-                            PRF * 1e-3, DC)
-            output_filepath = runEStim(batch_dir, log_filepath, solver, neuron,
-                                       Astim, tstim, toffset, PRF, DC)
-            filepaths.append(output_filepath)
-    return filepaths
-
-
-
-def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC,
-             int_method='effective'):
-    ''' Run a single A-STIM simulation a given neuron for specific stimulation parameters,
-        and save the results in a PKL file.
-
-        :param batch_dir: full path to output directory of batch
-        :param log_filepath: full path log file of batch
-        :param solver: SolverUS instance
-        :param Fdrive: acoustic drive frequency (Hz)
-        :param Adrive: acoustic drive amplitude (Pa)
-        :param tstim: duration of US stimulation (s)
-        :param toffset: duration of the offset (s)
-        :param PRF: pulse repetition frequency (Hz)
-        :param DC: pulse duty cycle (-)
-        :param int_method: selected integration method
-        :return: full path to the output file
-    '''
-
-    if DC == 1.0:
-        simcode = ASTIM_CW_code.format(neuron.name, solver.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3,
-                                       tstim * 1e3, int_method)
-    else:
-        simcode = ASTIM_PW_code.format(neuron.name, solver.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3,
-                                       tstim * 1e3, PRF * 1e-3, DC, int_method)
-
-    # Get date and time info
-    date_str = time.strftime("%Y.%m.%d")
-    daytime_str = time.strftime("%H:%M:%S")
-
-    # Run simulation
-    tstart = time.time()
-    (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, int_method)
-    Z, ng, Qm, *channels = y
-    U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
-    tcomp = time.time() - tstart
-    logger.debug('completed in %.2f seconds', tcomp)
-
-    # Store dataframe and metadata
-    df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
-                       'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])})
-    for j in range(len(neuron.states_names)):
-        df[neuron.states_names[j]] = channels[j]
-    meta = {'neuron': neuron.name, 'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive,
-            'Adrive': Adrive, 'phi': np.pi, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF,
-            'DC': DC, 'tcomp': tcomp}
-
-    # Export into to PKL file
-    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
-    with open(output_filepath, 'wb') as fh:
-        pickle.dump({'meta': meta, 'data': df}, fh)
-    logger.debug('simulation data exported to "%s"', output_filepath)
-
-    # Detect spikes on Qm signal
-    n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
-    logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
-
-    # Export key metrics to log file
-    log = {
-        'A': date_str,
-        'B': daytime_str,
-        'C': neuron.name,
-        'D': solver.a * 1e9,
-        'E': solver.d * 1e6,
-        'F': Fdrive * 1e-3,
-        'G': Adrive * 1e-3,
-        'H': tstim * 1e3,
-        'I': PRF * 1e-3 if DC < 1 else 'N/A',
-        'J': DC,
-        'K': int_method,
-        'L': t.size,
-        'M': round(tcomp, 2),
-        'N': n_spikes,
-        'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
-        'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-    }
-
-    if xlslog(log_filepath, 'Data', log) == 1:
-        logger.debug('log exported to "%s"', log_filepath)
-    else:
-        logger.error('log export to "%s" aborted', log_filepath)
-
-    return output_filepath
-
-
-
-def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam, int_method='effective'):
-    ''' Run batch simulations of the system for various neuron types, sonophore and
-        stimulation parameters.
-
-        :param batch_dir: full path to output directory of batch
-        :param log_filepath: full path log file of batch
-        :param neurons: list of neurons names
-        :param stim_params: dictionary containing sweeps for all stimulation parameters
-        :param a: BLS structure diameter (m)
-        :param int_method: selected integration method
-        :return: list of full paths to the output files
-    '''
-
-    mandatory_params = ['freqs', 'amps', 'durations', 'offsets', 'PRFs', 'DCs']
-    for mp in mandatory_params:
-        if mp not in stim_params:
-            raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
-
-    # Define logging format
-    ASTIM_CW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
-                    'A = %.2f kPa, t = %.2f ms')
-    ASTIM_PW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
-                    'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DC = %.3f')
-
-    logger.info("Starting A-STIM simulation batch")
-
-    # Generate simulations queue
-    sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
-                               stim_params['offsets'], stim_params['PRFs'], stim_params['DCs'])
-    nqueue = sim_queue.shape[0]
-
-    # Run simulations
-    nsims = len(neurons) * len(stim_params['freqs']) * nqueue
-    simcount = 0
-    filepaths = []
-    for nname in neurons:
-        neuron = getNeuronsDict()[nname]()
-        for Fdrive in stim_params['freqs']:
-
-            # Initialize SolverUS
-            solver = SolverUS(a, neuron, Fdrive)
-
-            for i in range(nqueue):
-
-                simcount += 1
-                Adrive, tstim, toffset, PRF, DC = sim_queue[i, :]
-
-                # Log and define naming
-                if DC == 1.0:
-                    logger.info(ASTIM_CW_log, int_method, simcount, nsims, neuron.name,
-                                a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3)
-                else:
-                    logger.info(ASTIM_PW_log, int_method, simcount, nsims, neuron.name, a * 1e9,
-                                Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF * 1e-3, DC)
-
-                # Run simulation
-                output_filepath = runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
-                                           tstim, toffset, PRF, DC, int_method)
-
-                filepaths.append(output_filepath)
-
-    return filepaths
-
-
-def titrateEStim(solver, neuron, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
-    """ Use a dichotomic recursive search to determine the threshold value of a specific
-        electric stimulation parameter needed to obtain neural excitation, keeping all other
-        parameters fixed. The titration parameter can be stimulation amplitude, duration or
-        any variable for which the number of spikes is a monotonically increasing function.
-
-        This function is called recursively until an accurate threshold is found.
-
-        :param solver: solver instance
-        :param neuron: neuron object
-        :param Astim: injected current density amplitude (mA/m2)
-        :param tstim: duration of US stimulation (s)
-        :param toffset: duration of the offset (s)
-        :param PRF: pulse repetition frequency (Hz)
-        :param DC: pulse duty cycle (-)
-        :return: 5-tuple with the determined amplitude threshold, time profile,
-                 solution matrix, state vector and response latency
-    """
-
-    # Determine titration type
-    if isinstance(Astim, tuple):
-        t_type = 'A'
-        interval = Astim
-        thr = TITRATION_ESTIM_DA_MAX
-        maxval = TITRATION_ESTIM_A_MAX
-    elif isinstance(tstim, tuple):
-        t_type = 't'
-        interval = tstim
-        thr = TITRATION_DT_THR
-        maxval = TITRATION_T_MAX
-    elif isinstance(DC, tuple):
-        t_type = 'DC'
-        interval = DC
-        thr = TITRATION_DDC_THR
-        maxval = TITRATION_DC_MAX
-    else:
-        logger.error('Invalid titration type')
-        return 0.
-
-    t_var = ESTIM_params[t_type]
-
-    # Check amplitude interval and define current value
-    if interval[0] >= interval[1]:
-        raise InputError('Invaid {} interval: {} (must be defined as [lb, ub])'
-                         .format(t_type, interval))
-    value = (interval[0] + interval[1]) / 2
-
-    # Define stimulation parameters
-    if t_type == 'A':
-        stim_params = [value, tstim, toffset, PRF, DC]
-    elif t_type == 't':
-        stim_params = [Astim, value, toffset, PRF, DC]
-    elif t_type == 'DC':
-        stim_params = [Astim, tstim, toffset, PRF, value]
-
-    # Run simulation and detect spikes
-    (t, y, states) = solver.run(neuron, *stim_params)
-    n_spikes, latency, _ = detectSpikes(t, y[0, :], SPIKE_MIN_VAMP, SPIKE_MIN_DT)
-    logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
-                 n_spikes, "s" if n_spikes > 1 else "")
-
-    # If accurate threshold is found, return simulation results
-    if (interval[1] - interval[0]) <= thr and n_spikes == 1:
-        return (value, t, y, states, latency)
-
-    # Otherwise, refine titration interval and iterate recursively
-    else:
-        if n_spikes == 0:
-            if (maxval - interval[1]) <= thr:  # if upper bound too close to max then stop
-                logger.warning('no spikes detected within titration interval')
-                return (np.nan, t, y, states, latency)
-            new_interval = (value, interval[1])
-        else:
-            new_interval = (interval[0], value)
-
-        stim_params[t_var['index']] = new_interval
-        return titrateEStim(solver, neuron, *stim_params)
-
-
-def titrateAStim(solver, neuron, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=1.0,
-                 int_method='effective'):
-    """ Use a dichotomic recursive search to determine the threshold value of a specific
-        acoustic stimulation parameter needed to obtain neural excitation, keeping all other
-        parameters fixed. The titration parameter can be stimulation amplitude, duration or
-        any variable for which the number of spikes is a monotonically increasing function.
-
-        This function is called recursively until an accurate threshold is found.
-
-        :param solver: solver instance
-        :param neuron: neuron object
-        :param Fdrive: acoustic drive frequency (Hz)
-        :param Adrive: acoustic drive amplitude (Pa)
-        :param tstim: duration of US stimulation (s)
-        :param toffset: duration of the offset (s)
-        :param PRF: pulse repetition frequency (Hz)
-        :param DC: pulse duty cycle (-)
-        :param int_method: selected integration method
-        :return: 5-tuple with the determined amplitude threshold, time profile,
-                 solution matrix, state vector and response latency
-    """
-
-    # Determine titration type
-    if isinstance(Adrive, tuple):
-        t_type = 'A'
-        interval = Adrive
-        thr = TITRATION_ASTIM_DA_MAX
-        maxval = TITRATION_ASTIM_A_MAX
-    elif isinstance(tstim, tuple):
-        t_type = 't'
-        interval = tstim
-        thr = TITRATION_DT_THR
-        maxval = TITRATION_T_MAX
-    elif isinstance(DC, tuple):
-        t_type = 'DC'
-        interval = DC
-        thr = TITRATION_DDC_THR
-        maxval = TITRATION_DC_MAX
-    else:
-        logger.error('Invalid titration type')
-        return 0.
-
-    t_var = ASTIM_params[t_type]
-
-    # Check amplitude interval and define current value
-    if interval[0] >= interval[1]:
-        raise InputError('Invaid {} interval: {} (must be defined as [lb, ub])'
-                         .format(t_type, interval))
-    value = (interval[0] + interval[1]) / 2
-
-    # Define stimulation parameters
-    if t_type == 'A':
-        stim_params = [Fdrive, value, tstim, toffset, PRF, DC]
-    elif t_type == 't':
-        stim_params = [Fdrive, Adrive, value, toffset, PRF, DC]
-    elif t_type == 'DC':
-        stim_params = [Fdrive, Adrive, tstim, toffset, PRF, value]
-
-    # Run simulation and detect spikes
-    (t, y, states) = solver.run(neuron, *stim_params, int_method)
-    n_spikes, latency, _ = detectSpikes(t, y[2, :], SPIKE_MIN_QAMP, SPIKE_MIN_DT)
-    logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
-                 n_spikes, "s" if n_spikes > 1 else "")
-
-    # If accurate threshold is found, return simulation results
-    if (interval[1] - interval[0]) <= thr and n_spikes == 1:
-        return (value, t, y, states, latency)
-
-    # Otherwise, refine titration interval and iterate recursively
-    else:
-        if n_spikes == 0:
-            if (maxval - interval[1]) <= thr:  # if upper bound too close to max then stop
-                logger.warning('no spikes detected within titration interval')
-                return (np.nan, t, y, states, latency)
-            new_interval = (value, interval[1])
-        else:
-            new_interval = (interval[0], value)
-
-        stim_params[t_var['index']] = new_interval
-        return titrateAStim(solver, neuron, *stim_params, int_method)
-
-
-def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam, int_method='effective'):
-    ''' Run batch acoustic titrations of the system for various neuron types, sonophore and
-        stimulation parameters, to determine the threshold of a specific stimulus parameter
-        for neural excitation.
-
-        :param batch_dir: full path to output directory of batch
-        :param log_filepath: full path log file of batch
-        :param neurons: list of neurons names
-        :param stim_params: dictionary containing sweeps for all stimulation parameters
-        :param a: BLS structure diameter (m)
-        :param int_method: selected integration method
-        :return: list of full paths to the output files
-    '''
-
-    # Define logging format
-    ASTIM_titration_log = '%s neuron - A-STIM titration %u/%u (a = %.1f nm, %s)'
-
-    logger.info("Starting A-STIM titration batch")
-
-    # Define default parameters
-    int_method = 'effective'
-
-    # Determine titration parameter and titrations list
-    if 'durations' not in stim_params:
-        t_type = 't'
-        sim_queue = createSimQueue(stim_params['amps'], [None], [TITRATION_T_OFFSET],
-                                   stim_params['PRFs'], stim_params['DCs'])
-        # sim_queue = np.delete(sim_queue, 1, axis=1)
-    elif 'amps' not in stim_params:
-        t_type = 'A'
-        sim_queue = createSimQueue([None], stim_params['durations'],
-                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
-                                   stim_params['PRFs'], stim_params['DCs'])
-    elif 'DC' not in stim_params:
-        t_type = 'DC'
-        sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
-                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
-                                   stim_params['PRFs'], [None])
-
-    nqueue = sim_queue.shape[0]
-    t_var = ASTIM_params[t_type]
-
-    # Run titrations
-    nsims = len(neurons) * len(stim_params['freqs']) * nqueue
-    simcount = 0
-    filepaths = []
-    for nname in neurons:
-        neuron = getNeuronsDict()[nname]()
-        for Fdrive in stim_params['freqs']:
-            try:
-                # Create SolverUS instance (modulus of embedding tissue depends on frequency)
-                solver = SolverUS(a, neuron, Fdrive)
-
-                for i in range(nqueue):
-                    simcount += 1
-
-                    # Extract parameters
-                    Adrive, tstim, toffset, PRF, DC = sim_queue[i, :]
-                    if Adrive is None:
-                        Adrive = (0., 2 * TITRATION_ASTIM_A_MAX)
-                    elif tstim is None:
-                        tstim = (0., 2 * TITRATION_T_MAX)
-                    elif DC is None:
-                        DC = (0., 2 * TITRATION_DC_MAX)
-                    curr_params = [Fdrive, Adrive, tstim, PRF, DC]
-
-                    # Generate log str
-                    log_str = ''
-                    pnames = list(ASTIM_params.keys())
-                    j = 0
-                    for cp in curr_params:
-                        pn = pnames[j]
-                        pi = ASTIM_params[pn]
-                        if not isinstance(cp, tuple):
-                            if log_str:
-                                log_str += ', '
-                            log_str += '{} = {:.2f} {}'.format(pn, pi['factor'] * cp, pi['unit'])
-                        j += 1
-
-                    # Get date and time info
-                    date_str = time.strftime("%Y.%m.%d")
-                    daytime_str = time.strftime("%H:%M:%S")
-
-                    # Log
-                    logger.info(ASTIM_titration_log, neuron.name, simcount, nsims, a * 1e9,
-                                log_str)
-
-                    # Run titration
-                    tstart = time.time()
-
-                    (output_thr, t, y, states, lat) = titrateAStim(solver, neuron, Fdrive, Adrive,
-                                                                   tstim, toffset, PRF, DC)
-
-                    Z, ng, Qm, *channels = y
-                    U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
-                    tcomp = time.time() - tstart
-                    logger.info('completed in %.2f s, threshold = %.2f %s', tcomp,
-                                output_thr * t_var['factor'], t_var['unit'])
-
-                    # Determine output variable
-                    if t_type == 'A':
-                        Adrive = output_thr
-                    elif t_type == 't':
-                        tstim = output_thr
-                    elif t_type == 'DC':
-                        DC = output_thr
-
-                    # Define output naming
-                    if DC == 1.0:
-                        simcode = ASTIM_CW_code.format(neuron.name, a * 1e9, Fdrive * 1e-3,
-                                                       Adrive * 1e-3, tstim * 1e3, int_method)
-                    else:
-                        simcode = ASTIM_PW_code.format(neuron.name, a * 1e9, Fdrive * 1e-3,
-                                                       Adrive * 1e-3, tstim * 1e3, PRF * 1e-3,
-                                                       DC, int_method)
-
-                    # Store dataframe and metadata
-                    df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
-                                       'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])})
-                    for j in range(len(neuron.states_names)):
-                        df[neuron.states_names[j]] = channels[j]
-                    meta = {'neuron': neuron.name, 'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive,
-                            'Adrive': Adrive, 'phi': np.pi, 'tstim': tstim, 'toffset': toffset,
-                            'PRF': PRF, 'DC': DC, 'tcomp': tcomp}
-
-                    # Export into to PKL file
-                    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
-                    with open(output_filepath, 'wb') as fh:
-                        pickle.dump({'meta': meta, 'data': df}, fh)
-                    logger.debug('simulation data exported to "%s"', output_filepath)
-                    filepaths.append(output_filepath)
-
-                    # Detect spikes on Qm signal
-                    n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
-                    logger.info('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
-
-                    # Export key metrics to log file
-                    log = {
-                        'A': date_str,
-                        'B': daytime_str,
-                        'C': neuron.name,
-                        'D': solver.a * 1e9,
-                        'E': solver.d * 1e6,
-                        'F': Fdrive * 1e-3,
-                        'G': Adrive * 1e-3,
-                        'H': tstim * 1e3,
-                        'I': PRF * 1e-3 if DC < 1 else 'N/A',
-                        'J': DC,
-                        'K': int_method,
-                        'L': t.size,
-                        'M': round(tcomp, 2),
-                        'N': n_spikes,
-                        'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
-                        'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-                    }
-
-                    if xlslog(log_filepath, 'Data', log) == 1:
-                        logger.info('log exported to "%s"', log_filepath)
-                    else:
-                        logger.error('log export to "%s" aborted', log_filepath)
-
-            except AssertionError as err:
-                logger.error(err)
-
-    return filepaths
-
-
-def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
-    ''' Run batch electrical titrations of the system for various neuron types and
-        stimulation parameters, to determine the threshold of a specific stimulus parameter
-        for neural excitation.
-
-        :param batch_dir: full path to output directory of batch
-        :param log_filepath: full path log file of batch
-        :param neurons: list of neurons names
-        :param stim_params: dictionary containing sweeps for all stimulation parameters
-        :return: list of full paths to the output files
-    '''
-
-    # Define logging format
-    ESTIM_titration_log = '%s neuron - E-STIM titration %u/%u (%s)'
-
-    logger.info("Starting E-STIM titration batch")
-
-    # Determine titration parameter and titrations list
-    if 'durations' not in stim_params:
-        t_type = 't'
-        sim_queue = createSimQueue(stim_params['amps'], [None], [TITRATION_T_OFFSET],
-                                   stim_params['PRFs'], stim_params['DCs'])
-    elif 'amps' not in stim_params:
-        t_type = 'A'
-        sim_queue = createSimQueue([None], stim_params['durations'],
-                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
-                                   stim_params['PRFs'], stim_params['DCs'])
-    elif 'DC' not in stim_params:
-        t_type = 'DC'
-        sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
-                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
-                                   stim_params['PRFs'], [None])
-
-    nqueue = sim_queue.shape[0]
-    t_var = ESTIM_params[t_type]
-
-    # Create SolverElec instance
-    solver = SolverElec()
-
-    # Run titrations
-    nsims = len(neurons) * nqueue
-    simcount = 0
-    filepaths = []
-    for nname in neurons:
-        neuron = getNeuronsDict()[nname]()
-        try:
-
-            for i in range(nqueue):
-                simcount += 1
-
-                # Extract parameters
-                Astim, tstim, toffset, PRF, DC = sim_queue[i, :]
-                if Astim is None:
-                    Astim = (0., 2 * TITRATION_ESTIM_A_MAX)
-                elif tstim is None:
-                    tstim = (0., 2 * TITRATION_T_MAX)
-                elif DC is None:
-                    DC = (0., 2 * TITRATION_DC_MAX)
-                curr_params = [Astim, tstim, PRF, DC]
-
-                # Generate log str
-                log_str = ''
-                pnames = list(ESTIM_params.keys())
-                j = 0
-                for cp in curr_params:
-                    pn = pnames[j]
-                    pi = ESTIM_params[pn]
-                    if not isinstance(cp, tuple):
-                        if log_str:
-                            log_str += ', '
-                        log_str += '{} = {:.2f} {}'.format(pn, pi['factor'] * cp, pi['unit'])
-                    j += 1
-
-                # Get date and time info
-                date_str = time.strftime("%Y.%m.%d")
-                daytime_str = time.strftime("%H:%M:%S")
-
-                # Log
-                logger.info(ESTIM_titration_log, neuron.name, simcount, nsims, log_str)
-
-                # Run titration
-                tstart = time.time()
-
-                (output_thr, t, y, states, lat) = titrateEStim(solver, neuron, Astim,
-                                                               tstim, toffset, PRF, DC)
-
-                Vm, *channels = y
-                tcomp = time.time() - tstart
-                logger.info('completed in %.2f s, threshold = %.2f %s', tcomp,
-                            output_thr * t_var['factor'], t_var['unit'])
-
-                # Determine output variable
-                if t_type == 'A':
-                    Astim = output_thr
-                elif t_type == 't':
-                    tstim = output_thr
-                elif t_type == 'DC':
-                    DC = output_thr
-
-                # Define output naming
-                if DC == 1.0:
-                    simcode = ESTIM_CW_code.format(neuron.name, Astim, tstim * 1e3)
-                else:
-                    simcode = ESTIM_PW_code.format(neuron.name, Astim, tstim * 1e3,
-                                                   PRF * 1e-3, DC)
-
-                # Store dataframe and metadata
-                df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm})
-                for j in range(len(neuron.states_names)):
-                    df[neuron.states_names[j]] = channels[j]
-                meta = {'neuron': neuron.name, 'Astim': Astim, 'tstim': tstim, 'toffset': toffset,
-                        'PRF': PRF, 'DC': DC, 'tcomp': tcomp}
-
-                # Export into to PKL file
-                output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
-                with open(output_filepath, 'wb') as fh:
-                    pickle.dump({'meta': meta, 'data': df}, fh)
-                logger.info('simulation data exported to "%s"', output_filepath)
-                filepaths.append(output_filepath)
-
-                # Detect spikes on Qm signal
-                n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
-                logger.info('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
-
-                # Export key metrics to log file
-                log = {
-                    'A': date_str,
-                    'B': daytime_str,
-                    'C': neuron.name,
-                    'D': Astim,
-                    'E': tstim * 1e3,
-                    'F': PRF * 1e-3 if DC < 1 else 'N/A',
-                    'G': DC,
-                    'H': t.size,
-                    'I': round(tcomp, 2),
-                    'J': n_spikes,
-                    'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
-                    'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-                }
-
-                if xlslog(log_filepath, 'Data', log) == 1:
-                    logger.info('log exported to "%s"', log_filepath)
-                else:
-                    logger.error('log export to "%s" aborted', log_filepath)
-
-        except AssertionError as err:
-            logger.error(err)
-
-    return filepaths
-
-
 def runMech(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm):
     ''' Run a single simulation of the mechanical system with specific parameters and
         an imposed value of charge density, and save the results in a PKL file.
@@ -1194,7 +441,780 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
                         Adrive * 1e-3, Qm * 1e5)
 
             # Run simulation
-            output_filepath = runMech(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm)
-            filepaths.append(output_filepath)
+            try:
+                output_filepath = runMech(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm)
+                filepaths.append(output_filepath)
+            except (Warning, AssertionError) as inst:
+                logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+                user_str = input()
+                if user_str not in ['y', 'Y']:
+                    return filepaths
+
+    return filepaths
+
+
+def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF, DC):
+    ''' Run a single E-STIM simulation a given neuron for specific stimulation parameters,
+        and save the results in a PKL file.
+
+        :param batch_dir: full path to output directory of batch
+        :param log_filepath: full path log file of batch
+        :param solver: SolverElec instance
+        :param Astim: pulse amplitude (mA/m2)
+        :param tstim: pulse duration (s)
+        :param toffset: offset duration (s)
+        :param PRF: pulse repetition frequency (Hz)
+        :param DC: pulse duty cycle (-)
+        :return: full path to the output file
+    '''
+
+    if DC == 1.0:
+        simcode = ESTIM_CW_code.format(neuron.name, Astim, tstim * 1e3)
+    else:
+        simcode = ESTIM_PW_code.format(neuron.name, Astim, tstim * 1e3, PRF * 1e-3, DC)
+
+    # Get date and time info
+    date_str = time.strftime("%Y.%m.%d")
+    daytime_str = time.strftime("%H:%M:%S")
+
+    # Run simulation
+    tstart = time.time()
+    (t, y, states) = solver.run(neuron, Astim, tstim, toffset, PRF, DC)
+    Vm, *channels = y
+    tcomp = time.time() - tstart
+    logger.debug('completed in %.2f seconds', tcomp)
+
+    # Store dataframe and metadata
+    df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm})
+    for j in range(len(neuron.states_names)):
+        df[neuron.states_names[j]] = channels[j]
+    meta = {'neuron': neuron.name, 'Astim': Astim, 'tstim': tstim, 'toffset': toffset,
+            'PRF': PRF, 'DC': DC, 'tcomp': tcomp}
+
+    # Export into to PKL file
+    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
+    with open(output_filepath, 'wb') as fh:
+        pickle.dump({'meta': meta, 'data': df}, fh)
+    logger.debug('simulation data exported to "%s"', output_filepath)
+
+    # Detect spikes on Vm signal
+    n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+    logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
+
+    # Export key metrics to log file
+    log = {
+        'A': date_str,
+        'B': daytime_str,
+        'C': neuron.name,
+        'D': Astim,
+        'E': tstim * 1e3,
+        'F': PRF * 1e-3 if DC < 1 else 'N/A',
+        'G': DC,
+        'H': t.size,
+        'I': round(tcomp, 2),
+        'J': n_spikes,
+        'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
+        'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+    }
+
+    if xlslog(log_filepath, 'Data', log) == 1:
+        logger.debug('log exported to "%s"', log_filepath)
+    else:
+        logger.error('log export to "%s" aborted', log_filepath)
+
+    return output_filepath
+
+
+def titrateEStim(solver, neuron, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
+    """ Use a dichotomic recursive search to determine the threshold value of a specific
+        electric stimulation parameter needed to obtain neural excitation, keeping all other
+        parameters fixed. The titration parameter can be stimulation amplitude, duration or
+        any variable for which the number of spikes is a monotonically increasing function.
+
+        This function is called recursively until an accurate threshold is found.
+
+        :param solver: solver instance
+        :param neuron: neuron object
+        :param Astim: injected current density amplitude (mA/m2)
+        :param tstim: duration of US stimulation (s)
+        :param toffset: duration of the offset (s)
+        :param PRF: pulse repetition frequency (Hz)
+        :param DC: pulse duty cycle (-)
+        :return: 5-tuple with the determined amplitude threshold, time profile,
+                 solution matrix, state vector and response latency
+    """
+
+    # Determine titration type
+    if isinstance(Astim, tuple):
+        t_type = 'A'
+        interval = Astim
+        thr = TITRATION_ESTIM_DA_MAX
+        maxval = TITRATION_ESTIM_A_MAX
+    elif isinstance(tstim, tuple):
+        t_type = 't'
+        interval = tstim
+        thr = TITRATION_DT_THR
+        maxval = TITRATION_T_MAX
+    elif isinstance(DC, tuple):
+        t_type = 'DC'
+        interval = DC
+        thr = TITRATION_DDC_THR
+        maxval = TITRATION_DC_MAX
+    else:
+        logger.error('Invalid titration type')
+        return 0.
+
+    t_var = ESTIM_params[t_type]
+
+    # Check amplitude interval and define current value
+    if interval[0] >= interval[1]:
+        raise InputError('Invaid {} interval: {} (must be defined as [lb, ub])'
+                         .format(t_type, interval))
+    value = (interval[0] + interval[1]) / 2
+
+    # Define stimulation parameters
+    if t_type == 'A':
+        stim_params = [value, tstim, toffset, PRF, DC]
+    elif t_type == 't':
+        stim_params = [Astim, value, toffset, PRF, DC]
+    elif t_type == 'DC':
+        stim_params = [Astim, tstim, toffset, PRF, value]
+
+    # Run simulation and detect spikes
+    (t, y, states) = solver.run(neuron, *stim_params)
+    n_spikes, latency, _ = detectSpikes(t, y[0, :], SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+    logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
+                 n_spikes, "s" if n_spikes > 1 else "")
+
+    # If accurate threshold is found, return simulation results
+    if (interval[1] - interval[0]) <= thr and n_spikes == 1:
+        return (value, t, y, states, latency)
+
+    # Otherwise, refine titration interval and iterate recursively
+    else:
+        if n_spikes == 0:
+            if (maxval - interval[1]) <= thr:  # if upper bound too close to max then stop
+                logger.warning('no spikes detected within titration interval')
+                return (np.nan, t, y, states, latency)
+            new_interval = (value, interval[1])
+        else:
+            new_interval = (interval[0], value)
+
+        stim_params[t_var['index']] = new_interval
+        return titrateEStim(solver, neuron, *stim_params)
+
+
+def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
+    ''' Run batch E-STIM simulations of the system for various neuron types and
+        stimulation parameters.
+
+        :param batch_dir: full path to output directory of batch
+        :param log_filepath: full path log file of batch
+        :param neurons: list of neurons names
+        :param stim_params: dictionary containing sweeps for all stimulation parameters
+        :return: list of full paths to the output files
+    '''
+
+    mandatory_params = ['amps', 'durations', 'offsets', 'PRFs', 'DCs']
+    for mp in mandatory_params:
+        if mp not in stim_params:
+            raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
+
+    # Define logging format
+    ESTIM_CW_log = 'E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms'
+    ESTIM_PW_log = ('E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms, '
+                    'PRF = %.2f kHz, DC = %.2f')
+
+    logger.info("Starting E-STIM simulation batch")
+
+    # Generate simulations queue
+    sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
+                               stim_params['offsets'], stim_params['PRFs'], stim_params['DCs'])
+    nqueue = sim_queue.shape[0]
+
+    # Initialize solver
+    solver = SolverElec()
+
+    # Run simulations
+    nsims = len(neurons) * nqueue
+    simcount = 0
+    filepaths = []
+    for nname in neurons:
+        neuron = getNeuronsDict()[nname]()
+        for i in range(nqueue):
+            simcount += 1
+            Astim, tstim, toffset, PRF, DC = sim_queue[i, :]
+            if DC == 1.0:
+                logger.info(ESTIM_CW_log, simcount, nsims, neuron.name, Astim, tstim * 1e3)
+            else:
+                logger.info(ESTIM_PW_log, simcount, nsims, neuron.name, Astim, tstim * 1e3,
+                            PRF * 1e-3, DC)
+            try:
+                output_filepath = runEStim(batch_dir, log_filepath, solver, neuron,
+                                           Astim, tstim, toffset, PRF, DC)
+                filepaths.append(output_filepath)
+            except (Warning, AssertionError) as inst:
+                logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+                user_str = input()
+                if user_str not in ['y', 'Y']:
+                    return filepaths
+
+    return filepaths
+
+
+def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
+    ''' Run batch electrical titrations of the system for various neuron types and
+        stimulation parameters, to determine the threshold of a specific stimulus parameter
+        for neural excitation.
+
+        :param batch_dir: full path to output directory of batch
+        :param log_filepath: full path log file of batch
+        :param neurons: list of neurons names
+        :param stim_params: dictionary containing sweeps for all stimulation parameters
+        :return: list of full paths to the output files
+    '''
+
+    # Define logging format
+    ESTIM_titration_log = '%s neuron - E-STIM titration %u/%u (%s)'
+
+    logger.info("Starting E-STIM titration batch")
+
+    # Determine titration parameter and titrations list
+    if 'durations' not in stim_params:
+        t_type = 't'
+        sim_queue = createSimQueue(stim_params['amps'], [None], [TITRATION_T_OFFSET],
+                                   stim_params['PRFs'], stim_params['DCs'])
+    elif 'amps' not in stim_params:
+        t_type = 'A'
+        sim_queue = createSimQueue([None], stim_params['durations'],
+                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
+                                   stim_params['PRFs'], stim_params['DCs'])
+    elif 'DC' not in stim_params:
+        t_type = 'DC'
+        sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
+                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
+                                   stim_params['PRFs'], [None])
+
+    nqueue = sim_queue.shape[0]
+    t_var = ESTIM_params[t_type]
+
+    # Create SolverElec instance
+    solver = SolverElec()
+
+    # Run titrations
+    nsims = len(neurons) * nqueue
+    simcount = 0
+    filepaths = []
+    for nname in neurons:
+        neuron = getNeuronsDict()[nname]()
+        for i in range(nqueue):
+            simcount += 1
+
+            # Extract parameters
+            Astim, tstim, toffset, PRF, DC = sim_queue[i, :]
+            if Astim is None:
+                Astim = (0., 2 * TITRATION_ESTIM_A_MAX)
+            elif tstim is None:
+                tstim = (0., 2 * TITRATION_T_MAX)
+            elif DC is None:
+                DC = (0., 2 * TITRATION_DC_MAX)
+            curr_params = [Astim, tstim, PRF, DC]
+
+            # Generate log str
+            log_str = ''
+            pnames = list(ESTIM_params.keys())
+            j = 0
+            for cp in curr_params:
+                pn = pnames[j]
+                pi = ESTIM_params[pn]
+                if not isinstance(cp, tuple):
+                    if log_str:
+                        log_str += ', '
+                    log_str += '{} = {:.2f} {}'.format(pn, pi['factor'] * cp, pi['unit'])
+                j += 1
+
+            # Get date and time info
+            date_str = time.strftime("%Y.%m.%d")
+            daytime_str = time.strftime("%H:%M:%S")
+
+            # Log
+            logger.info(ESTIM_titration_log, neuron.name, simcount, nsims, log_str)
+
+            # Run titration
+            tstart = time.time()
+
+            try:
+                (output_thr, t, y, states, lat) = titrateEStim(solver, neuron, Astim,
+                                                               tstim, toffset, PRF, DC)
+
+                Vm, *channels = y
+                tcomp = time.time() - tstart
+                logger.info('completed in %.2f s, threshold = %.2f %s', tcomp,
+                            output_thr * t_var['factor'], t_var['unit'])
+
+                # Determine output variable
+                if t_type == 'A':
+                    Astim = output_thr
+                elif t_type == 't':
+                    tstim = output_thr
+                elif t_type == 'DC':
+                    DC = output_thr
+
+                # Define output naming
+                if DC == 1.0:
+                    simcode = ESTIM_CW_code.format(neuron.name, Astim, tstim * 1e3)
+                else:
+                    simcode = ESTIM_PW_code.format(neuron.name, Astim, tstim * 1e3,
+                                                   PRF * 1e-3, DC)
+
+                # Store dataframe and metadata
+                df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm})
+                for j in range(len(neuron.states_names)):
+                    df[neuron.states_names[j]] = channels[j]
+                meta = {'neuron': neuron.name, 'Astim': Astim, 'tstim': tstim, 'toffset': toffset,
+                        'PRF': PRF, 'DC': DC, 'tcomp': tcomp}
+
+                # Export into to PKL file
+                output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
+                with open(output_filepath, 'wb') as fh:
+                    pickle.dump({'meta': meta, 'data': df}, fh)
+                logger.info('simulation data exported to "%s"', output_filepath)
+                filepaths.append(output_filepath)
+
+                # Detect spikes on Qm signal
+                n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+                logger.info('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
+
+                # Export key metrics to log file
+                log = {
+                    'A': date_str,
+                    'B': daytime_str,
+                    'C': neuron.name,
+                    'D': Astim,
+                    'E': tstim * 1e3,
+                    'F': PRF * 1e-3 if DC < 1 else 'N/A',
+                    'G': DC,
+                    'H': t.size,
+                    'I': round(tcomp, 2),
+                    'J': n_spikes,
+                    'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
+                    'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+                }
+
+                if xlslog(log_filepath, 'Data', log) == 1:
+                    logger.info('log exported to "%s"', log_filepath)
+                else:
+                    logger.error('log export to "%s" aborted', log_filepath)
+
+            except (Warning, AssertionError) as inst:
+                logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+                user_str = input()
+                if user_str not in ['y', 'Y']:
+                    return filepaths
+
+    return filepaths
+
+
+def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC,
+             int_method='effective'):
+    ''' Run a single A-STIM simulation a given neuron for specific stimulation parameters,
+        and save the results in a PKL file.
+
+        :param batch_dir: full path to output directory of batch
+        :param log_filepath: full path log file of batch
+        :param solver: SolverUS instance
+        :param Fdrive: acoustic drive frequency (Hz)
+        :param Adrive: acoustic drive amplitude (Pa)
+        :param tstim: duration of US stimulation (s)
+        :param toffset: duration of the offset (s)
+        :param PRF: pulse repetition frequency (Hz)
+        :param DC: pulse duty cycle (-)
+        :param int_method: selected integration method
+        :return: full path to the output file
+    '''
+
+    if DC == 1.0:
+        simcode = ASTIM_CW_code.format(neuron.name, solver.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3,
+                                       tstim * 1e3, int_method)
+    else:
+        simcode = ASTIM_PW_code.format(neuron.name, solver.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3,
+                                       tstim * 1e3, PRF * 1e-3, DC, int_method)
+
+    # Get date and time info
+    date_str = time.strftime("%Y.%m.%d")
+    daytime_str = time.strftime("%H:%M:%S")
+
+    # Run simulation
+    tstart = time.time()
+    (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, int_method)
+    Z, ng, Qm, *channels = y
+    U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
+    tcomp = time.time() - tstart
+    logger.debug('completed in %.2f seconds', tcomp)
+
+    # Store dataframe and metadata
+    df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
+                       'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])})
+    for j in range(len(neuron.states_names)):
+        df[neuron.states_names[j]] = channels[j]
+    meta = {'neuron': neuron.name, 'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive,
+            'Adrive': Adrive, 'phi': np.pi, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF,
+            'DC': DC, 'tcomp': tcomp}
+
+    # Export into to PKL file
+    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
+    with open(output_filepath, 'wb') as fh:
+        pickle.dump({'meta': meta, 'data': df}, fh)
+    logger.debug('simulation data exported to "%s"', output_filepath)
+
+    # Detect spikes on Qm signal
+    n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+    logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
+
+    # Export key metrics to log file
+    log = {
+        'A': date_str,
+        'B': daytime_str,
+        'C': neuron.name,
+        'D': solver.a * 1e9,
+        'E': solver.d * 1e6,
+        'F': Fdrive * 1e-3,
+        'G': Adrive * 1e-3,
+        'H': tstim * 1e3,
+        'I': PRF * 1e-3 if DC < 1 else 'N/A',
+        'J': DC,
+        'K': int_method,
+        'L': t.size,
+        'M': round(tcomp, 2),
+        'N': n_spikes,
+        'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
+        'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+    }
+
+    if xlslog(log_filepath, 'Data', log) == 1:
+        logger.debug('log exported to "%s"', log_filepath)
+    else:
+        logger.error('log export to "%s" aborted', log_filepath)
+
+    return output_filepath
+
+
+def titrateAStim(solver, neuron, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=1.0,
+                 int_method='effective'):
+    """ Use a dichotomic recursive search to determine the threshold value of a specific
+        acoustic stimulation parameter needed to obtain neural excitation, keeping all other
+        parameters fixed. The titration parameter can be stimulation amplitude, duration or
+        any variable for which the number of spikes is a monotonically increasing function.
+
+        This function is called recursively until an accurate threshold is found.
+
+        :param solver: solver instance
+        :param neuron: neuron object
+        :param Fdrive: acoustic drive frequency (Hz)
+        :param Adrive: acoustic drive amplitude (Pa)
+        :param tstim: duration of US stimulation (s)
+        :param toffset: duration of the offset (s)
+        :param PRF: pulse repetition frequency (Hz)
+        :param DC: pulse duty cycle (-)
+        :param int_method: selected integration method
+        :return: 5-tuple with the determined amplitude threshold, time profile,
+                 solution matrix, state vector and response latency
+    """
+
+    # Determine titration type
+    if isinstance(Adrive, tuple):
+        t_type = 'A'
+        interval = Adrive
+        thr = TITRATION_ASTIM_DA_MAX
+        maxval = TITRATION_ASTIM_A_MAX
+    elif isinstance(tstim, tuple):
+        t_type = 't'
+        interval = tstim
+        thr = TITRATION_DT_THR
+        maxval = TITRATION_T_MAX
+    elif isinstance(DC, tuple):
+        t_type = 'DC'
+        interval = DC
+        thr = TITRATION_DDC_THR
+        maxval = TITRATION_DC_MAX
+    else:
+        logger.error('Invalid titration type')
+        return 0.
+
+    t_var = ASTIM_params[t_type]
+
+    # Check amplitude interval and define current value
+    if interval[0] >= interval[1]:
+        raise InputError('Invaid {} interval: {} (must be defined as [lb, ub])'
+                         .format(t_type, interval))
+    value = (interval[0] + interval[1]) / 2
+
+    # Define stimulation parameters
+    if t_type == 'A':
+        stim_params = [Fdrive, value, tstim, toffset, PRF, DC]
+    elif t_type == 't':
+        stim_params = [Fdrive, Adrive, value, toffset, PRF, DC]
+    elif t_type == 'DC':
+        stim_params = [Fdrive, Adrive, tstim, toffset, PRF, value]
+
+    # Run simulation and detect spikes
+    (t, y, states) = solver.run(neuron, *stim_params, int_method)
+    n_spikes, latency, _ = detectSpikes(t, y[2, :], SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+    logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
+                 n_spikes, "s" if n_spikes > 1 else "")
+
+    # If accurate threshold is found, return simulation results
+    if (interval[1] - interval[0]) <= thr and n_spikes == 1:
+        return (value, t, y, states, latency)
+
+    # Otherwise, refine titration interval and iterate recursively
+    else:
+        if n_spikes == 0:
+            if (maxval - interval[1]) <= thr:  # if upper bound too close to max then stop
+                logger.warning('no spikes detected within titration interval')
+                return (np.nan, t, y, states, latency)
+            new_interval = (value, interval[1])
+        else:
+            new_interval = (interval[0], value)
+
+        stim_params[t_var['index']] = new_interval
+        return titrateAStim(solver, neuron, *stim_params, int_method)
+
+
+def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
+                  int_method='effective'):
+    ''' Run batch simulations of the system for various neuron types, sonophore and
+        stimulation parameters.
+
+        :param batch_dir: full path to output directory of batch
+        :param log_filepath: full path log file of batch
+        :param neurons: list of neurons names
+        :param stim_params: dictionary containing sweeps for all stimulation parameters
+        :param a: BLS structure diameter (m)
+        :param int_method: selected integration method
+        :return: list of full paths to the output files
+    '''
+
+    mandatory_params = ['freqs', 'amps', 'durations', 'offsets', 'PRFs', 'DCs']
+    for mp in mandatory_params:
+        if mp not in stim_params:
+            raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
+
+    # Define logging format
+    ASTIM_CW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
+                    'A = %.2f kPa, t = %.2f ms')
+    ASTIM_PW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
+                    'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DC = %.3f')
+
+    logger.info("Starting A-STIM simulation batch")
+
+    # Generate simulations queue
+    sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
+                               stim_params['offsets'], stim_params['PRFs'], stim_params['DCs'])
+    nqueue = sim_queue.shape[0]
+
+    # Run simulations
+    nsims = len(neurons) * len(stim_params['freqs']) * nqueue
+    simcount = 0
+    filepaths = []
+    for nname in neurons:
+        neuron = getNeuronsDict()[nname]()
+        for Fdrive in stim_params['freqs']:
+
+            # Initialize SolverUS
+            solver = SolverUS(a, neuron, Fdrive)
+
+            for i in range(nqueue):
+
+                simcount += 1
+                Adrive, tstim, toffset, PRF, DC = sim_queue[i, :]
+
+                # Log and define naming
+                if DC == 1.0:
+                    logger.info(ASTIM_CW_log, int_method, simcount, nsims, neuron.name,
+                                a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3)
+                else:
+                    logger.info(ASTIM_PW_log, int_method, simcount, nsims, neuron.name, a * 1e9,
+                                Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF * 1e-3, DC)
+
+                # Run simulation
+                try:
+                    output_filepath = runAStim(batch_dir, log_filepath, solver, neuron, Fdrive,
+                                               Adrive, tstim, toffset, PRF, DC, int_method)
+                    filepaths.append(output_filepath)
+                except (Warning, AssertionError) as inst:
+                    logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+                    user_str = input()
+                    if user_str not in ['y', 'Y']:
+                        return filepaths
+
+    return filepaths
+
+
+def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
+                      int_method='effective'):
+    ''' Run batch acoustic titrations of the system for various neuron types, sonophore and
+        stimulation parameters, to determine the threshold of a specific stimulus parameter
+        for neural excitation.
+
+        :param batch_dir: full path to output directory of batch
+        :param log_filepath: full path log file of batch
+        :param neurons: list of neurons names
+        :param stim_params: dictionary containing sweeps for all stimulation parameters
+        :param a: BLS structure diameter (m)
+        :param int_method: selected integration method
+        :return: list of full paths to the output files
+    '''
+
+    # Define logging format
+    ASTIM_titration_log = '%s neuron - A-STIM titration %u/%u (a = %.1f nm, %s)'
+
+    logger.info("Starting A-STIM titration batch")
+
+    # Define default parameters
+    int_method = 'effective'
+
+    # Determine titration parameter and titrations list
+    if 'durations' not in stim_params:
+        t_type = 't'
+        sim_queue = createSimQueue(stim_params['amps'], [None], [TITRATION_T_OFFSET],
+                                   stim_params['PRFs'], stim_params['DCs'])
+    elif 'amps' not in stim_params:
+        t_type = 'A'
+        sim_queue = createSimQueue([None], stim_params['durations'],
+                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
+                                   stim_params['PRFs'], stim_params['DCs'])
+    elif 'DC' not in stim_params:
+        t_type = 'DC'
+        sim_queue = createSimQueue(stim_params['amps'], stim_params['durations'],
+                                   [TITRATION_T_OFFSET] * len(stim_params['durations']),
+                                   stim_params['PRFs'], [None])
+
+    nqueue = sim_queue.shape[0]
+    t_var = ASTIM_params[t_type]
+
+    # Run titrations
+    nsims = len(neurons) * len(stim_params['freqs']) * nqueue
+    simcount = 0
+    filepaths = []
+    for nname in neurons:
+        neuron = getNeuronsDict()[nname]()
+        for Fdrive in stim_params['freqs']:
+            # Create SolverUS instance (modulus of embedding tissue depends on frequency)
+            solver = SolverUS(a, neuron, Fdrive)
+
+            for i in range(nqueue):
+                simcount += 1
+
+                # Extract parameters
+                Adrive, tstim, toffset, PRF, DC = sim_queue[i, :]
+                if Adrive is None:
+                    Adrive = (0., 2 * TITRATION_ASTIM_A_MAX)
+                elif tstim is None:
+                    tstim = (0., 2 * TITRATION_T_MAX)
+                elif DC is None:
+                    DC = (0., 2 * TITRATION_DC_MAX)
+                curr_params = [Fdrive, Adrive, tstim, PRF, DC]
+
+                # Generate log str
+                log_str = ''
+                pnames = list(ASTIM_params.keys())
+                j = 0
+                for cp in curr_params:
+                    pn = pnames[j]
+                    pi = ASTIM_params[pn]
+                    if not isinstance(cp, tuple):
+                        if log_str:
+                            log_str += ', '
+                        log_str += '{} = {:.2f} {}'.format(pn, pi['factor'] * cp, pi['unit'])
+                    j += 1
+
+                # Get date and time info
+                date_str = time.strftime("%Y.%m.%d")
+                daytime_str = time.strftime("%H:%M:%S")
+
+                # Log
+                logger.info(ASTIM_titration_log, neuron.name, simcount, nsims, a * 1e9,
+                            log_str)
+
+                # Run titration
+                tstart = time.time()
+                try:
+                    (output_thr, t, y, states, lat) = titrateAStim(solver, neuron, Fdrive,
+                                                                   Adrive, tstim, toffset,
+                                                                   PRF, DC)
+
+                    Z, ng, Qm, *channels = y
+                    U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
+                    tcomp = time.time() - tstart
+                    logger.info('completed in %.2f s, threshold = %.2f %s', tcomp,
+                                output_thr * t_var['factor'], t_var['unit'])
+
+                    # Determine output variable
+                    if t_type == 'A':
+                        Adrive = output_thr
+                    elif t_type == 't':
+                        tstim = output_thr
+                    elif t_type == 'DC':
+                        DC = output_thr
+
+                    # Define output naming
+                    if DC == 1.0:
+                        simcode = ASTIM_CW_code.format(neuron.name, a * 1e9, Fdrive * 1e-3,
+                                                       Adrive * 1e-3, tstim * 1e3, int_method)
+                    else:
+                        simcode = ASTIM_PW_code.format(neuron.name, a * 1e9, Fdrive * 1e-3,
+                                                       Adrive * 1e-3, tstim * 1e3, PRF * 1e-3,
+                                                       DC, int_method)
+
+                    # Store dataframe and metadata
+                    df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
+                                       'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])})
+                    for j in range(len(neuron.states_names)):
+                        df[neuron.states_names[j]] = channels[j]
+                    meta = {'neuron': neuron.name, 'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive,
+                            'Adrive': Adrive, 'phi': np.pi, 'tstim': tstim, 'toffset': toffset,
+                            'PRF': PRF, 'DC': DC, 'tcomp': tcomp}
+
+                    # Export into to PKL file
+                    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
+                    with open(output_filepath, 'wb') as fh:
+                        pickle.dump({'meta': meta, 'data': df}, fh)
+                    logger.debug('simulation data exported to "%s"', output_filepath)
+                    filepaths.append(output_filepath)
+
+                    # Detect spikes on Qm signal
+                    n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+                    logger.info('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
+
+                    # Export key metrics to log file
+                    log = {
+                        'A': date_str,
+                        'B': daytime_str,
+                        'C': neuron.name,
+                        'D': solver.a * 1e9,
+                        'E': solver.d * 1e6,
+                        'F': Fdrive * 1e-3,
+                        'G': Adrive * 1e-3,
+                        'H': tstim * 1e3,
+                        'I': PRF * 1e-3 if DC < 1 else 'N/A',
+                        'J': DC,
+                        'K': int_method,
+                        'L': t.size,
+                        'M': round(tcomp, 2),
+                        'N': n_spikes,
+                        'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
+                        'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+                    }
+
+                    if xlslog(log_filepath, 'Data', log) == 1:
+                        logger.info('log exported to "%s"', log_filepath)
+                    else:
+                        logger.error('log export to "%s" aborted', log_filepath)
+                except (Warning, AssertionError) as inst:
+                    logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+                    user_str = input()
+                    if user_str not in ['y', 'Y']:
+                        return filepaths
 
     return filepaths

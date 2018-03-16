@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 11:59:30
+# @Last Modified time: 2018-03-16 12:13:33
 
 import logging
 import warnings
@@ -596,40 +596,35 @@ class BilayerSonophore:
         Z_last = None
         periodic_conv = False
 
-        try:
-            while not periodic_conv and j < NCYCLES_MAX:
-                t_mech = t_mech_cycle + t[-1] + dt_mech
-                y_mech = integrate.odeint(self.eqMech, y[:, -1], t_mech,
-                                          args=(Adrive, Fdrive, Qm, phi)).T
+        while not periodic_conv and j < NCYCLES_MAX:
+            t_mech = t_mech_cycle + t[-1] + dt_mech
+            y_mech = integrate.odeint(self.eqMech, y[:, -1], t_mech,
+                                      args=(Adrive, Fdrive, Qm, phi)).T
 
-                # Compare Z and ng signals over the last 2 acoustic periods
-                if j > 0:
-                    Z_rmse = rmse(Z_last, y_mech[1, :])
-                    ng_rmse = rmse(ng_last, y_mech[2, :])
-                    logger.debug('step %u: Z_rmse = %.2e m, ng_rmse = %.2e mol', j, Z_rmse, ng_rmse)
-                    if Z_rmse < Z_ERR_MAX and ng_rmse < NG_ERR_MAX:
-                        periodic_conv = True
+            # Compare Z and ng signals over the last 2 acoustic periods
+            if j > 0:
+                Z_rmse = rmse(Z_last, y_mech[1, :])
+                ng_rmse = rmse(ng_last, y_mech[2, :])
+                logger.debug('step %u: Z_rmse = %.2e m, ng_rmse = %.2e mol', j, Z_rmse, ng_rmse)
+                if Z_rmse < Z_ERR_MAX and ng_rmse < NG_ERR_MAX:
+                    periodic_conv = True
 
-                # Update last vectors for next comparison
-                Z_last = y_mech[1, :]
-                ng_last = y_mech[2, :]
+            # Update last vectors for next comparison
+            Z_last = y_mech[1, :]
+            ng_last = y_mech[2, :]
 
-                # Concatenate time and solutions to global vectors
-                states = np.concatenate([states, np.ones(NPC_FULL)], axis=0)
-                t = np.concatenate([t, t_mech], axis=0)
-                y = np.concatenate([y, y_mech], axis=1)
+            # Concatenate time and solutions to global vectors
+            states = np.concatenate([states, np.ones(NPC_FULL)], axis=0)
+            t = np.concatenate([t, t_mech], axis=0)
+            y = np.concatenate([y, y_mech], axis=1)
 
-                # Increment loop index
-                j += 1
+            # Increment loop index
+            j += 1
 
-            if j == NCYCLES_MAX:
-                logger.warning('No convergence: stopping after %u cycles', j)
-            else:
-                logger.debug('Periodic convergence after %u cycles', j)
-
-
-        except (Warning, AssertionError) as inst:
-            logger.error('Mech. system integration error:', extra={inst})
+        if j == NCYCLES_MAX:
+            logger.warning('No convergence: stopping after %u cycles', j)
+        else:
+            logger.debug('Periodic convergence after %u cycles', j)
 
         states[-1] = 0
 
