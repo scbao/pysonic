@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 11:48:22
+# @Last Modified time: 2018-03-16 14:30:43
 
 """ Create lookup tables for different acoustic frequencies. """
 
@@ -22,7 +22,7 @@ logger.setLevel(logging.INFO)
 a = 32e-9
 
 # Channel mechanisms
-neurons = [CorticalRS()]
+neurons = [LeechPressure()]
 
 # Stimulation parameters
 freqs = np.array([20., 100., 500., 1000., 2000., 3000., 4000.]) * 1e3  # Hz

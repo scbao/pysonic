@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 13:22:37
+# @Last Modified time: 2018-03-16 14:31:45
 
 import os
 import warnings
@@ -151,7 +151,7 @@ class SolverUS(BilayerSonophore):
         """
 
         # Run simulation and retrieve deflection and gas content vectors from last cycle
-        (_, y, _) = self.runMech(Fdrive, Adrive, Qm, phi)
+        (_, y, _) = super(SolverUS, self).run(Fdrive, Adrive, Qm, phi)
         (Z, ng) = y
         Z_last = Z[-NPC_FULL:]  # m
 
