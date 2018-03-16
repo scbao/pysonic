@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 14:31:45
+# @Last Modified time: 2018-03-16 17:29:49
 
 import os
 import warnings
@@ -322,7 +322,7 @@ class SolverUS(BilayerSonophore):
         states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
 
         # Initialize progress bar
-        if logger.getEffectiveLevel() == logging.INFO:
+        if logger.getEffectiveLevel() <= logging.INFO:
             widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
             pbar = pb.ProgressBar(widgets=widgets,
                                   max_value=int(npulses * (toffset + tstim) / tstim))
@@ -351,7 +351,7 @@ class SolverUS(BilayerSonophore):
             y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
 
             # Update progress bar
-            if logger.getEffectiveLevel() == logging.INFO:
+            if logger.getEffectiveLevel() <= logging.INFO:
                 pbar.update(i)
 
         # Integrate offset interval
@@ -366,7 +366,7 @@ class SolverUS(BilayerSonophore):
             y = np.concatenate([y, y_off[:, 1:]], axis=1)
 
         # Terminate progress bar
-        if logger.getEffectiveLevel() == logging.INFO:
+        if logger.getEffectiveLevel() <= logging.INFO:
             pbar.finish()
 
         # Downsample arrays in time-domain accordgin to target temporal resolution
