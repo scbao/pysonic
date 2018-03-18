@@ -140,7 +140,7 @@ class SolverElec:
 
             # Integrate OFF system
             if n_pulse_off > 0:
-                y_pulse[:, n_pulse_on:] = integrate.odeint(self.eqHH, y_pulse[:, -1],
+                y_pulse[:, n_pulse_on:] = integrate.odeint(self.eqHH, y_pulse[:, n_pulse_on - 1],
                                                            t_pulse[n_pulse_on:],
                                                            args=(neuron, 0.0, 0.0, 0.0)).T
 
