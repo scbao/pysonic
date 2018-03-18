@@ -21,22 +21,24 @@ from PointNICE.plt import plotBatch
 logger.setLevel(logging.INFO)
 
 # Neurons
-neurons = ['RS']
+neurons = ['LTS']
 
 # Stimulation parameters
 stim_params = {
-    'freqs': [1000e3],  # Hz
-    'amps': np.array([10, 20, 40, 80, 150, 300, 600]) * 1e3,  # Pa
-    'durations': np.array([20, 40, 60, 80, 100, 150, 200, 250, 300]) * 1e-3,  # s
-    'PRFs': np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]) * 1e3,  # Hz
-    'DCs': np.array([1, 2, 5, 10, 25, 50, 75, 100]) * 1e-2
+    'freqs': [500e3],  # Hz
+    'amps': [300.0e3],  # np.array([10, 20, 40, 80, 150, 300, 600]) * 1e3,  # Pa
+    'durations': [150.0e-3],  # np.array([20, 40, 60, 80, 100, 150, 200, 250, 300]) * 1e-3,  # s
+    'PRFs': [100.0, 1000.0, 10000.0],  # np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]) * 1e3,  # Hz
+    'DCs': [0.05],  # np.array([1, 2, 5, 10, 25, 50, 75, 100]) * 1e-2
+    'offsets': [100e-3]
 }
-stim_params['offsets'] = 350e-3 - stim_params['durations']  # s
+# stim_params['offsets'] = 350e-3 - stim_params['durations']  # s
 
 
 try:
     # Select output directory
-    batch_dir = setBatchDir()
+    # batch_dir = setBatchDir()
+    batch_dir = '../../data/validation/PW PRF'
     log_filepath, _ = checkBatchLog(batch_dir, 'A-STIM')
 
     # Run A-STIM batch
@@ -45,8 +47,8 @@ try:
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    # yvars = {'Q_m': ['Qm']}
-    # plotBatch(pkl_dir, pkl_filepaths, yvars)
+    yvars = {'Q_m': ['Qm']}
+    plotBatch(pkl_dir, pkl_filepaths, yvars)
 
 except InputError as err:
     logger.error(err)
