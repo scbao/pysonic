@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 18:35:50
+# @Last Modified time: 2018-03-19 19:25:37
 
 """ Script to run ASTIM simulations from command line. """
 
@@ -25,7 +25,7 @@ default = {
     'f': 500.0,  # kHz
     'A': 100.0,  # kPa
     't': 150.0,  # ms
-    'off': 20.0,  # ms
+    'off': 100.0,  # ms
     'PRF': 100.0,  # Hz
     'DC': 100.0,  # %
     'int_method': 'effective'

@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 12:00:44
+# @Last Modified time: 2018-03-19 19:59:39
 
 ''' Test the basic functionalities of the package. '''
 
@@ -78,6 +78,7 @@ def test_ESTIM(is_profiled=False):
         stats.print_stats()
     else:
         solver.run(neuron, Astim, tstim, toffset, PRF=None, DC=1.0)
+        solver.run(neuron, Astim, tstim, toffset, PRF=100.0, DC=0.05)
 
 
 def test_ASTIM_effective(is_profiled=False):
@@ -89,10 +90,10 @@ def test_ASTIM_effective(is_profiled=False):
     neuron = CorticalRS()
 
     # Stimulation parameters
-    Fdrive = 350e3  # Hz
+    Fdrive = 500e3  # Hz
     Adrive = 100e3  # Pa
     tstim = 50e-3  # s
-    toffset = 30e-3  # s
+    toffset = 10e-3  # s
 
     # Initialize solver
     a = 32e-9  # m
@@ -110,6 +111,7 @@ def test_ASTIM_effective(is_profiled=False):
         stats.print_stats()
     else:
         solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='effective')
+        solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF=100.0, DC=0.05, sim_type='effective')
 
 
 
@@ -122,7 +124,7 @@ def test_ASTIM_classic(is_profiled=False):
     neuron = CorticalRS()
 
     # Stimulation parameters
-    Fdrive = 350e3  # Hz
+    Fdrive = 500e3  # Hz
     Adrive = 100e3  # Pa
     tstim = 1e-6  # s
     toffset = 1e-6  # s

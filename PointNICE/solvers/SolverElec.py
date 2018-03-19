@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 15:32:02
+# @Last Modified time: 2018-03-19 20:03:13
 
 
 import warnings
@@ -142,7 +142,7 @@ class SolverElec:
             if n_pulse_off > 0:
                 y_pulse[:, n_pulse_on:] = integrate.odeint(self.eqHH, y_pulse[:, n_pulse_on - 1],
                                                            t_pulse[n_pulse_on:],
-                                                           args=(neuron, 0.0, 0.0, 0.0)).T
+                                                           args=(neuron, 0.0)).T
 
             # Append pulse arrays to global arrays
             states = np.concatenate([states, states_pulse[1:]])
