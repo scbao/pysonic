@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 15:21:07
+# @Last Modified time: 2018-03-19 14:51:47
 
 """ Definition of generic utility functions used in other modules """
 
@@ -302,3 +302,5 @@ def save_BLS_lookups(a, lookups):
     lookup_path = getLookupDir() + '/BLS_lookups_a{:.1f}nm.json'.format(a * 1e9)
     with open(lookup_path, 'w') as fh:
         json.dump(lookups, fh)
+
+

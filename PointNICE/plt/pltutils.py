@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 16:52:26
+# @Last Modified time: 2018-03-19 17:34:37
 
 ''' Plotting utilities '''
 
@@ -128,6 +128,9 @@ class InteractiveLegend(object):
         plt.show()
 
 
+def rescaleColorset(cset, lb=0, ub=255, lb_new=0., ub_new=1.):
+    return list(tuple((x - lb) / (ub - lb) * (ub_new - lb_new) + lb_new for x in c) for c in cset)
+
 
 def getPatchesLoc(t, states):
     ''' Determine the location of stimulus patches.
@@ -170,14 +173,14 @@ def SaveFigDialog(dirname, filename):
 
 
 
-def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
+def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None, patches='one'):
     ''' Compare profiles of several specific output variables of NICE simulations.
 
         :param yvars: list of variables names to extract and compare
         :param filepaths: list of full paths to output data files to be compared
         :param labels: list of labels to use in the legend
         :param fs: labels fontsize
-        :param show_patches: boolean indicating whether to indicate periods of stimulation with
+        :param patches: string indicating whether to indicate periods of stimulation with
          colored rectangular patches
     '''
 
@@ -226,6 +229,31 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
         ax.locator_params(axis='y', nbins=2)
         for tick in ax.yaxis.get_major_ticks():
             tick.label.set_fontsize(fs)
+
+    # Set traces parameters
+    if colors is None:
+        colors = ['C{}'.format(j) for j in range(len(filepaths))]
+    if lines is None:
+        lines = ['-'] *  len(filepaths)
+
+    # Set patches parameters
+    greypatch = False
+    if patches == 'none':
+        patches = [False] * len(filepaths)
+    elif patches == 'all':
+        patches = [True] * len(filepaths)
+    elif patches == 'one':
+        patches = [True] + [False] * (len(filepaths) - 1)
+        greypatch = True
+    elif isinstance(patches, list):
+        if len(patches) != len(filepaths):
+            raise InputError('Invalid patches ({}): not matching number of compared files ({})'
+                             .format(len(patches), len(filepaths)))
+        if not all(isinstance(p, bool) for p in patches):
+            raise InputError('Invalid patch sequence: all list items must be boolean typed')
+    else:
+        raise InputError('Invalid patches: must be either "none", all", "one", or a boolean list')
+
 
     # Loop through data files
     j = 0
@@ -334,20 +362,21 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
 
         # Plotting
         handles = [axes[i].plot(t * t_plt['factor'], vrs[i] * y_pltvars[i]['factor'],
-                                linewidth=2, label=label) for i in range(nvars)]
+                                linewidth=lw, linestyle=lines[j], color=colors[j], label=label)
+                   for i in range(nvars)]
 
-        if show_patches:
+        if patches[j]:
             k = 0
             # stimulation patches
             for ax in axes:
                 handle = handles[k]
                 (ybottom, ytop) = ax.get_ylim()
                 la = []
+                color = '#8A8A8A' if greypatch else handle[0].get_color()
                 for i in range(npatches):
                     la.append(ax.add_patch(Rectangle((tpatch_on[i] * t_plt['factor'], ybottom),
                                                      (tpatch_off[i] - tpatch_on[i]) * t_plt['factor'],
-                                                     ytop - ybottom,
-                                                     color=handle[0].get_color(), alpha=0.2)))
+                                                     ytop - ybottom, color=color, alpha=0.1)))
 
             aliases[handle[0]] = la
             k += 1
@@ -361,7 +390,7 @@ def plotComp(yvars, filepaths, labels=None, fs=15, show_patches=True):
 
     iLegends = []
     for k in range(nvars):
-        axes[k].legend(loc=7, fontsize=fs)
+        axes[k].legend(loc=1, fontsize=fs, frameon=False)
         iLegends.append(InteractiveLegend(axes[k].legend_, aliases))
 
     plt.show()

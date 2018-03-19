@@ -4,15 +4,16 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 16:57:56
+# @Last Modified time: 2018-03-19 17:27:10
 
 """ Compare profiles of several specific output variables of NICE simulations. """
 
 import sys
 import logging
+import colorlover as cl
 
 from PointNICE.utils import logger, OpenFilesDialog, InputError
-from PointNICE.plt import plotComp
+from PointNICE.plt import plotComp, rescaleColorset
 
 # Set logging level
 logger.setLevel(logging.INFO)
@@ -23,13 +24,25 @@ if not pkl_filepaths:
     logger.error('No input file')
     sys.exit(1)
 
+nfiles = len(pkl_filepaths)
 
 # Comparative plot
+yvars = ['Qm']
+# colors = rescaleColorset(cl.to_numeric(cl.scales['12']['qual']['Paired']))
+# labels = sum([['', x] for x in ['sub-threshold', 'threshold', 'supra-threshold']], [])
+# labels = sum([['', x] for x in ['100 Hz', '1 kHz', '100 kHz']], [])
+# lines = ['--', '-'] * (nfiles // 2)
+# patches = [False, True] * (nfiles // 2)
+# patches = 'one'
+
+colors = rescaleColorset(cl.to_numeric(cl.scales['9']['qual']['Set1']))
+labels = ['100 Hz', '1kHz', '10kHz']
+lines = ['--'] * nfiles
+patches = 'all'
+
+
 try:
-    yvars = ['Qm']
-    labels = ['classic', 'effective']
-    # labels = ['FS neuron', 'LTS neuron', 'RE neuron', 'RS neuron', 'TC neuron']
-    plotComp(yvars, pkl_filepaths)
+    plotComp(yvars, pkl_filepaths, labels=labels, colors=colors, lines=lines, patches=patches)
 except InputError as err:
     logger.error(err)
     sys.exit(1)

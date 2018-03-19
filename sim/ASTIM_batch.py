@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 16:55:31
+# @Last Modified time: 2018-03-19 15:54:42
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -21,15 +21,15 @@ from PointNICE.plt import plotBatch
 logger.setLevel(logging.INFO)
 
 # Neurons
-neurons = ['LTS']
+neurons = ['RS', 'FS', 'LTS', 'RE', 'TC']
 
 # Stimulation parameters
 stim_params = {
     'freqs': [500e3],  # Hz
-    'amps': [300.0e3],  # np.array([10, 20, 40, 80, 150, 300, 600]) * 1e3,  # Pa
+    'amps': [100.0e3],  # np.array([10, 20, 40, 80, 150, 300, 600]) * 1e3,  # Pa
     'durations': [150.0e-3],  # np.array([20, 40, 60, 80, 100, 150, 200, 250, 300]) * 1e-3,  # s
-    'PRFs': [100.0, 1000.0, 10000.0],  # np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]) * 1e3,  # Hz
-    'DCs': [0.05],  # np.array([1, 2, 5, 10, 25, 50, 75, 100]) * 1e-2
+    'PRFs': [100.0],  # np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]) * 1e3,  # Hz
+    'DCs': [0.75],  # np.array([1, 2, 5, 10, 25, 50, 75, 100]) * 1e-2
     'offsets': [100e-3]
 }
 # stim_params['offsets'] = 350e-3 - stim_params['durations']  # s
@@ -37,8 +37,8 @@ stim_params = {
 
 try:
     # Select output directory
-    # batch_dir = setBatchDir()
-    batch_dir = '../../data/validation/PW PRF'
+    batch_dir = setBatchDir()
+    # batch_dir = '../../data/validation/PW PRF'
     log_filepath, _ = checkBatchLog(batch_dir, 'A-STIM')
 
     # Run A-STIM batch
