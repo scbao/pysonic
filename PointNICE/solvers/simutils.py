@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 13:29:27
+# @Last Modified time: 2018-03-20 21:48:44
 
 """ Utility functions used in simulations """
 
@@ -195,7 +195,24 @@ def xlslog(filename, sheetname, data):
 
 def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising',
                 kpsh=False, valley=False, ax=None):
-    """ Detect peaks in data based on their amplitude and inter-peak distance. """
+    '''
+        Detect peaks in data based on their amplitude and other features.
+        From Marco Duarte:
+        http://nbviewer.jupyter.org/github/demotu/BMC/blob/master/notebooks/DetectPeaks.ipynb
+
+    :param x: 1D array_like data.
+    :param mph: minimum peak height (default = None).
+    :param mpd: minimum peak distance in indexes (default = 1)
+    :param threshold : minimum peak prominence (default = 0)
+    :param edge : for a flat peak, keep only the rising edge ('rising'), only the
+        falling edge ('falling'), both edges ('both'), or don't detect a flat peak (None).
+        (default = 'rising')
+    :param kpsh: keep peaks with same height even if they are closer than `mpd` (default = False).
+    :param valley: detect valleys (local minima) instead of peaks (default = False).
+    :param show: plot data in matplotlib figure (default = False).
+    :param ax: a matplotlib.axes.Axes instance, optional (default = None).
+    :return: 1D array with the indices of the peaks
+'''
 
     x = np.atleast_1d(x).astype('float64')
     if x.size < 3:
