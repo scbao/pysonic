@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 12:27:12
+# @Last Modified time: 2018-03-21 15:41:31
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -69,7 +69,8 @@ pltvars = {
 
     'Qm': {
         'desc': 'charge density',
-        'label': 'Q_m',
+        # 'label': 'Q_m',
+        'label': 'charge',
         'unit': 'nC/cm^2',
         'factor': 1e5,
         'min': -100,

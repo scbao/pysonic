@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-19 17:34:37
+# @Last Modified time: 2018-03-21 16:02:13
 
 ''' Plotting utilities '''
 
@@ -20,6 +20,7 @@ from scipy.interpolate import interp2d
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.cm as cm
+from matplotlib.ticker import FormatStrFormatter
 import pandas as pd
 
 from .. import neurons
@@ -173,7 +174,8 @@ def SaveFigDialog(dirname, filename):
 
 
 
-def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None, patches='one'):
+def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None, patches='one',
+             xticks=None, yticks=None, blacklegend=False):
     ''' Compare profiles of several specific output variables of NICE simulations.
 
         :param yvars: list of variables names to extract and compare
@@ -214,6 +216,10 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
 
     for i in range(nvars):
         ax = axes[i]
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
         pltvar = y_pltvars[i]
         if 'min' in pltvar and 'max' in pltvar:
             ax.set_ylim(pltvar['min'], pltvar['max'])
@@ -224,9 +230,16 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
         if i < nvars - 1:
             ax.get_xaxis().set_ticklabels([])
         else:
+            if xticks is not None:
+                ax.set_xticks(xticks)
             for tick in ax.xaxis.get_major_ticks():
                 tick.label.set_fontsize(fs)
-        ax.locator_params(axis='y', nbins=2)
+        if yticks is not None:
+            ax.set_yticks(yticks[i])
+        else:
+            ax.locator_params(axis='y', nbins=2)
+        if any(ax.get_yticks() < 0):
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%+.0f'))
         for tick in ax.yaxis.get_major_ticks():
             tick.label.set_fontsize(fs)
 
@@ -234,7 +247,7 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
     if colors is None:
         colors = ['C{}'.format(j) for j in range(len(filepaths))]
     if lines is None:
-        lines = ['-'] *  len(filepaths)
+        lines = ['-'] * len(filepaths)
 
     # Set patches parameters
     greypatch = False
@@ -388,9 +401,15 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
 
     plt.tight_layout()
 
+
+
     iLegends = []
     for k in range(nvars):
-        axes[k].legend(loc=1, fontsize=fs, frameon=False)
+        leg = axes[k].legend(loc=1, fontsize=fs, frameon=False)
+        # Optional change of legend handles color
+        if blacklegend:
+            for l in leg.get_lines():
+                l.set_color('k')
         iLegends.append(InteractiveLegend(axes[k].legend_, aliases))
 
     plt.show()
