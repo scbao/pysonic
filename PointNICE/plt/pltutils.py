@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-22 00:14:06
+# @Last Modified time: 2018-03-22 00:26:18
 
 ''' Plotting utilities '''
 
@@ -224,9 +224,9 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
         if 'min' in pltvar and 'max' in pltvar:
             ax.set_ylim(pltvar['min'], pltvar['max'])
         if pltvar['unit']:
-            ax.set_ylabel('${}\ ({})$'.format(pltvar['label'], pltvar['unit']), fontsize=fs)
+            ax.set_ylabel('$\\rm {}\ ({})$'.format(pltvar['label'], pltvar['unit']), fontsize=fs)
         else:
-            ax.set_ylabel('${}$'.format(pltvar['label']), fontsize=fs)
+            ax.set_ylabel('$\\rm {}$'.format(pltvar['label']), fontsize=fs)
         if i < nvars - 1:
             ax.get_xaxis().set_ticklabels([])
         else:
@@ -397,7 +397,7 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
         j += 1
 
     # set x-axis label
-    axes[-1].set_xlabel('${}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
+    axes[-1].set_xlabel('$\\rm {}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
 
     plt.tight_layout()
 
