@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-21 16:02:13
+# @Last Modified time: 2018-03-22 00:14:06
 
 ''' Plotting utilities '''
 
@@ -175,7 +175,7 @@ def SaveFigDialog(dirname, filename):
 
 
 def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None, patches='one',
-             xticks=None, yticks=None, blacklegend=False):
+             xticks=None, yticks=None, blacklegend=False, straightlegend=False):
     ''' Compare profiles of several specific output variables of NICE simulations.
 
         :param yvars: list of variables names to extract and compare
@@ -410,6 +410,9 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
         if blacklegend:
             for l in leg.get_lines():
                 l.set_color('k')
+        if straightlegend:
+            for l in leg.get_lines():
+                l.set_linestyle('-')
         iLegends.append(InteractiveLegend(axes[k].legend_, aliases))
 
     plt.show()
