@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-22 00:26:18
+# @Last Modified time: 2018-03-22 01:39:21
 
 ''' Plotting utilities '''
 
@@ -17,6 +17,7 @@ from tkinter import filedialog
 import numpy as np
 from scipy.interpolate import interp2d
 # from scipy.optimize import brentq
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.cm as cm
@@ -27,6 +28,9 @@ from .. import neurons
 from ..utils import getNeuronsDict, getLookupDir, rescale, InputError
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
+
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 # Get package logger
 logger = logging.getLogger('PointNICE')
@@ -175,7 +179,7 @@ def SaveFigDialog(dirname, filename):
 
 
 def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None, patches='one',
-             xticks=None, yticks=None, blacklegend=False, straightlegend=False):
+             xticks=None, yticks=None, blacklegend=False, straightlegend=False, showfig=True):
     ''' Compare profiles of several specific output variables of NICE simulations.
 
         :param yvars: list of variables names to extract and compare
@@ -208,10 +212,10 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
 
     # Initialize figure and axes
     if nvars == 1:
-        _, ax = plt.subplots(figsize=(11, 4))
+        fig, ax = plt.subplots(figsize=(11, 4))
         axes = [ax]
     else:
-        _, axes = plt.subplots(nvars, 1, figsize=(11, min(3 * nvars, 9)))
+        fig, axes = plt.subplots(nvars, 1, figsize=(11, min(3 * nvars, 9)))
 
 
     for i in range(nvars):
@@ -302,7 +306,6 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
             meta = frame['meta']
 
         # Extract variables
-        logger.info('Extracting variables')
         t = df['t'].values
         states = df['states'].values
         nsamples = t.size
@@ -401,8 +404,6 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
 
     plt.tight_layout()
 
-
-
     iLegends = []
     for k in range(nvars):
         leg = axes[k].legend(loc=1, fontsize=fs, frameon=False)
@@ -415,7 +416,9 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
                 l.set_linestyle('-')
         iLegends.append(InteractiveLegend(axes[k].legend_, aliases))
 
-    plt.show()
+    if showfig:
+        plt.show()
+    return fig
 
 
 
