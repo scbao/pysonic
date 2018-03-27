@@ -4,12 +4,13 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-19 14:51:47
+# @Last Modified time: 2018-03-27 14:48:19
 
 """ Definition of generic utility functions used in other modules """
 
 from enum import Enum
 import os
+import pickle
 import tkinter as tk
 from tkinter import filedialog
 import inspect
@@ -125,7 +126,7 @@ def ImportExcelCol(filename, sheetname, colstr, startrow):
     """
 
     wb = load_workbook(filename, read_only=True)
-    ws = wb.get_sheet_by_name(sheetname)
+    ws = wb[sheetname]
     range_start_str = colstr + str(startrow)
     range_stop_str = colstr + str(ws.max_row)
     tmp = np.array([[i.value for i in j] for j in ws[range_start_str:range_stop_str]])
@@ -304,3 +305,13 @@ def save_BLS_lookups(a, lookups):
         json.dump(lookups, fh)
 
 
+def extractCompTimes(filenames):
+    ''' Extract computation times from a list of simulation files. '''
+    tcomps = np.empty(len(filenames))
+    for i, fn in enumerate(filenames):
+        logger.info('Loading data from "%s"', fn)
+        with open(fn, 'rb') as fh:
+            frame = pickle.load(fh)
+            meta = frame['meta']
+        tcomps[i] = meta['tcomp']
+    return tcomps

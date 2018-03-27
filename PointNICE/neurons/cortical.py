@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 15:02:02
+# @Last Modified time: 2018-03-27 11:52:17
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -243,8 +243,8 @@ class Cortical(BaseMech):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, p = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm)
-                + self.currM(p, Vm) + self.currL(Vm))  # mA/m2
+        return (self.currNa(m, h, Vm) + self.currK(n, Vm) +
+                self.currM(p, Vm) + self.currL(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
