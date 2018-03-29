@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 15:02:14
+# @Last Modified time: 2018-03-29 17:47:17
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -234,8 +234,8 @@ class Thalamic(BaseMech):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, u = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm)
-                + self.currCa(s, u, Vm) + self.currL(Vm))  # mA/m2
+        return (self.currNa(m, h, Vm) + self.currK(n, Vm) +
+                self.currCa(s, u, Vm) + self.currL(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -333,9 +333,9 @@ class ThalamicRE(Thalamic):
 
     # Default plotting scheme
     pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
+        'i_{Na}\ kin.': ['m', 'h', 'm3h'],
         'i_K\ kin.': ['n'],
-        'i_{TS}\ kin.': ['s', 'u'],
+        'i_{TS}\ kin.': ['s', 'u', 's2u'],
         'I': ['iNa', 'iK', 'iTs', 'iL', 'iNet']
     }
 
@@ -706,11 +706,8 @@ class ThalamoCortical(Thalamic):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, u, O, C, _, _ = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm)
-                + self.currCa(s, u, Vm)
-                + self.currKL(Vm)
-                + self.currH(O, C, Vm)
-                + self.currL(Vm))  # mA/m2
+        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, u, Vm) +
+                self.currKL(Vm) + self.currH(O, C, Vm) + self.currL(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-20 21:57:54
+# @Last Modified time: 2018-03-29 17:53:31
 
 """ Utility functions used in simulations """
 
@@ -267,7 +267,7 @@ def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising',
     return ind
 
 
-def detectPeaksTime(t, y, mph, mtd):
+def detectPeaksTime(t, y, mph, mtd, mpp=0, isuniform=True):
     """ Extension of the detectPeaks function to detect peaks in data based on their
         amplitude and time difference, with a non-uniform time vector.
 
@@ -275,28 +275,34 @@ def detectPeaksTime(t, y, mph, mtd):
         :param y: signal
         :param mph: minimal peak height
         :param mtd: minimal time difference
+        :mpp: minmal peak prominence
+        :param isuniform: boolean stating whether time vector is uniform
         :return: array of peak indexes
     """
 
-    # Detect peaks on signal with no restriction on inter-peak distance
-    raw_indexes = detectPeaks(y, mph, mpd=1)
+    if isuniform:
+        ipeaks = detectPeaks(y, mph, mpd=np.ceil(mtd / t[1] - t[0]), threshold=mpp)
+    else:
+        # Detect peaks on signal with no restriction on inter-peak distance
+        irawpeaks = detectPeaks(y, mph, mpd=1, threshold=mpp)
+        npeaks = irawpeaks.size
+        if npeaks > 0:
+            # Filter relevant peaks with temporal distance
+            ipeaks = [irawpeaks[0]]
+            for i in range(1, npeaks):
+                i1 = ipeaks[-1]
+                i2 = irawpeaks[i]
+                if t[i2] - t[i1] < mtd:
+                    if y[i2] > y[i1]:
+                        ipeaks[-1] = i2
+                else:
+                    ipeaks.append(i2)
+        else:
+            ipeaks = []
+        ipeaks = np.array(ipeaks)
 
-    if raw_indexes.size > 0:
-
-        # Filter relevant peaks with temporal distance
-        n_raw = raw_indexes.size
-        filtered_indexes = np.array([raw_indexes[0]])
-        for i in range(1, n_raw):
-            i1 = filtered_indexes[-1]
-            i2 = raw_indexes[i]
-            if t[i2] - t[i1] < mtd:
-                if y[i2] > y[i1]:
-                    filtered_indexes[-1] = i2
-            else:
-                filtered_indexes = np.append(filtered_indexes, i2)
-
-        # Return peak indexes
-        return filtered_indexes
+    if ipeaks.size > 0:
+        return ipeaks
     else:
         return None
 

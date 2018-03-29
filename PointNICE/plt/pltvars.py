@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-21 15:41:31
+# @Last Modified time: 2018-03-29 16:04:14
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -186,6 +186,35 @@ pltvars = {
         'min': -0.1,
         'max': 1.1,
         'alias': 'df["s"].values**2 * df["u"].values'
+    },
+
+
+    'q': {
+        'desc': 'iCaL activation gates opening',
+        'label': 'q-gate',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1
+    },
+
+    'r': {
+        'desc': 'iCaL inactivation gates opening',
+        'label': 'r-gate',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1
+    },
+
+    'q2r': {
+        'desc': 'iCaL relative conductance',
+        'label': 'q^2r',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1,
+        'alias': 'df["q"].values**2 * df["r"].values'
     },
 
     'c': {
@@ -375,6 +404,14 @@ pltvars = {
         'unit': 'A/m^2',
         'factor': 1e-3,
         'alias': 'neuron.currCa(df["s"].values, df["u"].values, df["Vm"].values)'
+    },
+
+    'iCaL': {
+        'desc': 'L-type Calcium current',
+        'label': 'I_{CaL}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currCaL(df["q"].values, df["r"].values, df["Vm"].values)'
     },
 
     'iTs': {

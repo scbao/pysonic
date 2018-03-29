@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-27 11:52:17
+# @Last Modified time: 2018-03-29 17:48:04
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -606,3 +606,215 @@ class CorticalLTS(Cortical):
 
         # Merge all states derivatives and return
         return NaK_dstates + [dsdt, dudt]
+
+
+class CorticalIB(Cortical):
+    ''' Specific membrane channel dynamics of a cortical intrinsically bursting neuron with
+        an additional inward Calcium current due to the presence of a L-type channel.
+
+        References:
+        *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac,
+        Y., Markram, H., and Destexhe, A. (2008). Minimal Hodgkin-Huxley type models for
+        different classes of cortical and thalamic neurons. Biol Cybern 99, 427–441.*
+
+        *Reuveni, I., Friedman, A., Amitai, Y., and Gutnick, M.J. (1993). Stepwise repolarization
+        from Ca2+ plateaus in neocortical pyramidal cells: evidence for nonhomogeneous distribution
+        of HVA Ca2+ channels in dendrites. J. Neurosci. 13, 4609–4621.*
+    '''
+
+    # Name of channel mechanism
+    # name = 'IB'
+
+    # Cell-specific biophysical parameters
+    Vm0 = -71.4  # Cell membrane resting potential (mV)
+    GNaMax = 500  # Max. conductance of Sodium current (S/m^2)
+    GKMax = 50  # Max. conductance of delayed Potassium current (S/m^2)
+    GMMax = 0.3  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
+    GCaLMax = 3  # Max. conductance of L-type Calcium current (S/m^2)
+    GL = 0.1  # Conductance of non-specific leakage current (S/m^2)
+    VCa = 120.0  # # Calcium Nernst potential (mV)
+    VL = -70  # Non-specific leakage Nernst potential (mV)
+    VT = -56.2  # Spike threshold adjustment parameter (mV)
+    TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
+
+    # Default plotting scheme
+    pltvars_scheme = {
+        'i_{Na}\ kin.': ['m', 'h'],
+        'i_K\ kin.': ['n'],
+        'i_M\ kin.': ['p'],
+        'i_{CaL}\ kin.': ['q', 'r', 'q2r'],
+        'I': ['iNa', 'iK', 'iM', 'iCaL', 'iL', 'iNet']
+    }
+
+    def __init__(self):
+        ''' Constructor of the class. '''
+
+        # Instantiate parent class
+        super().__init__()
+
+        # Add names of cell-specific Calcium channel probabilities
+        self.states_names += ['q', 'r']
+
+        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
+        self.states0 = self.steadyStates(self.Vm0)
+
+        # Define the names of the different coefficients to be averaged in a lookup table.
+        self.coeff_names += ['alphaq', 'betaq', 'alphar', 'betar']
+
+
+    def alphaq(self, Vm):
+        ''' Compute the alpha rate for the open-probability of L-type Calcium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+
+        alpha = - 0.055 * (Vm + 27) / (np.exp(-(Vm + 27) / 3.8) - 1)  # ms-1
+        return alpha * 1e3  # s-1
+
+
+    def betaq(self, Vm):
+        ''' Compute the beta rate for the open-probability of L-type Calcium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        beta = 0.94 * np.exp(-(Vm + 75) / 17)  # ms-1
+        return beta * 1e3  # s-1
+
+
+    def alphar(self, Vm):
+        ''' Compute the alpha rate for the inactivation-probability of L-type Calcium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        alpha = 0.000457 * np.exp(-(Vm + 13) / 50)  # ms-1
+        return alpha * 1e3  # s-1
+
+
+    def betar(self, Vm):
+        ''' Compute the beta rate for the inactivation-probability of L-type Calcium channels.
+
+            :param Vm: membrane potential (mV)
+            :return: rate constant (s-1)
+        '''
+
+        beta = 0.0065 / (np.exp(-(Vm + 15) / 28) + 1)  # ms-1
+        return beta * 1e3  # s-1
+
+
+    def derQ(self, Vm, q):
+        ''' Compute the evolution of the open-probability of the Q (activation) gate
+            of L-type Calcium channels.
+
+            :param Vm: membrane potential (mV)
+            :param q: open-probability of Q gate (prob)
+            :return: derivative of open-probability w.r.t. time (prob/s)
+        '''
+
+        return self.alphaq(Vm) * (1 - q) - self.betaq(Vm) * q
+
+
+    def derR(self, Vm, r):
+        ''' Compute the evolution of the open-probability of the R (inactivation) gate
+            of L-type Calcium channels.
+
+            :param Vm: membrane potential (mV)
+            :param r: open-probability of R gate (prob)
+            :return: derivative of open-probability w.r.t. time (prob/s)
+        '''
+
+        return self.alphar(Vm) * (1 - r) - self.betar(Vm) * r
+
+
+    def currCaL(self, q, r, Vm):
+        ''' Compute the inward L-type Calcium current per unit area.
+
+            :param q: open-probability of Q gate (prob)
+            :param r: open-probability of R gate (prob)
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
+
+        GCaL = self.GCaLMax * q**2 * r
+        return GCaL * (Vm - self.VCa)
+
+
+    def currNet(self, Vm, states):
+        ''' Concrete implementation of the abstract API method. '''
+
+        m, h, n, p, q, r = states
+        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currM(p, Vm) +
+                self.currCaL(q, r, Vm) + self.currL(Vm))  # mA/m2
+
+
+    def steadyStates(self, Vm):
+        ''' Concrete implementation of the abstract API method. '''
+
+        # Call parent method to compute Sodium and Potassium channels gates steady-states
+        NaK_eqstates = super().steadyStates(Vm)
+
+        # Compute L-type Calcium channel gates steady-states
+        qeq = self.alphaq(Vm) / (self.alphaq(Vm) + self.betaq(Vm))
+        req = self.alphar(Vm) / (self.alphar(Vm) + self.betar(Vm))
+        CaL_eqstates = np.array([qeq, req])
+
+        # Merge all steady-states and return
+        return np.concatenate((NaK_eqstates, CaL_eqstates))
+
+
+    def derStates(self, Vm, states):
+        ''' Concrete implementation of the abstract API method. '''
+
+        # Unpack input states
+        *NaK_states, q, r = states
+
+        # Call parent method to compute Sodium and Potassium channels states derivatives
+        NaK_derstates = super().derStates(Vm, NaK_states)
+
+        # Compute L-type Calcium channels states derivatives
+        dqdt = self.derQ(Vm, q)
+        drdt = self.derR(Vm, r)
+
+        # Merge all states derivatives and return
+        return NaK_derstates + [dqdt, drdt]
+
+
+    def getEffRates(self, Vm):
+        ''' Concrete implementation of the abstract API method. '''
+
+        # Call parent method to compute Sodium and Potassium effective rate constants
+        NaK_rates = super().getEffRates(Vm)
+
+        # Compute Calcium effective rate constants
+        aq_avg = np.mean(self.alphaq(Vm))
+        bq_avg = np.mean(self.betaq(Vm))
+        ar_avg = np.mean(self.alphar(Vm))
+        br_avg = np.mean(self.betar(Vm))
+        CaL_rates = np.array([aq_avg, bq_avg, ar_avg, br_avg])
+
+        # Merge all rates and return
+        return np.concatenate((NaK_rates, CaL_rates))
+
+
+    def derStatesEff(self, Qm, states, interp_data):
+        ''' Concrete implementation of the abstract API method. '''
+
+        # Unpack input states
+        *NaK_states, q, r = states
+
+        # Call parent method to compute Sodium and Potassium channels states derivatives
+        NaK_dstates = super().derStatesEff(Qm, NaK_states, interp_data)
+
+        # Compute Calcium channels states derivatives
+        CaL_rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
+                              for rn in self.coeff_names[8:]])
+        dqdt = Ca_rates[0] * (1 - q) - Ca_rates[1] * q
+        drdt = Ca_rates[2] * (1 - r) - Ca_rates[3] * r
+
+        # Merge all states derivatives and return
+        return NaK_dstates + [dqdt, drdt]
