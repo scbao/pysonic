@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-03-21 18:46:09
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-29 17:58:41
+# @Last Modified time: 2018-03-29 18:57:42
 
 ''' Module of utilitary functions calling MATLAB routines internally. '''
 
@@ -17,7 +17,7 @@ from .utils import InputError
 logger = logging.getLogger('PointNICE')
 
 
-def findPeaks(y, mpp, mpd, mph):
+def findPeaksMATLAB(y, mpp, mpd, mph):
     ''' Find peaks in a signal by calling internally the matlab "finpeaks" function.
 
         :param y: input signal
@@ -42,7 +42,7 @@ def findPeaks(y, mpp, mpd, mph):
     return (np.array(ipeaks[0], dtype=int) - 1, np.array(widths[0]), np.array(proms[0]))
 
 
-def findSpikes(t, y, mph, mpp, mtd):
+def detectSpikesMATLAB(t, y, mph, mpp, mtd):
     ''' Detect spikes on a signal using the MATLAB findpeaks function,
         and return their indexes, width and prominence.
 
@@ -54,11 +54,11 @@ def findSpikes(t, y, mph, mpp, mtd):
         :return: 3-tuple with indexes, widths and prominences of spikes
     '''
     dt = t[1] - t[0]
-    ipeaks, widthpeaks, prompeaks = findPeaks(y, mpp, int(np.ceil(mtd / dt)), mph)
+    ipeaks, widthpeaks, prompeaks = findPeaksMATLAB(y, mpp, int(np.ceil(mtd / dt)), mph)
     return (ipeaks, widthpeaks * dt, prompeaks)
 
 
-def findSpikesInFile(filename, mph, mpp, mtd):
+def detectSpikesInFile(filename, mph, mpp, mtd):
     if not os.path.isfile(filename):
         raise InputError('File does not exist')
     with open(filename, 'rb') as fh:
@@ -66,4 +66,4 @@ def findSpikesInFile(filename, mph, mpp, mtd):
     df = frame['data']
     t = df['t'].values
     Qm = df['Qm'].values
-    return findSpikes(t, Qm, mph, mpp, mtd)
+    return detectSpikesMATLAB(t, Qm, mph, mpp, mtd)
