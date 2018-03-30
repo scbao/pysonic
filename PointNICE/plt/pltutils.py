@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-23 15:49:45
+# @Last Modified time: 2018-03-30 16:54:25
 
 ''' Plotting utilities '''
 
@@ -38,6 +38,7 @@ logger = logging.getLogger('PointNICE')
 # Define global variables
 neuron = None
 bls = None
+timeunits = {'ASTIM': 't_ms', 'ESTIM': 't_ms', 'MECH': 't_us'}
 
 # Regular expression for input files
 rgxp = re.compile('(ESTIM|ASTIM)_([A-Za-z]*)_(.*).pkl')
@@ -178,11 +179,12 @@ def SaveFigDialog(dirname, filename):
 
 
 
-def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None, patches='one',
-             xticks=None, yticks=None, blacklegend=False, straightlegend=False, showfig=True):
+def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None, patches='one',
+             xticks=None, yticks=None, blacklegend=False, straightlegend=False, showfig=True,
+             inset=None):
     ''' Compare profiles of several specific output variables of NICE simulations.
 
-        :param yvars: list of variables names to extract and compare
+        :param varname: name of variable to extract and compare
         :param filepaths: list of full paths to output data files to be compared
         :param labels: list of labels to use in the legend
         :param fs: labels fontsize
@@ -190,7 +192,12 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
          colored rectangular patches
     '''
 
-    # check labels if given
+    # Input check 1: variable name
+    if varname not in pltvars:
+        raise InputError('Unknown plot variable: "{}"'.format(varname))
+    pltvar = pltvars[varname]
+
+    # Input check 2: labels
     if labels:
         if len(labels) != len(filepaths):
             raise InputError('Invalid labels ({}): not matching number of compared files ({})'
@@ -198,62 +205,13 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
         if not all(isinstance(x, str) for x in labels):
             raise InputError('Invalid labels: must be string typed')
 
-    nvars = len(yvars)
-
-    # y variables plotting information
-    for key in yvars:
-        if key not in pltvars:
-            raise InputError('Unknown plot variable: "{}"'.format(key))
-    y_pltvars = [pltvars[key] for key in yvars]
-
-
-    # Dictionary of neurons
-    neurons_dict = getNeuronsDict()
-
-    # Initialize figure and axes
-    if nvars == 1:
-        fig, ax = plt.subplots(figsize=(11, 4))
-        axes = [ax]
-    else:
-        fig, axes = plt.subplots(nvars, 1, figsize=(11, min(3 * nvars, 9)))
-
-
-    for i in range(nvars):
-        ax = axes[i]
-
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-
-        pltvar = y_pltvars[i]
-        if 'min' in pltvar and 'max' in pltvar:
-            ax.set_ylim(pltvar['min'], pltvar['max'])
-        if pltvar['unit']:
-            ax.set_ylabel('$\\rm {}\ ({})$'.format(pltvar['label'], pltvar['unit']), fontsize=fs)
-        else:
-            ax.set_ylabel('$\\rm {}$'.format(pltvar['label']), fontsize=fs)
-        if i < nvars - 1:
-            ax.get_xaxis().set_ticklabels([])
-        else:
-            if xticks is not None:
-                ax.set_xticks(xticks)
-            for tick in ax.xaxis.get_major_ticks():
-                tick.label.set_fontsize(fs)
-        if yticks is not None:
-            ax.set_yticks(yticks[i])
-        else:
-            ax.locator_params(axis='y', nbins=2)
-        if any(ax.get_yticks() < 0):
-            ax.yaxis.set_major_formatter(FormatStrFormatter('%+.0f'))
-        for tick in ax.yaxis.get_major_ticks():
-            tick.label.set_fontsize(fs)
-
-    # Set traces parameters
+    # Input check 3: line styles and colors
     if colors is None:
         colors = ['C{}'.format(j) for j in range(len(filepaths))]
     if lines is None:
         lines = ['-'] * len(filepaths)
 
-    # Set patches parameters
+    # Input check 4: STIM-ON patches
     greypatch = False
     if patches == 'none':
         patches = [False] * len(filepaths)
@@ -271,15 +229,44 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
     else:
         raise InputError('Invalid patches: must be either "none", all", "one", or a boolean list')
 
+    # Initialize figure and axis
+    fig, ax = plt.subplots(figsize=(11, 4))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    if 'min' in pltvar and 'max' in pltvar:  # optional min and max on y-axis
+        ax.set_ylim(pltvar['min'], pltvar['max'])
+    if pltvar['unit']:  # y-label with optional unit
+        ax.set_ylabel('$\\rm {}\ ({})$'.format(pltvar['label'], pltvar['unit']), fontsize=fs)
+    else:
+        ax.set_ylabel('$\\rm {}$'.format(pltvar['label']), fontsize=fs)
+    if xticks is not None:  # optional x-ticks
+        ax.set_xticks(xticks)
+    if yticks is not None:  # optional y-ticks
+        ax.set_yticks(yticks)
+    else:
+        ax.locator_params(axis='y', nbins=2)
+    if any(ax.get_yticks() < 0):
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%+.0f'))
+    for tick in ax.xaxis.get_major_ticks() + ax.yaxis.get_major_ticks():
+        tick.label.set_fontsize(fs)
+
+    # Optional inset axis
+    if inset is not None:
+        inset_ax = fig.add_axes(ax.get_position())
+        inset_ax.set_xlim(inset['xlims'][0], inset['xlims'][1])
+        inset_ax.set_ylim(inset['ylims'][0], inset['ylims'][1])
+        inset_ax.set_xticks([])
+        inset_ax.set_yticks([])
+
+    # Retrieve neurons dictionary
+    neurons_dict = getNeuronsDict()
 
     # Loop through data files
-    j = 0
     aliases = {}
-    for filepath in filepaths:
-
-        pkl_filename = ntpath.basename(filepath)
+    for j, filepath in enumerate(filepaths):
 
         # Retrieve sim type
+        pkl_filename = ntpath.basename(filepath)
         mo1 = rgxp.fullmatch(pkl_filename)
         mo2 = rgxp_mech.fullmatch(pkl_filename)
         if mo1:
@@ -295,6 +282,7 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
 
         if j == 0:
             sim_type_ref = sim_type
+            t_plt = pltvars[timeunits[sim_type]]
         elif sim_type != sim_type_ref:
             raise InputError('Invalid comparison: different simulation types')
 
@@ -310,111 +298,161 @@ def plotComp(yvars, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None
         states = df['states'].values
         nsamples = t.size
 
-        # Initialize channel mechanism
+        # Initialize neuron object if ESTIM or ASTIM sim type
         if sim_type in ['ASTIM', 'ESTIM']:
             neuron_name = mo.group(2)
             global neuron
             neuron = neurons_dict[neuron_name]()
-            neuron_states = [df[sn].values for sn in neuron.states_names]
             Cm0 = neuron.Cm0
             Qm0 = Cm0 * neuron.Vm0 * 1e-3
-            t_plt = pltvars['t_ms']
+
+            # Extract neuron states if needed
+            if 'alias' in pltvar and 'neuron_states' in pltvar['alias']:
+                neuron_states = [df[sn].values for sn in neuron.states_names]
         else:
             Cm0 = meta['Cm0']
             Qm0 = meta['Qm0']
-            t_plt = pltvars['t_us']
 
-        # Initialize BLS
-        if sim_type in ['MECH', 'ASTIM']:
+        # Initialize BLS if needed
+        if sim_type in ['MECH', 'ASTIM'] and 'alias' in pltvar and 'bls' in pltvar['alias']:
             global bls
-            Fdrive = meta['Fdrive']
-            a = meta['a']
-            bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
+            bls = BilayerSonophore(meta['a'], meta['Fdrive'], Cm0, Qm0)
 
         # Determine patches location
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
 
-        # Adding onset to time and states vectors
+        # Add onset to time and states vectors
         if t_plt['onset'] > 0.0:
             t = np.insert(t, 0, -t_plt['onset'])
             states = np.insert(states, 0, 0)
 
-        # Extract variables to plot
-        vrs = []
-        for i in range(nvars):
-            pltvar = y_pltvars[i]
-            if 'alias' in pltvar:
-                var = eval(pltvar['alias'])
-            elif 'key' in pltvar:
-                var = df[pltvar['key']].values
-            elif 'constant' in pltvar:
-                var = eval(pltvar['constant']) * np.ones(nsamples)
-            else:
-                var = df[yvars[i]].values
-            if var.size == t.size - 1:
-                var = np.insert(var, 0, var[0])
-            vrs.append(var)
+        # Set x-axis label
+        ax.set_xlabel('$\\rm {}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
 
-        # Legend label
+        # Extract variable to plot
+        if 'alias' in pltvar:
+            var = eval(pltvar['alias'])
+        elif 'key' in pltvar:
+            var = df[pltvar['key']].values
+        elif 'constant' in pltvar:
+            var = eval(pltvar['constant']) * np.ones(nsamples)
+        else:
+            var = df[varname].values
+        if var.size == t.size - 1:
+            var = np.insert(var, 0, var[0])
+
+        # Determine legend label
         if labels:
             label = labels[j]
         else:
             if sim_type == 'ESTIM':
                 if meta['DC'] == 1.0:
-                    label = ESTIM_CW_title.format(neuron.name, meta['Astim'], meta['tstim'] * 1e3)
+                    label = ESTIM_CW_title.format(neuron_name, meta['Astim'], meta['tstim'] * 1e3)
                 else:
-                    label = ESTIM_PW_title.format(neuron.name, meta['Astim'], meta['tstim'] * 1e3,
+                    label = ESTIM_PW_title.format(neuron_name, meta['Astim'], meta['tstim'] * 1e3,
                                                   meta['PRF'] * 1e-3, meta['DC'] * 1e2)
             elif sim_type == 'ASTIM':
                 if meta['DC'] == 1.0:
-                    label = ASTIM_CW_title.format(neuron.name, Fdrive * 1e-3,
+                    label = ASTIM_CW_title.format(neuron_name, meta['Fdrive'] * 1e-3,
                                                   meta['Adrive'] * 1e-3, meta['tstim'] * 1e3)
                 else:
-                    label = ASTIM_PW_title.format(neuron.name, Fdrive * 1e-3,
+                    label = ASTIM_PW_title.format(neuron_name, meta['Fdrive'] * 1e-3,
                                                   meta['Adrive'] * 1e-3, meta['tstim'] * 1e3,
                                                   meta['PRF'] * 1e-3, meta['DC'] * 1e2)
             elif sim_type == 'MECH':
-                label = MECH_title.format(a * 1e9, Fdrive * 1e-3, meta['Adrive'] * 1e-3)
+                label = MECH_title.format(meta['a'] * 1e9, meta['Fdrive'] * 1e-3,
+                                          meta['Adrive'] * 1e-3)
 
-        # Plotting
-        handles = [axes[i].plot(t * t_plt['factor'], vrs[i] * y_pltvars[i]['factor'],
-                                linewidth=lw, linestyle=lines[j], color=colors[j], label=label)
-                   for i in range(nvars)]
+        # Plot trace
+        handle = ax.plot(t * t_plt['factor'], var * pltvar['factor'],
+                         linewidth=lw, linestyle=lines[j], color=colors[j], label=label)
 
+        if inset is not None:
+            inset_window = np.logical_and(t > (inset['xlims'][0] / t_plt['factor']),
+                                          t < (inset['xlims'][1] / t_plt['factor']))
+            inset_ax.plot(t[inset_window] * t_plt['factor'], var[inset_window] * pltvar['factor'],
+                          linewidth=lw, linestyle=lines[j], color=colors[j])
+
+        # Add optional STIM-ON patches
         if patches[j]:
-            k = 0
-            # stimulation patches
-            for ax in axes:
-                handle = handles[k]
-                (ybottom, ytop) = ax.get_ylim()
-                la = []
-                color = '#8A8A8A' if greypatch else handle[0].get_color()
-                for i in range(npatches):
-                    la.append(ax.add_patch(Rectangle((tpatch_on[i] * t_plt['factor'], ybottom),
-                                                     (tpatch_off[i] - tpatch_on[i]) * t_plt['factor'],
-                                                     ytop - ybottom, color=color, alpha=0.1)))
-
+            (ybottom, ytop) = ax.get_ylim()
+            la = []
+            color = '#8A8A8A' if greypatch else handle[0].get_color()
+            for i in range(npatches):
+                la.append(ax.add_patch(Rectangle((tpatch_on[i] * t_plt['factor'], ybottom),
+                                                 (tpatch_off[i] - tpatch_on[i]) * t_plt['factor'],
+                                                 ytop - ybottom, color=color, alpha=0.1)))
             aliases[handle[0]] = la
-            k += 1
 
-        j += 1
+            if inset is not None:
+                cond_on = np.logical_and(tpatch_on > (inset['xlims'][0] / t_plt['factor']),
+                                         tpatch_on < (inset['xlims'][1] / t_plt['factor']))
+                cond_off = np.logical_and(tpatch_off > (inset['xlims'][0] / t_plt['factor']),
+                                          tpatch_off < (inset['xlims'][1] / t_plt['factor']))
+                cond_glob = np.logical_and(tpatch_on < (inset['xlims'][0] / t_plt['factor']),
+                                           tpatch_off > (inset['xlims'][1] / t_plt['factor']))
+                cond_onoff = np.logical_or(cond_on, cond_off)
+                cond = np.logical_or(cond_onoff, cond_glob)
+                print(cond_on, cond_off, cond_glob, cond)
+                npatches_inset = np.sum(cond)
+            for i in range(npatches_inset):
+                inset_ax.add_patch(Rectangle((tpatch_on[cond][i] * t_plt['factor'], ybottom),
+                                             (tpatch_off[cond][i] - tpatch_on[cond][i]) *
+                                             t_plt['factor'], ytop - ybottom, color=color,
+                                             alpha=0.1))
 
-    # set x-axis label
-    axes[-1].set_xlabel('$\\rm {}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
+    fig.tight_layout()
 
-    plt.tight_layout()
+    # Optional operations on inset:
+    if inset is not None:
 
-    iLegends = []
-    for k in range(nvars):
-        leg = axes[k].legend(loc=1, fontsize=fs, frameon=False)
-        # Optional change of legend handles color
-        if blacklegend:
-            for l in leg.get_lines():
-                l.set_color('k')
-        if straightlegend:
-            for l in leg.get_lines():
-                l.set_linestyle('-')
-        iLegends.append(InteractiveLegend(axes[k].legend_, aliases))
+        # Re-position inset axis and materialize it with a dashed frame
+        axpos = ax.get_position()
+        left, right, = rescale(inset['xcoords'], ax.get_xlim()[0], ax.get_xlim()[1],
+                               axpos.x0, axpos.x0 + axpos.width)
+        bottom, top, = rescale(inset['ycoords'], ax.get_ylim()[0], ax.get_ylim()[1],
+                               axpos.y0, axpos.y0 + axpos.height)
+        inset_ax.set_position([left, bottom, right - left, top - bottom])
+        inset_ax.axis('off')
+        ax.plot(inset['xcoords'], [inset['ycoords'][0]] * 2, linestyle='--', color='k')
+        ax.plot(inset['xcoords'], [inset['ycoords'][1]] * 2, linestyle='--', color='k')
+        ax.plot([inset['xcoords'][0]] * 2, inset['ycoords'], linestyle='--', color='k')
+        ax.plot([inset['xcoords'][1]] * 2, inset['ycoords'], linestyle='--', color='k')
+
+        # Materialize inset target region with dashed frame
+        ax.plot(inset['xlims'], [inset['ylims'][0]] * 2, linestyle='--', color='k')
+        ax.plot(inset['xlims'], [inset['ylims'][1]] * 2, linestyle='--', color='k')
+        ax.plot([inset['xlims'][0]] * 2, inset['ylims'], linestyle='--', color='k')
+        ax.plot([inset['xlims'][1]] * 2, inset['ylims'], linestyle='--', color='k')
+
+        # Link target and inset with dashed lines if possible
+        if inset['xcoords'][1] < inset['xlims'][0]:
+            ax.plot([inset['xcoords'][1], inset['xlims'][0]],
+                    [inset['ycoords'][0], inset['ylims'][0]],
+                    linestyle='--', color='k')
+            ax.plot([inset['xcoords'][1], inset['xlims'][0]],
+                    [inset['ycoords'][1], inset['ylims'][1]],
+                    linestyle='--', color='k')
+        elif inset['xcoords'][0] > inset['xlims'][1]:
+            ax.plot([inset['xcoords'][0], inset['xlims'][1]],
+                    [inset['ycoords'][0], inset['ylims'][0]],
+                    linestyle='--', color='k')
+            ax.plot([inset['xcoords'][0], inset['xlims'][1]],
+                    [inset['ycoords'][1], inset['ylims'][1]],
+                    linestyle='--', color='k')
+        else:
+            logger.warning('Inset x-coordinates intersect with those of target region')
+
+
+    # Create interactive legend
+    leg = ax.legend(loc=1, fontsize=fs, frameon=False)
+    if blacklegend:
+        for l in leg.get_lines():
+            l.set_color('k')
+    if straightlegend:
+        for l in leg.get_lines():
+            l.set_linestyle('-')
+    interactive_legend = InteractiveLegend(ax.legend_, aliases)
 
     if showfig:
         plt.show()

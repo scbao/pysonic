@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-21 17:39:11
+# @Last Modified time: 2018-03-30 16:57:43
 
 """ Compare profiles of several specific output variables of NICE simulations. """
 
@@ -26,10 +26,8 @@ if not pkl_filepaths:
 nfiles = len(pkl_filepaths)
 
 # Comparative plot
-yvars = ['Qm']
-
 try:
-    plotComp(yvars, pkl_filepaths)
+    plotComp('Qm', pkl_filepaths)
 except InputError as err:
     logger.error(err)
     sys.exit(1)
