@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-29 17:48:04
+# @Last Modified time: 2018-03-30 18:17:19
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -623,14 +623,14 @@ class CorticalIB(Cortical):
     '''
 
     # Name of channel mechanism
-    # name = 'IB'
+    name = 'IB'
 
     # Cell-specific biophysical parameters
     Vm0 = -71.4  # Cell membrane resting potential (mV)
     GNaMax = 500  # Max. conductance of Sodium current (S/m^2)
     GKMax = 50  # Max. conductance of delayed Potassium current (S/m^2)
     GMMax = 0.3  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
-    GCaLMax = 3  # Max. conductance of L-type Calcium current (S/m^2)
+    GCaLMax = 2  # Max. conductance of L-type Calcium current (S/m^2)
     GL = 0.1  # Conductance of non-specific leakage current (S/m^2)
     VCa = 120.0  # # Calcium Nernst potential (mV)
     VL = -70  # Non-specific leakage Nernst potential (mV)
@@ -813,8 +813,8 @@ class CorticalIB(Cortical):
         # Compute Calcium channels states derivatives
         CaL_rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                               for rn in self.coeff_names[8:]])
-        dqdt = Ca_rates[0] * (1 - q) - Ca_rates[1] * q
-        drdt = Ca_rates[2] * (1 - r) - Ca_rates[3] * r
+        dqdt = CaL_rates[0] * (1 - q) - CaL_rates[1] * q
+        drdt = CaL_rates[2] * (1 - r) - CaL_rates[3] * r
 
         # Merge all states derivatives and return
         return NaK_dstates + [dqdt, drdt]
