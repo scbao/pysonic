@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-29 17:53:31
+# @Last Modified time: 2018-03-29 19:20:45
 
 """ Utility functions used in simulations """
 
@@ -267,7 +267,7 @@ def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising',
     return ind
 
 
-def detectPeaksTime(t, y, mph, mtd, mpp=0, isuniform=True):
+def detectPeaksTime(t, y, mph, mtd, mpp=0):
     """ Extension of the detectPeaks function to detect peaks in data based on their
         amplitude and time difference, with a non-uniform time vector.
 
@@ -276,9 +276,15 @@ def detectPeaksTime(t, y, mph, mtd, mpp=0, isuniform=True):
         :param mph: minimal peak height
         :param mtd: minimal time difference
         :mpp: minmal peak prominence
-        :param isuniform: boolean stating whether time vector is uniform
         :return: array of peak indexes
     """
+
+    # Determine whether time vector is uniform (threshold in time step variation)
+    dt = np.diff(t)
+    if (dt.max() - dt.min()) / dt.min() < 1e-2:
+        isuniform = True
+    else:
+        isuniform = False
 
     if isuniform:
         ipeaks = detectPeaks(y, mph, mpd=np.ceil(mtd / t[1] - t[0]), threshold=mpp)
