@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-30 16:54:25
+# @Last Modified time: 2018-03-30 17:59:34
 
 ''' Plotting utilities '''
 
@@ -231,6 +231,7 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
 
     # Initialize figure and axis
     fig, ax = plt.subplots(figsize=(11, 4))
+    ax.set_zorder(0)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     if 'min' in pltvar and 'max' in pltvar:  # optional min and max on y-axis
@@ -257,6 +258,12 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
         inset_ax.set_ylim(inset['ylims'][0], inset['ylims'][1])
         inset_ax.set_xticks([])
         inset_ax.set_yticks([])
+        # inset_ax.patch.set_alpha(1.0)
+        inset_ax.set_zorder(1)
+        inset_ax.add_patch(Rectangle((inset['xlims'][0], inset['ylims'][0]),
+                                     inset['xlims'][1] - inset['xlims'][0],
+                                     inset['ylims'][1] - inset['ylims'][0],
+                                     color='w'))
 
     # Retrieve neurons dictionary
     neurons_dict = getNeuronsDict()
@@ -393,13 +400,12 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
                                            tpatch_off > (inset['xlims'][1] / t_plt['factor']))
                 cond_onoff = np.logical_or(cond_on, cond_off)
                 cond = np.logical_or(cond_onoff, cond_glob)
-                print(cond_on, cond_off, cond_glob, cond)
                 npatches_inset = np.sum(cond)
-            for i in range(npatches_inset):
-                inset_ax.add_patch(Rectangle((tpatch_on[cond][i] * t_plt['factor'], ybottom),
-                                             (tpatch_off[cond][i] - tpatch_on[cond][i]) *
-                                             t_plt['factor'], ytop - ybottom, color=color,
-                                             alpha=0.1))
+                for i in range(npatches_inset):
+                    inset_ax.add_patch(Rectangle((tpatch_on[cond][i] * t_plt['factor'], ybottom),
+                                                 (tpatch_off[cond][i] - tpatch_on[cond][i]) *
+                                                 t_plt['factor'], ytop - ybottom, color=color,
+                                                 alpha=0.1))
 
     fig.tight_layout()
 
@@ -414,10 +420,15 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
                                axpos.y0, axpos.y0 + axpos.height)
         inset_ax.set_position([left, bottom, right - left, top - bottom])
         inset_ax.axis('off')
-        ax.plot(inset['xcoords'], [inset['ycoords'][0]] * 2, linestyle='--', color='k')
-        ax.plot(inset['xcoords'], [inset['ycoords'][1]] * 2, linestyle='--', color='k')
-        ax.plot([inset['xcoords'][0]] * 2, inset['ycoords'], linestyle='--', color='k')
-        ax.plot([inset['xcoords'][1]] * 2, inset['ycoords'], linestyle='--', color='k')
+        inner_factor = 0.02
+        dx = inset['xlims'][1] - inset['xlims'][0]
+        innerx = [inset['xlims'][0] + inner_factor * dx, inset['xlims'][1] - inner_factor * dx]
+        dy = inset['ylims'][1] - inset['ylims'][0]
+        innery = [inset['ylims'][0] + inner_factor * dy, inset['ylims'][1] - inner_factor * dy]
+        inset_ax.plot(innerx, [innery[0]] * 2, linestyle='--', color='k')
+        inset_ax.plot(innerx, [innery[1]] * 2, linestyle='--', color='k')
+        inset_ax.plot([innerx[0]] * 2, innery, linestyle='--', color='k')
+        inset_ax.plot([innerx[1]] * 2, innery, linestyle='--', color='k')
 
         # Materialize inset target region with dashed frame
         ax.plot(inset['xlims'], [inset['ylims'][0]] * 2, linestyle='--', color='k')
