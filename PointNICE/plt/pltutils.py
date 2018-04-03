@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-30 17:59:34
+# @Last Modified time: 2018-04-02 15:20:09
 
 ''' Plotting utilities '''
 
@@ -412,29 +412,21 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
     # Optional operations on inset:
     if inset is not None:
 
-        # Re-position inset axis and materialize it with a dashed frame
+        # Re-position inset axis
         axpos = ax.get_position()
         left, right, = rescale(inset['xcoords'], ax.get_xlim()[0], ax.get_xlim()[1],
                                axpos.x0, axpos.x0 + axpos.width)
         bottom, top, = rescale(inset['ycoords'], ax.get_ylim()[0], ax.get_ylim()[1],
                                axpos.y0, axpos.y0 + axpos.height)
         inset_ax.set_position([left, bottom, right - left, top - bottom])
-        inset_ax.axis('off')
-        inner_factor = 0.02
-        dx = inset['xlims'][1] - inset['xlims'][0]
-        innerx = [inset['xlims'][0] + inner_factor * dx, inset['xlims'][1] - inner_factor * dx]
-        dy = inset['ylims'][1] - inset['ylims'][0]
-        innery = [inset['ylims'][0] + inner_factor * dy, inset['ylims'][1] - inner_factor * dy]
-        inset_ax.plot(innerx, [innery[0]] * 2, linestyle='--', color='k')
-        inset_ax.plot(innerx, [innery[1]] * 2, linestyle='--', color='k')
-        inset_ax.plot([innerx[0]] * 2, innery, linestyle='--', color='k')
-        inset_ax.plot([innerx[1]] * 2, innery, linestyle='--', color='k')
+        for i in inset_ax.spines.values():
+            i.set_linewidth(2)
 
-        # Materialize inset target region with dashed frame
-        ax.plot(inset['xlims'], [inset['ylims'][0]] * 2, linestyle='--', color='k')
-        ax.plot(inset['xlims'], [inset['ylims'][1]] * 2, linestyle='--', color='k')
-        ax.plot([inset['xlims'][0]] * 2, inset['ylims'], linestyle='--', color='k')
-        ax.plot([inset['xlims'][1]] * 2, inset['ylims'], linestyle='--', color='k')
+        # Materialize inset target region with contour frame
+        ax.plot(inset['xlims'], [inset['ylims'][0]] * 2, linestyle='-', color='k')
+        ax.plot(inset['xlims'], [inset['ylims'][1]] * 2, linestyle='-', color='k')
+        ax.plot([inset['xlims'][0]] * 2, inset['ylims'], linestyle='-', color='k')
+        ax.plot([inset['xlims'][1]] * 2, inset['ylims'], linestyle='-', color='k')
 
         # Link target and inset with dashed lines if possible
         if inset['xcoords'][1] < inset['xlims'][0]:

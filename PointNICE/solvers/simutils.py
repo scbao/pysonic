@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-29 19:20:45
+# @Last Modified time: 2018-04-03 20:11:06
 
 """ Utility functions used in simulations """
 
@@ -197,7 +197,7 @@ def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising',
                 kpsh=False, valley=False, ax=None):
     '''
         Detect peaks in data based on their amplitude and other features.
-        From Marco Duarte:
+        Adapted from Marco Duarte:
         http://nbviewer.jupyter.org/github/demotu/BMC/blob/master/notebooks/DetectPeaks.ipynb
 
     :param x: 1D array_like data.
@@ -213,19 +213,20 @@ def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising',
     :param ax: a matplotlib.axes.Axes instance, optional (default = None).
     :return: 1D array with the indices of the peaks
 '''
+    print('min peak height:', mph, ', min peak distance:', mpd,
+          ', min peak prominence:', threshold)
 
+    # Convert input to numpy array
     x = np.atleast_1d(x).astype('float64')
-    if x.size < 3:
-        return np.array([], dtype=int)
+
+    # Revert signal sign for valley detection
     if valley:
         x = -x
-    # find indices of all peaks
-    dx = x[1:] - x[:-1]
-    # handle NaN's
-    indnan = np.where(np.isnan(x))[0]
-    if indnan.size:
-        x[indnan] = np.inf
-        dx[np.where(np.isnan(dx))[0]] = np.inf
+
+    # Differentiate signal
+    dx = np.diff(x)
+
+    # Find indices of all peaks with edge criterion
     ine, ire, ife = np.array([[], [], []], dtype=int)
     if not edge:
         ine = np.where((np.hstack((dx, 0)) < 0) & (np.hstack((0, dx)) > 0))[0]
@@ -235,23 +236,27 @@ def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising',
         if edge.lower() in ['falling', 'both']:
             ife = np.where((np.hstack((dx, 0)) < 0) & (np.hstack((0, dx)) >= 0))[0]
     ind = np.unique(np.hstack((ine, ire, ife)))
-    # handle NaN's
-    if ind.size and indnan.size:
-        # NaN's and values close to NaN's cannot be peaks
-        ind = ind[np.in1d(ind, np.unique(np.hstack((indnan, indnan - 1, indnan + 1))), invert=True)]
-    # first and last values of x cannot be peaks
+
+    # Remove first and last values of x if they are detected as peaks
     if ind.size and ind[0] == 0:
         ind = ind[1:]
     if ind.size and ind[-1] == x.size - 1:
         ind = ind[:-1]
-    # remove peaks < minimum peak height
+
+    print('{} raw peaks'.format(ind.size))
+
+    # Remove peaks < minimum peak height
     if ind.size and mph is not None:
         ind = ind[x[ind] >= mph]
-    # remove peaks - neighbors < threshold
+        print('{} height-filtered peaks'.format(ind.size))
+
+    # Remove peaks - neighbors < threshold
     if ind.size and threshold > 0:
         dx = np.min(np.vstack([x[ind] - x[ind - 1], x[ind] - x[ind + 1]]), axis=0)
         ind = np.delete(ind, np.where(dx < threshold)[0])
-    # detect small peaks closer than minimum peak distance
+        print('{} prominence-filtered peaks'.format(ind.size))
+
+    # Detect small peaks closer than minimum peak distance
     if ind.size and mpd > 1:
         ind = ind[np.argsort(x[ind])][::-1]  # sort ind by peak height
         idel = np.zeros(ind.size, dtype=bool)
@@ -263,6 +268,7 @@ def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising',
                 idel[i] = 0  # Keep current peak
         # remove the small peaks and sort back the indices by their occurrence
         ind = np.sort(ind[~idel])
+        print('{} distance-filtered peaks'.format(ind.size))
 
     return ind
 
@@ -287,8 +293,12 @@ def detectPeaksTime(t, y, mph, mtd, mpp=0):
         isuniform = False
 
     if isuniform:
-        ipeaks = detectPeaks(y, mph, mpd=np.ceil(mtd / t[1] - t[0]), threshold=mpp)
+        print('uniform time vector')
+        dt = t[1] - t[0]
+        mpd = int(np.ceil(mtd / dt))
+        ipeaks = detectPeaks(y, mph, mpd=mpd, threshold=mpp)
     else:
+        print('non-uniform time vector')
         # Detect peaks on signal with no restriction on inter-peak distance
         irawpeaks = detectPeaks(y, mph, mpd=1, threshold=mpp)
         npeaks = irawpeaks.size
@@ -307,10 +317,7 @@ def detectPeaksTime(t, y, mph, mtd, mpp=0):
             ipeaks = []
         ipeaks = np.array(ipeaks)
 
-    if ipeaks.size > 0:
-        return ipeaks
-    else:
-        return None
+    return ipeaks
 
 
 def detectSpikes(t, Qm, min_amp, min_dt):
@@ -324,7 +331,7 @@ def detectSpikes(t, Qm, min_amp, min_dt):
         :return: 3-tuple with number of spikes, latency (s) and spike rate (sp/s)
     '''
     i_spikes = detectPeaksTime(t, Qm, min_amp, min_dt)
-    if i_spikes is not None:
+    if len(i_spikes) > 0:
         latency = t[i_spikes[0]]  # s
         n_spikes = i_spikes.size
         if n_spikes > 1:
@@ -337,6 +344,153 @@ def detectSpikes(t, Qm, min_amp, min_dt):
         spike_rate = 'N/A'
         n_spikes = 0
     return (n_spikes, latency, spike_rate)
+
+
+def findPeaks(y, mph=None, mpd=None, mpp=None):
+    ''' Detect peaks in a signal based on their height, prominence and/or separating distance.
+
+        :param y: signal vector
+        :param mph: minimum peak height (in signal units, default = None).
+        :param mpd: minimum inter-peak distance (in indexes, default = None)
+        :param mpp: minimum peak prominence (in signal units, default = None)
+        :return: 4-tuple of arrays with the indexes of peaks occurence, peaks prominence,
+         peaks width at half-prominence and peaks half-prominence bounds (left and right)
+
+        Adapted from:
+        - Marco Duarte's detect_peaks function
+          (http://nbviewer.jupyter.org/github/demotu/BMC/blob/master/notebooks/DetectPeaks.ipynb)
+        - MATLAB findpeaks function (https://ch.mathworks.com/help/signal/ref/findpeaks.html)
+    '''
+
+    # Find all peaks and valleys
+    dy = np.diff(y)
+    s = np.sign(dy)
+    ipeaks = np.where(np.diff(s) < 0)[0] + 1
+    ivalleys = np.where(np.diff(s) > 0)[0] + 1
+
+    if ipeaks.size == 0:
+        return (None,) * 4
+
+    # Ensure that peaks and valleys are coherently distributed
+    assert abs(ipeaks.size - ivalleys.size) <= 1, 'Number of peaks and valleys not matching'
+    njoints = min(ipeaks.size, ivalleys.size)
+    if ipeaks[0] < ivalleys[0]:
+        assert np.all(ivalleys[:njoints] > ipeaks[:njoints]), 'Peaks and valleys not interpersed'
+    else:
+        assert np.all(ivalleys[:njoints] < ipeaks[:njoints]), 'Peaks and valleys not interpersed'
+
+    # Remove peaks < minimum peak height
+    if mph is not None:
+        ipeaks = ipeaks[y[ipeaks] >= mph]
+    if ipeaks.size == 0:
+        return (None,) * 4
+
+    # Detect small peaks closer than minimum peak distance
+    if mpd is not None:
+        ipeaks = ipeaks[np.argsort(y[ipeaks])][::-1]  # sort ipeaks by descending peak height
+        idel = np.zeros(ipeaks.size, dtype=bool)  # initialize boolean deletion array (all false)
+        for i in range(ipeaks.size):  # for each peak
+            if not idel[i]:  # if not marked for deletion
+                closepeaks = (ipeaks >= ipeaks[i] - mpd) & (ipeaks <= ipeaks[i] + mpd)  # close peaks
+                idel = idel | closepeaks  # mark for deletion along with previously marked peaks
+                # idel = idel | (ipeaks >= ipeaks[i] - mpd) & (ipeaks <= ipeaks[i] + mpd)
+                idel[i] = 0  # keep current peak
+        # remove the small peaks and sort back the indices by their occurrence
+        ipeaks = np.sort(ipeaks[~idel])
+
+    # Detect smallest valleys between consecutive relevant peaks
+    ibottomvalleys = []
+    if ipeaks[0] > ivalleys[0]:
+        itrappedvalleys = ivalleys[ivalleys < ipeaks[0]]
+        ibottomvalleys.append(itrappedvalleys[np.argmin(y[itrappedvalleys])])
+    for i, j in zip(ipeaks[:-1], ipeaks[1:]):
+        itrappedvalleys = ivalleys[np.logical_and(ivalleys > i, ivalleys < j)]
+        ibottomvalleys.append(itrappedvalleys[np.argmin(y[itrappedvalleys])])
+    if ipeaks[-1] < ivalleys[-1]:
+        itrappedvalleys = ivalleys[ivalleys > ipeaks[-1]]
+        ibottomvalleys.append(itrappedvalleys[np.argmin(y[itrappedvalleys])])
+    ipeaks = ipeaks
+    ivalleys = np.array(ibottomvalleys, dtype=int)
+
+    # Ensure each peak is bounded by two valleys, adding signal boundaries as valleys if necessary
+    if ipeaks[0] < ivalleys[0]:
+        ivalleys = np.insert(ivalleys, 0, 0)
+    if ipeaks[-1] > ivalleys[-1]:
+        ivalleys = np.insert(ivalleys, ivalleys.size, y.size - 1)
+
+    # Remove peaks < minimum peak prominence
+    if mpp is not None:
+
+        # Compute peaks prominences as difference between peaks and their closest valley
+        prominences = y[ipeaks] - np.amax((y[ivalleys[:-1]], y[ivalleys[1:]]), axis=0)
+
+        # initialize peaks and valleys deletion tables
+        idelp = np.zeros(ipeaks.size, dtype=bool)
+        idelv = np.zeros(ivalleys.size, dtype=bool)
+
+        # for each peak (sorted by ascending prominence order)
+        for ind in np.argsort(prominences):
+            ipeak = ipeaks[ind]  # get peak index
+
+            # get peak bases as first valleys on either side not marked for deletion
+            indleftbase = ind
+            indrightbase = ind + 1
+            while idelv[indleftbase]:
+                indleftbase -= 1
+            while idelv[indrightbase]:
+                indrightbase += 1
+            ileftbase = ivalleys[indleftbase]
+            irightbase = ivalleys[indrightbase]
+
+            # Compute peak prominence and mark for deletion if < mpp
+            indmaxbase = indleftbase if y[ileftbase] > y[irightbase] else indrightbase
+            if y[ipeak] - y[ivalleys[indmaxbase]] < mpp:
+                idelp[ind] = True  # mark peak for deletion
+                idelv[indmaxbase] = True  # mark highest surrouding valley for deletion
+
+        # remove irrelevant peaks and valleys, and sort back the indices by their occurrence
+        ipeaks = np.sort(ipeaks[~idelp])
+        ivalleys = np.sort(ivalleys[~idelv])
+
+    if ipeaks.size == 0:
+        return (None,) * 4
+
+    # Compute peaks prominences and reference half-prominence levels
+    prominences = y[ipeaks] - np.amax((y[ivalleys[:-1]], y[ivalleys[1:]]), axis=0)
+    refheights = y[ipeaks] - prominences / 2
+
+    # Compute half-prominence bounds
+    ibounds = np.empty((ipeaks.size, 2))
+    for i in range(ipeaks.size):
+
+        # compute the index of the left-intercept at half max
+        ileft = ipeaks[i]
+        while ileft >= ivalleys[i] and y[ileft] > refheights[i]:
+            ileft -= 1
+        # ileft = findLeftIntercept(y, ipeaks[i], ivalleys[i], refheights[i])
+        if ileft < ivalleys[i]:  # intercept exactly on valley
+            ibounds[i, 0] = ivalleys[i]
+        else:  # interpolate intercept linearly between signal boundary points
+            a = (y[ileft + 1] - y[ileft]) / 1
+            b = y[ileft] - a * ileft
+            ibounds[i, 0] = (refheights[i] - b) / a
+
+        # compute the index of the right-intercept at half max
+        iright = ipeaks[i]
+        while iright <= ivalleys[i + 1] and y[iright] > refheights[i]:
+            iright += 1
+        # iright = findRightIntercept(y, ipeaks[i], ivalleys[i + 1], refheights[i])
+        if iright > ivalleys[i + 1]:  # intercept exactly on valley
+            ibounds[i, 1] = ivalleys[i + 1]
+        else:  # interpolate intercept linearly between signal boundary points
+            a = (y[iright + 1] - y[iright]) / 1
+            b = y[iright] - a * iright
+            ibounds[i, 1] = (refheights[i] - b) / a
+
+    # Compute peaks widths at half-prominence
+    widths = np.diff(ibounds, axis=1)
+
+    return (ipeaks, prominences, widths, ibounds)
 
 
 def runMech(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm):
