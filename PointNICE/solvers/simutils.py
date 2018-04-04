@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-03 20:11:06
+# @Last Modified time: 2018-04-04 17:37:02
 
 """ Utility functions used in simulations """
 
@@ -368,22 +368,22 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
     ipeaks = np.where(np.diff(s) < 0)[0] + 1
     ivalleys = np.where(np.diff(s) > 0)[0] + 1
 
+    # Return emptxy arrays if no peak detected
     if ipeaks.size == 0:
-        return (None,) * 4
+        return ([],) * 4
 
-    # Ensure that peaks and valleys are coherently distributed
-    assert abs(ipeaks.size - ivalleys.size) <= 1, 'Number of peaks and valleys not matching'
-    njoints = min(ipeaks.size, ivalleys.size)
-    if ipeaks[0] < ivalleys[0]:
-        assert np.all(ivalleys[:njoints] > ipeaks[:njoints]), 'Peaks and valleys not interpersed'
-    else:
-        assert np.all(ivalleys[:njoints] < ipeaks[:njoints]), 'Peaks and valleys not interpersed'
+    # Ensure each peak is bounded by two valleys, adding signal boundaries as valleys if necessary
+    if ivalleys.size == 0 or ipeaks[0] < ivalleys[0]:
+        ivalleys = np.insert(ivalleys, 0, 0)
+    if ipeaks[-1] > ivalleys[-1]:
+        ivalleys = np.insert(ivalleys, ivalleys.size, y.size - 1)
+    assert ivalleys.size - ipeaks.size == 1, 'Number of peaks and valleys not matching'
 
     # Remove peaks < minimum peak height
     if mph is not None:
         ipeaks = ipeaks[y[ipeaks] >= mph]
     if ipeaks.size == 0:
-        return (None,) * 4
+        return (np.array([]),) * 4
 
     # Detect small peaks closer than minimum peak distance
     if mpd is not None:
@@ -453,7 +453,7 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
         ivalleys = np.sort(ivalleys[~idelv])
 
     if ipeaks.size == 0:
-        return (None,) * 4
+        return (np.array([]),) * 4
 
     # Compute peaks prominences and reference half-prominence levels
     prominences = y[ipeaks] - np.amax((y[ivalleys[:-1]], y[ivalleys[1:]]), axis=0)
@@ -681,7 +681,12 @@ def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF
     logger.debug('simulation data exported to "%s"', output_filepath)
 
     # Detect spikes on Vm signal
-    n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+    # n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+    dt = t[1] - t[0]
+    ipeaks, *_ = findPeaks(Vm, SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_VPROM)
+    n_spikes = ipeaks.size
+    lat = t[ipeaks[0]] if n_spikes > 0 else 'N/A'
+    sr = np.mean(1 / np.diff(t[ipeaks])) if n_spikes > 1 else 'N/A'
     logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
 
     # Export key metrics to log file
@@ -765,7 +770,11 @@ def titrateEStim(solver, neuron, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
 
     # Run simulation and detect spikes
     (t, y, states) = solver.run(neuron, *stim_params)
-    n_spikes, latency, _ = detectSpikes(t, y[0, :], SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+    # n_spikes, latency, _ = detectSpikes(t, y[0, :], SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+    dt = t[1] - t[0]
+    ipeaks, *_ = findPeaks(y[0, :], SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_VPROM)
+    n_spikes = ipeaks.size
+    latency = t[ipeaks[0]] if n_spikes > 0 else None
     logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
                  n_spikes, "s" if n_spikes > 1 else "")
 
@@ -965,7 +974,13 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
                 filepaths.append(output_filepath)
 
                 # Detect spikes on Qm signal
-                n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+                # n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+                dt = t[1] - t[0]
+                ipeaks, *_ = findPeaks(Vm, SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
+                                       SPIKE_MIN_VPROM)
+                n_spikes = ipeaks.size
+                lat = t[ipeaks[0]] if n_spikes > 0 else 'N/A'
+                sr = np.mean(1 / np.diff(t[ipeaks])) if n_spikes > 1 else 'N/A'
                 logger.info('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
 
                 # Export key metrics to log file
@@ -1051,7 +1066,12 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
     logger.debug('simulation data exported to "%s"', output_filepath)
 
     # Detect spikes on Qm signal
-    n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+    # n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+    dt = t[1] - t[0]
+    ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_QPROM)
+    n_spikes = ipeaks.size
+    lat = t[ipeaks[0]] if n_spikes > 0 else 'N/A'
+    sr = np.mean(1 / np.diff(t[ipeaks])) if n_spikes > 1 else 'N/A'
     logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
 
     # Export key metrics to log file
@@ -1142,7 +1162,11 @@ def titrateAStim(solver, neuron, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=1
 
     # Run simulation and detect spikes
     (t, y, states) = solver.run(neuron, *stim_params, int_method)
-    n_spikes, latency, _ = detectSpikes(t, y[2, :], SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+    # n_spikes, latency, _ = detectSpikes(t, y[2, :], SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+    dt = t[1] - t[0]
+    ipeaks, *_ = findPeaks(y[2, :], SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_QPROM)
+    n_spikes = ipeaks.size
+    latency = t[ipeaks[0]] if n_spikes > 0 else None
     logger.debug('%.2f %s ---> %u spike%s detected', value * t_var['factor'], t_var['unit'],
                  n_spikes, "s" if n_spikes > 1 else "")
 
@@ -1367,7 +1391,13 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
                     filepaths.append(output_filepath)
 
                     # Detect spikes on Qm signal
-                    n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+                    # n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+                    dt = t[1] - t[0]
+                    ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
+                                           SPIKE_MIN_QPROM)
+                    n_spikes = ipeaks.size
+                    lat = t[ipeaks[0]] if n_spikes > 0 else 'N/A'
+                    sr = np.mean(1 / np.diff(t[ipeaks])) if n_spikes > 1 else 'N/A'
                     logger.info('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
 
                     # Export key metrics to log file

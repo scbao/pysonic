@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-03 19:45:11
+# @Last Modified time: 2018-04-04 16:36:16
 
 ''' Algorithmic constants used in the package. '''
 
@@ -36,9 +36,10 @@ DT_EFF = 5e-5  # time step for effective integration (s)
 
 
 # Spike detection
-SPIKE_MIN_QAMP = 10e-5  # threshold amplitude for spike detection on charge signal (C/m2)
+SPIKE_MIN_QAMP = 5e-5  # threshold amplitude for spike detection on charge signal (C/m2)
 SPIKE_MIN_QPROM = 5e-5  # threshold prominence for spike detection on charge signal (C/m2)
 SPIKE_MIN_VAMP = 10.0  # threshold amplitude for spike detection on potential signal (mV)
+SPIKE_MIN_VPROM = 10.0  # threshold prominence for spike detection on potential signal (mV)
 SPIKE_MIN_DT = 1e-3  # minimal time interval for spike detection on charge signal (s)
 
 

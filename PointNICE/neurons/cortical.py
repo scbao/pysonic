@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-30 18:17:19
+# @Last Modified time: 2018-04-04 17:35:17
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -623,7 +623,7 @@ class CorticalIB(Cortical):
     '''
 
     # Name of channel mechanism
-    name = 'IB'
+    # name = 'IB'
 
     # Cell-specific biophysical parameters
     Vm0 = -71.4  # Cell membrane resting potential (mV)

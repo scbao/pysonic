@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-02 15:20:09
+# @Last Modified time: 2018-04-04 16:03:29
 
 ''' Plotting utilities '''
 
@@ -198,7 +198,7 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
     pltvar = pltvars[varname]
 
     # Input check 2: labels
-    if labels:
+    if labels is not None:
         if len(labels) != len(filepaths):
             raise InputError('Invalid labels ({}): not matching number of compared files ({})'
                              .format(len(labels), len(filepaths)))
@@ -349,7 +349,7 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
             var = np.insert(var, 0, var[0])
 
         # Determine legend label
-        if labels:
+        if labels is not None:
             label = labels[j]
         else:
             if sim_type == 'ESTIM':

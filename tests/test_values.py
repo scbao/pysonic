@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 12:01:10
+# @Last Modified time: 2018-04-04 17:49:29
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -15,7 +15,7 @@ import numpy as np
 
 from PointNICE.utils import logger, getNeuronsDict
 from PointNICE import BilayerSonophore, SolverElec, SolverUS
-from PointNICE.solvers import detectSpikes, titrateEStim, titrateAStim
+from PointNICE.solvers import findPeaks, titrateEStim, titrateAStim
 from PointNICE.constants import *
 
 # Set logging level
@@ -126,7 +126,10 @@ def test_ESTIM():
         Vm = y[0, :]
 
         # Check that final number of spikes is 1
-        n_spikes, _, _ = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+        # n_spikes, _, _ = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
+        dt = t[1] - t[0]
+        ipeaks, *_ = findPeaks(Vm, SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_VPROM)
+        n_spikes = ipeaks.size
         assert n_spikes == 1, 'Number of spikes after titration should be exactly 1'
 
         # Check threshold amplitude
@@ -162,10 +165,10 @@ def test_ASTIM():
     Arange = (0.0, 2 * TITRATION_ASTIM_A_MAX)  # Pa
 
     # Reference values
-    Athr_refs = {'FS': 38.66e3, 'LTS': 24.90e3, 'RS': 50.90e3, 'RE': 46.36e3, 'TC': 23.29e3,
-                 'LeechT': 21.39e3, 'LeechP': 22.56e3}
-    latency_refs = {'FS': 69.58e-3, 'LTS': 57.56e-3, 'RS': 71.59e-3, 'RE': 79.20e-3,
-                    'TC': 63.67e-3, 'LeechT': 25.45e-3, 'LeechP': 54.76e-3}
+    Athr_refs = {'FS': 38.96e3, 'LTS': 24.90e3, 'RS': 50.90e3, 'RE': 46.36e3, 'TC': 23.14e3,
+                 'LeechT': 21.02e3, 'LeechP': 22.23e3}
+    latency_refs = {'FS': 54.96e-3, 'LTS': 57.46e-3, 'RS': 75.09e-3, 'RE': 79.75e-3,
+                    'TC': 70.73e-3, 'LeechT': 43.25e-3, 'LeechP': 58.01e-3}
 
     # Titration for each neuron
     for neuron_class in neurons:
@@ -183,7 +186,10 @@ def test_ASTIM():
         Qm = y[2]
 
         # Check that final number of spikes is 1
-        n_spikes, _, _ = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+        # n_spikes, _, _ = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
+        dt = t[1] - t[0]
+        ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_QPROM)
+        n_spikes = ipeaks.size
         assert n_spikes == 1, 'Number of spikes after titration should be exactly 1'
 
         # Check threshold amplitude
@@ -234,14 +240,18 @@ def main():
         logger.setLevel(logging.INFO)
 
     # Run test
-    if args.testset == 'all':
-        test_all()
-    else:
-        possibles = globals().copy()
-        possibles.update(locals())
-        method = possibles.get('test_{}'.format(args.testset))
-        method()
-    sys.exit(0)
+    try:
+        if args.testset == 'all':
+            test_all()
+        else:
+            possibles = globals().copy()
+            possibles.update(locals())
+            method = possibles.get('test_{}'.format(args.testset))
+            method()
+        sys.exit(0)
+    except AssertionError as e:
+        logger.error(e)
+        sys.exit(1)
 
 
 if __name__ == '__main__':
