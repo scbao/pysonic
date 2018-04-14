@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-04 16:03:29
+# @Last Modified time: 2018-04-14 18:38:07
 
 ''' Plotting utilities '''
 
@@ -132,10 +132,6 @@ class InteractiveLegend(object):
         ''' showing the interactive legend '''
 
         plt.show()
-
-
-def rescaleColorset(cset, lb=0, ub=255, lb_new=0., ub_new=1.):
-    return list(tuple((x - lb) / (ub - lb) * (ub_new - lb_new) + lb_new for x in c) for c in cset)
 
 
 def getPatchesLoc(t, states):
