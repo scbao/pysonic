@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-14 18:38:07
+# @Last Modified time: 2018-04-14 19:38:37
 
 ''' Plotting utilities '''
 
@@ -53,9 +53,9 @@ rgxp_mech = re.compile('(MECH)_(.*).pkl')
 
 # Figure naming conventions
 ESTIM_CW_title = '{} neuron: CW E-STIM {:.2f}mA/m2, {:.0f}ms'
-ESTIM_PW_title = '{} neuron: PW E-STIM {:.2f}mA/m2, {:.0f}ms, {:.2f}kHz PRF, {:.0f}% DC'
+ESTIM_PW_title = '{} neuron: PW E-STIM {:.2f}mA/m2, {:.0f}ms, {:.2f}Hz PRF, {:.0f}% DC'
 ASTIM_CW_title = '{} neuron: CW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms'
-ASTIM_PW_title = '{} neuron: PW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms, {:.2f}kHz PRF, {:.2f}% DC'
+ASTIM_PW_title = '{} neuron: PW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms, {:.2f}Hz PRF, {:.2f}% DC'
 MECH_title = '{:.0f}nm BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa'
 
 
@@ -353,7 +353,7 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
                     label = ESTIM_CW_title.format(neuron_name, meta['Astim'], meta['tstim'] * 1e3)
                 else:
                     label = ESTIM_PW_title.format(neuron_name, meta['Astim'], meta['tstim'] * 1e3,
-                                                  meta['PRF'] * 1e-3, meta['DC'] * 1e2)
+                                                  meta['PRF'], meta['DC'] * 1e2)
             elif sim_type == 'ASTIM':
                 if meta['DC'] == 1.0:
                     label = ASTIM_CW_title.format(neuron_name, meta['Fdrive'] * 1e-3,
@@ -361,7 +361,7 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
                 else:
                     label = ASTIM_PW_title.format(neuron_name, meta['Fdrive'] * 1e-3,
                                                   meta['Adrive'] * 1e-3, meta['tstim'] * 1e3,
-                                                  meta['PRF'] * 1e-3, meta['DC'] * 1e2)
+                                                  meta['PRF'], meta['DC'] * 1e2)
             elif sim_type == 'MECH':
                 label = MECH_title.format(meta['a'] * 1e9, meta['Fdrive'] * 1e-3,
                                           meta['Adrive'] * 1e-3)
@@ -649,7 +649,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
                                                       meta['tstim'] * 1e3)
                 else:
                     fig_title = ESTIM_PW_title.format(neuron.name, meta['Astim'],
-                                                      meta['tstim'] * 1e3, meta['PRF'] * 1e-3,
+                                                      meta['tstim'] * 1e3, meta['PRF'],
                                                       meta['DC'] * 1e2)
             elif sim_type == 'ASTIM':
                 if meta['DC'] == 1.0:
@@ -658,7 +658,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
                 else:
                     fig_title = ASTIM_PW_title.format(neuron.name, Fdrive * 1e-3,
                                                       meta['Adrive'] * 1e-3, meta['tstim'] * 1e3,
-                                                      meta['PRF'] * 1e-3, meta['DC'] * 1e2)
+                                                      meta['PRF'], meta['DC'] * 1e2)
             elif sim_type == 'MECH':
                 fig_title = MECH_title.format(a * 1e9, Fdrive * 1e-3, meta['Adrive'] * 1e-3)
 
