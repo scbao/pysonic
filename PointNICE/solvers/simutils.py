@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
-# @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-14 19:40:14
+# @Last Modified by:   Theo
+# @Last Modified time: 2018-04-16 20:10:29
 
 """ Utility functions used in simulations """
 
@@ -32,8 +32,8 @@ logger = logging.getLogger('PointNICE')
 MECH_code = 'MECH_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.1f}nCcm2'
 ESTIM_CW_code = 'ESTIM_{}_CW_{:.1f}mA_per_m2_{:.0f}ms'
 ESTIM_PW_code = 'ESTIM_{}_PW_{:.1f}mA_per_m2_{:.0f}ms_PRF{:.2f}Hz_DC{:.2f}%'
-ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_{}'
-ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.0f}ms_PRF{:.2f}Hz_DC{:.2f}%_{}'
+ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms_{}'
+ASTIM_PW_code = 'ASTIM_{}_PW_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms_PRF{:.2f}Hz_DC{:.2f}%_{}'
 
 # Parameters units
 ASTIM_params = {

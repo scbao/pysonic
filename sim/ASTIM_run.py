@@ -3,8 +3,8 @@
 # @Author: Theo Lemaire
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
-# @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-19 19:25:37
+# @Last Modified by:   Theo
+# @Last Modified time: 2018-04-16 20:18:58
 
 """ Script to run ASTIM simulations from command line. """
 
@@ -82,7 +82,7 @@ def main():
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
-    PW_str = ', PRF = {:.2f} Hz, DC = {:.1f}'.format(PRF, DC * 1e2)
+    PW_str = ', PRF = {:.2f} Hz, DC = {:.2f}'.format(PRF, DC * 1e2)
 
     try:
         if neuron_str not in getNeuronsDict():
