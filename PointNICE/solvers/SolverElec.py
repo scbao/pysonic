@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-19 20:03:13
+# @Last Modified time: 2018-04-17 11:42:53
 
 
 import warnings
@@ -95,21 +95,17 @@ class SolverElec:
         npulses = int(np.round(PRF * tstim))
         Tpulse_on = DC / PRF
         Tpulse_off = (1 - DC) / PRF
+
+        # For high-PRF pulsed protocols: adapt time step to ensure minimal
+        # number of samples during TON or TOFF
+        dt_warning_msg = 'high-PRF protocol: lowering time step to %.2e s to properly integrate %s'
+        for key, Tpulse in {'TON': Tpulse_on, 'TOFF': Tpulse_off}.items():
+            if Tpulse > 0 and Tpulse / dt < MIN_SAMPLES_PER_PULSE_INT:
+                dt = Tpulse / MIN_SAMPLES_PER_PULSE_INT
+                logger.warning(dt_warning_msg, dt, key)
+
         n_pulse_on = int(np.round(Tpulse_on / dt))
         n_pulse_off = int(np.round(Tpulse_off / dt))
-
-        # For high-PRF pulsed protocols: adapt time step if greater than TON or TOFF
-        dt_warning_msg = 'high-PRF protocol: lowering integration time step to %.2e ms to match %s'
-        if Tpulse_on > 0 and n_pulse_on == 0:
-            logger.warning(dt_warning_msg, Tpulse_on * 1e3, 'TON')
-            dt = Tpulse_on
-            n_pulse_on = int(np.round(Tpulse_on / dt))
-            n_pulse_off = int(np.round(Tpulse_off / dt))
-        if Tpulse_off > 0 and n_pulse_off == 0:
-            logger.warning(dt_warning_msg, Tpulse_off * 1e3, 'TOFF')
-            dt = Tpulse_off
-            n_pulse_on = int(np.round(Tpulse_on / dt))
-            n_pulse_off = int(np.round(Tpulse_off / dt))
 
         # Compute offset size
         n_off = int(np.round(toffset / dt))

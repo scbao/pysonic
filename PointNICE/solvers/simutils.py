@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
-# @Last Modified by:   Theo
-# @Last Modified time: 2018-04-16 20:10:29
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2018-04-17 11:34:40
 
 """ Utility functions used in simulations """
 
@@ -370,7 +370,7 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
 
     # Return emptxy arrays if no peak detected
     if ipeaks.size == 0:
-        return ([],) * 4
+        return (np.array([]),) * 4
 
     # Ensure each peak is bounded by two valleys, adding signal boundaries as valleys if necessary
     if ivalleys.size == 0 or ipeaks[0] < ivalleys[0]:

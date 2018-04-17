@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-04 16:36:16
+# @Last Modified time: 2018-04-17 11:37:35
 
 ''' Algorithmic constants used in the package. '''
 
@@ -33,6 +33,7 @@ NPC_HH = 40  # nb of samples per acoustic period in HH system
 DQ_UPDATE = 1e-5  # charge evolution threshold between two hybrid integrations (C/m2)
 DT_UPDATE = 5e-4  # time interval between two hybrid integrations (s)
 DT_EFF = 5e-5  # time step for effective integration (s)
+MIN_SAMPLES_PER_PULSE_INT = 1  # minimal number of time points per pulse interval (TON of TOFF)
 
 
 # Spike detection
