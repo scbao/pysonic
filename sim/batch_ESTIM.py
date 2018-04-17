@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 15:36:58
+# @Last Modified time: 2018-04-17 17:08:45
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
@@ -18,7 +18,7 @@ from PointNICE.plt import plotBatch
 logger.setLevel(logging.INFO)
 
 # Neurons
-neurons = ['LeechP']
+neurons = ['IB']
 
 # Stimulation parameters
 stim_params = {
@@ -40,7 +40,7 @@ try:
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    # plotBatch(pkl_dir, pkl_filepaths)
+    plotBatch(pkl_dir, pkl_filepaths)
 
 except InputError as err:
     logger.error(err)

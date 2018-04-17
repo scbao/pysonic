@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-04 17:35:17
+# @Last Modified time: 2018-04-17 15:38:03
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -36,6 +36,7 @@ class Cortical(BaseMech):
     Vm0 = 0.0  # Dummy value for membrane potential (mV)
     VNa = 50.0  # Sodium Nernst potential (mV)
     VK = -90.0  # Potassium Nernst potential (mV)
+    VCa = 120.0  # # Calcium Nernst potential (mV)
 
 
     def __init__(self):
@@ -412,7 +413,6 @@ class CorticalLTS(Cortical):
     GMMax = 0.28  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
     GTMax = 4.0  # Max. conductance of low-threshold Calcium current (S/m^2)
     GL = 0.19  # Conductance of non-specific leakage current (S/m^2)
-    VCa = 120.0  # # Calcium Nernst potential (mV)
     VL = -50.0  # Non-specific leakage Nernst potential (mV)
     VT = -50.0  # Spike threshold adjustment parameter (mV)
     TauMax = 4.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
@@ -623,16 +623,15 @@ class CorticalIB(Cortical):
     '''
 
     # Name of channel mechanism
-    # name = 'IB'
+    name = 'IB'
 
     # Cell-specific biophysical parameters
     Vm0 = -71.4  # Cell membrane resting potential (mV)
     GNaMax = 500  # Max. conductance of Sodium current (S/m^2)
     GKMax = 50  # Max. conductance of delayed Potassium current (S/m^2)
     GMMax = 0.3  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
-    GCaLMax = 2  # Max. conductance of L-type Calcium current (S/m^2)
+    GCaLMax = 1.0  # Max. conductance of L-type Calcium current (S/m^2)
     GL = 0.1  # Conductance of non-specific leakage current (S/m^2)
-    VCa = 120.0  # # Calcium Nernst potential (mV)
     VL = -70  # Non-specific leakage Nernst potential (mV)
     VT = -56.2  # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)

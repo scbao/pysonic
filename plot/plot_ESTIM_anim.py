@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-12 19:44:31
+# @Last Modified time: 2018-04-17 15:46:41
 
 """ Run simulations of the HH system with injected electric current,
 and plot resulting dynamics. """
@@ -22,7 +22,7 @@ from PointNICE.neurons import *
 
 
 # Create channels mechanism
-neuron = LeechPressure()
+neuron = CorticalIB()
 for i in range(len(neuron.states_names)):
     print('{}0 = {:.2f}'.format(neuron.states_names[i], neuron.states0[i]))
 
@@ -30,13 +30,12 @@ for i in range(len(neuron.states_names)):
 # Set pulse parameters
 tstim = 500e-3  # s
 toffset = 300e-3  # s
-Amin = -40.0
-Amax = 40.0
+Amin = -20.0
+Amax = 20.0
 amps = np.arange(Amin, Amax + 0.5, 1.0)
 nA = len(amps)
 
-
-root = 'C:/Users/admin/Desktop/test anim'
+root = 'C:/Users/Theo/Documents/E-STIM output/IB/anim'
 mymap = cm.get_cmap('coolwarm')
 sm = plt.cm.ScalarMappable(cmap=mymap, norm=plt.Normalize(Amin, Amax))
 sm._A = []

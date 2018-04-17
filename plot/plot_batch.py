@@ -4,7 +4,7 @@
 # @Date:   2017-03-20 12:19:55
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-29 13:45:18
+# @Last Modified time: 2018-04-17 15:56:23
 
 """ Batch plot profiles of several specific output variables of NICE simulations. """
 
@@ -23,10 +23,17 @@ if not pkl_filepaths:
     logger.error('No input file')
     sys.exit(1)
 
+
+yvars = {
+    'V_m': ['Vm'],
+    'i_{Na}\ kin.': ['m', 'h'],
+    'i_K\ kin.': ['n'],
+    'i_M\ kin.': ['p'],
+    'i_{CaL}\ kin.': ['q', 'r', 'q2r']
+}
+
 # Plot profiles
 try:
-    yvars = {'Q_m': ['Qm'], 'i_{Ca}\ kin.': ['s', 'u', 's2u'], 'I': ['iNa', 'iK', 'iT', 'iL']}
-    # yvars = {'Q_m': ['Qm']}
     plotBatch(pkl_dir, pkl_filepaths, title=True, vars_dict=yvars)
 except InputError as err:
     logger.error(err)
