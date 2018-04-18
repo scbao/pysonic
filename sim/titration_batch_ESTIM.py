@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-25 14:50:39
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 17:03:59
+# @Last Modified time: 2018-04-18 18:16:45
 
 """ Run batch electrical titrations of specific "point-neuron" models. """
 
@@ -19,14 +19,14 @@ from PointNICE.plt import plotBatch
 logger.setLevel(logging.DEBUG)
 
 # Neurons
-neurons = ['RS']
+neurons = ['IB']
 
 # Stimulation parameters
 stim_params = {
-    'amps': [20.0],  # mA/m2
+    # 'amps': [20.0],  # mA/m2
     'durations': [0.5],  # s
     'PRFs': [1e2],  # Hz
-    # 'DCs': [1.0]
+    'DCs': [1.0]
 }
 
 try:

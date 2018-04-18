@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-04 17:49:29
+# @Last Modified time: 2018-04-18 18:24:24
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -112,9 +112,9 @@ def test_ESTIM():
 
     # Reference values
     Athr_refs = {'FS': 6.91, 'LTS': 1.54, 'RS': 5.03, 'RE': 3.61, 'TC': 4.05,
-                 'LeechT': 4.66, 'LeechP': 13.72}
+                 'LeechT': 4.66, 'LeechP': 13.72, 'IB': 3.08}
     latency_refs = {'FS': 101.00e-3, 'LTS': 128.56e-3, 'RS': 103.81e-3, 'RE': 148.50e-3,
-                    'TC': 63.46e-3, 'LeechT': 21.32e-3, 'LeechP': 36.84e-3}
+                    'TC': 63.46e-3, 'LeechT': 21.32e-3, 'LeechP': 36.84e-3, 'IB': 121.04e-3}
 
     for neuron_class in neurons:
 
@@ -166,9 +166,9 @@ def test_ASTIM():
 
     # Reference values
     Athr_refs = {'FS': 38.96e3, 'LTS': 24.90e3, 'RS': 50.90e3, 'RE': 46.36e3, 'TC': 23.14e3,
-                 'LeechT': 21.02e3, 'LeechP': 22.23e3}
+                 'LeechT': 21.02e3, 'LeechP': 22.23e3, 'IB': 91.26e3}
     latency_refs = {'FS': 54.96e-3, 'LTS': 57.46e-3, 'RS': 75.09e-3, 'RE': 79.75e-3,
-                    'TC': 70.73e-3, 'LeechT': 43.25e-3, 'LeechP': 58.01e-3}
+                    'TC': 70.73e-3, 'LeechT': 43.25e-3, 'LeechP': 58.01e-3, 'IB': 79.35e-3}
 
     # Titration for each neuron
     for neuron_class in neurons:
