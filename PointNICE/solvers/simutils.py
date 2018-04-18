@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-17 11:34:40
+# @Last Modified time: 2018-04-18 11:33:46
 
 """ Utility functions used in simulations """
 
@@ -362,28 +362,35 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
         - MATLAB findpeaks function (https://ch.mathworks.com/help/signal/ref/findpeaks.html)
     '''
 
+    # Define empty output
+    empty = (np.array([]),) * 4
+
     # Find all peaks and valleys
     dy = np.diff(y)
     s = np.sign(dy)
     ipeaks = np.where(np.diff(s) < 0)[0] + 1
     ivalleys = np.where(np.diff(s) > 0)[0] + 1
 
-    # Return emptxy arrays if no peak detected
+    # Return empty output if no peak detected
     if ipeaks.size == 0:
-        return (np.array([]),) * 4
+        return empty
 
     # Ensure each peak is bounded by two valleys, adding signal boundaries as valleys if necessary
     if ivalleys.size == 0 or ipeaks[0] < ivalleys[0]:
         ivalleys = np.insert(ivalleys, 0, 0)
     if ipeaks[-1] > ivalleys[-1]:
         ivalleys = np.insert(ivalleys, ivalleys.size, y.size - 1)
-    assert ivalleys.size - ipeaks.size == 1, 'Number of peaks and valleys not matching'
+    # assert ivalleys.size - ipeaks.size == 1, 'Number of peaks and valleys not matching'
+    if ivalleys.size - ipeaks.size != 1:
+        logger.warning('detection incongruity: %u peaks vs. %u valleys detected',
+                       ipeaks.size, ivalleys.size)
+        return empty
 
     # Remove peaks < minimum peak height
     if mph is not None:
         ipeaks = ipeaks[y[ipeaks] >= mph]
     if ipeaks.size == 0:
-        return (np.array([]),) * 4
+        return empty
 
     # Detect small peaks closer than minimum peak distance
     if mpd is not None:
@@ -453,7 +460,7 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
         ivalleys = np.sort(ivalleys[~idelv])
 
     if ipeaks.size == 0:
-        return (np.array([]),) * 4
+        return empty
 
     # Compute peaks prominences and reference half-prominence levels
     prominences = y[ipeaks] - np.amax((y[ivalleys[:-1]], y[ivalleys[1:]]), axis=0)
