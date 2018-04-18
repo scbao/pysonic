@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-29 17:47:17
+# @Last Modified time: 2018-04-18 14:06:24
 
 ''' Channels mechanisms for thalamic neurons. '''
 
