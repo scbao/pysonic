@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-19 15:54:42
+# @Last Modified time: 2018-04-19 15:35:51
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 

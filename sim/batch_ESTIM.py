@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-17 17:08:45
+# @Last Modified time: 2018-04-19 15:16:02
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
@@ -18,16 +18,17 @@ from PointNICE.plt import plotBatch
 logger.setLevel(logging.INFO)
 
 # Neurons
-neurons = ['IB']
+neurons = ['RS']
 
 # Stimulation parameters
 stim_params = {
-    'amps': [2.0],  # mA/m2
-    'durations': np.array([20, 40, 60, 80, 100, 150, 200, 250, 300]) * 1e-3,  # s
-    'PRFs': np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]) * 1e3,  # Hz
-    'DCs': np.array([1, 2, 5, 10, 25, 50, 75, 100]) * 1e-2
+    'amps': [10.0, 15.0, 20.0, 30.0],  # mA/m2
+    'durations': [300e-3],  # np.array([20, 40, 60, 80, 100, 150, 200, 250, 300]) * 1e-3,  # s
+    'PRFs': [1],  # np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]) * 1e3,  # Hz
+    'DCs': [1],  # np.array([1, 2, 5, 10, 25, 50, 75, 100]) * 1e-2
+    'offsets': [100e-3]
 }
-stim_params['offsets'] = 350e-3 - stim_params['durations']  # s
+# stim_params['offsets'] = 350e-3 - stim_params['durations']  # s
 
 
 try:

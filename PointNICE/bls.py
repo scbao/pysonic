@@ -4,8 +4,9 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 12:13:33
+# @Last Modified time: 2018-04-22 23:48:07
 
+import inspect
 import logging
 import warnings
 import numpy as np
@@ -106,6 +107,22 @@ class BilayerSonophore:
         # Compute initial volume and gas content
         self.V0 = np.pi * self.Delta * self.a**2
         self.ng0 = self.gasPa2mol(self.P0, self.V0)
+
+
+    def __str__(self):
+        s = '-------- Bilayer Sonophore --------\n'
+        s += 'class attributes:\n'
+        class_attrs = inspect.getmembers(self.__class__, lambda a: not(inspect.isroutine(a)))
+        class_attrs = [a for a in class_attrs if not(a[0].startswith('__') and a[0].endswith('__'))]
+        for ca in class_attrs:
+            s += '{} = {}\n'.format(ca[0], ca[1])
+        s += 'instance attributes:\n'
+        inst_attrs = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
+        inst_attrs = [a for a in inst_attrs if not(a[0].startswith('__') and a[0].endswith('__')) and
+                      a not in class_attrs]
+        for ia in inst_attrs:
+            s += '{} = {}\n'.format(ia[0], ia[1])
+        return s
 
 
     def curvrad(self, Z):
@@ -323,9 +340,8 @@ class BilayerSonophore:
         """
 
         f = lambda Delta: (self.pDelta *
-                           ((self.Delta_ / Delta)**self.m
-                            - (self.Delta_ / Delta)**self.n)
-                           + self.Pelec(0.0, Qm))
+                           ((self.Delta_ / Delta)**self.m - (self.Delta_ / Delta)**self.n) +
+                           self.Pelec(0.0, Qm))
 
         Delta_lb = 0.1 * self.Delta_
         Delta_ub = 2.0 * self.Delta_
