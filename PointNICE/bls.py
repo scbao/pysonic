@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-22 23:48:07
+# @Last Modified time: 2018-04-23 11:44:03
 
 import inspect
 import logging
@@ -282,10 +282,10 @@ class BilayerSonophore:
         Pmavg = np.array([self.PMavg(ZZ, self.curvrad(ZZ), self.surface(ZZ)) for ZZ in Z])
 
         # Compute optimal nonlinear fit of custom LJ function with initial guess
-        x0_guess = 2e-9
-        C_guess = 1e4
-        nrep_guess = 5.0
-        nattr_guess = 3.0
+        x0_guess = self.delta0
+        C_guess = 0.1 * self.pDelta
+        nrep_guess = self.m
+        nattr_guess = self.n
         pguess = (x0_guess, C_guess, nrep_guess, nattr_guess)
         popt, _ = curve_fit(lambda x, x0, C, nrep, nattr:
                             LennardJones(x, self.Delta, x0, C, nrep, nattr),
@@ -517,7 +517,7 @@ class BilayerSonophore:
         return -(3 * U**2) / (2 * R)
 
 
-    def eqMech(self, y, t, Adrive, Fdrive, Qm, phi):
+    def eqMech(self, y, t, Adrive, Fdrive, Qm, phi, Pm_comp_method=PmCompMethod.predict):
         """ Compute the derivatives of the 3-ODE mechanical system variables,
             with an imposed constant charge density.
 
@@ -527,6 +527,7 @@ class BilayerSonophore:
             :param Fdrive: acoustic drive frequency (Hz)
             :param Qm: membrane charge density (F/m2)
             :param phi: acoustic drive phase (rad)
+            :param Pm_comp_method: type of method used to compute average intermolecular pressure
             :return: vector of mechanical system derivatives at time t
         """
 
@@ -543,7 +544,11 @@ class BilayerSonophore:
 
         # Compute total pressure
         Pg = self.gasmol2Pa(ng, self.volume(Z))
-        Ptot = (self.PMavgpred(Z) + Pg - self.P0 - self.Pacoustic(t, Adrive, Fdrive, phi) +
+        if Pm_comp_method is PmCompMethod.direct:
+            Pm = self.PMavg(Z, self.curvrad(Z), self.surface(Z))
+        elif Pm_comp_method is PmCompMethod.predict:
+            Pm = self.PMavgpred(Z)
+        Ptot = (Pm + Pg - self.P0 - self.Pacoustic(t, Adrive, Fdrive, phi) +
                 self.PEtot(Z, R) + self.PVleaflet(U, R) + self.PVfluid(U, R) + self.Pelec(Z, Qm))
 
         # Compute derivatives
@@ -555,7 +560,7 @@ class BilayerSonophore:
         return [dUdt, dZdt, dngdt]
 
 
-    def run(self, Fdrive, Adrive, Qm, phi=np.pi):
+    def run(self, Fdrive, Adrive, Qm, phi=np.pi, Pm_comp_method=PmCompMethod.predict):
         """ Compute short solutions of the mechanical system for specific
             US stimulation parameters and with an imposed membrane charge density.
 
@@ -563,6 +568,7 @@ class BilayerSonophore:
             :param Adrive: acoustic drive amplitude (Pa)
             :param phi: acoustic drive phase (rad)
             :param Qm: imposed membrane charge density (C/m2)
+            :param Pm_comp_method: type of method used to compute average intermolecular pressure
             :return: 3-tuple with the time profile, the solution matrix and a state vector
         """
 
@@ -598,7 +604,7 @@ class BilayerSonophore:
 
         # Solve quasi-steady equation to compute first deflection value
         Pac1 = self.Pacoustic(t0 + dt_mech, Adrive, Fdrive, phi)
-        Z1 = self.balancedefQS(ng0, Qm, Pac1, PmCompMethod.predict)
+        Z1 = self.balancedefQS(ng0, Qm, Pac1, Pm_comp_method)
         U1 = (Z1 - Z0) / dt_mech
 
         # Construct arrays to hold system variables
@@ -615,7 +621,7 @@ class BilayerSonophore:
         while not periodic_conv and j < NCYCLES_MAX:
             t_mech = t_mech_cycle + t[-1] + dt_mech
             y_mech = integrate.odeint(self.eqMech, y[:, -1], t_mech,
-                                      args=(Adrive, Fdrive, Qm, phi)).T
+                                      args=(Adrive, Fdrive, Qm, phi, Pm_comp_method)).T
 
             # Compare Z and ng signals over the last 2 acoustic periods
             if j > 0:
