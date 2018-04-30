@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-18 11:33:46
+# @Last Modified time: 2018-04-30 12:31:56
 
 """ Utility functions used in simulations """
 
@@ -14,15 +14,15 @@ import shutil
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
+import pandas as pd
 from openpyxl import load_workbook
 import lockfile
-import pandas as pd
 
 from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
 from .SolverElec import SolverElec
 from ..constants import *
-from ..utils import getNeuronsDict, InputError
+from ..utils import getNeuronsDict, InputError, PmCompMethod
 
 
 # Get package logger
@@ -1438,3 +1438,206 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
                         return filepaths
 
     return filepaths
+
+
+def computeSpikeMetrics(filenames):
+    ''' Analyze the charge density profile from a list of files and compute for each one of them
+        the following spiking metrics:
+        - latency (ms)
+        - firing rate mean and standard deviation (Hz)
+        - spike amplitude mean and standard deviation (nC/cm2)
+        - spike width mean and standard deviation (ms)
+
+        :param filenames: list of files to analyze
+        :return: a dataframe with the computed metrics
+    '''
+
+    # Initialize metrics dictionaries
+    keys = [
+        'latencies (ms)',
+        'mean firing rates (Hz)',
+        'std firing rates (Hz)',
+        'mean spike amplitudes (nC/cm2)',
+        'std spike amplitudes (nC/cm2)',
+        'mean spike widths (ms)',
+        'std spike widths (ms)'
+    ]
+    metrics = {k: [] for k in keys}
+
+    # Compute spiking metrics
+    for fname in filenames:
+
+        # Load data from file
+        logger.info('loading data from file "{}"'.format(fname))
+        with open(fname, 'rb') as fh:
+            frame = pickle.load(fh)
+        df = frame['data']
+        meta = frame['meta']
+        tstim = meta['tstim']
+        t = df['t'].values
+        Qm = df['Qm'].values
+        dt = t[1] - t[0]
+
+        # Detect spikes on charge profile
+        mpd = int(np.ceil(SPIKE_MIN_DT / dt))
+        ispikes, prominences, widths, _ = findPeaks(Qm, SPIKE_MIN_QAMP, mpd, SPIKE_MIN_QPROM)
+        widths *= dt
+
+        if ispikes.size > 0:
+            # Compute latency
+            latency = t[ispikes[0]]
+
+            # Select prior-offset spikes
+            ispikes_prior = ispikes[t[ispikes] < tstim]
+        else:
+            latency = np.nan
+            ispikes_prior = np.array([])
+
+        # Compute spikes widths and amplitude
+        if ispikes_prior.size > 0:
+            widths_prior = widths[:ispikes_prior.size]
+            prominences_prior = prominences[:ispikes_prior.size]
+        else:
+            widths_prior = np.array([np.nan])
+            prominences_prior = np.array([np.nan])
+
+        # Compute inter-spike intervals and firing rates
+        if ispikes_prior.size > 1:
+            ISIs_prior = np.diff(t[ispikes_prior])
+            FRs_prior = 1 / ISIs_prior
+        else:
+            ISIs_prior = np.array([np.nan])
+            FRs_prior = np.array([np.nan])
+
+        # Log spiking metrics
+        logger.info('%u spikes detected (%u prior to offset)', ispikes.size, ispikes_prior.size)
+        logger.info('latency: %.2f ms', latency * 1e3)
+        logger.info('average spike width within stimulus: %.2f +/- %.2f ms',
+                    np.nanmean(widths_prior) * 1e3, np.nanstd(widths_prior) * 1e3)
+        logger.info('average spike amplitude within stimulus: %.2f +/- %.2f nC/cm2',
+                    np.nanmean(prominences_prior) * 1e5, np.nanstd(prominences_prior) * 1e5)
+        logger.info('average ISI within stimulus: %.2f +/- %.2f ms',
+                    np.nanmean(ISIs_prior) * 1e3, np.nanstd(ISIs_prior) * 1e3)
+        logger.info('average FR within stimulus: %.2f +/- %.2f Hz',
+                    np.nanmean(FRs_prior), np.nanstd(FRs_prior))
+
+        # Complete metrics dictionaries
+        metrics['latencies (ms)'].append(latency * 1e3)
+        metrics['mean firing rates (Hz)'].append(np.mean(FRs_prior))
+        metrics['std firing rates (Hz)'].append(np.std(FRs_prior))
+        metrics['mean spike amplitudes (nC/cm2)'].append(np.mean(prominences_prior) * 1e5)
+        metrics['std spike amplitudes (nC/cm2)'].append(np.std(prominences_prior) * 1e5)
+        metrics['mean spike widths (ms)'].append(np.mean(widths_prior) * 1e3)
+        metrics['std spike widths (ms)'].append(np.std(widths_prior) * 1e3)
+
+    # Return dataframe with metrics
+    return pd.DataFrame(metrics, columns=metrics.keys())
+
+
+def getCycleProfiles(a, f, A, Cm0, Qm0, Qm):
+    ''' Run a mechanical simulation until periodic stabilization, and compute pressure profiles
+        over the last acoustic cycle.
+
+        :param a: in-plane diameter of the sonophore structure within the membrane (m)
+        :param f: acoustic drive frequency (Hz)
+        :param A: acoustic drive amplitude (Pa)
+        :param Cm0: membrane resting capacitance (F/m2)
+        :param Qm0: membrane resting charge density (C/m2)
+        :param Qm: imposed membrane charge density (C/m2)
+        :return: a dataframe with the time, kinematic and pressure profiles over the last cycle.
+    '''
+
+    # Create sonophore object
+    bls = BilayerSonophore(a, f, Cm0, Qm0)
+
+    # Run default simulation and compute relevant profiles
+    logger.info('Running mechanical simulation (a = %.0f nm, f = %.0f kHz, A = %.0f kPa)',
+                a * 1e9, f * 1e-3, A * 1e-3)
+    t, y, _ = bls.run(f, A, Qm, Pm_comp_method=PmCompMethod.direct)
+    dt = (t[-1] - t[0]) / (t.size - 1)
+    Z, ng = y[:, -NPC_FULL:]
+    t = t[-NPC_FULL:]
+    t -= t[0]
+
+    logger.info('Computing pressure cyclic profiles')
+    R = np.array([bls.curvrad(z) for z in Z])
+    U = np.diff(Z) / dt
+    U = np.hstack((U, U[-1]))
+    data = {
+        't': t,
+        'Z': Z,
+        'Cm': np.array([bls.Capct(z) for z in Z]),
+        'P_M': np.array([bls.PMavg(z, bls.curvrad(z), bls.surface(z)) for z in Z]),
+        'P_Q': bls.Pelec(Z, Qm),
+        'P_{VE}': bls.PEtot(Z, R) + bls.PVleaflet(U, R),
+        'P_V': bls.PVfluid(U, R),
+        'P_G': bls.gasmol2Pa(ng, bls.volume(Z)),
+        'P_0': - np.ones(Z.size) * bls.P0
+    }
+    return pd.DataFrame(data, columns=data.keys())
+
+
+def runSweepSA(bls, f, A, Qm, params, rel_sweep):
+    ''' Run mechanical simulations while varying multiple model parameters around their default value,
+        and compute the relative changes in cycle-averaged sonophore membrane potential over the last
+        acoustic period upon periodic stabilization.
+
+        :param bls: BilayerSonophore object
+        :param f: acoustic drive frequency (Hz)
+        :param A: acoustic drive amplitude (Pa)
+        :param Qm: imposed membrane charge density (C/m2)
+        :param params: list of model parameters to explore
+        :param rel_sweep: array of relative parameter changes
+        :return: a dataframe with the cycle-averaged sonophore membrane potentials for
+        the parameter variations, for each parameter.
+    '''
+
+    nsweep = len(rel_sweep)
+    logger.info('Starting sensitivity analysis (%u parameters, sweep size = %u)',
+                len(params), nsweep)
+    t0 = time.time()
+
+    # Run default simulation and compute cycle-averaged membrane potential
+    _, y, _ = bls.run(f, A, Qm, Pm_comp_method=PmCompMethod.direct)
+    Z = y[0, -NPC_FULL:]
+    Cm = np.array([bls.Capct(z) for z in Z])  # F/m2
+    Vmavg_default = np.mean(Qm / Cm) * 1e3  # mV
+
+    # Create data dictionary for computed output changes
+    data = {'relative input change': rel_sweep - 1}
+
+    nsims = len(params) * nsweep
+    for j, p in enumerate(params):
+
+        default = getattr(bls, p)
+        sweep = rel_sweep * default
+        Vmavg = np.empty(nsweep)
+        logger.info('Computing system\'s sentitivty to %s (default = %.2e)', p, default)
+
+        for i, val in enumerate(sweep):
+
+            # Re-initialize BLS object with modififed attribute
+            setattr(bls, p, val)
+            bls.reinit()
+
+            # Run simulation and compute cycle-averaged membrane potential
+            _, y, _ = bls.run(f, A, Qm, Pm_comp_method=PmCompMethod.direct)
+            Z = y[0, -NPC_FULL:]
+            Cm = np.array([bls.Capct(z) for z in Z])  # F/m2
+            Vmavg[i] = np.mean(Qm / Cm) * 1e3  # mV
+
+            logger.info('simulation %u/%u: %s = %.2e (%+.1f %%) --> |Vm| = %.1f mV (%+.3f %%)',
+                        j * nsweep + i + 1, nsims, p, val, (val - default) / default * 1e2,
+                        Vmavg[i], (Vmavg[i] - Vmavg_default) / Vmavg_default * 1e2)
+
+        # Fill in data dictionary
+        data[p] = Vmavg
+
+        # Set parameter back to default
+        setattr(bls, p, default)
+
+    tcomp = time.time() - t0
+    logger.info('Sensitivity analysis susccessfully completed in %.0f s', tcomp)
+
+    # return pandas dataframe
+    return pd.DataFrame(data, columns=data.keys())

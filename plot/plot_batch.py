@@ -4,7 +4,7 @@
 # @Date:   2017-03-20 12:19:55
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-17 15:56:23
+# @Last Modified time: 2018-04-27 07:50:01
 
 """ Batch plot profiles of several specific output variables of NICE simulations. """
 
@@ -26,6 +26,7 @@ if not pkl_filepaths:
 
 yvars = {
     'V_m': ['Vm'],
+    # 'Q_m': ['Qm'],
     'i_{Na}\ kin.': ['m', 'h'],
     'i_K\ kin.': ['n'],
     'i_M\ kin.': ['p'],

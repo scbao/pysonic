@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-23 11:44:03
+# @Last Modified time: 2018-04-28 18:18:27
 
 import inspect
 import logging
@@ -123,6 +123,22 @@ class BilayerSonophore:
         for ia in inst_attrs:
             s += '{} = {}\n'.format(ia[0], ia[1])
         return s
+
+    def reinit(self):
+
+        logger.debug('Re-initializing BLS object')
+
+        # Find Delta that cancels out Pm + Pec at Z = 0 (m)
+        if self.Qm0 == 0.0:
+            D_eq = self.Delta_
+        else:
+            (D_eq, Pnet_eq) = self.findDeltaEq(self.Qm0)
+            assert Pnet_eq < PNET_EQ_MAX, 'High Pnet at Z = 0 with ∆ = %.2f nm' % (D_eq * 1e9)
+        self.Delta = D_eq
+
+        # Compute initial volume and gas content
+        self.V0 = np.pi * self.Delta * self.a**2
+        self.ng0 = self.gasPa2mol(self.P0, self.V0)
 
 
     def curvrad(self, Z):
