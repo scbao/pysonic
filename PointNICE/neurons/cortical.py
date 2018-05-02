@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-17 15:38:03
+# @Last Modified time: 2018-05-02 15:43:56
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -433,6 +433,9 @@ class CorticalLTS(Cortical):
         # Instantiate parent class
         super().__init__()
 
+        #  Vectorize relevant methods
+        self.tauu = np.vectorize(self.tauu)
+
         # Add names of cell-specific Calcium channel probabilities
         self.states_names += ['s', 'u']
 
@@ -532,8 +535,8 @@ class CorticalLTS(Cortical):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, p, s, u = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currM(p, Vm)
-                + self.currCa(s, u, Vm) + self.currL(Vm))  # mA/m2
+        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currM(p, Vm) +
+                self.currCa(s, u, Vm) + self.currL(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -576,12 +579,10 @@ class CorticalLTS(Cortical):
 
         # Compute Calcium effective rate constants
         Ts = self.taus(Vm)
-        sinf = self.sinf(Vm)
-        as_avg = np.mean(sinf / Ts)
+        as_avg = np.mean(self.sinf(Vm) / Ts)
         bs_avg = np.mean(1 / Ts) - as_avg
-        Tu = np.array([self.tauu(v) for v in Vm])
-        uinf = self.uinf(Vm)
-        au_avg = np.mean(uinf / Tu)
+        Tu = self.tauu(Vm)
+        au_avg = np.mean(self.uinf(Vm) / Tu)
         bu_avg = np.mean(1 / Tu) - au_avg
         Ca_rates = np.array([as_avg, bs_avg, au_avg, bu_avg])
 
