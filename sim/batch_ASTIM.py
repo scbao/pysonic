@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 12:13:45
+# @Last Modified time: 2018-05-02 21:18:18
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -47,8 +47,8 @@ try:
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    yvars = {'Q_m': ['Qm']}
-    plotBatch(pkl_dir, pkl_filepaths, yvars)
+    # yvars = {'Q_m': ['Qm']}
+    # plotBatch(pkl_dir, pkl_filepaths, yvars)
 
 except InputError as err:
     logger.error(err)

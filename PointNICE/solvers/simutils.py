@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 17:55:48
+# @Last Modified time: 2018-05-02 22:08:51
 
 """ Utility functions used in simulations """
 
@@ -474,7 +474,6 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
         ileft = ipeaks[i]
         while ileft >= ivalleys[i] and y[ileft] > refheights[i]:
             ileft -= 1
-        # ileft = findLeftIntercept(y, ipeaks[i], ivalleys[i], refheights[i])
         if ileft < ivalleys[i]:  # intercept exactly on valley
             ibounds[i, 0] = ivalleys[i]
         else:  # interpolate intercept linearly between signal boundary points
@@ -486,10 +485,11 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
         iright = ipeaks[i]
         while iright <= ivalleys[i + 1] and y[iright] > refheights[i]:
             iright += 1
-        # iright = findRightIntercept(y, ipeaks[i], ivalleys[i + 1], refheights[i])
         if iright > ivalleys[i + 1]:  # intercept exactly on valley
             ibounds[i, 1] = ivalleys[i + 1]
         else:  # interpolate intercept linearly between signal boundary points
+            if iright == y.size - 1:  # special case: if end of signal is reached, decrement iright
+                iright -= 1
             a = (y[iright + 1] - y[iright]) / 1
             b = y[iright] - a * iright
             ibounds[i, 1] = (refheights[i] - b) / a
@@ -1218,7 +1218,7 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
     ASTIM_CW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
                     'A = %.2f kPa, t = %.2f ms')
     ASTIM_PW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
-                    'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DC = %.3f')
+                    'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DC = %.2f %')
 
     logger.info("Starting A-STIM simulation batch")
 
@@ -1249,7 +1249,7 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
                                 a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3)
                 else:
                     logger.info(ASTIM_PW_log, int_method, simcount, nsims, neuron.name, a * 1e9,
-                                Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF * 1e-3, DC)
+                                Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF, DC * 1e2)
 
                 # Run simulation
                 try:
