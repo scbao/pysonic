@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 22:08:51
+# @Last Modified time: 2018-05-02 22:22:14
 
 """ Utility functions used in simulations """
 
@@ -1218,7 +1218,7 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
     ASTIM_CW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
                     'A = %.2f kPa, t = %.2f ms')
     ASTIM_PW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
-                    'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DC = %.2f %')
+                    'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DC = %.2f%%')
 
     logger.info("Starting A-STIM simulation batch")
 
