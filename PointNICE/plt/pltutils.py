@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-14 19:38:37
+# @Last Modified time: 2018-05-02 10:41:25
 
 ''' Plotting utilities '''
 
@@ -228,8 +228,8 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
     # Initialize figure and axis
     fig, ax = plt.subplots(figsize=(11, 4))
     ax.set_zorder(0)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+    for item in ['top', 'right']:
+        ax.spines[item].set_visible(False)
     if 'min' in pltvar and 'max' in pltvar:  # optional min and max on y-axis
         ax.set_ylim(pltvar['min'], pltvar['max'])
     if pltvar['unit']:  # y-label with optional unit
@@ -577,6 +577,8 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
         for i in range(naxes):
 
             ax = axes[i]
+            for item in ['top', 'right']:
+                ax.spines[item].set_visible(False)
             ax_pltvars = [pltvars[j] for j in vars_dict[labels[i]]]
             nvars = len(ax_pltvars)
 

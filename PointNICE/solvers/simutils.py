@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-30 12:31:56
+# @Last Modified time: 2018-05-01 16:05:42
 
 """ Utility functions used in simulations """
 
@@ -1468,7 +1468,7 @@ def computeSpikeMetrics(filenames):
     for fname in filenames:
 
         # Load data from file
-        logger.info('loading data from file "{}"'.format(fname))
+        logger.debug('loading data from file "{}"'.format(fname))
         with open(fname, 'rb') as fh:
             frame = pickle.load(fh)
         df = frame['data']
@@ -1510,16 +1510,16 @@ def computeSpikeMetrics(filenames):
             FRs_prior = np.array([np.nan])
 
         # Log spiking metrics
-        logger.info('%u spikes detected (%u prior to offset)', ispikes.size, ispikes_prior.size)
-        logger.info('latency: %.2f ms', latency * 1e3)
-        logger.info('average spike width within stimulus: %.2f +/- %.2f ms',
-                    np.nanmean(widths_prior) * 1e3, np.nanstd(widths_prior) * 1e3)
-        logger.info('average spike amplitude within stimulus: %.2f +/- %.2f nC/cm2',
-                    np.nanmean(prominences_prior) * 1e5, np.nanstd(prominences_prior) * 1e5)
-        logger.info('average ISI within stimulus: %.2f +/- %.2f ms',
-                    np.nanmean(ISIs_prior) * 1e3, np.nanstd(ISIs_prior) * 1e3)
-        logger.info('average FR within stimulus: %.2f +/- %.2f Hz',
-                    np.nanmean(FRs_prior), np.nanstd(FRs_prior))
+        logger.debug('%u spikes detected (%u prior to offset)', ispikes.size, ispikes_prior.size)
+        logger.debug('latency: %.2f ms', latency * 1e3)
+        logger.debug('average spike width within stimulus: %.2f +/- %.2f ms',
+                     np.nanmean(widths_prior) * 1e3, np.nanstd(widths_prior) * 1e3)
+        logger.debug('average spike amplitude within stimulus: %.2f +/- %.2f nC/cm2',
+                     np.nanmean(prominences_prior) * 1e5, np.nanstd(prominences_prior) * 1e5)
+        logger.debug('average ISI within stimulus: %.2f +/- %.2f ms',
+                     np.nanmean(ISIs_prior) * 1e3, np.nanstd(ISIs_prior) * 1e3)
+        logger.debug('average FR within stimulus: %.2f +/- %.2f Hz',
+                     np.nanmean(FRs_prior), np.nanstd(FRs_prior))
 
         # Complete metrics dictionaries
         metrics['latencies (ms)'].append(latency * 1e3)

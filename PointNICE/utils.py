@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-27 14:48:19
+# @Last Modified time: 2018-05-01 19:58:06
 
 """ Definition of generic utility functions used in other modules """
 
@@ -315,3 +315,21 @@ def extractCompTimes(filenames):
             meta = frame['meta']
         tcomps[i] = meta['tcomp']
     return tcomps
+
+
+def computeMeshEdges(x, scale='lin'):
+    ''' Compute the appropriate edges of a mesh that quads a linear or logarihtmic distribution.
+
+        :param x: the input vector
+        :param scale: the type of distribution ('lin' for linear, 'log' for logarihtmic)
+        :return: the edges vector
+    '''
+
+    if scale is 'log':
+        x = np.log10(x)
+    dx = x[1] - x[0]
+    if scale is 'lin':
+        y = np.linspace(x[0] - dx / 2, x[-1] + dx / 2, x.size + 1)
+    elif scale is 'log':
+        y = np.logspace(x[0] - dx / 2, x[-1] + dx / 2, x.size + 1)
+    return y
