@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 10:41:25
+# @Last Modified time: 2018-05-02 14:16:38
 
 ''' Plotting utilities '''
 
@@ -622,7 +622,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
                     var = np.insert(var, 0, var[0])
 
                 # Plot variable
-                if 'constant' in pltvar:
+                if 'constant' in pltvar or pltvar['desc'] in ['net current']:
                     ax.plot(t * t_plt['factor'], var * pltvar['factor'], '--', c='black', lw=lw,
                             label='${}$'.format(pltvar['label']))
                 else:

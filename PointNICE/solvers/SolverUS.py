@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-23 00:38:46
+# @Last Modified time: 2018-05-02 15:17:14
 
 import os
 import warnings
@@ -156,7 +156,7 @@ class SolverUS(BilayerSonophore):
         Z_last = Z[-NPC_FULL:]  # m
 
         # Compute membrane potential vector
-        Vm = np.array([Qm / self.Capct(ZZ) * 1e3 for ZZ in Z_last])  # mV
+        Vm = Qm / self.Capct(Z_last) * 1e3  # mV
 
         # Compute average cycle value for membrane potential and rate constants
         Vm_eff = np.mean(Vm)  # mV

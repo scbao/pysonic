@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-29 16:04:14
+# @Last Modified time: 2018-05-02 15:21:04
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -84,7 +84,7 @@ pltvars = {
         'factor': 1e2,
         'min': 0.0,
         'max': 1.5,
-        'alias': 'np.array([bls.Capct(ZZ) for ZZ in df["Z"].values])'
+        'alias': 'bls.Capct(df["Z"].values)'
     },
 
     'Vm': {

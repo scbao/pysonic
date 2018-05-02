@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-01 16:05:42
+# @Last Modified time: 2018-05-02 15:39:28
 
 """ Utility functions used in simulations """
 
@@ -1059,7 +1059,7 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
 
     # Store dataframe and metadata
     df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
-                       'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])})
+                       'Vm': Qm / solver.Capct(Z) * 1e3})
     for j in range(len(neuron.states_names)):
         df[neuron.states_names[j]] = channels[j]
     meta = {'neuron': neuron.name, 'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive,
@@ -1383,7 +1383,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
 
                     # Store dataframe and metadata
                     df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
-                                       'Vm': Qm * 1e3 / np.array([solver.Capct(ZZ) for ZZ in Z])})
+                                       'Vm': Qm / solver.Capct(Z) * 1e3})
                     for j in range(len(neuron.states_names)):
                         df[neuron.states_names[j]] = channels[j]
                     meta = {'neuron': neuron.name, 'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive,
@@ -1560,14 +1560,14 @@ def getCycleProfiles(a, f, A, Cm0, Qm0, Qm):
     t -= t[0]
 
     logger.info('Computing pressure cyclic profiles')
-    R = np.array([bls.curvrad(z) for z in Z])
+    R = bls.curvrad(Z)
     U = np.diff(Z) / dt
     U = np.hstack((U, U[-1]))
     data = {
         't': t,
         'Z': Z,
-        'Cm': np.array([bls.Capct(z) for z in Z]),
-        'P_M': np.array([bls.PMavg(z, bls.curvrad(z), bls.surface(z)) for z in Z]),
+        'Cm': bls.Capct(Z),
+        'P_M': bls.PMavg(Z, R, bls.surface(Z)),
         'P_Q': bls.Pelec(Z, Qm),
         'P_{VE}': bls.PEtot(Z, R) + bls.PVleaflet(U, R),
         'P_V': bls.PVfluid(U, R),

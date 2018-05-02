@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-28 18:18:27
+# @Last Modified time: 2018-05-02 15:19:51
 
 import inspect
 import logging
@@ -59,6 +59,14 @@ class BilayerSonophore:
             :param Qm0: membrane resting charge density (C/m2)
             :param embedding_depth: depth of the embedding tissue around the membrane (m)
         """
+
+        # Vectorizing class methods
+        self.curvrad = np.vectorize(self.curvrad)
+        self.Capct = np.vectorize(self.Capct)
+        self.PMavg = np.vectorize(self.PMavg)
+        self.PMavgpred = np.vectorize(self.PMavgpred)
+        self.PtotQS = np.vectorize(self.PtotQS)
+        self.balancedefQS = np.vectorize(self.balancedefQS)
 
         logger.debug('%.1f nm BLS initialization at %.2f kHz, %.2f nC/cm2',
                      diameter * 1e9, Fdrive * 1e-3, Qm0 * 1e5)
@@ -295,7 +303,7 @@ class BilayerSonophore:
         # Create vectors for geometric variables
         Zmax = 2 * self.a
         Z = np.arange(Zmin, Zmax, 1e-11)
-        Pmavg = np.array([self.PMavg(ZZ, self.curvrad(ZZ), self.surface(ZZ)) for ZZ in Z])
+        Pmavg = self.PMavg(Z, self.curvrad(Z), self.surface(Z))
 
         # Compute optimal nonlinear fit of custom LJ function with initial guess
         x0_guess = self.delta0
