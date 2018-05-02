@@ -4,8 +4,9 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 15:17:14
+# @Last Modified time: 2018-05-02 17:56:37
 
+import time
 import os
 import warnings
 import pickle
@@ -156,7 +157,7 @@ class SolverUS(BilayerSonophore):
         Z_last = Z[-NPC_FULL:]  # m
 
         # Compute membrane potential vector
-        Vm = Qm / self.Capct(Z_last) * 1e3  # mV
+        Vm = Qm / self.v_Capct(Z_last) * 1e3  # mV
 
         # Compute average cycle value for membrane potential and rate constants
         Vm_eff = np.mean(Vm)  # mV
@@ -379,8 +380,12 @@ class SolverUS(BilayerSonophore):
             y = y[:, ::ds_factor]
             states = states[::ds_factor]
 
-        # Return output variables
-        return (t, y[1:, :], states)
+        # Compute membrane potential vector (in mV)
+        Vm = y[3, :] / self.v_Capct(y[1, :]) * 1e3  # mV
+
+        # Return output variables with Vm
+        # return (t, y[1:, :], states)
+        return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), states)
 
 
     def __runEffective(self, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
@@ -593,8 +598,13 @@ class SolverUS(BilayerSonophore):
             Zeff = np.concatenate([Zeff, Zeff_off[1:]])
             ngeff = np.concatenate([ngeff, ngeff_off[1:]])
 
-        # Add Zeff and ngeff to solution matrix
-        y = np.vstack([Zeff, ngeff, y])
+        # Compute membrane potential vector (in mV)
+        Vm = np.zeros(states.size)
+        Vm[states == 0] = y[0, states == 0] / self.v_Capct(Zeff[states == 0]) * 1e3  # mV
+        Vm[states == 1] = np.interp(y[0, states == 1], coeffs1d['Q'], coeffs1d['V'])  # mV
+
+        # Add Zeff, ngeff and Vm to solution matrix
+        y = np.vstack([Zeff, ngeff, y[0, :], Vm, y[1:, :]])
 
         # return output variables
         return (t, y, states)
@@ -762,8 +772,12 @@ class SolverUS(BilayerSonophore):
         if logger.getEffectiveLevel() == logging.DEBUG:
             pbar.finish()
 
-        # Return output
-        return (t, y[1:, :], states)
+        # Compute membrane potential vector (in mV)
+        Vm = y[3, :] / self.v_Capct(y[1, :]) * 1e3  # mV
+
+        # Return output variables with Vm
+        # return (t, y[1:, :], states)
+        return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), states)
 
 
     def run(self, neuron, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0,

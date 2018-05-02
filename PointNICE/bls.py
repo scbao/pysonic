@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 15:19:51
+# @Last Modified time: 2018-05-02 17:54:04
 
 import inspect
 import logging
@@ -59,14 +59,6 @@ class BilayerSonophore:
             :param Qm0: membrane resting charge density (C/m2)
             :param embedding_depth: depth of the embedding tissue around the membrane (m)
         """
-
-        # Vectorizing class methods
-        self.curvrad = np.vectorize(self.curvrad)
-        self.Capct = np.vectorize(self.Capct)
-        self.PMavg = np.vectorize(self.PMavg)
-        self.PMavgpred = np.vectorize(self.PMavgpred)
-        self.PtotQS = np.vectorize(self.PtotQS)
-        self.balancedefQS = np.vectorize(self.balancedefQS)
 
         logger.debug('%.1f nm BLS initialization at %.2f kHz, %.2f nC/cm2',
                      diameter * 1e9, Fdrive * 1e-3, Qm0 * 1e5)
@@ -161,6 +153,11 @@ class BilayerSonophore:
             return (self.a**2 + Z**2) / (2 * Z)
 
 
+    def v_curvrad(self, Z):
+        ''' Vectorized curvrad function '''
+        return np.array([self.curvrad(z) for z in Z])
+
+
     def surface(self, Z):
         """ Return the surface area of the stretched leaflet (spherical cap).
 
@@ -205,6 +202,11 @@ class BilayerSonophore:
             return ((self.Cm0 * self.Delta / self.a**2) *
                     (Z + (self.a**2 - Z**2 - Z * self.Delta) / (2 * Z) *
                      np.log((2 * Z + self.Delta) / self.Delta)))
+
+
+    def v_Capct(self, Z):
+        ''' Vectorized Capct function '''
+        return np.array([self.Capct(z) for z in Z])
 
 
     def derCapct(self, Z, U):
@@ -279,6 +281,11 @@ class BilayerSonophore:
         # Integrate from 0 to a
         fTotal, _ = integrate.quad(fMring, 0, self.a, args=(Z, R))
         return fTotal / S
+
+
+    def v_PMavg(self, Z, R, S):
+        ''' Vectorized PMavg function '''
+        return np.array([self.PMavg(Z[i], R[i], S[i]) for i in range(Z.size)])
 
 
     def LJfitPMavg(self):

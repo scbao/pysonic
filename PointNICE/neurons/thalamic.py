@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 15:46:12
+# @Last Modified time: 2018-05-02 18:05:33
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -276,7 +276,7 @@ class Thalamic(BaseMech):
         Ts = self.taus(Vm)
         as_avg = np.mean(self.sinf(Vm) / Ts)
         bs_avg = np.mean(1 / Ts) - as_avg
-        Tu = self.tauu(Vm)
+        Tu = np.array([self.tauu(v) for v in Vm])
         au_avg = np.mean(self.uinf(Vm) / Tu)
         bu_avg = np.mean(1 / Tu) - au_avg
 
@@ -448,9 +448,6 @@ class ThalamoCortical(Thalamic):
 
         # Instantiate parent class
         super().__init__()
-
-        #  Vectorize relevant methods
-        self.tauu = np.vectorize(self.tauu)
 
         # Compute current to concentration conversion constant
         self.iT_2_CCa = 1e-6 / (self.deff * self.F_Ca)

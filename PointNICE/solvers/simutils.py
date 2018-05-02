@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 15:39:28
+# @Last Modified time: 2018-05-02 17:55:48
 
 """ Utility functions used in simulations """
 
@@ -1052,14 +1052,14 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
     # Run simulation
     tstart = time.time()
     (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, int_method)
-    Z, ng, Qm, *channels = y
+    Z, ng, Qm, Vm, *channels = y
     U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
     tcomp = time.time() - tstart
     logger.debug('completed in %.2f seconds', tcomp)
 
     # Store dataframe and metadata
     df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
-                       'Vm': Qm / solver.Capct(Z) * 1e3})
+                       'Vm': Vm})
     for j in range(len(neuron.states_names)):
         df[neuron.states_names[j]] = channels[j]
     meta = {'neuron': neuron.name, 'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive,
@@ -1358,7 +1358,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
                                                                    Adrive, tstim, toffset,
                                                                    PRF, DC)
 
-                    Z, ng, Qm, *channels = y
+                    Z, ng, Qm, Vm, *channels = y
                     U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
                     tcomp = time.time() - tstart
                     logger.info('completed in %.2f s, threshold = %.2f %s', tcomp,
@@ -1383,7 +1383,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
 
                     # Store dataframe and metadata
                     df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
-                                       'Vm': Qm / solver.Capct(Z) * 1e3})
+                                       'Vm': Vm})
                     for j in range(len(neuron.states_names)):
                         df[neuron.states_names[j]] = channels[j]
                     meta = {'neuron': neuron.name, 'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive,
@@ -1566,8 +1566,8 @@ def getCycleProfiles(a, f, A, Cm0, Qm0, Qm):
     data = {
         't': t,
         'Z': Z,
-        'Cm': bls.Capct(Z),
-        'P_M': bls.PMavg(Z, R, bls.surface(Z)),
+        'Cm': bls.v_Capct(Z),
+        'P_M': bls.v_PMavg(Z, R, bls.surface(Z)),
         'P_Q': bls.Pelec(Z, Qm),
         'P_{VE}': bls.PEtot(Z, R) + bls.PVleaflet(U, R),
         'P_V': bls.PVfluid(U, R),
@@ -1600,7 +1600,7 @@ def runSweepSA(bls, f, A, Qm, params, rel_sweep):
     # Run default simulation and compute cycle-averaged membrane potential
     _, y, _ = bls.run(f, A, Qm, Pm_comp_method=PmCompMethod.direct)
     Z = y[0, -NPC_FULL:]
-    Cm = np.array([bls.Capct(z) for z in Z])  # F/m2
+    Cm = bls.v_Capct(Z)  # F/m2
     Vmavg_default = np.mean(Qm / Cm) * 1e3  # mV
 
     # Create data dictionary for computed output changes
@@ -1623,7 +1623,7 @@ def runSweepSA(bls, f, A, Qm, params, rel_sweep):
             # Run simulation and compute cycle-averaged membrane potential
             _, y, _ = bls.run(f, A, Qm, Pm_comp_method=PmCompMethod.direct)
             Z = y[0, -NPC_FULL:]
-            Cm = np.array([bls.Capct(z) for z in Z])  # F/m2
+            Cm = bls.v_Capct(Z)  # F/m2
             Vmavg[i] = np.mean(Qm / Cm) * 1e3  # mV
 
             logger.info('simulation %u/%u: %s = %.2e (%+.1f %%) --> |Vm| = %.1f mV (%+.3f %%)',

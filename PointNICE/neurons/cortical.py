@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 15:43:56
+# @Last Modified time: 2018-05-02 18:06:00
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -433,9 +433,6 @@ class CorticalLTS(Cortical):
         # Instantiate parent class
         super().__init__()
 
-        #  Vectorize relevant methods
-        self.tauu = np.vectorize(self.tauu)
-
         # Add names of cell-specific Calcium channel probabilities
         self.states_names += ['s', 'u']
 
@@ -581,7 +578,7 @@ class CorticalLTS(Cortical):
         Ts = self.taus(Vm)
         as_avg = np.mean(self.sinf(Vm) / Ts)
         bs_avg = np.mean(1 / Ts) - as_avg
-        Tu = self.tauu(Vm)
+        Tu = np.array([self.tauu(v) for v in Vm])
         au_avg = np.mean(self.uinf(Vm) / Tu)
         bu_avg = np.mean(1 / Tu) - au_avg
         Ca_rates = np.array([as_avg, bs_avg, au_avg, bu_avg])
