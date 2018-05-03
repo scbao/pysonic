@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 14:16:38
+# @Last Modified time: 2018-05-03 17:08:41
 
 ''' Plotting utilities '''
 
@@ -146,6 +146,12 @@ def getPatchesLoc(t, states):
     dstates = np.diff(states)
     ipatch_on = np.insert(np.where(dstates > 0.0)[0] + 1, 0, 0)
     ipatch_off = np.where(dstates < 0.0)[0]
+    if ipatch_off.size < ipatch_on.size:
+        ioff = t.size - 1
+        if ipatch_off.size == 0:
+            ipatch_off = np.array([ioff])
+        else:
+            ipatch_off = np.insert(ipatch_off, ipatch_off.size - 1, ioff)
 
     # Get time instants for pulses ON and OFF
     npatches = ipatch_on.size
@@ -382,9 +388,8 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
             la = []
             color = '#8A8A8A' if greypatch else handle[0].get_color()
             for i in range(npatches):
-                la.append(ax.add_patch(Rectangle((tpatch_on[i] * t_plt['factor'], ybottom),
-                                                 (tpatch_off[i] - tpatch_on[i]) * t_plt['factor'],
-                                                 ytop - ybottom, color=color, alpha=0.1)))
+                la.append(ax.axvspan(tpatch_on[i] * t_plt['factor'], tpatch_off[i] * t_plt['factor'],
+                                     edgecolor='none', facecolor=color, alpha=0.2))
             aliases[handle[0]] = la
 
             if inset is not None:
@@ -634,10 +639,8 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
             if show_patches == 1:
                 (ybottom, ytop) = ax.get_ylim()
                 for j in range(npatches):
-                    ax.add_patch(Rectangle((tpatch_on[j] * t_plt['factor'], ybottom),
-                                           (tpatch_off[j] - tpatch_on[j]) * t_plt['factor'],
-                                           ytop - ybottom, color='#8A8A8A', alpha=0.1))
-
+                    ax.axvspan(tpatch_on[j] * t_plt['factor'], tpatch_off[j] * t_plt['factor'],
+                               edgecolor='none', facecolor='#8A8A8A', alpha=0.2)
             # Legend
             if nvars > 1:
                 ax.legend(fontsize=fs, loc=7, ncol=nvars // 4 + 1)
