@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-03-15 18:33:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-16 12:02:26
+# @Last Modified time: 2018-05-03 12:13:26
 
 
 """ Script to run MECH simulations from command line. """
@@ -12,7 +12,7 @@ import os
 import logging
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, InputError
+from PointNICE.utils import logger, InputError, si_format
 from PointNICE.bls import BilayerSonophore
 from PointNICE.solvers import checkBatchLog, runMech
 from PointNICE.plt import plotBatch
@@ -77,8 +77,10 @@ def main():
 
     try:
         log_filepath, _ = checkBatchLog(output_dir, 'MECH')
-        logger.info('Running MECH simulation: a = %.1f nm, f = %.2f kHz, A = %.2f kPa',
-                    a * 1e9, Fdrive * 1e-3, Adrive * 1e-3)
+        logger.info('Running MECH simulation: a = %sm, f = %sHz, A = %sPa, Cm0 = %sF/cm2, '
+                    'Qm0 = %sC/cm2, Qm0 = %sC/cm2', si_format(a, 1), si_format(Fdrive, 1),
+                    si_format(Adrive, 2), si_format(Cm0 * 1e-4), si_format(Qm0 * 1e-4),
+                    si_format(Qm * 1e-4))
         bls = BilayerSonophore(a, Fdrive, Cm0, Qm0, d)
         outfile = runMech(output_dir, log_filepath, bls, Fdrive, Adrive, Qm)
         logger.info('Finished')

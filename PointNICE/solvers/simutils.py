@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 22:22:14
+# @Last Modified time: 2018-05-03 12:40:31
 
 """ Utility functions used in simulations """
 
@@ -22,14 +22,14 @@ from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
 from .SolverElec import SolverElec
 from ..constants import *
-from ..utils import getNeuronsDict, InputError, PmCompMethod
+from ..utils import getNeuronsDict, InputError, PmCompMethod, si_format
 
 
 # Get package logger
 logger = logging.getLogger('PointNICE')
 
 # Naming nomenclature for output files
-MECH_code = 'MECH_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_{:.1f}nCcm2'
+MECH_code = 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'
 ESTIM_CW_code = 'ESTIM_{}_CW_{:.1f}mA_per_m2_{:.0f}ms'
 ESTIM_PW_code = 'ESTIM_{}_PW_{:.1f}mA_per_m2_{:.0f}ms_PRF{:.2f}Hz_DC{:.2f}%'
 ASTIM_CW_code = 'ASTIM_{}_CW_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms_{}'
@@ -526,7 +526,7 @@ def runMech(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm):
 
     U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
     tcomp = time.time() - tstart
-    logger.info('completed in %.2f seconds', tcomp)
+    logger.debug('completed in %ss', si_format(tcomp, 1))
 
     # Store dataframe and metadata
     df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng})
@@ -597,9 +597,7 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
             raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
 
     # Define logging format
-    MECH_log = ('Mechanical simulation %u/%u (a = %.1f nm, d = %.1f um, f = %.2f kHz, '
-                'A = %.2f kPa, Q = %.1f nC/cm2)')
-
+    MECH_log = ('Mechanical simulation %u/%u (a = %sm, d = %sm, f = %sHz, A = %sPa, Q = %sC/cm2)')
 
     logger.info("Starting mechanical simulation batch")
 
@@ -627,8 +625,8 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
             Adrive, Qm = sim_queue[i, :]
 
             # Log
-            logger.info(MECH_log, simcount, nsims, a * 1e9, d * 1e6, Fdrive * 1e-3,
-                        Adrive * 1e-3, Qm * 1e5)
+            logger.info(MECH_log, simcount, nsims, si_format(a, 1), si_format(d, 1),
+                        si_format(Fdrive, 1), si_format(Adrive, 2), si_format(Qm * 1e-4))
 
             # Run simulation
             try:
@@ -672,7 +670,7 @@ def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF
     (t, y, states) = solver.run(neuron, Astim, tstim, toffset, PRF, DC)
     Vm, *channels = y
     tcomp = time.time() - tstart
-    logger.debug('completed in %.2f seconds', tcomp)
+    logger.debug('completed in %ss', si_format(tcomp, 1))
 
     # Store dataframe and metadata
     df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm})
@@ -820,9 +818,8 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
             raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
 
     # Define logging format
-    ESTIM_CW_log = 'E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms'
-    ESTIM_PW_log = ('E-STIM simulation %u/%u: %s neuron, A = %.1f mA/m2, t = %.1f ms, '
-                    'PRF = %.2f kHz, DC = %.2f')
+    ESTIM_CW_log = 'E-STIM simulation %u/%u: %s neuron, A = %sA/m2, t = %ss'
+    ESTIM_PW_log = 'E-STIM simulation %u/%u: %s neuron, A = %sA/m2, t = %ss, PRF = %sHz, DC = %.2f%%'
 
     logger.info("Starting E-STIM simulation batch")
 
@@ -844,10 +841,11 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
             simcount += 1
             Astim, tstim, toffset, PRF, DC = sim_queue[i, :]
             if DC == 1.0:
-                logger.info(ESTIM_CW_log, simcount, nsims, neuron.name, Astim, tstim * 1e3)
+                logger.info(ESTIM_CW_log, simcount, nsims, neuron.name, si_format(Astim * 1e-3, 1),
+                            si_format(tstim, 1))
             else:
-                logger.info(ESTIM_PW_log, simcount, nsims, neuron.name, Astim, tstim * 1e3,
-                            PRF * 1e-3, DC)
+                logger.info(ESTIM_PW_log, simcount, nsims, neuron.name, si_format(Astim * 1e-3, 1),
+                            si_format(tstim, 1), si_format(PRF, 2), DC * 1e2)
             try:
                 output_filepath = runEStim(batch_dir, log_filepath, solver, neuron,
                                            Astim, tstim, toffset, PRF, DC)
@@ -948,7 +946,7 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
 
                 Vm, *channels = y
                 tcomp = time.time() - tstart
-                logger.info('completed in %.2f s, threshold = %.2f %s', tcomp,
+                logger.info('completed in %ss, threshold = %.2f %s', si_format(tcomp, 2),
                             output_thr * t_var['factor'], t_var['unit'])
 
                 # Determine output variable
@@ -1055,7 +1053,7 @@ def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, tof
     Z, ng, Qm, Vm, *channels = y
     U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
     tcomp = time.time() - tstart
-    logger.debug('completed in %.2f seconds', tcomp)
+    logger.debug('completed in %ss', si_format(tcomp, 2))
 
     # Store dataframe and metadata
     df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
@@ -1215,10 +1213,9 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
             raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
 
     # Define logging format
-    ASTIM_CW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
-                    'A = %.2f kPa, t = %.2f ms')
-    ASTIM_PW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %.1f nm, f = %.2f kHz, '
-                    'A = %.2f kPa, t = %.2f ms, PRF = %.2f kHz, DC = %.2f%%')
+    ASTIM_CW_log = 'A-STIM %s simulation %u/%u: %s neuron, a = %sm, f = %sHz, A = %sPa, t = %ss'
+    ASTIM_PW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %sm, f = %sHz, '
+                    'A = %sPa, t = %ss, PRF = %sHz, DC = %.2f%%')
 
     logger.info("Starting A-STIM simulation batch")
 
@@ -1246,10 +1243,12 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
                 # Log and define naming
                 if DC == 1.0:
                     logger.info(ASTIM_CW_log, int_method, simcount, nsims, neuron.name,
-                                a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3)
+                                si_format(a, 1), si_format(Fdrive, 1), si_format(Adrive, 2),
+                                si_format(tstim, 1))
                 else:
-                    logger.info(ASTIM_PW_log, int_method, simcount, nsims, neuron.name, a * 1e9,
-                                Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3, PRF, DC * 1e2)
+                    logger.info(ASTIM_PW_log, int_method, simcount, nsims, neuron.name,
+                                si_format(a, 1), si_format(Fdrive, 1), si_format(Adrive, 2),
+                                si_format(tstim, 1), si_format(PRF, 2), DC * 1e2)
 
                 # Run simulation
                 try:
@@ -1281,7 +1280,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
     '''
 
     # Define logging format
-    ASTIM_titration_log = '%s neuron - A-STIM titration %u/%u (a = %.1f nm, %s)'
+    ASTIM_titration_log = '%s neuron - A-STIM titration %u/%u (a = %sm, %s)'
 
     logger.info("Starting A-STIM titration batch")
 
@@ -1348,7 +1347,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_d
                 daytime_str = time.strftime("%H:%M:%S")
 
                 # Log
-                logger.info(ASTIM_titration_log, neuron.name, simcount, nsims, a * 1e9,
+                logger.info(ASTIM_titration_log, neuron.name, simcount, nsims, si_format(a, 1),
                             log_str)
 
                 # Run titration
@@ -1551,8 +1550,8 @@ def getCycleProfiles(a, f, A, Cm0, Qm0, Qm):
     bls = BilayerSonophore(a, f, Cm0, Qm0)
 
     # Run default simulation and compute relevant profiles
-    logger.info('Running mechanical simulation (a = %.0f nm, f = %.0f kHz, A = %.0f kPa)',
-                a * 1e9, f * 1e-3, A * 1e-3)
+    logger.info('Running mechanical simulation (a = %sm, f = %sHz, A = %sPa)',
+                si_format(a, 1), si_format(f, 1), si_format(A, 1))
     t, y, _ = bls.run(f, A, Qm, Pm_comp_method=PmCompMethod.direct)
     dt = (t[-1] - t[0]) / (t.size - 1)
     Z, ng = y[:, -NPC_FULL:]

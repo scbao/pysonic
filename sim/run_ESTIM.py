@@ -3,8 +3,8 @@
 # @Author: Theo Lemaire
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
-# @Last Modified by:   Theo
-# @Last Modified time: 2018-04-16 20:19:05
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2018-05-03 11:54:02
 
 """ Script to run ESTIM simulations from command line. """
 
@@ -13,7 +13,7 @@ import os
 import logging
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, getNeuronsDict, InputError
+from PointNICE.utils import logger, getNeuronsDict, InputError, si_format
 from PointNICE.solvers import checkBatchLog, SolverElec, runEStim
 from PointNICE.plt import plotBatch
 
@@ -71,7 +71,7 @@ def main():
     else:
         logger.setLevel(logging.INFO)
 
-    PW_str = ', PRF = {:.2f} Hz, DC = {:.2f}'.format(PRF, DC * 1e2)
+    PW_str = ', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2), DC * 1e2)
 
     try:
         if neuron_str not in getNeuronsDict():
@@ -79,8 +79,10 @@ def main():
         log_filepath, _ = checkBatchLog(output_dir, 'E-STIM')
         neuron = getNeuronsDict()[neuron_str]()
         solver = SolverElec()
-        logger.info('Running E-STIM simulation on %s neuron: A = %.2f mA/m2, t = %.2f ms%s',
-                    neuron_str, Astim, tstim * 1e3, PW_str if DC < 1.0 else "")
+
+        logger.info('Running E-STIM simulation on %s neuron: A = %sA/m2, t = %ss%s', neuron_str,
+                    si_format(Astim * 1e-3, 2), si_format(tstim, 1), PW_str if DC < 1.0 else "")
+
         outfile = runEStim(output_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF, DC)
         logger.info('Finished')
         if args.plot:

@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-01 19:58:06
+# @Last Modified time: 2018-05-03 12:10:42
 
 """ Definition of generic utility functions used in other modules """
 
@@ -333,3 +333,39 @@ def computeMeshEdges(x, scale='lin'):
     elif scale is 'log':
         y = np.logspace(x[0] - dx / 2, x[-1] + dx / 2, x.size + 1)
     return y
+
+
+si_prefixes = {
+    'y': 1e-24,  # yocto
+    'z': 1e-21,  # zepto
+    'a': 1e-18,  # atto
+    'f': 1e-15,  # femto
+    'p': 1e-12,  # pico
+    'n': 1e-9,   # nano
+    'u': 1e-6,   # micro
+    'm': 1e-3,   # mili
+    '': 1e0,    # None
+    'k': 1e3,    # kilo
+    'M': 1e6,    # mega
+    'G': 1e9,    # giga
+    'T': 1e12,   # tera
+    'P': 1e15,   # peta
+    'E': 1e18,   # exa
+    'Z': 1e21,   # zetta
+    'Y': 1e24,   # yotta
+}
+
+
+def si_format(x, precision=0):
+    ''' Format a float according to the SI unit system, with the appropriate prefix letter. '''
+    if x == 0:
+        factor = 1e0
+        prefix = ''
+    else:
+        vals = list(si_prefixes.values())
+        ix = np.searchsorted(vals, np.abs(x)) - 1
+        if np.abs(x) == vals[ix + 1]:
+            ix += 1
+        factor = vals[ix]
+        prefix = list(si_prefixes.keys())[ix]
+    return '{{:.{}f}}{}'.format(precision, prefix).format(x / factor)

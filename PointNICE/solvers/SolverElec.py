@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-17 11:42:53
+# @Last Modified time: 2018-05-03 12:27:21
 
 
 import warnings
@@ -78,7 +78,7 @@ class SolverElec:
             if PRF is None:
                 raise InputError('Missing PRF value (must be provided when DC < 1)')
             if PRF < 1 / tstim:
-                raise InputError('Invalid PRF: {} Hz (PR interval exceeds stimulus duration'
+                raise InputError('Invalid PRF: {} Hz (PR interval exceeds stimulus duration)'
                                  .format(PRF))
 
         # Raise warnings as error

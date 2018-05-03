@@ -3,8 +3,8 @@
 # @Author: Theo Lemaire
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
-# @Last Modified by:   Theo
-# @Last Modified time: 2018-04-16 20:18:58
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2018-05-03 11:59:40
 
 """ Script to run ASTIM simulations from command line. """
 
@@ -13,7 +13,7 @@ import os
 import logging
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, getNeuronsDict, InputError
+from PointNICE.utils import logger, getNeuronsDict, InputError, si_format
 from PointNICE.solvers import checkBatchLog, SolverUS, runAStim
 from PointNICE.plt import plotBatch
 
@@ -82,16 +82,19 @@ def main():
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
-    PW_str = ', PRF = {:.2f} Hz, DC = {:.2f}'.format(PRF, DC * 1e2)
+
+    PW_str = ', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2), DC * 1e2)
 
     try:
         if neuron_str not in getNeuronsDict():
             raise InputError('Unknown neuron type: "{}"'.format(neuron_str))
         log_filepath, _ = checkBatchLog(output_dir, 'A-STIM')
         neuron = getNeuronsDict()[neuron_str]()
-        logger.info('Running A-STIM simulation on %s neuron: a = %.1f nm, f = %.2f kHz, '
-                    'A = %.2f kPa, t = %.2f ms%s (%s method)', neuron_str, a * 1e9, Fdrive * 1e-3,
-                    Adrive * 1e-3, tstim * 1e3, PW_str if DC < 1.0 else "", int_method)
+
+        logger.info('Running A-STIM simulation on %s neuron: a = %sm, f = %sHz, A = %sPa, t = %ss'
+                    '%s (%s method)', neuron_str, si_format(a, 1), si_format(Fdrive, 1),
+                    si_format(Adrive, 2), si_format(tstim, 1), PW_str if DC < 1.0 else "", int_method)
+
         solver = SolverUS(a, neuron, Fdrive)
         outfile = runAStim(output_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim,
                            toffset, PRF, DC, int_method)

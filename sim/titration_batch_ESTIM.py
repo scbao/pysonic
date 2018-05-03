@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-25 14:50:39
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-18 18:16:45
+# @Last Modified time: 2018-05-03 12:22:29
 
 """ Run batch electrical titrations of specific "point-neuron" models. """
 
