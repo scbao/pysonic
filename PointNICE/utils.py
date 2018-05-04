@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-03 12:10:42
+# @Last Modified time: 2018-05-04 10:49:40
 
 """ Definition of generic utility functions used in other modules """
 
@@ -358,14 +358,17 @@ si_prefixes = {
 
 def si_format(x, precision=0):
     ''' Format a float according to the SI unit system, with the appropriate prefix letter. '''
-    if x == 0:
-        factor = 1e0
-        prefix = ''
-    else:
-        vals = list(si_prefixes.values())
-        ix = np.searchsorted(vals, np.abs(x)) - 1
-        if np.abs(x) == vals[ix + 1]:
-            ix += 1
-        factor = vals[ix]
-        prefix = list(si_prefixes.keys())[ix]
-    return '{{:.{}f}}{}'.format(precision, prefix).format(x / factor)
+    if isinstance(x, float) or isinstance(x, int):
+        if x == 0:
+            factor = 1e0
+            prefix = ''
+        else:
+            vals = list(si_prefixes.values())
+            ix = np.searchsorted(vals, np.abs(x)) - 1
+            if np.abs(x) == vals[ix + 1]:
+                ix += 1
+            factor = vals[ix]
+            prefix = list(si_prefixes.keys())[ix]
+        return '{{:.{}f}}{}'.format(precision, prefix).format(x / factor)
+    elif isinstance(x, list) or isinstance(x, tuple):
+        return [si_format(item, precision) for item in x]
