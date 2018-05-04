@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-04 10:49:40
+# @Last Modified time: 2018-05-04 16:12:45
 
 """ Definition of generic utility functions used in other modules """
 
@@ -372,3 +372,18 @@ def si_format(x, precision=0):
         return '{{:.{}f}}{}'.format(precision, prefix).format(x / factor)
     elif isinstance(x, list) or isinstance(x, tuple):
         return [si_format(item, precision) for item in x]
+
+
+def getCycleAverage(t, y, T):
+    ''' Compute the cycle-averaged profile of a signal given a specific periodicity.
+
+        :param t: time vector (s)
+        :param y: signal vector
+        :param T: period (s)
+        :return: cycle-averaged signal vector
+    '''
+
+    nsamples = y.size
+    ncycles = int((t[-1] - t[0]) // T)
+    npercycle = int(nsamples // ncycles)
+    return np.mean(np.reshape(y[:ncycles * npercycle], (ncycles, npercycle)), axis=1)

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-03 12:40:31
+# @Last Modified time: 2018-05-04 16:13:00
 
 """ Utility functions used in simulations """
 
@@ -1640,3 +1640,65 @@ def runSweepSA(bls, f, A, Qm, params, rel_sweep):
 
     # return pandas dataframe
     return pd.DataFrame(data, columns=data.keys())
+
+
+def getActivationMap(root, neuron, a, f, tstim, toffset, PRF, amps, DCs):
+    ''' Compute the activation map of a neuron at a given frequency and PRF, by computing
+        the spiking metrics of simulation results over a 2D space (amplitude x duty cycle).
+
+        :param root: directory containing the input data files
+        :param neuron: neuron name
+        :param a: sonophore diameter
+        :param f: acoustic drive frequency (Hz)
+        :param tstim: duration of US stimulation (s)
+        :param toffset: duration of the offset (s)
+        :param PRF: pulse repetition frequency (Hz)
+        :param amps: vector of acoustic amplitudes (Pa)
+        :param DCs: vector of duty cycles (-)
+        :return the activation matrix
+    '''
+
+    # Initialize activation map
+    actmap = np.empty((amps.size, DCs.size))
+
+    # Loop through amplitudes and duty cycles
+    nfiles = DCs.size * amps.size
+    for i, A in enumerate(amps):
+        for j, DC in enumerate(DCs):
+
+            # Define filename
+            PW_str = '_PRF{:.2f}Hz_DC{:.2f}%'.format(PRF, DC * 1e2) if DC < 1 else ''
+            fname = ('ASTIM_{}_{}W_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms{}_effective.pkl'
+                     .format(neuron, 'P' if DC < 1 else 'C', a * 1e9, f * 1e-3, A * 1e-3, tstim * 1e3,
+                             PW_str))
+
+            # Extract charge charge profile from data file
+            fpath = os.path.join(root, fname)
+            if os.path.isfile(fpath):
+                logger.debug('Loading file {}/{}: "{}"'.format(i * amps.size + j + 1, nfiles, fname))
+                with open(fpath, 'rb') as fh:
+                    frame = pickle.load(fh)
+                df = frame['data']
+                meta = frame['meta']
+                tstim = meta['tstim']
+                t = df['t'].values
+                Qm = df['Qm'].values
+                dt = t[1] - t[0]
+
+                # Detect spikes on charge profile during stimulus
+                mpd = int(np.ceil(SPIKE_MIN_DT / dt))
+                ispikes, *_ = findPeaks(Qm[t <= tstim], SPIKE_MIN_QAMP, mpd, SPIKE_MIN_QPROM)
+
+                # Compute firing metrics
+                if ispikes.size == 0:  # if no spike, assign -1
+                    actmap[i, j] = -1
+                elif ispikes.size == 1:  # if only 1 spike, assign 0
+                    actmap[i, j] = 0
+                else:  # if more than 1 spike, assign firing rate
+                    FRs = 1 / np.diff(t[ispikes])
+                    actmap[i, j] = np.mean(FRs)
+            else:
+                logger.error('"{}" file not found'.format(fname))
+                actmap[i, j] = np.nan
+
+    return actmap
