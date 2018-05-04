@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-03 17:08:41
+# @Last Modified time: 2018-05-04 17:36:22
 
 ''' Plotting utilities '''
 
@@ -25,7 +25,7 @@ from matplotlib.ticker import FormatStrFormatter
 import pandas as pd
 
 from .. import neurons
-from ..utils import getNeuronsDict, getLookupDir, rescale, InputError
+from ..utils import getNeuronsDict, getLookupDir, rescale, InputError, computeMeshEdges
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
 
@@ -954,3 +954,69 @@ def plotEffCoeffs(neuron, Fdrive, a=32e-9, fs=12):
     cbar_ax.set_ylabel('$A_{drive} \ (kPa)$', fontsize=fs)
 
     plt.show()
+
+
+def plotActivationMap(DCs, amps, actmap, FRlims, title, lbl='xy', Ascale='log', FRscale='log', fs=15):
+    ''' Plot a neuron's activation map over the amplitude x duty cycle 2D space.
+
+        :param DCs: duty cycle vector
+        :param amps: amplitude vector
+        :param actmap: 2D activation matrix
+        :param FRlims: lower and upper bounds of firing rate color-scale
+        :param title: figure title
+        :param lbl: indicates whether to label the x and y axes
+        :param Ascale: scale to use for the amplitude dimension ('lin' or 'log')
+        :param FRscale: scale to use for the firing rate coloring ('lin' or 'log')
+        :param fs: fontsize to use for the title and labels
+        :return: a handle to the generated figure
+    '''
+
+    # Create specific firing rate map from activation map
+    FRmap = np.copy(actmap)
+    FRmap[FRmap <= 0] = np.nan
+
+    # Check firing rate bounding
+    minFR, maxFR = (np.nanmin(FRmap), np.nanmax(FRmap))
+    logger.info('FR range: %.0f - %.0f Hz', minFR, maxFR)
+    if minFR < FRlims[0]:
+        logger.warning('Minimal firing rate (%.0f Hz) is below defined lower bound (%.0f Hz)',
+                       minFR, FRlims[0])
+    if maxFR > FRlims[1]:
+        logger.warning('Maximal firing rate (%.0f Hz) is above defined upper bound (%.0f Hz)',
+                       maxFR, FRlims[1])
+
+    # Plot activation map
+    if FRscale == 'lin':
+        norm = matplotlib.colors.Normalize(*FRlims)
+    elif FRscale == 'log':
+        norm = matplotlib.colors.LogNorm(*FRlims)
+    fig, ax = plt.subplots(figsize=(5.5, 4))
+    fig.subplots_adjust(left=0.15, bottom=0.15, right=0.8, top=0.92)
+    ax.set_title(title, fontsize=fs)
+    if Ascale == 'log':
+        ax.set_yscale('log')
+    if 'x' in lbl:
+        ax.set_xlabel('Duty cycle (%)', fontsize=fs)
+    else:
+        ax.set_xticklabels([])
+    if 'y' in lbl:
+        ax.set_ylabel('Amplitude (kPa)', fontsize=fs)
+    else:
+        ax.set_yticklabels([])
+    for item in ax.get_xticklabels() + ax.get_yticklabels():
+        item.set_fontsize(fs)
+    xedges = computeMeshEdges(DCs)
+    yedges = computeMeshEdges(amps, scale=Ascale)
+    ax.pcolormesh(xedges * 1e2, yedges * 1e-3, actmap >= 0, cmap='Pastel1')
+    ax.pcolormesh(xedges * 1e2, yedges * 1e-3, FRmap, cmap='viridis', norm=norm)
+
+    # Plot firing rate colorbar
+    sm = plt.cm.ScalarMappable(cmap='viridis', norm=norm)
+    sm._A = []
+    cbar_ax = fig.add_axes([0.82, 0.15, 0.03, 0.92 - 0.15])
+    fig.colorbar(sm, cax=cbar_ax)
+    cbar_ax.set_ylabel('Firing rate (Hz)', fontsize=fs)
+    for item in cbar_ax.get_yticklabels():
+        item.set_fontsize(fs)
+
+    return fig
