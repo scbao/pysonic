@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-04 16:13:00
+# @Last Modified time: 2018-05-04 16:36:40
 
 """ Utility functions used in simulations """
 
@@ -1672,7 +1672,7 @@ def getActivationMap(root, neuron, a, f, tstim, toffset, PRF, amps, DCs):
                      .format(neuron, 'P' if DC < 1 else 'C', a * 1e9, f * 1e-3, A * 1e-3, tstim * 1e3,
                              PW_str))
 
-            # Extract charge charge profile from data file
+            # Extract charge profile from data file
             fpath = os.path.join(root, fname)
             if os.path.isfile(fpath):
                 logger.debug('Loading file {}/{}: "{}"'.format(i * amps.size + j + 1, nfiles, fname))
@@ -1702,3 +1702,55 @@ def getActivationMap(root, neuron, a, f, tstim, toffset, PRF, amps, DCs):
                 actmap[i, j] = np.nan
 
     return actmap
+
+
+def getMaxMap(key, root, neuron, a, f, tstim, toffset, PRF, amps, DCs, mode='max'):
+    ''' Compute the max. value map of a neuron's specific variable at a given frequency and PRF
+        over a 2D space (amplitude x duty cycle).
+
+        :param key: the variable name to find in the simulations dataframes
+        :param root: directory containing the input data files
+        :param neuron: neuron name
+        :param a: sonophore diameter
+        :param f: acoustic drive frequency (Hz)
+        :param tstim: duration of US stimulation (s)
+        :param toffset: duration of the offset (s)
+        :param PRF: pulse repetition frequency (Hz)
+        :param amps: vector of acoustic amplitudes (Pa)
+        :param DCs: vector of duty cycles (-)
+        :param mode: string indicating whether to search for maximum, minimum or absolute maximum
+        :return the maximum matrix
+    '''
+
+    # Initialize max map
+    maxmap = np.empty((amps.size, DCs.size))
+
+    # Loop through amplitudes and duty cycles
+    nfiles = DCs.size * amps.size
+    for i, A in enumerate(amps):
+        for j, DC in enumerate(DCs):
+
+            # Define filename
+            PW_str = '_PRF{:.2f}Hz_DC{:.2f}%'.format(PRF, DC * 1e2) if DC < 1 else ''
+            fname = ('ASTIM_{}_{}W_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms{}_effective.pkl'
+                     .format(neuron, 'P' if DC < 1 else 'C', a * 1e9, f * 1e-3, A * 1e-3, tstim * 1e3,
+                             PW_str))
+
+            # Extract charge profile from data file
+            fpath = os.path.join(root, fname)
+            if os.path.isfile(fpath):
+                logger.debug('Loading file {}/{}: "{}"'.format(i * amps.size + j + 1, nfiles, fname))
+                with open(fpath, 'rb') as fh:
+                    frame = pickle.load(fh)
+                df = frame['data']
+                x = df[key].values
+                if mode == 'min':
+                    maxmap[i, j] = x.min()
+                elif mode == 'max':
+                    maxmap[i, j] = x.max()
+                elif mode == 'absmax':
+                    maxmap[i, j] = np.abs(x).max()
+            else:
+                maxmap[i, j] = np.nan
+
+    return maxmap
