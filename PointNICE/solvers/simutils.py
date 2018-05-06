@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-04 16:36:40
+# @Last Modified time: 2018-05-06 21:36:43
 
 """ Utility functions used in simulations """
 
@@ -22,7 +22,7 @@ from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
 from .SolverElec import SolverElec
 from ..constants import *
-from ..utils import getNeuronsDict, InputError, PmCompMethod, si_format
+from ..utils import getNeuronsDict, InputError, PmCompMethod, si_format, getCycleAverage
 
 
 # Get package logger
@@ -1704,7 +1704,7 @@ def getActivationMap(root, neuron, a, f, tstim, toffset, PRF, amps, DCs):
     return actmap
 
 
-def getMaxMap(key, root, neuron, a, f, tstim, toffset, PRF, amps, DCs, mode='max'):
+def getMaxMap(key, root, neuron, a, f, tstim, toffset, PRF, amps, DCs, mode='max', cavg=False):
     ''' Compute the max. value map of a neuron's specific variable at a given frequency and PRF
         over a 2D space (amplitude x duty cycle).
 
@@ -1743,7 +1743,13 @@ def getMaxMap(key, root, neuron, a, f, tstim, toffset, PRF, amps, DCs, mode='max
                 with open(fpath, 'rb') as fh:
                     frame = pickle.load(fh)
                 df = frame['data']
-                x = df[key].values
+                t = df['t'].values
+                if key in df:
+                    x = df[key].values
+                else:
+                    x = eval(key)
+                if cavg:
+                    x = getCycleAverage(t, x, 1 / PRF)
                 if mode == 'min':
                     maxmap[i, j] = x.min()
                 elif mode == 'max':
