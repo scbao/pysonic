@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 17:56:37
+# @Last Modified time: 2018-05-08 10:37:17
 
 import time
 import os
@@ -413,15 +413,14 @@ class SolverUS(BilayerSonophore):
         if not os.path.isfile(lookup_path):
             raise InputError('Missing lookup file: "{}"'.format(lookup_file))
 
-        # Load coefficients
+        # Load lookups dictionary
         with open(lookup_path, 'rb') as fh:
-            lookup_dict = pickle.load(fh)
+            lookups3D = pickle.load(fh)
 
-
-        # Retrieve 1D inputs from lookup dictionary
-        freqs = lookup_dict['f']
-        amps = lookup_dict['A']
-        charges = lookup_dict['Q']
+        # Retrieve 1D inputs from lookups dictionary
+        freqs = lookups3D.pop('f')
+        amps = lookups3D.pop('A')
+        charges = lookups3D.pop('Q')
 
         # Check that stimulation parameters are within lookup range
         margin = 1e-9  # adding margin to compensate for eventual round error
@@ -437,55 +436,21 @@ class SolverUS(BilayerSonophore):
                               '{:.1f} - {:.1f} kPa lookup interval)')
                              .format(Adrive * 1e-3, Arange[0] * 1e-3, Arange[1] * 1e-3))
 
-        # Define interpolation datasets to be projected
-        coeffs_list = ['V', 'ng', *neuron.coeff_names]
+        # Interpolate 3D lookups at US frequency
+        lookups2D = itrpLookupsFreq(lookups3D, freqs, Fdrive)
 
-        # If Fdrive in lookup frequencies, simply project (A, Q) interpolation dataset
-        # at Fdrive index onto 1D charge-based interpolation dataset
-        if Fdrive in freqs:
-            iFdrive = np.searchsorted(freqs, Fdrive)
-            logger.debug('Using lookups directly at %.2f kHz', freqs[iFdrive] * 1e-3)
-            coeffs1d = {}
-            for cn in coeffs_list:
-                coeff2d = np.squeeze(lookup_dict[cn][iFdrive, :, :])
-                itrp = interp2d(amps, charges, coeff2d.T)
-                coeffs1d[cn] = itrp(Adrive, charges)
-                if cn == 'ng':
-                    coeffs1d['ng0'] = itrp(0.0, charges)
+        # Interpolate 2D lookups at US amplitude (along with "ng" at zero amplitude)
+        lookups1D = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(Adrive, charges))
+                     for key in lookups2D.keys()}
+        lookups1D['ng0'] = np.squeeze(interp2d(amps, charges, lookups2D['ng'].T)(0.0, charges))
 
-        # Otherwise, project 2 (A, Q) interpolation datasets at Fdrive bounding values
-        # indexes in lookup frequencies onto two 1D charge-based interpolation datasets, and
-        # interpolate between them afterwards
-        else:
-            ilb = np.searchsorted(freqs, Fdrive) - 1
-            logger.debug('Interpolating lookups between %.2f kHz and %.2f kHz',
-                         freqs[ilb] * 1e-3, freqs[ilb + 1] * 1e-3)
-            coeffs1d = {}
-            for cn in coeffs_list:
-                coeffs1d_bounds = []
-                ng0_bounds = []
-                for iFdrive in [ilb, ilb + 1]:
-                    coeff2d = np.squeeze(lookup_dict[cn][iFdrive, :, :])
-                    itrp = interp2d(amps, charges, coeff2d.T)
-                    coeffs1d_bounds.append(itrp(Adrive, charges))
-                    if cn == 'ng':
-                        ng0_bounds.append(itrp(0.0, charges))
-                coeffs1d_bounds = np.squeeze(np.array([coeffs1d_bounds]))
-                itrp = interp2d(freqs[ilb:ilb + 2], charges, coeffs1d_bounds.T)
-                coeffs1d[cn] = itrp(Fdrive, charges)
-                if cn == 'ng':
-                    ng0_bounds = np.squeeze(np.array([ng0_bounds]))
-                    itrp = interp2d(freqs[ilb:ilb + 2], charges, ng0_bounds.T)
-                    coeffs1d['ng0'] = itrp(Fdrive, charges)
-
-        # Squeeze interpolated vectors extra dimensions and add input charges vector
-        coeffs1d = {key: np.squeeze(value) for key, value in coeffs1d.items()}
-        coeffs1d['Q'] = charges
+        # Add reference charge vector to 1D lookup dictionary
+        lookups1D['Q'] = charges
 
         # Initialize system solvers
         solver_on = integrate.ode(self.eqHHeff)
         solver_on.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
-        solver_on.set_f_params(neuron, coeffs1d)
+        solver_on.set_f_params(neuron, lookups1D)
         solver_off = integrate.ode(self.eqHH2)
         solver_off.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
 
@@ -547,7 +512,7 @@ class SolverUS(BilayerSonophore):
                 k += 1
                 solver_on.integrate(t_pulse[k])
                 y_pulse[:, k] = solver_on.y
-                ngeff_pulse[k] = np.interp(y_pulse[0, k], coeffs1d['Q'], coeffs1d['ng'])  # mole
+                ngeff_pulse[k] = np.interp(y_pulse[0, k], lookups1D['Q'], lookups1D['ng'])  # mole
                 Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
 
             # Integrate OFF system
@@ -558,7 +523,7 @@ class SolverUS(BilayerSonophore):
                     k += 1
                     solver_off.integrate(t_pulse[k])
                     y_pulse[:, k] = solver_off.y
-                    ngeff_pulse[k] = np.interp(y_pulse[0, k], coeffs1d['Q'], coeffs1d['ng0'])  # mole
+                    ngeff_pulse[k] = np.interp(y_pulse[0, k], lookups1D['Q'], lookups1D['ng0'])  # mole
                     Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
                     solver_off.set_f_params(neuron, self.Capct(Zeff_pulse[k]))
 
@@ -587,7 +552,7 @@ class SolverUS(BilayerSonophore):
                 k += 1
                 solver_off.integrate(t_off[k])
                 y_off[:, k] = solver_off.y
-                ngeff_off[k] = np.interp(y_off[0, k], coeffs1d['Q'], coeffs1d['ng0'])  # mole
+                ngeff_off[k] = np.interp(y_off[0, k], lookups1D['Q'], lookups1D['ng0'])  # mole
                 Zeff_off[k] = self.balancedefQS(ngeff_off[k], y_off[0, k])  # m
                 solver_off.set_f_params(neuron, self.Capct(Zeff_off[k]))
 
@@ -601,7 +566,7 @@ class SolverUS(BilayerSonophore):
         # Compute membrane potential vector (in mV)
         Vm = np.zeros(states.size)
         Vm[states == 0] = y[0, states == 0] / self.v_Capct(Zeff[states == 0]) * 1e3  # mV
-        Vm[states == 1] = np.interp(y[0, states == 1], coeffs1d['Q'], coeffs1d['V'])  # mV
+        Vm[states == 1] = np.interp(y[0, states == 1], lookups1D['Q'], lookups1D['V'])  # mV
 
         # Add Zeff, ngeff and Vm to solution matrix
         y = np.vstack([Zeff, ngeff, y[0, :], Vm, y[1:, :]])

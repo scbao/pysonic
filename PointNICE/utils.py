@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-04 16:12:45
+# @Last Modified time: 2018-05-08 10:28:34
 
 """ Definition of generic utility functions used in other modules """
 
@@ -387,3 +387,33 @@ def getCycleAverage(t, y, T):
     ncycles = int((t[-1] - t[0]) // T)
     npercycle = int(nsamples // ncycles)
     return np.mean(np.reshape(y[:ncycles * npercycle], (ncycles, npercycle)), axis=1)
+
+
+def itrpLookupsFreq(lookups3D, freqs, Fdrive):
+    """ Interpolate a dictionary of 3D lookups at a given frequency.
+
+        :param lookups3D: dictionary of 3D lookups
+        :param freqs: array of lookup frequencies (Hz)
+        :param Fdrive: acoustic drive frequency (Hz)
+        :return: a dictionary of 2D lookups interpolated a the given frequency
+    """
+
+    # If Fdrive in lookup frequencies, simply take (A, Q) slice at Fdrive index
+    if Fdrive in freqs:
+        iFdrive = np.searchsorted(freqs, Fdrive)
+        logger.debug('Using lookups directly at %.2f kHz', freqs[iFdrive] * 1e-3)
+        lookups2D = {key: np.squeeze(lookups3D[key][iFdrive, :, :]) for key in lookups3D.keys()}
+
+    # Otherwise, interpolate linearly between 2 (A, Q) slices at Fdrive bounding values indexes
+    else:
+        ilb = np.searchsorted(freqs, Fdrive) - 1
+        iub = ilb + 1
+        logger.debug('Interpolating lookups between %.2f kHz and %.2f kHz',
+                     freqs[ilb] * 1e-3, freqs[iub] * 1e-3)
+        lookups2D_lb = {key: np.squeeze(lookups3D[key][ilb, :, :]) for key in lookups3D.keys()}
+        lookups2D_ub = {key: np.squeeze(lookups3D[key][iub, :, :]) for key in lookups3D.keys()}
+        Fratio = (Fdrive - freqs[ilb]) / (freqs[iub] - freqs[ilb])
+        lookups2D = {key: lookups2D_lb[key] + (lookups2D_ub[key] - lookups2D_lb[key]) * Fratio
+                     for key in lookups3D.keys()}
+
+    return lookups2D
