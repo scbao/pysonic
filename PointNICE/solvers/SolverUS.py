@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-08 10:37:17
+# @Last Modified time: 2018-05-08 14:20:38
 
 import time
 import os
@@ -806,3 +806,89 @@ class SolverUS(BilayerSonophore):
             if DC < 1.0:
                 raise InputError('Pulsed protocol incompatible with hybrid integration method')
             return self.__runHybrid(neuron, Fdrive, Adrive, tstim, toffset)
+
+
+    def findRheobaseAmps(self, neuron, Fdrive, DCs, Vthr):
+        ''' Find the rheobase amplitudes (i.e. threshold acoustic amplitudes of infinite duration
+            that would result in excitation) of a specific neuron for various stimulation duty cycles.
+
+            :param neuron: neuron object
+            :param Fdrive: acoustic drive frequency (Hz)
+            :param DCs: duty cycles vector (-)
+            :param Vthr: threshold membrane potential above which the neuron necessarily fires (mV)
+            :return: rheobase amplitudes vector (Pa)
+        '''
+
+        # Check lookup file existence
+        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
+        lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
+        if not os.path.isfile(lookup_path):
+            raise InputError('Missing lookup file: "{}"'.format(lookup_file))
+
+        # Load lookups dictionary
+        with open(lookup_path, 'rb') as fh:
+            lookups3D = pickle.load(fh)
+
+        # Retrieve 1D inputs from lookups dictionary
+        freqs = lookups3D.pop('f')
+        amps = lookups3D.pop('A')
+        charges = lookups3D.pop('Q')
+
+        # Check that stimulation parameters are within lookup range
+        margin = 1e-9  # adding margin to compensate for eventual round error
+        frange = (freqs.min() - margin, freqs.max() + margin)
+
+        if Fdrive < frange[0] or Fdrive > frange[1]:
+            raise InputError(('Invalid frequency: {:.2f} kHz (must be within ' +
+                              '{:.1f} kHz - {:.1f} MHz lookup interval)')
+                             .format(Fdrive * 1e-3, frange[0] * 1e-3, frange[1] * 1e-6))
+
+        # Interpolate 3D lookpus at given frequency and threshold charge
+        lookups2D = itrpLookupsFreq(lookups3D, freqs, Fdrive)
+        Qthr = neuron.Cm0 * Vthr * 1e-3  # C/m2
+        lookups1D = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(amps, Qthr))
+                     for key in lookups2D.keys()}
+
+        # Remove unnecessary items ot get ON rates and effective potential at threshold charge
+        rates_on = lookups1D
+        rates_on.pop('ng')
+        Vm_on = rates_on.pop('V')
+
+        # Compute neuron OFF rates at threshold potential
+        rates_off = neuron.getRates(Vthr)
+
+        # Compute rheobase amplitudes
+        rheboase_amps = np.empty(DCs.size)
+        for i, DC in enumerate(DCs):
+            sstates_pulse = np.empty((len(neuron.states_names), amps.size))
+            for j, x in enumerate(neuron.states_names):
+                # If channel state, compute pulse-average steady-state values
+                if x in neuron.getGates():
+                    x = x.lower()
+                    alpha_str, beta_str = ['{}{}'.format(s, x) for s in ['alpha', 'beta']]
+                    alphax_pulse = rates_on[alpha_str] * DC + rates_off[alpha_str] * (1 - DC)
+                    betax_pulse = rates_on[beta_str] * DC + rates_off[beta_str] * (1 - DC)
+                    sstates_pulse[j, :] = alphax_pulse / (alphax_pulse + betax_pulse)
+                # Otherwise assume the state has reached a steady-state value for Vthr
+                else:
+                    sstates_pulse[j, :] = np.ones(amps.size) * neuron.steadyStates(Vthr)[j]
+
+            # Compute ON and OFF net currents along the amplitude space
+            iNet_on = neuron.currNet(Vm_on, sstates_pulse)
+            iNet_off = neuron.currNet(Vthr, sstates_pulse)
+            iNet_avg = iNet_on * DC + iNet_off * (1 - DC)
+
+            # Find the threshold amplitude that cancels the approximated pulse average net current
+            rheboase_amps[i] = np.interp(0, -iNet_avg, amps, left=0., right=np.nan)
+
+        inan = np.where(np.isnan(rheboase_amps))[0]
+        if inan.size > 0:
+            if inan.size == rheboase_amps.size:
+                logger.error('No rheobase amplitudes within [%s - %sPa] for the provided duty cycles',
+                             *si_format((amps.min(), amps.max())))
+            else:
+                minDC = DCs[inan.max() + 1]
+                logger.warning('No rheobase amplitudes within [%s - %sPa] below %.1f%% duty cycle',
+                               *si_format((amps.min(), amps.max())), minDC * 1e2)
+
+        return rheboase_amps

@@ -3,8 +3,8 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
-# @Last Modified by:   Theo
-# @Last Modified time: 2018-03-02 12:26:05
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2018-05-08 14:23:44
 
 ''' Module standard API for all neuron mechanisms.
 
@@ -123,3 +123,38 @@ class BaseMech(metaclass=abc.ABCMeta):
             :param interp_data: dictionary of 1D vectors of "effective" coefficients
              over the charge domain, for specific frequency and amplitude values.
         '''
+
+
+    def getGates(self):
+        ''' Retrieve the names of the neuron's states that match an ion channel gating. '''
+
+        gates = []
+        for x in self.states_names:
+            if 'alpha{}'.format(x.lower()) in self.coeff_names:
+                gates.append(x)
+        return gates
+
+
+    def getRates(self, Vm):
+        ''' Compute the ion channels rate constants for a given membrane potential.
+
+            :param Vm: membrane potential (mV)
+            :return: a dictionary of rate constants and their values at the given potential.
+        '''
+
+        rates = {}
+        for x in self.getGates():
+            x = x.lower()
+            alpha_str, beta_str = ['{}{}'.format(s, x.lower()) for s in ['alpha', 'beta']]
+            inf_str, tau_str = ['{}inf'.format(x.lower()), 'tau{}'.format(x.lower())]
+            if hasattr(self, 'alpha{}'.format(x)):
+                alphax = getattr(self, alpha_str)(Vm)
+                betax = getattr(self, beta_str)(Vm)
+            elif hasattr(self, '{}inf'.format(x)):
+                xinf = getattr(self, inf_str)(Vm)
+                taux = getattr(self, tau_str)(Vm)
+                alphax = xinf / taux
+                betax = 1 / taux - alphax
+            rates[alpha_str] = alphax
+            rates[beta_str] = betax
+        return rates

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-06 17:33:02
+# @Last Modified time: 2018-05-08 15:09:42
 
 ''' Plotting utilities '''
 
@@ -956,19 +956,21 @@ def plotEffCoeffs(neuron, Fdrive, a=32e-9, fs=12):
     plt.show()
 
 
-def plotActivationMap(DCs, amps, actmap, FRlims, title, lbl='xy', Ascale='log', FRscale='log', fs=15):
+def plotActivationMap(DCs, amps, actmap, FRlims, Athrs=None, title=None, lbl='xy',
+                      Ascale='log', FRscale='log', fs=15):
     ''' Plot a neuron's activation map over the amplitude x duty cycle 2D space.
 
         :param DCs: duty cycle vector
         :param amps: amplitude vector
         :param actmap: 2D activation matrix
         :param FRlims: lower and upper bounds of firing rate color-scale
+        :param Athrs: rheobase amplitudes vector (Pa)
         :param title: figure title
         :param lbl: indicates whether to label the x and y axes
         :param Ascale: scale to use for the amplitude dimension ('lin' or 'log')
         :param FRscale: scale to use for the firing rate coloring ('lin' or 'log')
         :param fs: fontsize to use for the title and labels
-        :return: a handle to the generated figure
+        :return: 3-tuple with the handle to the generated figure and the mesh x and y coordinates
     '''
 
     # Create specific firing rate map from activation map
@@ -992,7 +994,8 @@ def plotActivationMap(DCs, amps, actmap, FRlims, title, lbl='xy', Ascale='log', 
         norm = matplotlib.colors.LogNorm(*FRlims)
     fig, ax = plt.subplots(figsize=(5.5, 4))
     fig.subplots_adjust(left=0.15, bottom=0.15, right=0.8, top=0.92)
-    ax.set_title(title, fontsize=fs)
+    if title is not None:
+        ax.set_title(title, fontsize=fs)
     if Ascale == 'log':
         ax.set_yscale('log')
     if 'x' in lbl:
@@ -1020,7 +1023,11 @@ def plotActivationMap(DCs, amps, actmap, FRlims, title, lbl='xy', Ascale='log', 
     for item in cbarax.get_yticklabels():
         item.set_fontsize(fs)
 
-    return fig
+    # If avilable, plot ON-OFF boundary predicted from rheobase amplitudes
+    if Athrs is not None:
+        ax.plot(DCs * 1e2, Athrs * 1e-3, '--', color='k')
+
+    return (fig, xedges, yedges)
 
 
 def plotDualMaxMap(DCs, amps, maxmap, factor, actmap, title, lbl='xy', Ascale='log', fs=15):
@@ -1077,4 +1084,42 @@ def plotDualMaxMap(DCs, amps, maxmap, factor, actmap, title, lbl='xy', Ascale='l
     for item in cbarax_sub.get_yticklabels() + cbarax_supra.get_yticklabels():
         item.set_fontsize(fs)
 
+    return fig
+
+
+def plotRawTrace(fpath, key, ybounds):
+    '''  Plot the raw signal of a given variable within specified bounds.
+
+        :param foath: full path to the data file
+        :param key: key to the target variable
+        :param ybounds: y-axis bounds
+        :return: handle to the generated figure
+    '''
+
+    # Check file existence
+    fname = ntpath.basename(fpath)
+    if not os.path.isfile(fpath):
+        logger.error('Error: "%s" file does not exist.', fname)
+        pass
+
+    # Load data
+    logger.debug('Loading data from "%s"', fname)
+    with open(fpath, 'rb') as fh:
+        frame = pickle.load(fh)
+        df = frame['data']
+    t = df['t'].values
+    y = df[key].values
+
+    # Plot trace
+    fig, ax = plt.subplots(figsize=(11, 4))
+    fig.canvas.set_window_title(fname)
+    for s in ['top', 'bottom', 'left', 'right']:
+        ax.spines[s].set_visible(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_ylim(ybounds)
+    ax.plot(t, y, color='k', linewidth=2)
+    fig.tight_layout()
+
+    plt.show()
     return fig
