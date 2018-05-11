@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-08 15:09:42
+# @Last Modified time: 2018-05-11 11:24:07
 
 ''' Plotting utilities '''
 
@@ -31,6 +31,7 @@ from .pltvars import pltvars
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
+matplotlib.rcParams['font.family'] = 'arial'
 
 # Get package logger
 logger = logging.getLogger('PointNICE')
@@ -57,6 +58,14 @@ ESTIM_PW_title = '{} neuron: PW E-STIM {:.2f}mA/m2, {:.0f}ms, {:.2f}Hz PRF, {:.0
 ASTIM_CW_title = '{} neuron: CW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms'
 ASTIM_PW_title = '{} neuron: PW A-STIM {:.0f}kHz, {:.0f}kPa, {:.0f}ms, {:.2f}Hz PRF, {:.2f}% DC'
 MECH_title = '{:.0f}nm BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa'
+
+
+def cm2inch(*tupl):
+    inch = 2.54
+    if isinstance(tupl[0], tuple):
+        return tuple(i / inch for i in tupl[0])
+    else:
+        return tuple(i / inch for i in tupl)
 
 
 class InteractiveLegend(object):
@@ -232,7 +241,7 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
         raise InputError('Invalid patches: must be either "none", all", "one", or a boolean list')
 
     # Initialize figure and axis
-    fig, ax = plt.subplots(figsize=(11, 4))
+    fig, ax = plt.subplots(figsize=cm2inch(12.5, 5.8))
     ax.set_zorder(0)
     for item in ['top', 'right']:
         ax.spines[item].set_visible(False)
@@ -957,7 +966,7 @@ def plotEffCoeffs(neuron, Fdrive, a=32e-9, fs=12):
 
 
 def plotActivationMap(DCs, amps, actmap, FRlims, Athrs=None, title=None, lbl='xy',
-                      Ascale='log', FRscale='log', fs=15):
+                      Ascale='log', FRscale='log', fs=8):
     ''' Plot a neuron's activation map over the amplitude x duty cycle 2D space.
 
         :param DCs: duty cycle vector
@@ -973,12 +982,8 @@ def plotActivationMap(DCs, amps, actmap, FRlims, Athrs=None, title=None, lbl='xy
         :return: 3-tuple with the handle to the generated figure and the mesh x and y coordinates
     '''
 
-    # Create specific firing rate map from activation map
-    FRmap = actmap.copy()
-    FRmap[FRmap <= 0] = np.nan
-
     # Check firing rate bounding
-    minFR, maxFR = (np.nanmin(FRmap), np.nanmax(FRmap))
+    minFR, maxFR = (actmap[actmap > 0].min(), actmap.max())
     logger.info('FR range: %.0f - %.0f Hz', minFR, maxFR)
     if minFR < FRlims[0]:
         logger.warning('Minimal firing rate (%.0f Hz) is below defined lower bound (%.0f Hz)',
@@ -992,14 +997,14 @@ def plotActivationMap(DCs, amps, actmap, FRlims, Athrs=None, title=None, lbl='xy
         norm = matplotlib.colors.Normalize(*FRlims)
     elif FRscale == 'log':
         norm = matplotlib.colors.LogNorm(*FRlims)
-    fig, ax = plt.subplots(figsize=(5.5, 4))
+    fig, ax = plt.subplots(figsize=cm2inch(8, 5.8))
     fig.subplots_adjust(left=0.15, bottom=0.15, right=0.8, top=0.92)
     if title is not None:
         ax.set_title(title, fontsize=fs)
     if Ascale == 'log':
         ax.set_yscale('log')
     if 'x' in lbl:
-        ax.set_xlabel('Duty cycle (%)', fontsize=fs)
+        ax.set_xlabel('Duty cycle (%)', fontsize=fs, labelpad=-0.5)
     else:
         ax.set_xticklabels([])
     if 'y' in lbl:
@@ -1010,11 +1015,15 @@ def plotActivationMap(DCs, amps, actmap, FRlims, Athrs=None, title=None, lbl='xy
         item.set_fontsize(fs)
     xedges = computeMeshEdges(DCs)
     yedges = computeMeshEdges(amps, scale=Ascale)
-    ax.pcolormesh(xedges * 1e2, yedges * 1e-3, actmap >= 0, cmap='Pastel1')
-    ax.pcolormesh(xedges * 1e2, yedges * 1e-3, FRmap, cmap='viridis', norm=norm)
+    actmap[actmap == -1] = np.nan
+    actmap[actmap == 0] = 1e-3
+    cmap = plt.get_cmap('viridis')
+    cmap.set_bad('silver')
+    cmap.set_under('k')
+    ax.pcolormesh(xedges * 1e2, yedges * 1e-3, actmap, cmap=cmap, norm=norm)
 
     # Plot firing rate colorbar
-    sm = plt.cm.ScalarMappable(cmap='viridis', norm=norm)
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm._A = []
     pos1 = ax.get_position()  # get the map axis position
     cbarax = fig.add_axes([pos1.x1 + 0.02, pos1.y0, 0.03, pos1.height])
@@ -1025,12 +1034,12 @@ def plotActivationMap(DCs, amps, actmap, FRlims, Athrs=None, title=None, lbl='xy
 
     # If avilable, plot ON-OFF boundary predicted from rheobase amplitudes
     if Athrs is not None:
-        ax.plot(DCs * 1e2, Athrs * 1e-3, '--', color='k')
+        ax.plot(DCs * 1e2, Athrs * 1e-3, '-', color='#F26522', linewidth=2)
 
     return (fig, xedges, yedges)
 
 
-def plotDualMaxMap(DCs, amps, maxmap, factor, actmap, title, lbl='xy', Ascale='log', fs=15):
+def plotDualMaxMap(DCs, amps, maxmap, factor, actmap, title, lbl='xy', Ascale='log', fs=8):
     ''' Plot a variable maximum map over the amplitude x duty cycle 2D space, with different
         color codes for the sub and supra-threshold regions.
 
@@ -1052,7 +1061,7 @@ def plotDualMaxMap(DCs, amps, maxmap, factor, actmap, title, lbl='xy', Ascale='l
     maxmap_supra[actmap < 0] = np.nan
 
     # Plot dual max map
-    fig, ax = plt.subplots(figsize=(5.5, 4))
+    fig, ax = plt.subplots(figsize=cm2inch(8, 5.8))
     fig.subplots_adjust(left=0.15, bottom=0.15, right=0.8, top=0.92)
     ax.set_title(title, fontsize=fs)
     if Ascale == 'log':
@@ -1099,8 +1108,7 @@ def plotRawTrace(fpath, key, ybounds):
     # Check file existence
     fname = ntpath.basename(fpath)
     if not os.path.isfile(fpath):
-        logger.error('Error: "%s" file does not exist.', fname)
-        pass
+        raise InputError('Error: "{}" file does not exist'.format(fname))
 
     # Load data
     logger.debug('Loading data from "%s"', fname)
@@ -1110,16 +1118,18 @@ def plotRawTrace(fpath, key, ybounds):
     t = df['t'].values
     y = df[key].values
 
+    Δy = y.max() - y.min()
+    logger.info('d%s = %.1f %s', key, Δy * pltvars[key]['factor'], pltvars[key]['unit'])
+
     # Plot trace
-    fig, ax = plt.subplots(figsize=(11, 4))
+    fig, ax = plt.subplots(figsize=cm2inch(12.5, 5.8))
     fig.canvas.set_window_title(fname)
     for s in ['top', 'bottom', 'left', 'right']:
         ax.spines[s].set_visible(False)
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_ylim(ybounds)
-    ax.plot(t, y, color='k', linewidth=2)
+    ax.plot(t, y, color='k', linewidth=1)
     fig.tight_layout()
 
-    plt.show()
     return fig
