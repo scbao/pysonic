@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-11 11:24:07
+# @Last Modified time: 2018-05-15 13:55:59
 
 ''' Plotting utilities '''
 
@@ -192,7 +192,7 @@ def SaveFigDialog(dirname, filename):
 
 def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=None, patches='one',
              xticks=None, yticks=None, blacklegend=False, straightlegend=False, showfig=True,
-             inset=None):
+             inset=None, figsize=(11, 4)):
     ''' Compare profiles of several specific output variables of NICE simulations.
 
         :param varname: name of variable to extract and compare
@@ -241,7 +241,7 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
         raise InputError('Invalid patches: must be either "none", all", "one", or a boolean list')
 
     # Initialize figure and axis
-    fig, ax = plt.subplots(figsize=cm2inch(12.5, 5.8))
+    fig, ax = plt.subplots(figsize=figsize)
     ax.set_zorder(0)
     for item in ['top', 'right']:
         ax.spines[item].set_visible(False)
