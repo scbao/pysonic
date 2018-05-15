@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 17:54:04
+# @Last Modified time: 2018-05-15 11:23:57
 
 import inspect
 import logging
@@ -310,7 +310,7 @@ class BilayerSonophore:
         # Create vectors for geometric variables
         Zmax = 2 * self.a
         Z = np.arange(Zmin, Zmax, 1e-11)
-        Pmavg = self.PMavg(Z, self.curvrad(Z), self.surface(Z))
+        Pmavg = self.v_PMavg(Z, self.v_curvrad(Z), self.surface(Z))
 
         # Compute optimal nonlinear fit of custom LJ function with initial guess
         x0_guess = self.delta0

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-06 21:36:43
+# @Last Modified time: 2018-05-15 11:22:16
 
 """ Utility functions used in simulations """
 
@@ -1559,7 +1559,7 @@ def getCycleProfiles(a, f, A, Cm0, Qm0, Qm):
     t -= t[0]
 
     logger.info('Computing pressure cyclic profiles')
-    R = bls.curvrad(Z)
+    R = bls.v_curvrad(Z)
     U = np.diff(Z) / dt
     U = np.hstack((U, U[-1]))
     data = {
