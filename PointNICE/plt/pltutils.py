@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-15 13:55:59
+# @Last Modified time: 2018-05-19 17:42:25
 
 ''' Plotting utilities '''
 
@@ -25,7 +25,7 @@ from matplotlib.ticker import FormatStrFormatter
 import pandas as pd
 
 from .. import neurons
-from ..utils import getNeuronsDict, getLookupDir, rescale, InputError, computeMeshEdges
+from ..utils import getNeuronsDict, getLookupDir, rescale, InputError, computeMeshEdges, si_format
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
 
@@ -965,17 +965,14 @@ def plotEffCoeffs(neuron, Fdrive, a=32e-9, fs=12):
     plt.show()
 
 
-def plotActivationMap(DCs, amps, actmap, FRlims, Athrs=None, title=None, lbl='xy',
-                      Ascale='log', FRscale='log', fs=8):
+def plotActivationMap(DCs, amps, actmap, FRlims, title=None, Ascale='log', FRscale='log', fs=8):
     ''' Plot a neuron's activation map over the amplitude x duty cycle 2D space.
 
         :param DCs: duty cycle vector
         :param amps: amplitude vector
         :param actmap: 2D activation matrix
         :param FRlims: lower and upper bounds of firing rate color-scale
-        :param Athrs: rheobase amplitudes vector (Pa)
         :param title: figure title
-        :param lbl: indicates whether to label the x and y axes
         :param Ascale: scale to use for the amplitude dimension ('lin' or 'log')
         :param FRscale: scale to use for the firing rate coloring ('lin' or 'log')
         :param fs: fontsize to use for the title and labels
@@ -1003,18 +1000,13 @@ def plotActivationMap(DCs, amps, actmap, FRlims, Athrs=None, title=None, lbl='xy
         ax.set_title(title, fontsize=fs)
     if Ascale == 'log':
         ax.set_yscale('log')
-    if 'x' in lbl:
-        ax.set_xlabel('Duty cycle (%)', fontsize=fs, labelpad=-0.5)
-    else:
-        ax.set_xticklabels([])
-    if 'y' in lbl:
-        ax.set_ylabel('Amplitude (kPa)', fontsize=fs)
-    else:
-        ax.set_yticklabels([])
+    ax.set_xlabel('Duty cycle (%)', fontsize=fs, labelpad=-0.5)
+    ax.set_ylabel('Amplitude (kPa)', fontsize=fs)
+    ax.set_xlim(np.array([DCs.min(), DCs.max()]) * 1e2)
     for item in ax.get_xticklabels() + ax.get_yticklabels():
         item.set_fontsize(fs)
     xedges = computeMeshEdges(DCs)
-    yedges = computeMeshEdges(amps, scale=Ascale)
+    yedges = computeMeshEdges(amps, scale='log')
     actmap[actmap == -1] = np.nan
     actmap[actmap == 0] = 1e-3
     cmap = plt.get_cmap('viridis')
@@ -1031,10 +1023,6 @@ def plotActivationMap(DCs, amps, actmap, FRlims, Athrs=None, title=None, lbl='xy
     cbarax.set_ylabel('Firing rate (Hz)', fontsize=fs)
     for item in cbarax.get_yticklabels():
         item.set_fontsize(fs)
-
-    # If avilable, plot ON-OFF boundary predicted from rheobase amplitudes
-    if Athrs is not None:
-        ax.plot(DCs * 1e2, Athrs * 1e-3, '-', color='#F26522', linewidth=2)
 
     return (fig, xedges, yedges)
 
@@ -1116,10 +1104,10 @@ def plotRawTrace(fpath, key, ybounds):
         frame = pickle.load(fh)
         df = frame['data']
     t = df['t'].values
-    y = df[key].values
+    y = df[key].values * pltvars[key]['factor']
 
     Δy = y.max() - y.min()
-    logger.info('d%s = %.1f %s', key, Δy * pltvars[key]['factor'], pltvars[key]['unit'])
+    logger.info('d%s = %.1f %s', key, Δy, pltvars[key]['unit'])
 
     # Plot trace
     fig, ax = plt.subplots(figsize=cm2inch(12.5, 5.8))
@@ -1132,4 +1120,69 @@ def plotRawTrace(fpath, key, ybounds):
     ax.plot(t, y, color='k', linewidth=1)
     fig.tight_layout()
 
+    return fig
+
+
+def plotTraces(fpath, keys, tbounds):
+    '''  Plot the raw signal of sevral variables within specified bounds.
+
+        :param foath: full path to the data file
+        :param key: key to the target variable
+        :param tbounds: x-axis bounds
+        :return: handle to the generated figure
+    '''
+
+    # Check file existence
+    fname = ntpath.basename(fpath)
+    if not os.path.isfile(fpath):
+        raise InputError('Error: "{}" file does not exist'.format(fname))
+
+    # Load data
+    logger.debug('Loading data from "%s"', fname)
+    with open(fpath, 'rb') as fh:
+        frame = pickle.load(fh)
+        df = frame['data']
+    t = df['t'].values * 1e3
+
+    # Plot trace
+    fs = 8
+    fig, ax = plt.subplots(figsize=cm2inch(7, 3))
+    fig.canvas.set_window_title(fname)
+    plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.95)
+    for s in ['top', 'right']:
+        ax.spines[s].set_visible(False)
+    for s in ['bottom', 'left']:
+        ax.spines[s].set_position(('axes', -0.03))
+        ax.spines[s].set_linewidth(2)
+    ax.yaxis.set_tick_params(width=2)
+
+    # ax.spines['bottom'].set_linewidth(2)
+    ax.set_xlim(tbounds)
+    ax.set_xticks([])
+    ymin = np.nan
+    ymax = np.nan
+    dt = tbounds[1] - tbounds[0]
+    ax.set_xlabel('{}s'.format(si_format(dt * 1e-3, space=' ')), fontsize=fs)
+    ax.set_ylabel('mV - $\\rm nC/cm^2$', fontsize=fs, labelpad=-15)
+
+    colors = {'Vm': 'darkgrey', 'Qm': 'k'}
+    for key in keys:
+        y = df[key].values * pltvars[key]['factor']
+        ymin = np.nanmin([ymin, y.min()])
+        ymax = np.nanmax([ymax, y.max()])
+        # if key == 'Qm':
+            # y0 = y[0]
+            # ax.plot(t, y0 * np.ones(t.size), '--', color='k', linewidth=1)
+        Δy = y.max() - y.min()
+        logger.info('d%s = %.1f %s', key, Δy, pltvars[key]['unit'])
+        ax.plot(t, y, color=colors[key], linewidth=1)
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+
+    # ax.set_yticks([ymin, ymax])
+    ax.set_ylim([-200, 100])
+    ax.set_yticks([-200, 100])
+    for item in ax.get_yticklabels():
+        item.set_fontsize(fs)
+    # fig.tight_layout()
     return fig

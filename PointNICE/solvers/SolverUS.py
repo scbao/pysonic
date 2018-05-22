@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-08 14:20:38
+# @Last Modified time: 2018-05-17 15:38:21
 
 import time
 import os
@@ -808,7 +808,7 @@ class SolverUS(BilayerSonophore):
             return self.__runHybrid(neuron, Fdrive, Adrive, tstim, toffset)
 
 
-    def findRheobaseAmps(self, neuron, Fdrive, DCs, Vthr):
+    def findRheobaseAmps(self, neuron, Fdrive, DCs, Vthr, curr='net'):
         ''' Find the rheobase amplitudes (i.e. threshold acoustic amplitudes of infinite duration
             that would result in excitation) of a specific neuron for various stimulation duty cycles.
 
@@ -873,12 +873,16 @@ class SolverUS(BilayerSonophore):
                 else:
                     sstates_pulse[j, :] = np.ones(amps.size) * neuron.steadyStates(Vthr)[j]
 
-            # Compute ON and OFF net currents along the amplitude space
-            iNet_on = neuron.currNet(Vm_on, sstates_pulse)
-            iNet_off = neuron.currNet(Vthr, sstates_pulse)
+            # Compute the pulse average net (or leakage) current along the amplitude space
+            if curr == 'net':
+                iNet_on = neuron.currNet(Vm_on, sstates_pulse)
+                iNet_off = neuron.currNet(Vthr, sstates_pulse)
+            elif curr == 'leak':
+                iNet_on = neuron.currL(Vm_on)
+                iNet_off = neuron.currL(Vthr)
             iNet_avg = iNet_on * DC + iNet_off * (1 - DC)
 
-            # Find the threshold amplitude that cancels the approximated pulse average net current
+            # Find the threshold amplitude that cancels the pulse average net current
             rheboase_amps[i] = np.interp(0, -iNet_avg, amps, left=0., right=np.nan)
 
         inan = np.where(np.isnan(rheboase_amps))[0]
