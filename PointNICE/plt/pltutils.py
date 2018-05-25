@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-19 17:42:25
+# @Last Modified time: 2018-05-24 13:31:54
 
 ''' Plotting utilities '''
 
@@ -789,7 +789,7 @@ def plotRateConstants(neuron, fs=15):
     '''
 
     # Input membrane potential vector
-    Vm = np.linspace(-250, 250, 300)
+    Vm = np.linspace(neuron.Vm0 - 10, 50, 100)
 
     alphax_dict = {}
     betax_dict = {}
