@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-19 15:35:06
+# @Last Modified time: 2018-05-25 22:01:35
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -36,11 +36,15 @@ pltvars = {
 
     'ng': {
         'desc': 'gas content',
-        'label': 'gas',
+        'label': 'n_g',
         'unit': '10^{-22}\ mol',
         'factor': 1e22,
         'min': 1.0,
         'max': 15.0
+        # 'unit': 'ymol',
+        # 'factor': 1e24,
+        # 'min': 100.0,
+        # 'max': 1500.0
     },
 
     'Pac': {
@@ -69,8 +73,8 @@ pltvars = {
 
     'Qm': {
         'desc': 'charge density',
-        'label': 'Q_m',
-        # 'label': 'charge',
+        # 'label': 'Q_m',
+        'label': 'charge',
         'unit': 'nC/cm^2',
         'factor': 1e5,
         'min': -100,
@@ -512,99 +516,99 @@ pltvars = {
 
     'alpham': {
         'desc': 'iNa m-gate activation rate',
-        'label': '\\alpha_{m,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\alpha_m',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'betam': {
         'desc': 'iNa m-gate inactivation rate',
-        'label': '\\beta_{m,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\beta_m',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'alphah': {
         'desc': 'iNa h-gate activation rate',
-        'label': '\\alpha_{h,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\alpha_h',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'betah': {
         'desc': 'iNa h-gate inactivation rate',
-        'label': '\\beta_{h,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\beta_h',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'alphan': {
         'desc': 'iK n-gate activation rate',
-        'label': '\\alpha_{n,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\alpha_n',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'betan': {
         'desc': 'iK n-gate inactivation rate',
-        'label': '\\beta_{n,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\beta_n',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'alphap': {
         'desc': 'iM p-gate activation rate',
-        'label': '\\alpha_{p,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\alpha_p',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'betap': {
         'desc': 'iM p-gate inactivation rate',
-        'label': '\\beta_{p,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\beta_p',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'alphas': {
         'desc': 'iT s-gate activation rate',
-        'label': '\\alpha_{s,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\alpha_s',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'betas': {
         'desc': 'iT s-gate inactivation rate',
-        'label': '\\beta_{s,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\beta_s',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'alphau': {
         'desc': 'iT u-gate activation rate',
-        'label': '\\alpha_{u,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\alpha_u',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'betau': {
         'desc': 'iT u-gate inactivation rate',
-        'label': '\\beta_{u,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\beta_u',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'alphao': {
         'desc': 'iH channels activation rate (between closed and open forms)',
-        'label': '\\alpha_{O,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\alpha_O',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     },
 
     'betao': {
         'desc': 'iH channels inactivation rate (between closed and open forms)',
-        'label': '\\beta_{O,\ eff}',
-        'unit': 'ms^-1',
+        'label': '\\beta_O',
+        'unit': 'ms^{-1}',
         'factor': 1e-3
     }
 }
