@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-25 22:09:19
+# @Last Modified time: 2018-05-25 22:22:57
 
 ''' Plotting utilities '''
 
@@ -959,12 +959,14 @@ def plotEffVars(neuron, Fdrive, a=32e-9, amps=None, charges=None, keys=None, fs=
 
         # Set axis y-limits
         if 'alpha' in key or 'beta' in key:
-            ymax = min(ymax, y0.max() * 3)
+            ymax = min(ymax, y0.max() * 2)
         ylim = [ymin * yvar['factor'], ymax * yvar['factor']]
         if key == 'ng':
             ylim = [np.floor(ylim[0] * 1e2) / 1e2, np.ceil(ylim[1] * 1e2) / 1e2]
         else:
-            ylim = [np.floor(ylim[0]), np.ceil(ylim[1])]
+            factor = 1 / np.power(10, np.floor(np.log10(ylim[1])))
+            print(key, ylim[1], factor)
+            ylim = [np.floor(ylim[0] * factor) / factor, np.ceil(ylim[1] * factor) / factor]
         dy = ylim[1] - ylim[0]
         ax.set_yticks(ylim)
         ax.set_ylim([ylim[0] - 0.05 * dy, ylim[1] + 0.05 * dy])
