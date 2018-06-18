@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-25 22:22:57
+# @Last Modified time: 2018-06-14 17:43:20
 
 ''' Plotting utilities '''
 
@@ -944,22 +944,25 @@ def plotEffVars(neuron, Fdrive, a=32e-9, amps=None, charges=None, keys=None, fs=
         ymin = np.inf
         ymax = -np.inf
 
+        y0 = np.squeeze(interp2d(amps_ref, charges_ref, lookups2D[key].T)(0, charges))
+
         # Plot effective variable for each selected amplitude
         for Adrive in amps:
             y = np.squeeze(interp2d(amps_ref, charges_ref, lookups2D[key].T)(Adrive, charges))
+            if 'alpha' in key or 'beta' in key:
+                y[y > y0.max() * 2] = np.nan
             ax.plot(charges * xvar['factor'], y * yvar['factor'], c=sm.to_rgba(Adrive))
             ymin = min(ymin, y.min())
             ymax = max(ymax, y.max())
 
         # Plot reference variable
-        y0 = np.squeeze(interp2d(amps_ref, charges_ref, lookups2D[key].T)(0, charges))
         ax.plot(charges * xvar['factor'], y0 * yvar['factor'], '--', c='k')
         ymax = max(ymax, y0.max())
         ymin = min(ymin, y0.min())
 
         # Set axis y-limits
         if 'alpha' in key or 'beta' in key:
-            ymax = min(ymax, y0.max() * 2)
+            ymax = y0.max() * 2
         ylim = [ymin * yvar['factor'], ymax * yvar['factor']]
         if key == 'ng':
             ylim = [np.floor(ylim[0] * 1e2) / 1e2, np.ceil(ylim[1] * 1e2) / 1e2]
@@ -969,7 +972,8 @@ def plotEffVars(neuron, Fdrive, a=32e-9, amps=None, charges=None, keys=None, fs=
             ylim = [np.floor(ylim[0] * factor) / factor, np.ceil(ylim[1] * factor) / factor]
         dy = ylim[1] - ylim[0]
         ax.set_yticks(ylim)
-        ax.set_ylim([ylim[0] - 0.05 * dy, ylim[1] + 0.05 * dy])
+        ax.set_ylim(ylim)
+        # ax.set_ylim([ylim[0] - 0.05 * dy, ylim[1] + 0.05 * dy])
 
         # Annotate variable and unit
         xlim = ax.get_xlim()

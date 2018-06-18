@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-15 19:01:19
+# @Last Modified time: 2018-06-13 19:21:36
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -32,9 +32,9 @@ Qm0 = neuron.Vm0 * 1e-5
 
 # Stimulation parameters
 stim_params = {
-    'freqs': [20.0e3],  # Hz
-    'amps': [6e3],  # Pa
-    'charges': np.arange(-80.0, 60.0, 10.0) * 1e-5  # C/m2
+    'freqs': [500e3],  # Hz
+    'amps': [50e3],  # Pa
+    'charges': np.linspace(-72, 0, 5) * 1e-5  # C/m2
 }
 
 # Select output directory
@@ -47,7 +47,7 @@ try:
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    # plotBatch(pkl_dir, pkl_filepaths)
+    plotBatch(pkl_dir, pkl_filepaths)
 
 except InputError as err:
     logger.error(err)

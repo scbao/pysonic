@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-15 12:19:53
+# @Last Modified time: 2018-06-07 15:14:49
 
 """ Definition of generic utility functions used in other modules """
 
@@ -255,9 +255,13 @@ def find_nearest(array, value):
     return (idx, array[idx])
 
 
-def rescale(x, lb, ub, lb_new=0, ub_new=1):
+def rescale(x, lb=None, ub=None, lb_new=0, ub_new=1):
     ''' Rescale a value to a specific interval by linear transformation. '''
 
+    if lb is None:
+        lb = x.min()
+    if ub is None:
+        ub = x.max()
     xnorm = (x - lb) / (ub - lb)
     return xnorm * (ub_new - lb_new) + lb_new
 
