@@ -4,11 +4,12 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-06-07 15:14:49
+# @Last Modified time: 2018-07-04 17:18:26
 
 """ Definition of generic utility functions used in other modules """
 
 from enum import Enum
+import operator
 import os
 import pickle
 import tkinter as tk
@@ -362,20 +363,27 @@ si_prefixes = {
 
 def si_format(x, precision=0, space=''):
     ''' Format a float according to the SI unit system, with the appropriate prefix letter. '''
-    if isinstance(x, float) or isinstance(x, int):
+    if isinstance(x, float) or isinstance(x, int) or isinstance(x, np.float) or isinstance(x, np.int32):
         if x == 0:
             factor = 1e0
             prefix = ''
         else:
-            vals = list(si_prefixes.values())
+            sorted_si_prefixes = sorted(si_prefixes.items(), key=operator.itemgetter(1))
+            vals = [tmp[1] for tmp in sorted_si_prefixes]
+            # vals = list(si_prefixes.values())
             ix = np.searchsorted(vals, np.abs(x)) - 1
             if np.abs(x) == vals[ix + 1]:
                 ix += 1
             factor = vals[ix]
-            prefix = list(si_prefixes.keys())[ix]
+            prefix = sorted_si_prefixes[ix][0]
+            # prefix = list(si_prefixes.keys())[ix]
         return '{{:.{}f}}{}{}'.format(precision, space, prefix).format(x / factor)
     elif isinstance(x, list) or isinstance(x, tuple):
         return [si_format(item, precision) for item in x]
+    elif isinstance(x, np.ndarray) and x.ndim == 1:
+        return [si_format(float(item), precision) for item in x]
+    else:
+        print(type(x))
 
 
 def getCycleAverage(t, y, T):
