@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-04 11:46:33
+# @Last Modified time: 2018-07-04 11:48:51
 
 """ Utility functions used in simulations """
 
@@ -673,7 +673,7 @@ def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF
     logger.debug('completed in %ss', si_format(tcomp, 1))
 
     # Store dataframe and metadata
-    df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm, 'Qm': Vm / neuron.Cm0 * 1e-7})
+    df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm, 'Qm': Vm * neuron.Cm0 * 1e-3})
     for j in range(len(neuron.states_names)):
         df[neuron.states_names[j]] = channels[j]
     meta = {'neuron': neuron.name, 'Astim': Astim, 'tstim': tstim, 'toffset': toffset,
