@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-03 12:27:08
+# @Last Modified time: 2018-07-04 11:44:11
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
@@ -22,7 +22,7 @@ neurons = ['RS']
 
 # Stimulation parameters
 stim_params = {
-    'amps': [10.0, 15.0, 20.0, 30.0],  # mA/m2
+    'amps': [10.0],  # mA/m2
     'durations': [300e-3],  # np.array([20, 40, 60, 80, 100, 150, 200, 250, 300]) * 1e-3,  # s
     'PRFs': [1e2],  # np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]) * 1e3,  # Hz
     'DCs': [0.9],  # np.array([1, 2, 5, 10, 25, 50, 75, 100]) * 1e-2
@@ -41,7 +41,8 @@ try:
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    plotBatch(pkl_dir, pkl_filepaths)
+    yvars = {'Q_m': ['Qm']}
+    plotBatch(pkl_dir, pkl_filepaths, yvars)
 
 except InputError as err:
     logger.error(err)
