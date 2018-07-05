@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-17 15:38:21
+# @Last Modified time: 2018-07-05 23:49:10
 
 import time
 import os
@@ -15,6 +15,8 @@ import progressbar as pb
 import numpy as np
 import scipy.integrate as integrate
 from scipy.interpolate import interp2d
+
+from neuron import h, gui
 
 from ..bls import BilayerSonophore
 from ..utils import *
@@ -575,6 +577,127 @@ class SolverUS(BilayerSonophore):
         return (t, y, states)
 
 
+    def __runNEURON(self, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
+
+        # Raise warnings as error
+        warnings.filterwarnings('error')
+
+        # Check lookup file existence
+        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
+        lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
+        if not os.path.isfile(lookup_path):
+            raise InputError('Missing lookup file: "{}"'.format(lookup_file))
+
+        # Load lookups dictionary
+        with open(lookup_path, 'rb') as fh:
+            lookups3D = pickle.load(fh)
+
+        # Retrieve 1D inputs from lookups dictionary
+        freqs = lookups3D.pop('f')
+        amps = lookups3D.pop('A')
+        charges = lookups3D.pop('Q')
+
+        # Check that stimulation parameters are within lookup range
+        margin = 1e-9  # adding margin to compensate for eventual round error
+        frange = (freqs.min() - margin, freqs.max() + margin)
+        Arange = (amps.min() - margin, amps.max() + margin)
+
+        if Fdrive < frange[0] or Fdrive > frange[1]:
+            raise InputError(('Invalid frequency: {:.2f} kHz (must be within ' +
+                              '{:.1f} kHz - {:.1f} MHz lookup interval)')
+                             .format(Fdrive * 1e-3, frange[0] * 1e-3, frange[1] * 1e-6))
+        if Adrive < Arange[0] or Adrive > Arange[1]:
+            raise InputError(('Invalid amplitude: {:.2f} kPa (must be within ' +
+                              '{:.1f} - {:.1f} kPa lookup interval)')
+                             .format(Adrive * 1e-3, Arange[0] * 1e-3, Arange[1] * 1e-3))
+
+        # Interpolate 3D lookups at US frequency
+        lookups2D = itrpLookupsFreq(lookups3D, freqs, Fdrive)
+
+        # Interpolate 2D lookups at US amplitude and zero
+        lookups1D = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(Adrive, charges))
+                     for key in lookups2D.keys()}
+        lookups1D0 = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(0.0, charges))
+                      for key in lookups2D.keys()}
+
+        # Rescale rate constants to ms-1
+        for k in lookups1D.keys():
+            if 'alpha' in k or 'beta' in k:
+                lookups1D[k] *= 1e-3
+                lookups1D0[k] *= 1e-3
+
+        # Rename V lookup
+        lookups1D['veff'] = lookups1D.pop('V')
+        lookups1D0['veff'] = lookups1D0.pop('V')
+
+        # Translate 1D lookups to h-vectors
+        qvec = h.Vector(charges * 1e5)
+        lookups1D_hoc = {k: h.Vector(lookups1D[k]) for k in lookups1D.keys()}
+        lookups1D0_hoc = {k: h.Vector(lookups1D0[k]) for k in lookups1D.keys()}
+
+        # Assign h-vectors lookups to mechanism tables
+        add_table_on = "h.table_{0}_on_{1}(lookups1D_hoc['{0}']._ref_x[0], qvec.size(), qvec._ref_x[0])"
+        add_table_off = "h.table_{0}_off_{1}(lookups1D0_hoc['{0}']._ref_x[0], qvec.size(), qvec._ref_x[0])"
+        eval(add_table_on.format('veff', neuron.name))
+        eval(add_table_off.format('veff', neuron.name))
+        for gate in neuron.getGates():
+            eval(add_table_on.format('alpha{}'.format(gate), neuron.name))
+            eval(add_table_off.format('alpha{}'.format(gate), neuron.name))
+            eval(add_table_on.format('beta{}'.format(gate), neuron.name))
+            eval(add_table_off.format('beta{}'.format(gate), neuron.name))
+
+        # Create soma compartment
+        soma = h.Section(name='soma')
+        soma.nseg = 1
+        soma.Ra = 1  # dummy axoplasmic resistance
+        soma.diam = 1  # unit diameter
+        soma.L = 1  # unit length
+
+        # Add mechanisms
+        soma.insert(neuron.name)
+
+        # Set parameters of acoustic stimulus
+        soma.duration_RS = tstim * 1e3
+        if DC < 1:
+            soma.PRF_RS = PRF
+        else:
+            soma.PRF_RS = tstim * 1e3
+        soma.DC_RS = DC
+
+        # Record evolution of time and charge density
+        t = h.Vector()
+        states = h.Vector()
+        Qm = h.Vector()
+        Vm = h.Vector()
+        t.record(h._ref_t)
+        Qm.record(soma(0.5)._ref_Q_RS)
+        Vm.record(soma(0.5)._ref_Vmeff_RS)
+        # states.record(soma(0.5)._ref_stimon_RS)
+        probes = {}
+        for gate in neuron.getGates():
+            probes[gate] = h.Vector()
+            eval('probes["{0}"].record(soma(0.5)._ref_{0}_{1})'.format(gate, neuron.name))
+
+        # Set initial conditions and simulation duration
+        h.v_init = neuron.Vm0
+        h.tstop = (tstim + toffset) * 1e3
+
+        # Run simulation
+        h.dt = dt * 1e3
+        h.run()
+
+        t = np.array(t.to_python()) * 1e-3  # s
+        Qm = np.array(Qm.to_python()) * 1e-5  # C/m2
+        Vm = np.array(Vm.to_python())  # mV
+        channels = [np.array(probes[gate].to_python()) for gate in neuron.getGates()]
+        for gate in neuron.getGates():
+            probes[gate] = np.array(probes[gate].to_python())
+        y = [np.zeros(t.size), np.zeros(t.size), Qm, Vm, *channels]
+        states = np.array(states.to_python())
+
+        return (t, y, states)
+
+
     def __runHybrid(self, neuron, Fdrive, Adrive, tstim, toffset, phi=np.pi):
         """ Compute solutions of the system for a specific set of
             US stimulation parameters, using a hybrid integration scheme.
@@ -762,7 +885,7 @@ class SolverUS(BilayerSonophore):
         """
 
         # Check validity of simulation type
-        if sim_type not in ('classic', 'effective', 'hybrid'):
+        if sim_type not in ('classic', 'effective', 'NEURON', 'hybrid'):
             raise InputError('Invalid integration method: "{}"'.format(sim_type))
 
         # Check validity of stimulation parameters
@@ -802,6 +925,8 @@ class SolverUS(BilayerSonophore):
             return self.__runClassic(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC)
         elif sim_type == 'effective':
             return self.__runEffective(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC)
+        elif sim_type == 'NEURON':
+            return self.__runNEURON(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC)
         elif sim_type == 'hybrid':
             if DC < 1.0:
                 raise InputError('Pulsed protocol incompatible with hybrid integration method')
