@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-05 23:49:10
+# @Last Modified time: 2018-07-06 17:27:00
 
 import time
 import os
@@ -16,7 +16,7 @@ import numpy as np
 import scipy.integrate as integrate
 from scipy.interpolate import interp2d
 
-from neuron import h, gui
+from neuron import h
 
 from ..bls import BilayerSonophore
 from ..utils import *
@@ -582,6 +582,15 @@ class SolverUS(BilayerSonophore):
         # Raise warnings as error
         warnings.filterwarnings('error')
 
+        # Load mechanisms DLL file
+        nmodl_dir = getNmodlDir()
+        mod_file = nmodl_dir + '/{}.mod'.format(neuron.name)
+        dll_file = nmodl_dir + '/nrnmech.dll'
+        if os.path.getmtime(mod_file) > os.path.getmtime(dll_file):
+            logger.warning('"%s.mod" file more recent than dll -> needs recompiling', neuron.name)
+            # TODO: compile dll dynamically
+        h.nrn_load_dll(dll_file)
+
         # Check lookup file existence
         lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
         lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
@@ -646,45 +655,45 @@ class SolverUS(BilayerSonophore):
             eval(add_table_on.format('beta{}'.format(gate), neuron.name))
             eval(add_table_off.format('beta{}'.format(gate), neuron.name))
 
-        # Create soma compartment
-        soma = h.Section(name='soma')
-        soma.nseg = 1
-        soma.Ra = 1  # dummy axoplasmic resistance
-        soma.diam = 1  # unit diameter
-        soma.L = 1  # unit length
+        # Create point-neuron compartment
+        pointneuron = h.Section(name='pointneuron')
+        pointneuron.nseg = 1
+        pointneuron.Ra = 1  # dummy axoplasmic resistance
+        pointneuron.diam = 1  # unit diameter
+        pointneuron.L = 1  # unit length
 
         # Add mechanisms
-        soma.insert(neuron.name)
+        pointneuron.insert(neuron.name)
 
         # Set parameters of acoustic stimulus
-        soma.duration_RS = tstim * 1e3
+        setattr(pointneuron, 'duration_{}'.format(neuron.name), tstim * 1e3)
         if DC < 1:
-            soma.PRF_RS = PRF
+            setattr(pointneuron, 'PRF_{}'.format(neuron.name), PRF)
         else:
-            soma.PRF_RS = tstim * 1e3
-        soma.DC_RS = DC
+            setattr(pointneuron, 'PRF_{}'.format(neuron.name), tstim * 1e3)
+        setattr(pointneuron, 'DC_{}'.format(neuron.name), DC)
 
-        # Record evolution of time and charge density
+        # Record evolution of time and output variables
         t = h.Vector()
         states = h.Vector()
         Qm = h.Vector()
         Vm = h.Vector()
         t.record(h._ref_t)
-        Qm.record(soma(0.5)._ref_Q_RS)
-        Vm.record(soma(0.5)._ref_Vmeff_RS)
-        # states.record(soma(0.5)._ref_stimon_RS)
+        Qm.record(getattr(pointneuron(0.5), '_ref_Q_{}'.format(neuron.name)))
+        Vm.record(getattr(pointneuron(0.5), '_ref_Vmeff_{}'.format(neuron.name)))
+        states.record(getattr(pointneuron(0.5), '_ref_stimon_{}'.format(neuron.name)))
         probes = {}
         for gate in neuron.getGates():
             probes[gate] = h.Vector()
-            eval('probes["{0}"].record(soma(0.5)._ref_{0}_{1})'.format(gate, neuron.name))
-
-        # Set initial conditions and simulation duration
-        h.v_init = neuron.Vm0
-        h.tstop = (tstim + toffset) * 1e3
+            probes[gate].record(getattr(pointneuron(0.5), '_ref_{}_{}'.format(gate, neuron.name)))
 
         # Run simulation
+        h.t = 0
+        h.finitialize(neuron.Vm0)
+        tstop = (tstim + toffset) * 1e3
         h.dt = dt * 1e3
-        h.run()
+        while h.t < tstop:
+            h.fadvance()
 
         t = np.array(t.to_python()) * 1e-3  # s
         Qm = np.array(Qm.to_python()) * 1e-5  # C/m2
@@ -692,7 +701,7 @@ class SolverUS(BilayerSonophore):
         channels = [np.array(probes[gate].to_python()) for gate in neuron.getGates()]
         for gate in neuron.getGates():
             probes[gate] = np.array(probes[gate].to_python())
-        y = [np.zeros(t.size), np.zeros(t.size), Qm, Vm, *channels]
+        y = np.array([np.zeros(t.size), np.zeros(t.size), Qm, Vm, *channels])
         states = np.array(states.to_python())
 
         return (t, y, states)

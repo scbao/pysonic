@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-04 17:24:25
+# @Last Modified time: 2018-07-06 16:54:01
 
 """ Definition of generic utility functions used in other modules """
 
@@ -81,7 +81,16 @@ def getLookupDir():
         :return: absolute path to the directory
     """
     this_dir, _ = os.path.split(__file__)
-    return this_dir + '/lookups'
+    return os.path.join(this_dir, 'lookups')
+
+
+def getNmodlDir():
+    """ Return the location of the directory holding the NEURON mechanisms dll.
+
+        :return: absolute path to the directory
+    """
+    this_dir, _ = os.path.split(__file__)
+    return os.path.join(this_dir, 'neurons\\nmodl')
 
 
 def ParseNestedDict(dict_in):
