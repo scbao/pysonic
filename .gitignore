@@ -23,6 +23,11 @@ __pycache__/
 # C extensions
 *.so
 
+# NEURON object and binary files
+*.o
+*.c
+*.dll
+
 # Distribution / packaging
 .Python
 env/
