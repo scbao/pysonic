@@ -11,7 +11,7 @@
 	"folders":
 	[
 		{
-			"file_exclude_patcomterns":
+			"file_exclude_patterns":
 			[
 				"*.sublime-workspace",
 				"MANIFEST.in",
@@ -19,7 +19,8 @@
 				"conf.py",
 				"index.rst",
 				"*.gitignore",
-				"__init__.py"
+				"__init__.py",
+				"*.c"
 			],
 			"folder_exclude_patterns":
 			[

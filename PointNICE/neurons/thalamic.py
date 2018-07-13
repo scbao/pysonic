@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-02 18:05:33
+# @Last Modified time: 2018-07-12 19:44:11
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -721,8 +721,8 @@ class ThalamoCortical(Thalamic):
 
         # Compute steady-state variables for the kinetics system of Ih
         CCa_eq = self.CCa_min - self.tau_Ca_removal * self.iT_2_CCa * iTeq
-        BA = self.betao(Vm) / self.alphao(Vm)
         P0_eq = self.k2 / (self.k2 + self.k1 * CCa_eq**self.nCa)
+        BA = self.betao(Vm) / self.alphao(Vm)
         O_eq = self.k4 / (self.k3 * (1 - P0_eq) + self.k4 * (1 + BA))
         C_eq = BA * O_eq
 

@@ -1,6 +1,6 @@
-TITLE RE neuron
+TITLE LTS neuron
 :
-: Equations governing the behavior of a thalamic reticular neuron
+: Equations governing the behavior of a low-threshold spiking neuron
 : during ultrasonic stimulation, according to the NICE model.
 :
 : Written by Theo Lemaire and Simon Narduzzi, EPFL, 2018
@@ -19,9 +19,10 @@ NEURON {
     : Definition of NEURON mechanism
 
     : mechanism name and constituting currents
-    SUFFIX RE
+    SUFFIX LTS
     NONSPECIFIC_CURRENT iNa
     NONSPECIFIC_CURRENT iKd
+    NONSPECIFIC_CURRENT iM
     NONSPECIFIC_CURRENT iCa
     NONSPECIFIC_CURRENT iLeak
 
@@ -29,7 +30,7 @@ NEURON {
     RANGE duration, PRF, DC, stimon
 
     : physiological variables
-    RANGE Q, Vmeff, gnabar, gkdbar, gcabar, gleak, eleak, ek, ena, eca
+    RANGE Q, Vmeff, gnabar, gkdbar, gmbar, gcabar, gleak, eleak, ek, ena, eca
 }
 
 
@@ -48,16 +49,23 @@ PARAMETER {
     ena = 50            (mV)
     eca = 120           (mV)
     ek = -90            (mV)
-    eleak = -90.0       (mV)
-    gnabar = 0.2        (mho/cm2)
-    gkdbar = 0.02       (mho/cm2)
-    gcabar = 0.003      (mho/cm2)
-    gleak =  5e-5     (mho/cm2)
+    eleak = -50.0       (mV)
+    gnabar = 0.050     (mho/cm2)
+    gkdbar = 0.004     (mho/cm2)
+    gmbar = 2.8e-5     (mho/cm2)
+    gcabar = 0.0004    (mho/cm2)
+    gleak = 1.9e-5     (mho/cm2)
 }
 
 STATE {
     : Differential variables other than v, i.e. the ion channels gating states
-    m h n s u
+
+    m  : iNa activation gate
+    h  : iNa inactivation gate
+    n  : iKd activation gate
+    p  : iM activation gate
+    s  : iCa activation gate
+    u  : iCa inactivation gate
 }
 
 ASSIGNED {
@@ -67,6 +75,7 @@ ASSIGNED {
     v       (mV)
     iNa     (mA/cm2)
     iKd     (mA/cm2)
+    iM      (mA/cm2)
     iCa     (mA/cm2)
     iLeak   (mA/cm2)
     alpha_h (/ms)
@@ -75,6 +84,8 @@ ASSIGNED {
     beta_m  (/ms)
     alpha_n (/ms)
     beta_n  (/ms)
+    alpha_p (/ms)
+    beta_p  (/ms)
     alpha_s (/ms)
     beta_s  (/ms)
     alpha_u (/ms)
@@ -101,6 +112,7 @@ BREAKPOINT {
     : compute ionic currents
     iNa = gnabar * m * m * m * h * (Vmeff - ena)
     iKd = gkdbar * n * n * n * n * (Vmeff - ek)
+    iM = gmbar * p * (Vmeff - ek)
     iCa = gcabar * s * s * u * (Vmeff - eca)
     iLeak = gleak * (Vmeff - eleak)
 }
@@ -115,6 +127,7 @@ DERIVATIVE states {
     m' = alpha_m * (1 - m) - beta_m * m
     h' = alpha_h * (1 - h) - beta_h * h
     n' = alpha_n * (1 - n) - beta_n * n
+    p' = alpha_p * (1 - p) - beta_p * p
     s' = alpha_s * (1 - s) - beta_s * s
     u' = alpha_u * (1 - u) - beta_u * u
 }
@@ -124,12 +137,16 @@ UNITSOFF : turning off units checking for functions not working with standard SI
 INITIAL {
     : Initialize variables and parameters
 
+    : compute Q
+    Q = v * cm
+
     : set initial states values
-    m = alpham_off(v) / (alpham_off(v) + betam_off(v))
-    h = alphah_off(v) / (alphah_off(v) + betah_off(v))
-    n = alphan_off(v) / (alphan_off(v) + betan_off(v))
-    s = alphas_off(v) / (alphas_off(v) + betas_off(v))
-    u = alphau_off(v) / (alphau_off(v) + betau_off(v))
+    m = alpham_off(Q) / (alpham_off(Q) + betam_off(Q))
+    h = alphah_off(Q) / (alphah_off(Q) + betah_off(Q))
+    n = alphan_off(Q) / (alphan_off(Q) + betan_off(Q))
+    p = alphap_off(Q) / (alphap_off(Q) + betap_off(Q))
+    s = alphas_off(Q) / (alphas_off(Q) + betas_off(Q))
+    u = alphau_off(Q) / (alphau_off(Q) + betau_off(Q))
 
     : initialize tint, set stimulation state and correct PRF
     tint = 0
@@ -152,6 +169,10 @@ FUNCTION_TABLE alphan_on(x)     (/ms)
 FUNCTION_TABLE alphan_off(x)    (/ms)
 FUNCTION_TABLE betan_on(x)      (/ms)
 FUNCTION_TABLE betan_off(x)     (/ms)
+FUNCTION_TABLE alphap_on(x)     (/ms)
+FUNCTION_TABLE alphap_off(x)    (/ms)
+FUNCTION_TABLE betap_on(x)      (/ms)
+FUNCTION_TABLE betap_off(x)     (/ms)
 FUNCTION_TABLE alphas_on(x)     (/ms)
 FUNCTION_TABLE alphas_off(x)    (/ms)
 FUNCTION_TABLE betas_on(x)      (/ms)
@@ -170,21 +191,25 @@ PROCEDURE interpolate_on(Q){
     beta_h = betah_on(Q)
     alpha_n = alphan_on(Q)
     beta_n = betan_on(Q)
+    alpha_p = alphap_on(Q)
+    beta_p = betap_on(Q)
     alpha_s = alphas_on(Q)
     beta_s = betas_on(Q)
     alpha_u = alphau_on(Q)
     beta_u = betau_on(Q)
 }
 
-PROCEDURE interpolate_off(v){
+PROCEDURE interpolate_off(Q){
     : Interpolate rate constants durong US-OFF periods from appropriate tables
 
-    alpha_m = alpham_off(v)
-    beta_m = betam_off(v)
-    alpha_h = alphah_off(v)
-    beta_h = betah_off(v)
-    alpha_n = alphan_off(v)
-    beta_n = betan_off(v)
+    alpha_m = alpham_off(Q)
+    beta_m = betam_off(Q)
+    alpha_h = alphah_off(Q)
+    beta_h = betah_off(Q)
+    alpha_n = alphan_off(Q)
+    beta_n = betan_off(Q)
+    alpha_p = alphap_off(Q)
+    beta_p = betap_off(Q)
     alpha_s = alphas_off(Q)
     beta_s = betas_off(Q)
     alpha_u = alphau_off(Q)

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-06 17:27:00
+# @Last Modified time: 2018-07-13 14:19:34
 
 import time
 import os
@@ -15,7 +15,6 @@ import progressbar as pb
 import numpy as np
 import scipy.integrate as integrate
 from scipy.interpolate import interp2d
-
 from neuron import h
 
 from ..bls import BilayerSonophore
@@ -582,8 +581,11 @@ class SolverUS(BilayerSonophore):
         # Raise warnings as error
         warnings.filterwarnings('error')
 
+        # Define aliases for NMODL-protected variable names
+        neuron_aliases = {'C': 'C1'}
+
         # Load mechanisms DLL file
-        nmodl_dir = getNmodlDir()
+        nmodl_dir = getNmodlDir() + '/{}'.format(neuron.name)
         mod_file = nmodl_dir + '/{}.mod'.format(neuron.name)
         dll_file = nmodl_dir + '/nrnmech.dll'
         if os.path.getmtime(mod_file) > os.path.getmtime(dll_file):
@@ -624,32 +626,33 @@ class SolverUS(BilayerSonophore):
         lookups2D = itrpLookupsFreq(lookups3D, freqs, Fdrive)
 
         # Interpolate 2D lookups at US amplitude and zero
-        lookups1D = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(Adrive, charges))
-                     for key in lookups2D.keys()}
-        lookups1D0 = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(0.0, charges))
-                      for key in lookups2D.keys()}
+        lookupsA = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(Adrive, charges))
+                    for key in lookups2D.keys()}
+        lookups0 = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(0.0, charges))
+                    for key in lookups2D.keys()}
 
         # Rescale rate constants to ms-1
-        for k in lookups1D.keys():
+        for k in lookupsA.keys():
             if 'alpha' in k or 'beta' in k:
-                lookups1D[k] *= 1e-3
-                lookups1D0[k] *= 1e-3
+                lookupsA[k] *= 1e-3
+                lookups0[k] *= 1e-3
 
         # Rename V lookup
-        lookups1D['veff'] = lookups1D.pop('V')
-        lookups1D0['veff'] = lookups1D0.pop('V')
+        lookupsA['veff'] = lookupsA.pop('V')
+        lookups0['veff'] = lookups0.pop('V')
 
         # Translate 1D lookups to h-vectors
         qvec = h.Vector(charges * 1e5)
-        lookups1D_hoc = {k: h.Vector(lookups1D[k]) for k in lookups1D.keys()}
-        lookups1D0_hoc = {k: h.Vector(lookups1D0[k]) for k in lookups1D.keys()}
+        lookupsA_hoc = {k: h.Vector(lookupsA[k]) for k in lookupsA.keys()}
+        lookups0_hoc = {k: h.Vector(lookups0[k]) for k in lookups0.keys()}
 
         # Assign h-vectors lookups to mechanism tables
-        add_table_on = "h.table_{0}_on_{1}(lookups1D_hoc['{0}']._ref_x[0], qvec.size(), qvec._ref_x[0])"
-        add_table_off = "h.table_{0}_off_{1}(lookups1D0_hoc['{0}']._ref_x[0], qvec.size(), qvec._ref_x[0])"
+        add_table_on = "h.table_{0}_on_{1}(lookupsA_hoc['{0}']._ref_x[0], qvec.size(), qvec._ref_x[0])"
+        add_table_off = "h.table_{0}_off_{1}(lookups0_hoc['{0}']._ref_x[0], qvec.size(), qvec._ref_x[0])"
         eval(add_table_on.format('veff', neuron.name))
         eval(add_table_off.format('veff', neuron.name))
         for gate in neuron.getGates():
+            gate = gate.lower()
             eval(add_table_on.format('alpha{}'.format(gate), neuron.name))
             eval(add_table_off.format('alpha{}'.format(gate), neuron.name))
             eval(add_table_on.format('beta{}'.format(gate), neuron.name))
@@ -683,9 +686,13 @@ class SolverUS(BilayerSonophore):
         Vm.record(getattr(pointneuron(0.5), '_ref_Vmeff_{}'.format(neuron.name)))
         states.record(getattr(pointneuron(0.5), '_ref_stimon_{}'.format(neuron.name)))
         probes = {}
-        for gate in neuron.getGates():
-            probes[gate] = h.Vector()
-            probes[gate].record(getattr(pointneuron(0.5), '_ref_{}_{}'.format(gate, neuron.name)))
+        for state in neuron.states_names:
+            probes[state] = h.Vector()
+            if state in neuron_aliases.keys():
+                alias = neuron_aliases[state]
+            else:
+                alias = state
+            probes[state].record(getattr(pointneuron(0.5), '_ref_{}_{}'.format(alias, neuron.name)))
 
         # Run simulation
         h.t = 0
@@ -698,9 +705,7 @@ class SolverUS(BilayerSonophore):
         t = np.array(t.to_python()) * 1e-3  # s
         Qm = np.array(Qm.to_python()) * 1e-5  # C/m2
         Vm = np.array(Vm.to_python())  # mV
-        channels = [np.array(probes[gate].to_python()) for gate in neuron.getGates()]
-        for gate in neuron.getGates():
-            probes[gate] = np.array(probes[gate].to_python())
+        channels = [np.array(probes[state].to_python()) for state in neuron.states_names]
         y = np.array([np.zeros(t.size), np.zeros(t.size), Qm, Vm, *channels])
         states = np.array(states.to_python())
 

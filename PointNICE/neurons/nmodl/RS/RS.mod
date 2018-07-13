@@ -46,17 +46,21 @@ PARAMETER {
     : membrane properties
     cm = 1              (uF/cm2)
     ena = 50            (mV)
-    ek      = -90       (mV)
+    ek = -90            (mV)
     eleak = -70.3       (mV)
-    gnabar  = 0.056     (mho/cm2)
-    gkdbar  = 0.006     (mho/cm2)
-    gmbar   = 7.5e-5    (mho/cm2)
-    gleak =  2.05e-5    (mho/cm2)
+    gnabar = 0.056      (mho/cm2)
+    gkdbar = 0.006      (mho/cm2)
+    gmbar = 7.5e-5      (mho/cm2)
+    gleak = 2.05e-5     (mho/cm2)
 }
 
 STATE {
     : Differential variables other than v, i.e. the ion channels gating states
-    m h n p
+
+    m  : iNa activation gate
+    h  : iNa inactivation gate
+    n  : iKd activation gate
+    p  : iM activation gate
 }
 
 ASSIGNED {
@@ -120,11 +124,14 @@ UNITSOFF : turning off units checking for functions not working with standard SI
 INITIAL {
     : Initialize variables and parameters
 
+    : compute Q
+    Q = v * cm
+
     : set initial states values
-    m = alpham_off(v) / (alpham_off(v) + betam_off(v))
-    h = alphah_off(v) / (alphah_off(v) + betah_off(v))
-    n = alphan_off(v) / (alphan_off(v) + betan_off(v))
-    p = alphap_off(v) / (alphap_off(v) + betap_off(v))
+    m = alpham_off(Q) / (alpham_off(Q) + betam_off(Q))
+    h = alphah_off(Q) / (alphah_off(Q) + betah_off(Q))
+    n = alphan_off(Q) / (alphan_off(Q) + betan_off(Q))
+    p = alphap_off(Q) / (alphap_off(Q) + betap_off(Q))
 
     : initialize tint, set stimulation state and correct PRF
     tint = 0
@@ -165,15 +172,15 @@ PROCEDURE interpolate_on(Q){
     beta_p = betap_on(Q)
 }
 
-PROCEDURE interpolate_off(v){
+PROCEDURE interpolate_off(Q){
     : Interpolate rate constants durong US-OFF periods from appropriate tables
 
-    alpha_m = alpham_off(v)
-    beta_m = betam_off(v)
-    alpha_h = alphah_off(v)
-    beta_h = betah_off(v)
-    alpha_n = alphan_off(v)
-    beta_n = betan_off(v)
+    alpha_m = alpham_off(Q)
+    beta_m = betam_off(Q)
+    alpha_h = alphah_off(Q)
+    beta_h = betah_off(Q)
+    alpha_n = alphan_off(Q)
+    beta_n = betan_off(Q)
     alpha_p = alphap_off(Q)
     beta_p = betap_off(Q)
 }

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-06-14 17:43:20
+# @Last Modified time: 2018-07-12 17:21:39
 
 ''' Plotting utilities '''
 
@@ -25,6 +25,7 @@ from matplotlib.ticker import FormatStrFormatter
 import pandas as pd
 
 from .. import neurons
+from ..constants import DT_EFF
 from ..utils import getNeuronsDict, getLookupDir, rescale, InputError, computeMeshEdges, si_format, itrpLookupsFreq
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
@@ -339,10 +340,12 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
         # Determine patches location
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
 
-        # Add onset to time and states vectors
+        # Add onset to time vectors
         if t_plt['onset'] > 0.0:
-            t = np.insert(t, 0, -t_plt['onset'])
-            states = np.insert(states, 0, 0)
+            tonset = np.array([-t_plt['onset'], -DT_EFF])
+            t = np.hstack((tonset, t))
+            # t = np.insert(t, 0, -t_plt['onset'])
+            # states = np.insert(states, 0, 0)
 
         # Set x-axis label
         ax.set_xlabel('$\\rm {}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
@@ -356,8 +359,12 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
             var = eval(pltvar['constant']) * np.ones(nsamples)
         else:
             var = df[varname].values
-        if var.size == t.size - 1:
-            var = np.insert(var, 0, var[0])
+        if var.size == t.size - 2:
+            if varname is 'Vm':
+                var = np.hstack((np.array([neuron.Vm0] * 2), var))
+            else:
+                var = np.hstack((np.array([var[0]] * 2), var))
+                # var = np.insert(var, 0, var[0])
 
         # Determine legend label
         if labels is not None:
@@ -563,10 +570,12 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
         # Determine patches location
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
 
-        # Adding onset to time and states vectors
+        # Adding onset to time vector
         if t_plt['onset'] > 0.0:
-            t = np.insert(t, 0, -t_plt['onset'])
-            states = np.insert(states, 0, 0)
+            tonset = np.array([-t_plt['onset'], -DT_EFF])
+            t = np.hstack((tonset, t))
+            # t = np.insert(t, 0, -t_plt['onset'])
+            # states = np.insert(states, 0, 0)
 
         # Determine variables to plot if not provided
         if not vars_dict:
@@ -632,8 +641,12 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
                     var = eval(pltvar['constant']) * np.ones(nsamples)
                 else:
                     var = df[vars_dict[labels[i]][j]].values
-                if var.size == t.size - 1:
-                    var = np.insert(var, 0, var[0])
+                if var.size == t.size - 2:
+                    if pltvar['desc'] == 'membrane potential':
+                        var = np.hstack((np.array([neuron.Vm0] * 2), var))
+                    else:
+                        var = np.hstack((np.array([var[0]] * 2), var))
+                        # var = np.insert(var, 0, var[0])
 
                 # Plot variable
                 if 'constant' in pltvar or pltvar['desc'] in ['net current']:
