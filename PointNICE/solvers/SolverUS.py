@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-13 14:19:34
+# @Last Modified time: 2018-07-17 16:27:36
 
 import time
 import os
@@ -582,15 +582,29 @@ class SolverUS(BilayerSonophore):
         warnings.filterwarnings('error')
 
         # Define aliases for NMODL-protected variable names
-        neuron_aliases = {'C': 'C1'}
+        neuron_aliases = {'O': 'O1', 'C': 'C1'}
 
         # Load mechanisms DLL file
         nmodl_dir = getNmodlDir() + '/{}'.format(neuron.name)
         mod_file = nmodl_dir + '/{}.mod'.format(neuron.name)
         dll_file = nmodl_dir + '/nrnmech.dll'
-        if os.path.getmtime(mod_file) > os.path.getmtime(dll_file):
+
+        # Raise warning if source MOD file is more recent than compiled DLL file
+        if not os.path.isfile(dll_file) or os.path.getmtime(mod_file) > os.path.getmtime(dll_file):
             logger.warning('"%s.mod" file more recent than dll -> needs recompiling', neuron.name)
-            # TODO: compile dll dynamically
+
+            # switch to NMODL directory, invoke mknrndll command and go back to original directory
+            # print('saving current working directory')
+            # cwd = os.getcwd()
+            # print('switching to NMODL directory')
+            # os.system('cd {}'.format(nmodl_dir))
+            # print('invoking mknrndll command')
+            # exit_code = os.system('c:/nrn/mingw/bin/sh c:/nrn/lib/mknrndll.sh /c/nrn')
+            # print(exit_code)
+            # print('simulating return ')
+            # print('switching back to original directory')
+            # os.system('cd {}'.format(cwd))
+
         h.nrn_load_dll(dll_file)
 
         # Check lookup file existence
