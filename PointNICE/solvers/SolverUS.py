@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-17 16:27:36
+# @Last Modified time: 2018-07-18 15:37:32
 
 import time
 import os
@@ -24,6 +24,9 @@ from ..neurons import BaseMech
 
 # Get package logger
 logger = logging.getLogger('PointNICE')
+
+# global list of paths already loaded by load_mechanisms
+nrn_dll_loaded = []
 
 
 class SolverUS(BilayerSonophore):
@@ -585,7 +588,7 @@ class SolverUS(BilayerSonophore):
         neuron_aliases = {'O': 'O1', 'C': 'C1'}
 
         # Load mechanisms DLL file
-        nmodl_dir = getNmodlDir() + '/{}'.format(neuron.name)
+        nmodl_dir = getNmodlDir()  # + '/{}'.format(neuron.name)
         mod_file = nmodl_dir + '/{}.mod'.format(neuron.name)
         dll_file = nmodl_dir + '/nrnmech.dll'
 
@@ -605,7 +608,10 @@ class SolverUS(BilayerSonophore):
             # print('switching back to original directory')
             # os.system('cd {}'.format(cwd))
 
-        h.nrn_load_dll(dll_file)
+        # Load mechanisms DLL if not already loaded
+        if dll_file not in nrn_dll_loaded:
+            h.nrn_load_dll(dll_file)
+            nrn_dll_loaded.append(dll_file)
 
         # Check lookup file existence
         lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)

@@ -52,12 +52,17 @@ PARAMETER {
     gnabar = 0.2        (mho/cm2)
     gkdbar = 0.02       (mho/cm2)
     gcabar = 0.003      (mho/cm2)
-    gleak =  5e-5     (mho/cm2)
+    gleak =  5e-5       (mho/cm2)
 }
 
 STATE {
     : Differential variables other than v, i.e. the ion channels gating states
-    m h n s u
+
+    m  : iNa activation gate
+    h  : iNa inactivation gate
+    n  : iKd activation gate
+    s  : iCa activation gate
+    u  : iCa inactivation gate
 }
 
 ASSIGNED {
@@ -82,6 +87,8 @@ ASSIGNED {
     stimon
     tint    (ms)
 }
+
+INCLUDE "stimonoff.hoc"
 
 BREAKPOINT {
     : Main computation block
@@ -124,16 +131,19 @@ UNITSOFF : turning off units checking for functions not working with standard SI
 INITIAL {
     : Initialize variables and parameters
 
+    : compute Q
+    Q = v * cm
+
     : set initial states values
-    m = alpham_off(v) / (alpham_off(v) + betam_off(v))
-    h = alphah_off(v) / (alphah_off(v) + betah_off(v))
-    n = alphan_off(v) / (alphan_off(v) + betan_off(v))
-    s = alphas_off(v) / (alphas_off(v) + betas_off(v))
-    u = alphau_off(v) / (alphau_off(v) + betau_off(v))
+    m = alpham_off(Q) / (alpham_off(Q) + betam_off(Q))
+    h = alphah_off(Q) / (alphah_off(Q) + betah_off(Q))
+    n = alphan_off(Q) / (alphan_off(Q) + betan_off(Q))
+    s = alphas_off(Q) / (alphas_off(Q) + betas_off(Q))
+    u = alphau_off(Q) / (alphau_off(Q) + betau_off(Q))
 
     : initialize tint, set stimulation state and correct PRF
     tint = 0
-    stimon = 0
+    stimon = 1
     PRF = PRF / 2 : for some reason PRF must be halved in order to ensure proper on/off switch
 }
 
@@ -176,15 +186,15 @@ PROCEDURE interpolate_on(Q){
     beta_u = betau_on(Q)
 }
 
-PROCEDURE interpolate_off(v){
+PROCEDURE interpolate_off(Q){
     : Interpolate rate constants durong US-OFF periods from appropriate tables
 
-    alpha_m = alpham_off(v)
-    beta_m = betam_off(v)
-    alpha_h = alphah_off(v)
-    beta_h = betah_off(v)
-    alpha_n = alphan_off(v)
-    beta_n = betan_off(v)
+    alpha_m = alpham_off(Q)
+    beta_m = betam_off(Q)
+    alpha_h = alphah_off(Q)
+    beta_h = betah_off(Q)
+    alpha_n = alphan_off(Q)
+    beta_n = betan_off(Q)
     alpha_s = alphas_off(Q)
     beta_s = betas_off(Q)
     alpha_u = alphau_off(Q)
@@ -192,21 +202,3 @@ PROCEDURE interpolate_off(v){
 }
 
 UNITSON : turn back units checking
-
-PROCEDURE stimonoff(){
-    : Switch integration to ON or OFF system according to stimulus
-
-    if(t < duration - dt){
-        if(tint >= 1000 / PRF){             : reset on at pulse onset
-            stimon = 1
-            tint = 0
-        }else if(tint <= DC * 1000 / PRF){  : ON during TON
-            stimon = 1
-        }else{                              : OFF during TOFF
-            stimon = 0
-        }
-        tint = tint + dt                    : increment by dt
-    }else{                                  : OFF during stimulus offset
-        stimon = 0
-    }
-}
