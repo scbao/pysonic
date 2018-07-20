@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-04 15:31:55
+# @Last Modified time: 2018-07-20 18:01:13
 
 """ Utility functions used in simulations """
 
@@ -17,12 +17,14 @@ import numpy as np
 import pandas as pd
 from openpyxl import load_workbook
 import lockfile
+import multiprocessing as mp
 
 from ..bls import BilayerSonophore
 from .SolverUS import SolverUS
 from .SolverElec import SolverElec
 from ..constants import *
-from ..utils import getNeuronsDict, InputError, PmCompMethod, si_format, getCycleAverage
+from ..neurons import *
+from ..utils import getNeuronsDict, InputError, PmCompMethod, si_format, getCycleAverage, nDindexes
 
 
 # Get package logger
@@ -1760,3 +1762,208 @@ def getMaxMap(key, root, neuron, a, f, tstim, toffset, PRF, amps, DCs, mode='max
                 maxmap[i, j] = np.nan
 
     return maxmap
+
+
+class Consumer(mp.Process):
+    ''' Generic consumer process, taking tasks from a queue and outputing results in
+        another queue.
+    '''
+
+    def __init__(self, task_queue, result_queue):
+        mp.Process.__init__(self)
+        self.task_queue = task_queue
+        self.result_queue = result_queue
+        print('Starting {}'.format(self.name))
+
+    def run(self):
+        while True:
+            nextTask = self.task_queue.get()
+            if nextTask is None:
+                print('Exiting {}'.format(self.name))
+                self.task_queue.task_done()
+                break
+            print('{}: {}'.format(self.name, nextTask))
+            answer = nextTask()
+            self.task_queue.task_done()
+            self.result_queue.put(answer)
+        return
+
+
+class LookupWorker():
+    ''' Worker class that computes "effective" coefficients of the HH system for a specific
+        combination of stimulus frequency, stimulus amplitude and charge density.
+
+        A short mechanical simulation is run while imposing the specific charge density,
+        until periodic stabilization. The HH coefficients are then averaged over the last
+        acoustic cycle to yield "effective" coefficients.
+    '''
+
+    def __init__(self, wid, bls, neuron, Fdrive, Adrive, Qm, phi, nsims):
+        ''' Class constructor.
+
+            :param wid: worker ID
+            :param bls: BilayerSonophore object
+            :param neuron: neuron object
+            :param Fdrive: acoustic drive frequency (Hz)
+            :param Adrive: acoustic drive amplitude (Pa)
+            :param Qm: imposed charge density (C/m2)
+            :param phi: acoustic drive phase (rad)
+            :param nsims: total number or simulations
+        '''
+
+        self.id = wid
+        self.bls = bls
+        self.neuron = neuron
+        self.Fdrive = Fdrive
+        self.Adrive = Adrive
+        self.Qm = Qm
+        self.phi = phi
+        self.nsims = nsims
+
+
+    def __call__(self):
+        ''' Method that computes effective coefficients. '''
+
+        try:
+            # Run simulation and retrieve deflection and gas content vectors from last cycle
+            _, [Z, ng], _ = self.bls.run(self.Fdrive, self.Adrive, self.Qm, self.phi)
+            Z_last = Z[-NPC_FULL:]  # m
+
+            # Compute membrane potential vector
+            Vm = self.Qm / self.bls.v_Capct(Z_last) * 1e3  # mV
+
+            # Compute average cycle value for membrane potential and rate constants
+            Vm_eff = np.mean(Vm)  # mV
+            rates_eff = self.neuron.getEffRates(Vm)
+
+            # Take final cycle value for gas content
+            ng_eff = ng[-1]  # mole
+
+            return (self.id, [Vm_eff, ng_eff, *rates_eff])
+
+        except (Warning, AssertionError) as inst:
+            logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+            user_str = input()
+            if user_str not in ['y', 'Y']:
+                return -1
+
+    def __str__(self):
+        return 'simulation {}/{} (f = {}Hz, A = {}Pa, Q = {:.2f} nC/cm2)'\
+            .format(self.id + 1, self.nsims, *si_format([self.Fdrive, self.Adrive], space=' '),
+                    self.Qm * 1e5)
+
+
+def computeAStimLookups(neuron, a, freqs, amps, phi=np.pi, multiprocess=True):
+    ''' Run simulations of the mechanical system for a multiple combinations of
+        imposed US frequencies, acoustic amplitudes and charge densities, compute
+        effective coefficients and store them in a dictionary of 3D arrays.
+
+        :param neuron: neuron object
+        :param freqs: array of acoustic drive frequencies (Hz)
+        :param amps: array of acoustic drive amplitudes (Pa)
+        :param phi: acoustic drive phase (rad)
+        :param multiprocess: boolean statting wether or not to use multiprocessing
+        :return: lookups dictionary
+    '''
+
+    # Check validity of input parameters
+    if not isinstance(neuron, BaseMech):
+        raise InputError('Invalid neuron type: "{}" (must inherit from BaseMech class)'
+                         .format(neuron.name))
+    if not isinstance(freqs, np.ndarray):
+        if isinstance(freqs, list):
+            if not all(isinstance(x, float) for x in freqs):
+                raise InputError('Invalid frequencies (must all be float typed)')
+            freqs = np.array(freqs)
+        else:
+            raise InputError('Invalid frequencies (must be provided as list or numpy array)')
+    if not isinstance(amps, np.ndarray):
+        if isinstance(amps, list):
+            if not all(isinstance(x, float) for x in amps):
+                raise InputError('Invalid amplitudes (must all be float typed)')
+            amps = np.array(amps)
+        else:
+            raise InputError('Invalid amplitudes (must be provided as list or numpy array)')
+
+    nf = freqs.size
+    nA = amps.size
+    if nf == 0:
+        raise InputError('Empty frequencies array')
+    if nA == 0:
+        raise InputError('Empty amplitudes array')
+    if freqs.min() <= 0:
+        raise InputError('Invalid US driving frequencies (must all be strictly positive)')
+    if amps.min() < 0:
+        raise InputError('Invalid US pressure amplitudes (must all be positive or null)')
+
+    logger.info('Starting batch lookup creation for %s neuron', neuron.name)
+    t0 = time.time()
+
+    # Initialize BLS object
+    bls = BilayerSonophore(a, 0.0, neuron.Cm0, neuron.Cm0 * neuron.Vm0 * 1e-3)
+
+    # Create neuron-specific charge vector
+    charges = np.arange(neuron.Qbounds[0], neuron.Qbounds[1] + 1e-5, 1e-5)  # C/m2
+    nQ = charges.size
+    dims = (nf, nA, nQ)
+
+    # Initialize lookup dictionary of 3D array to store effective coefficients
+    coeffs_names = ['V', 'ng', *neuron.coeff_names]
+    ncoeffs = len(coeffs_names)
+    lookup_dict = {cn: np.empty(dims) for cn in coeffs_names}
+
+    # Initiate multipleprocessing objects if needed
+    if multiprocess:
+
+        mp.freeze_support()
+
+        # Create tasks and results queues
+        tasks = mp.JoinableQueue()
+        results = mp.Queue()
+
+        # Create and start consumer processes
+        nconsumers = mp.cpu_count()
+        consumers = [Consumer(tasks, results) for i in range(nconsumers)]
+        for w in consumers:
+            w.start()
+
+    # Loop through all (f, A, Q) combinations
+    nsims = np.prod(np.array(dims))
+    for i in range(nf):
+        for j in range(nA):
+            for k in range(nQ):
+                wid = i * (nA * nQ) + j * nQ + k
+                worker = LookupWorker(wid, bls, neuron, freqs[i], amps[j], charges[k], phi, nsims)
+                if multiprocess:
+                    tasks.put(worker, block=False)
+                else:
+                    logger.info('%s', worker)
+                    _, Qcoeffs = worker.__call__()
+                    for icoeff in range(ncoeffs):
+                        lookup_dict[coeffs_names[icoeff]][i, j, k] = Qcoeffs[icoeff]
+
+    if multiprocess:
+        # Stop processes
+        for i in range(nconsumers):
+            tasks.put(None, block=False)
+        tasks.join()
+
+        # Retrieve workers output
+        for x in range(nsims):
+            wid, Qcoeffs = results.get()
+            i, j, k = nDindexes(dims, wid)
+            for icoeff in range(ncoeffs):
+                lookup_dict[coeffs_names[icoeff]][i, j, k] = Qcoeffs[icoeff]
+
+        # Close tasks and results queues
+        tasks.close()
+        results.close()
+
+    # Add input frequency, amplitude and charge arrays to lookup dictionary
+    lookup_dict['f'] = freqs  # Hz
+    lookup_dict['A'] = amps  # Pa
+    lookup_dict['Q'] = charges  # C/m2
+
+    logger.info('%s lookups computed in %.0f s', neuron.name, time.time() - t0)
+
+    return lookup_dict

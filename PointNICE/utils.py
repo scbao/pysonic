@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-06 16:54:01
+# @Last Modified time: 2018-07-20 17:22:24
 
 """ Definition of generic utility functions used in other modules """
 
@@ -389,9 +389,9 @@ def si_format(x, precision=0, space=''):
             # prefix = list(si_prefixes.keys())[ix]
         return '{{:.{}f}}{}{}'.format(precision, space, prefix).format(x / factor)
     elif isinstance(x, list) or isinstance(x, tuple):
-        return [si_format(item, precision) for item in x]
+        return [si_format(item, precision, space) for item in x]
     elif isinstance(x, np.ndarray) and x.ndim == 1:
-        return [si_format(float(item), precision) for item in x]
+        return [si_format(float(item), precision, space) for item in x]
     else:
         print(type(x))
 
@@ -439,3 +439,34 @@ def itrpLookupsFreq(lookups3D, freqs, Fdrive):
                      for key in lookups3D.keys()}
 
     return lookups2D
+
+
+def nDindexes(dims, index):
+    ''' Find index positions in a n-dimensional array.
+
+        :param dims: dimensions of the n-dimensional array (tuple or list)
+        :param index: index position in the flattened n-dimensional array
+        :return: list of indexes along each array dimension
+    '''
+
+    dims = list(dims)
+
+    # Find size of each array dimension
+    dims.reverse()
+    dimsizes = [1]
+    r = 1
+    for x in dims[:-1]:
+        r *= x
+        dimsizes.append(r)
+    dims.reverse()
+    dimsizes.reverse()
+
+    # Find indexes
+    indexes = []
+    remainder = index
+    for dimsize in dimsizes[:-1]:
+        idim, remainder = divmod(remainder, dimsize)
+        indexes.append(idim)
+    indexes.append(remainder)
+
+    return indexes
