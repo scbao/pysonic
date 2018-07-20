@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-20 17:34:04
+# @Last Modified time: 2018-07-20 18:21:35
 
 import os
 import warnings
@@ -136,136 +136,6 @@ class SolverUS(BilayerSonophore):
 
         # Return derivatives vector
         return [dQmdt, *dstates]
-
-
-    def getEffCoeffs(self, neuron, Fdrive, Adrive, Qm, phi=np.pi):
-        """ Compute "effective" coefficients of the HH system for a specific combination
-            of stimulus frequency, stimulus amplitude and charge density.
-
-            A short mechanical simulation is run while imposing the specific charge density,
-            until periodic stabilization. The HH coefficients are then averaged over the last
-            acoustic cycle to yield "effective" coefficients.
-
-            :param neuron: neuron object
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param Adrive: acoustic drive amplitude (Pa)
-            :param Qm: imposed charge density (C/m2)
-            :param phi: acoustic drive phase (rad)
-            :return: tuple with the effective potential, gas content and channel rates
-        """
-
-        # Run simulation and retrieve deflection and gas content vectors from last cycle
-        (_, y, _) = super(SolverUS, self).run(Fdrive, Adrive, Qm, phi)
-        (Z, ng) = y
-        Z_last = Z[-NPC_FULL:]  # m
-
-        # Compute membrane potential vector
-        Vm = Qm / self.v_Capct(Z_last) * 1e3  # mV
-
-        # Compute average cycle value for membrane potential and rate constants
-        Vm_eff = np.mean(Vm)  # mV
-        rates_eff = neuron.getEffRates(Vm)
-
-        # Take final cycle value for gas content
-        ng_eff = ng[-1]  # mole
-
-        return (Vm_eff, ng_eff, *rates_eff)
-
-
-    def createLookup(self, neuron, freqs, amps, phi=np.pi):
-        """ Run simulations of the mechanical system for a multiple combinations of
-            imposed charge densities and acoustic amplitudes, compute effective coefficients
-            and store them as 2D arrays in a lookup file.
-
-            :param neuron: neuron object
-            :param freqs: array of acoustic drive frequencies (Hz)
-            :param amps: array of acoustic drive amplitudes (Pa)
-            :param phi: acoustic drive phase (rad)
-        """
-
-        # Check if lookup file already exists
-        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
-        lookup_filepath = '{0}/{1}'.format(getLookupDir(), lookup_file)
-        if os.path.isfile(lookup_filepath):
-            logger.warning('"%s" file already exists and will be overwritten. ' +
-                           'Continue? (y/n)', lookup_file)
-            user_str = input()
-            if user_str not in ['y', 'Y']:
-                return -1
-
-        # Check validity of input parameters
-        if not isinstance(neuron, BaseMech):
-            raise InputError('Invalid neuron type: "{}" (must inherit from BaseMech class)'
-                             .format(neuron.name))
-        if not isinstance(freqs, np.ndarray):
-            if isinstance(freqs, list):
-                if not all(isinstance(x, float) for x in freqs):
-                    raise InputError('Invalid frequencies (must all be float typed)')
-                freqs = np.array(freqs)
-            else:
-                raise InputError('Invalid frequencies (must be provided as list or numpy array)')
-        if not isinstance(amps, np.ndarray):
-            if isinstance(amps, list):
-                if not all(isinstance(x, float) for x in amps):
-                    raise InputError('Invalid amplitudes (must all be float typed)')
-                amps = np.array(amps)
-            else:
-                raise InputError('Invalid amplitudes (must be provided as list or numpy array)')
-
-        nf = freqs.size
-        nA = amps.size
-        if nf == 0:
-            raise InputError('Empty frequencies array')
-        if nA == 0:
-            raise InputError('Empty amplitudes array')
-        if freqs.min() <= 0:
-            raise InputError('Invalid US driving frequencies (must all be strictly positive)')
-        if amps.min() < 0:
-            raise InputError('Invalid US pressure amplitudes (must all be positive or null)')
-
-        logger.info('Creating lookup table for %s neuron', neuron.name)
-
-        # Create neuron-specific charge vector
-        charges = np.arange(neuron.Qbounds[0], neuron.Qbounds[1] + 1e-5, 1e-5)  # C/m2
-
-        # Initialize lookup dictionary of 3D array to store effective coefficients
-        nQ = charges.size
-        coeffs_names = ['V', 'ng', *neuron.coeff_names]
-        ncoeffs = len(coeffs_names)
-        lookup_dict = {cn: np.empty((nf, nA, nQ)) for cn in coeffs_names}
-
-        # Loop through all (f, A, Q) combinations
-        nsims = nf * nA * nQ
-        isim = 0
-        log_str = 'short simulation %u/%u (f = %.2f kHz, A = %.2f kPa, Q = %.2f nC/cm2)'
-        for i in range(nf):
-            for j in range(nA):
-                for k in range(nQ):
-                    isim += 1
-                    # Run short simulation and store effective coefficients
-                    logger.info(log_str, isim, nsims, freqs[i] * 1e-3, amps[j] * 1e-3,
-                                charges[k] * 1e5)
-                    try:
-                        sim_coeffs = self.getEffCoeffs(neuron, freqs[i], amps[j], charges[k], phi)
-                        for icoeff in range(ncoeffs):
-                            lookup_dict[coeffs_names[icoeff]][i, j, k] = sim_coeffs[icoeff]
-                    except (Warning, AssertionError) as inst:
-                        logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
-                        user_str = input()
-                        if user_str not in ['y', 'Y']:
-                            return -1
-
-        # Add input frequency, amplitude and charge arrays to lookup dictionary
-        lookup_dict['f'] = freqs  # Hz
-        lookup_dict['A'] = amps  # Pa
-        lookup_dict['Q'] = charges  # C/m2
-
-        # Save dictionary in lookup file
-        logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_file)
-        with open(lookup_filepath, 'wb') as fh:
-            pickle.dump(lookup_dict, fh)
-
-        return 1
 
 
     def __runClassic(self, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):

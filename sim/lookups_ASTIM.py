@@ -4,11 +4,12 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-20 18:08:37
+# @Last Modified time: 2018-07-20 18:16:39
 
 """ Create lookup table for specific neuron. """
 
 import os
+import pickle
 import logging
 import numpy as np
 from argparse import ArgumentParser
