@@ -4,14 +4,13 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-20 17:52:34
+# @Last Modified time: 2018-07-20 18:08:37
 
 """ Create lookup table for specific neuron. """
 
 import os
 import logging
 import numpy as np
-# import multiprocessing as mp
 from argparse import ArgumentParser
 
 from PointNICE.solvers import computeAStimLookups
@@ -60,9 +59,6 @@ def main():
     else:
         logger.setLevel(logging.INFO)
 
-    # if args.multiprocessing:
-    #     mp.freeze_support()
-
     # Check neuron name validity
     if neuron_str not in getNeuronsDict():
         raise InputError('Unknown neuron type: "{}"'.format(neuron_str))
@@ -84,9 +80,9 @@ def main():
         lookup_dict = computeAStimLookups(neuron, a, freqs, amps,
                                           multiprocess=args.multiprocessing)
         # Save dictionary in lookup file
-        # logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_file)
-        # with open(lookup_filepath, 'wb') as fh:
-        #     pickle.dump(lookup_dict, fh)
+        logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_file)
+        with open(lookup_filepath, 'wb') as fh:
+            pickle.dump(lookup_dict, fh)
 
     except InputError as err:
         logger.error(err)
