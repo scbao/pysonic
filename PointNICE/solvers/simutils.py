@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-23 11:37:38
+# @Last Modified time: 2018-07-23 13:40:44
 
 """ Utility functions used in simulations """
 
@@ -241,6 +241,119 @@ class AStimWorker():
             .format(self.int_method, self.id, self.nsims, self.neuron.name,
                     *si_format([self.solver.a, self.Fdrive], 1, space=' '),
                     si_format(self.Adrive, 2, space=' '), si_format(self.tstim, 1, space=' '))
+        if self.DC < 1.0:
+            worker_str += ', PRF = {}Hz, DC = {:.2f}%'\
+                .format(si_format(self.PRF, 2, space=' '), self.DC * 1e2)
+        return worker_str
+
+
+class EStimWorker():
+    ''' Worker class that runs a single E-STIM simulation a given neuron for specific
+        stimulation parameters, and save the results in a PKL file. '''
+
+    def __init__(self, wid, batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset,
+                 PRF, DC, nsims):
+        ''' Class constructor.
+
+            :param wid: worker ID
+            :param solver: SolverElec object
+            :param neuron: neuron object
+            :param Astim: stimulus amplitude (mA/m2)
+            :param tstim: duration of US stimulation (s)
+            :param toffset: duration of the offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: pulse duty cycle (-)
+            :param nsims: total number or simulations
+        '''
+
+        self.id = wid
+        self.batch_dir = batch_dir
+        self.log_filepath = log_filepath
+        self.solver = solver
+        self.neuron = neuron
+        self.Astim = Astim
+        self.tstim = tstim
+        self.toffset = toffset
+        self.PRF = PRF
+        self.DC = DC
+        self.nsims = nsims
+
+    def __call__(self):
+        ''' Method that runs the simulation. '''
+
+        simcode = 'ESTIM_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'\
+            .format(self.neuron.name, 'CW' if self.DC == 1 else 'PW', self.Astim, self.tstim * 1e3,
+                    '_PRF{:.2f}Hz_DC{:.2f}%'.format(self.PRF, self.DC * 1e2) if self.DC < 1. else '')
+        try:
+
+            # Get date and time info
+            date_str = time.strftime("%Y.%m.%d")
+            daytime_str = time.strftime("%H:%M:%S")
+
+            # Run simulation
+            tstart = time.time()
+            (t, y, states) = self.solver.run(self.neuron, self.Astim, self.tstim, self.toffset,
+                                             self.PRF, self.DC)
+            Vm, *channels = y
+            tcomp = time.time() - tstart
+            logger.debug('completed in %ss', si_format(tcomp, 1))
+
+            # Store dataframe and metadata
+            df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm, 'Qm': Vm * self.neuron.Cm0 * 1e-3})
+            for j in range(len(self.neuron.states_names)):
+                df[self.neuron.states_names[j]] = channels[j]
+            meta = {'neuron': self.neuron.name, 'Astim': self.Astim, 'tstim': self.tstim,
+                    'toffset': self.toffset, 'PRF': self.PRF, 'DC': self.DC, 'tcomp': tcomp}
+
+            # Export into to PKL file
+            output_filepath = '{}/{}.pkl'.format(self.batch_dir, simcode)
+            with open(output_filepath, 'wb') as fh:
+                pickle.dump({'meta': meta, 'data': df}, fh)
+            logger.debug('simulation data exported to "%s"', output_filepath)
+
+            # Detect spikes on Vm signal
+            dt = t[1] - t[0]
+            ipeaks, *_ = findPeaks(Vm, SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
+                                   SPIKE_MIN_VPROM)
+            n_spikes = ipeaks.size
+            lat = t[ipeaks[0]] if n_spikes > 0 else 'N/A'
+            sr = np.mean(1 / np.diff(t[ipeaks])) if n_spikes > 1 else 'N/A'
+            logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
+
+            # Export key metrics to log file
+            log = {
+                'A': date_str,
+                'B': daytime_str,
+                'C': self.neuron.name,
+                'D': self.Astim,
+                'E': self.tstim * 1e3,
+                'F': self.PRF * 1e-3 if self.DC < 1 else 'N/A',
+                'G': self.DC,
+                'H': t.size,
+                'I': round(tcomp, 2),
+                'J': n_spikes,
+                'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
+                'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+            }
+
+            if xlslog(self.log_filepath, 'Data', log) == 1:
+                logger.debug('log exported to "%s"', self.log_filepath)
+            else:
+                logger.error('log export to "%s" aborted', self.log_filepath)
+
+            return output_filepath
+
+        except (Warning, AssertionError) as inst:
+            logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+            user_str = input()
+            if user_str not in ['y', 'Y']:
+                return -1
+
+    def __str__(self):
+        worker_str = 'E-STIM simulation {}/{}: {} neuron, A = {}A/m2, t = {}s'\
+            .format(self.id, self.nsims, self.neuron.name,
+                    si_format(self.Astim * 1e-3, 2, space=' '),
+                    si_format(self.tstim, 1, space=' '))
         if self.DC < 1.0:
             worker_str += ', PRF = {}Hz, DC = {:.2f}%'\
                 .format(si_format(self.PRF, 2, space=' '), self.DC * 1e2)
@@ -861,83 +974,6 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
     return filepaths
 
 
-def runEStim(batch_dir, log_filepath, solver, neuron, Astim, tstim, toffset, PRF, DC):
-    ''' Run a single E-STIM simulation a given neuron for specific stimulation parameters,
-        and save the results in a PKL file.
-
-        :param batch_dir: full path to output directory of batch
-        :param log_filepath: full path log file of batch
-        :param solver: SolverElec instance
-        :param Astim: pulse amplitude (mA/m2)
-        :param tstim: pulse duration (s)
-        :param toffset: offset duration (s)
-        :param PRF: pulse repetition frequency (Hz)
-        :param DC: pulse duty cycle (-)
-        :return: full path to the output file
-    '''
-
-    if DC == 1.0:
-        simcode = ESTIM_CW_code.format(neuron.name, Astim, tstim * 1e3)
-    else:
-        simcode = ESTIM_PW_code.format(neuron.name, Astim, tstim * 1e3, PRF, DC * 1e2)
-
-    # Get date and time info
-    date_str = time.strftime("%Y.%m.%d")
-    daytime_str = time.strftime("%H:%M:%S")
-
-    # Run simulation
-    tstart = time.time()
-    (t, y, states) = solver.run(neuron, Astim, tstim, toffset, PRF, DC)
-    Vm, *channels = y
-    tcomp = time.time() - tstart
-    logger.debug('completed in %ss', si_format(tcomp, 1))
-
-    # Store dataframe and metadata
-    df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm, 'Qm': Vm * neuron.Cm0 * 1e-3})
-    for j in range(len(neuron.states_names)):
-        df[neuron.states_names[j]] = channels[j]
-    meta = {'neuron': neuron.name, 'Astim': Astim, 'tstim': tstim, 'toffset': toffset,
-            'PRF': PRF, 'DC': DC, 'tcomp': tcomp}
-
-    # Export into to PKL file
-    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
-    with open(output_filepath, 'wb') as fh:
-        pickle.dump({'meta': meta, 'data': df}, fh)
-    logger.debug('simulation data exported to "%s"', output_filepath)
-
-    # Detect spikes on Vm signal
-    # n_spikes, lat, sr = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
-    dt = t[1] - t[0]
-    ipeaks, *_ = findPeaks(Vm, SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_VPROM)
-    n_spikes = ipeaks.size
-    lat = t[ipeaks[0]] if n_spikes > 0 else 'N/A'
-    sr = np.mean(1 / np.diff(t[ipeaks])) if n_spikes > 1 else 'N/A'
-    logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
-
-    # Export key metrics to log file
-    log = {
-        'A': date_str,
-        'B': daytime_str,
-        'C': neuron.name,
-        'D': Astim,
-        'E': tstim * 1e3,
-        'F': PRF * 1e-3 if DC < 1 else 'N/A',
-        'G': DC,
-        'H': t.size,
-        'I': round(tcomp, 2),
-        'J': n_spikes,
-        'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
-        'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-    }
-
-    if xlslog(log_filepath, 'Data', log) == 1:
-        logger.debug('log exported to "%s"', log_filepath)
-    else:
-        logger.error('log export to "%s" aborted', log_filepath)
-
-    return output_filepath
-
-
 def titrateEStim(solver, neuron, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
     """ Use a dichotomic recursive search to determine the threshold value of a specific
         electric stimulation parameter needed to obtain neural excitation, keeping all other
@@ -1021,7 +1057,7 @@ def titrateEStim(solver, neuron, Astim, tstim, toffset, PRF=1.5e3, DC=1.0):
         return titrateEStim(solver, neuron, *stim_params)
 
 
-def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
+def runEStimBatch(batch_dir, log_filepath, neurons, stim_params, multiprocess=False):
     ''' Run batch E-STIM simulations of the system for various neuron types and
         stimulation parameters.
 
@@ -1029,17 +1065,14 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
         :param log_filepath: full path log file of batch
         :param neurons: list of neurons names
         :param stim_params: dictionary containing sweeps for all stimulation parameters
+        :param multiprocess: boolean statting wether or not to use multiprocessing
         :return: list of full paths to the output files
     '''
 
     mandatory_params = ['amps', 'durations', 'offsets', 'PRFs', 'DCs']
-    for mp in mandatory_params:
-        if mp not in stim_params:
-            raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
-
-    # Define logging format
-    ESTIM_CW_log = 'E-STIM simulation %u/%u: %s neuron, A = %sA/m2, t = %ss'
-    ESTIM_PW_log = 'E-STIM simulation %u/%u: %s neuron, A = %sA/m2, t = %ss, PRF = %sHz, DC = %.2f%%'
+    for mparam in mandatory_params:
+        if mparam not in stim_params:
+            raise InputError('Missing stimulation parameter field: "{}"'.format(mparam))
 
     logger.info("Starting E-STIM simulation batch")
 
@@ -1051,30 +1084,56 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     # Initialize solver
     solver = SolverElec()
 
+    # Initiate multiple processing objects if needed
+    if multiprocess:
+
+        mp.freeze_support()
+
+        # Create tasks and results queues
+        tasks = mp.JoinableQueue()
+        results = mp.Queue()
+
+        # Create and start consumer processes
+        nconsumers = mp.cpu_count()
+        consumers = [Consumer(tasks, results) for i in range(nconsumers)]
+        for w in consumers:
+            w.start()
+
     # Run simulations
     nsims = len(neurons) * nqueue
-    simcount = 0
+    wid = 0
     filepaths = []
     for nname in neurons:
         neuron = getNeuronsDict()[nname]()
+
+        # Run simulations in queue
         for i in range(nqueue):
-            simcount += 1
+
+            wid += 1
             Astim, tstim, toffset, PRF, DC = sim_queue[i, :]
-            if DC == 1.0:
-                logger.info(ESTIM_CW_log, simcount, nsims, neuron.name, si_format(Astim * 1e-3, 1),
-                            si_format(tstim, 1))
+            worker = EStimWorker(wid, batch_dir, log_filepath, solver, neuron, Astim,
+                                 tstim, toffset, PRF, DC, nsims)
+            if multiprocess:
+                tasks.put(worker, block=False)
             else:
-                logger.info(ESTIM_PW_log, simcount, nsims, neuron.name, si_format(Astim * 1e-3, 1),
-                            si_format(tstim, 1), si_format(PRF, 2), DC * 1e2)
-            try:
-                output_filepath = runEStim(batch_dir, log_filepath, solver, neuron,
-                                           Astim, tstim, toffset, PRF, DC)
+                logger.info('%s', worker)
+                output_filepath = worker.__call__()
                 filepaths.append(output_filepath)
-            except (Warning, AssertionError) as inst:
-                logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
-                user_str = input()
-                if user_str not in ['y', 'Y']:
-                    return filepaths
+
+    if multiprocess:
+        # Stop processes
+        for i in range(nconsumers):
+            tasks.put(None, block=False)
+        tasks.join()
+
+        # Retrieve workers output
+        for x in range(nsims):
+            output_filepath = results.get()
+            filepaths.append(output_filepath)
+
+        # Close tasks and results queues
+        tasks.close()
+        results.close()
 
     return filepaths
 
