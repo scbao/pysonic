@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-23 13:28:04
+# @Last Modified time: 2018-07-23 13:56:40
 
 """ Script to run ESTIM simulations from command line. """
 
@@ -80,8 +80,6 @@ def main():
                              PRF, DC, 1)
         logger.info('%s', worker)
         outfile = worker.__call__()
-        logger.info('Finished')
-
         logger.info('Finished')
         if args.plot:
             plotBatch(output_dir, [outfile])

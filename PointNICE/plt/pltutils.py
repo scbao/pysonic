@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-12 17:21:39
+# @Last Modified time: 2018-07-23 14:29:15
 
 ''' Plotting utilities '''
 
@@ -342,10 +342,9 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
 
         # Add onset to time vectors
         if t_plt['onset'] > 0.0:
-            tonset = np.array([-t_plt['onset'], -DT_EFF])
+            tonset = np.array([-t_plt['onset'], -t[0] - t[1]])
             t = np.hstack((tonset, t))
-            # t = np.insert(t, 0, -t_plt['onset'])
-            # states = np.insert(states, 0, 0)
+            states = np.hstack((states, np.zeros(2)))
 
         # Set x-axis label
         ax.set_xlabel('$\\rm {}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
@@ -572,10 +571,9 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
 
         # Adding onset to time vector
         if t_plt['onset'] > 0.0:
-            tonset = np.array([-t_plt['onset'], -DT_EFF])
+            tonset = np.array([-t_plt['onset'], -t[0] - t[1]])
             t = np.hstack((tonset, t))
-            # t = np.insert(t, 0, -t_plt['onset'])
-            # states = np.insert(states, 0, 0)
+            states = np.hstack((states, np.zeros(2)))
 
         # Determine variables to plot if not provided
         if not vars_dict:

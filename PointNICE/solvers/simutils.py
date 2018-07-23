@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-23 13:40:44
+# @Last Modified time: 2018-07-23 14:39:56
 
 """ Utility functions used in simulations """
 
@@ -358,6 +358,117 @@ class EStimWorker():
             worker_str += ', PRF = {}Hz, DC = {:.2f}%'\
                 .format(si_format(self.PRF, 2, space=' '), self.DC * 1e2)
         return worker_str
+
+
+
+class MechWorker():
+    ''' Worker class that runs a single simulation of the mechanical system with specific parameters
+        and an imposed value of charge density, and save the results in a PKL file. '''
+
+    def __init__(self, wid, batch_dir, log_filepath, bls, Fdrive, Adrive, Qm, nsims):
+        ''' Class constructor.
+
+            :param wid: worker ID
+            :param batch_dir: full path to output directory of batch
+            :param log_filepath: full path log file of batch
+            :param bls: BilayerSonophore instance
+            :param Fdrive: acoustic drive frequency (Hz)
+            :param Adrive: acoustic drive amplitude (Pa)
+            :param Qm: applided membrane charge density (C/m2)
+            :param nsims: total number or simulations
+        '''
+
+        self.id = wid
+        self.batch_dir = batch_dir
+        self.log_filepath = log_filepath
+        self.bls = bls
+        self.Fdrive = Fdrive
+        self.Adrive = Adrive
+        self.Qm = Qm
+        self.nsims = nsims
+
+    def __call__(self):
+        ''' Method that runs the simulation. '''
+
+        simcode = 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'\
+            .format(self.bls.a * 1e9, self.Fdrive * 1e-3, self.Adrive * 1e-3, self.Qm * 1e5)
+
+        try:
+
+            # Get date and time info
+            date_str = time.strftime("%Y.%m.%d")
+            daytime_str = time.strftime("%H:%M:%S")
+
+            # Run simulation
+            tstart = time.time()
+            (t, y, states) = self.bls.run(self.Fdrive, self.Adrive, self.Qm)
+            (Z, ng) = y
+
+            U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
+            tcomp = time.time() - tstart
+            logger.debug('completed in %ss', si_format(tcomp, 1))
+
+            # Store dataframe and metadata
+            df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng})
+            meta = {'a': self.bls.a, 'd': self.bls.d, 'Cm0': self.bls.Cm0, 'Qm0': self.bls.Qm0,
+                    'Fdrive': self.Fdrive, 'Adrive': self.Adrive, 'phi': np.pi, 'Qm': self.Qm,
+                    'tcomp': tcomp}
+
+            # Export into to PKL file
+            output_filepath = '{}/{}.pkl'.format(self.batch_dir, simcode)
+            with open(output_filepath, 'wb') as fh:
+                pickle.dump({'meta': meta, 'data': df}, fh)
+            logger.debug('simulation data exported to "%s"', output_filepath)
+
+            # Compute key output metrics
+            Zmax = np.amax(Z)
+            Zmin = np.amin(Z)
+            Zabs_max = np.amax(np.abs([Zmin, Zmax]))
+            eAmax = self.bls.arealstrain(Zabs_max)
+            Tmax = self.bls.TEtot(Zabs_max)
+            Pmmax = self.bls.PMavgpred(Zmin)
+            ngmax = np.amax(ng)
+            dUdtmax = np.amax(np.abs(np.diff(U) / np.diff(t)**2))
+
+            # Export key metrics to log file
+            log = {
+                'A': date_str,
+                'B': daytime_str,
+                'C': self.bls.a * 1e9,
+                'D': self.bls.d * 1e6,
+                'E': self.Fdrive * 1e-3,
+                'F': self.Adrive * 1e-3,
+                'G': self.Qm * 1e5,
+                'H': t.size,
+                'I': tcomp,
+                'J': self.bls.kA + self.bls.kA_tissue,
+                'K': Zmax * 1e9,
+                'L': eAmax,
+                'M': Tmax * 1e3,
+                'N': (ngmax - self.bls.ng0) / self.bls.ng0,
+                'O': Pmmax * 1e-3,
+                'P': dUdtmax
+            }
+
+            if xlslog(self.log_filepath, 'Data', log) == 1:
+                logger.info('log exported to "%s"', self.log_filepath)
+            else:
+                logger.error('log export to "%s" aborted', self.log_filepath)
+
+            return output_filepath
+
+        except (Warning, AssertionError) as inst:
+            logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+            user_str = input()
+            if user_str not in ['y', 'Y']:
+                return -1
+
+    def __str__(self):
+
+        return 'Mechanical simulation {}/{}: a = {}m, d = {}m, f = {}Hz, A = {}Pa, Q = {}C/cm2'\
+            .format(self.id, self.nsims,
+                    *si_format([self.bls.a, self.bls.d, self.Fdrive], 1, space=' '),
+                    *si_format([self.Adrive, self.Qm * 1e-4], 2, space=' '))
 
 
 
@@ -833,84 +944,8 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
     return (ipeaks, prominences, widths, ibounds)
 
 
-def runMech(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm):
-    ''' Run a single simulation of the mechanical system with specific parameters and
-        an imposed value of charge density, and save the results in a PKL file.
-
-        :param batch_dir: full path to output directory of batch
-        :param log_filepath: full path log file of batch
-        :param bls: BilayerSonophore instance
-        :param Fdrive: acoustic drive frequency (Hz)
-        :param Adrive: acoustic drive amplitude (Pa)
-        :param Qm: applided membrane charge density (C/m2)
-        :return: full path to the output file
-    '''
-
-    simcode = MECH_code.format(bls.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
-
-    # Get date and time info
-    date_str = time.strftime("%Y.%m.%d")
-    daytime_str = time.strftime("%H:%M:%S")
-
-    # Run simulation
-    tstart = time.time()
-    (t, y, states) = bls.run(Fdrive, Adrive, Qm)
-    (Z, ng) = y
-
-    U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
-    tcomp = time.time() - tstart
-    logger.debug('completed in %ss', si_format(tcomp, 1))
-
-    # Store dataframe and metadata
-    df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng})
-    meta = {'a': bls.a, 'd': bls.d, 'Cm0': bls.Cm0, 'Qm0': bls.Qm0, 'Fdrive': Fdrive,
-            'Adrive': Adrive, 'phi': np.pi, 'Qm': Qm, 'tcomp': tcomp}
-
-    # Export into to PKL file
-    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
-    with open(output_filepath, 'wb') as fh:
-        pickle.dump({'meta': meta, 'data': df}, fh)
-    logger.debug('simulation data exported to "%s"', output_filepath)
-
-    # Compute key output metrics
-    Zmax = np.amax(Z)
-    Zmin = np.amin(Z)
-    Zabs_max = np.amax(np.abs([Zmin, Zmax]))
-    eAmax = bls.arealstrain(Zabs_max)
-    Tmax = bls.TEtot(Zabs_max)
-    Pmmax = bls.PMavgpred(Zmin)
-    ngmax = np.amax(ng)
-    dUdtmax = np.amax(np.abs(np.diff(U) / np.diff(t)**2))
-
-    # Export key metrics to log file
-    log = {
-        'A': date_str,
-        'B': daytime_str,
-        'C': bls.a * 1e9,
-        'D': bls.d * 1e6,
-        'E': Fdrive * 1e-3,
-        'F': Adrive * 1e-3,
-        'G': Qm * 1e5,
-        'H': t.size,
-        'I': tcomp,
-        'J': bls.kA + bls.kA_tissue,
-        'K': Zmax * 1e9,
-        'L': eAmax,
-        'M': Tmax * 1e3,
-        'N': (ngmax - bls.ng0) / bls.ng0,
-        'O': Pmmax * 1e-3,
-        'P': dUdtmax
-    }
-
-    if xlslog(log_filepath, 'Data', log) == 1:
-        logger.info('log exported to "%s"', log_filepath)
-    else:
-        logger.error('log export to "%s" aborted', log_filepath)
-
-    return output_filepath
-
-
-def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam, d=default_embedding):
+def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam, d=default_embedding,
+                 multiprocess=False):
     ''' Run batch simulations of the mechanical system with imposed values of charge density,
         for various sonophore spans and stimulation parameters.
 
@@ -921,16 +956,14 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :param a: BLS in-plane diameter (m)
         :param d: depth of embedding tissue around plasma membrane (m)
+        :param multiprocess: boolean statting wether or not to use multiprocessing
     '''
 
     # Checking validity of stimulation parameters
     mandatory_params = ['freqs', 'amps', 'charges']
-    for mp in mandatory_params:
-        if mp not in stim_params:
-            raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
-
-    # Define logging format
-    MECH_log = ('Mechanical simulation %u/%u (a = %sm, d = %sm, f = %sHz, A = %sPa, Q = %sC/cm2)')
+    for mparam in mandatory_params:
+        if mparam not in stim_params:
+            raise InputError('Missing stimulation parameter field: "{}"'.format(mparam))
 
     logger.info("Starting mechanical simulation batch")
 
@@ -944,9 +977,24 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
     sim_queue = np.array(np.meshgrid(amps, charges)).T.reshape(nA * nQ, 2)
     nqueue = sim_queue.shape[0]
 
+    # Initiate multiple processing objects if needed
+    if multiprocess:
+
+        mp.freeze_support()
+
+        # Create tasks and results queues
+        tasks = mp.JoinableQueue()
+        results = mp.Queue()
+
+        # Create and start consumer processes
+        nconsumers = mp.cpu_count()
+        consumers = [Consumer(tasks, results) for i in range(nconsumers)]
+        for w in consumers:
+            w.start()
+
     # Run simulations
     nsims = len(stim_params['freqs']) * nqueue
-    simcount = 0
+    wid = 0
     filepaths = []
     for Fdrive in stim_params['freqs']:
 
@@ -954,22 +1002,30 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a=default_diam,
         bls = BilayerSonophore(a, Fdrive, Cm0, Qm0, d)
 
         for i in range(nqueue):
-            simcount += 1
+            wid += 1
             Adrive, Qm = sim_queue[i, :]
-
-            # Log
-            logger.info(MECH_log, simcount, nsims, si_format(a, 1), si_format(d, 1),
-                        si_format(Fdrive, 1), si_format(Adrive, 2), si_format(Qm * 1e-4))
-
-            # Run simulation
-            try:
-                output_filepath = runMech(batch_dir, log_filepath, bls, Fdrive, Adrive, Qm)
+            worker = MechWorker(wid, batch_dir, log_filepath, bls, Fdrive, Adrive, Qm, nsims)
+            if multiprocess:
+                tasks.put(worker, block=False)
+            else:
+                logger.info('%s', worker)
+                output_filepath = worker.__call__()
                 filepaths.append(output_filepath)
-            except (Warning, AssertionError) as inst:
-                logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
-                user_str = input()
-                if user_str not in ['y', 'Y']:
-                    return filepaths
+
+    if multiprocess:
+        # Stop processes
+        for i in range(nconsumers):
+            tasks.put(None, block=False)
+        tasks.join()
+
+        # Retrieve workers output
+        for x in range(nsims):
+            output_filepath = results.get()
+            filepaths.append(output_filepath)
+
+        # Close tasks and results queues
+        tasks.close()
+        results.close()
 
     return filepaths
 
@@ -1402,11 +1458,6 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
     for mparam in mandatory_params:
         if mparam not in stim_params:
             raise InputError('Missing stimulation parameter field: "{}"'.format(mparam))
-
-    # Define logging format
-    ASTIM_CW_log = 'A-STIM %s simulation %u/%u: %s neuron, a = %sm, f = %sHz, A = %sPa, t = %ss'
-    ASTIM_PW_log = ('A-STIM %s simulation %u/%u: %s neuron, a = %sm, f = %sHz, '
-                    'A = %sPa, t = %ss, PRF = %sHz, DC = %.2f%%')
 
     logger.info("Starting A-STIM simulation batch")
 
