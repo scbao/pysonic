@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-20 18:01:13
+# @Last Modified time: 2018-07-23 11:37:38
 
 """ Utility functions used in simulations """
 
@@ -29,6 +29,224 @@ from ..utils import getNeuronsDict, InputError, PmCompMethod, si_format, getCycl
 
 # Get package logger
 logger = logging.getLogger('PointNICE')
+
+
+class Consumer(mp.Process):
+    ''' Generic consumer process, taking tasks from a queue and outputing results in
+        another queue.
+    '''
+
+    def __init__(self, task_queue, result_queue):
+        mp.Process.__init__(self)
+        self.task_queue = task_queue
+        self.result_queue = result_queue
+        print('Starting {}'.format(self.name))
+
+    def run(self):
+        while True:
+            nextTask = self.task_queue.get()
+            if nextTask is None:
+                print('Exiting {}'.format(self.name))
+                self.task_queue.task_done()
+                break
+            print('{}: {}'.format(self.name, nextTask))
+            answer = nextTask()
+            self.task_queue.task_done()
+            self.result_queue.put(answer)
+        return
+
+
+class LookupWorker():
+    ''' Worker class that computes "effective" coefficients of the HH system for a specific
+        combination of stimulus frequency, stimulus amplitude and charge density.
+
+        A short mechanical simulation is run while imposing the specific charge density,
+        until periodic stabilization. The HH coefficients are then averaged over the last
+        acoustic cycle to yield "effective" coefficients.
+    '''
+
+    def __init__(self, wid, bls, neuron, Fdrive, Adrive, Qm, phi, nsims):
+        ''' Class constructor.
+
+            :param wid: worker ID
+            :param bls: BilayerSonophore object
+            :param neuron: neuron object
+            :param Fdrive: acoustic drive frequency (Hz)
+            :param Adrive: acoustic drive amplitude (Pa)
+            :param Qm: imposed charge density (C/m2)
+            :param phi: acoustic drive phase (rad)
+            :param nsims: total number or simulations
+        '''
+
+        self.id = wid
+        self.bls = bls
+        self.neuron = neuron
+        self.Fdrive = Fdrive
+        self.Adrive = Adrive
+        self.Qm = Qm
+        self.phi = phi
+        self.nsims = nsims
+
+
+    def __call__(self):
+        ''' Method that computes effective coefficients. '''
+
+        try:
+            # Run simulation and retrieve deflection and gas content vectors from last cycle
+            _, [Z, ng], _ = self.bls.run(self.Fdrive, self.Adrive, self.Qm, self.phi)
+            Z_last = Z[-NPC_FULL:]  # m
+
+            # Compute membrane potential vector
+            Vm = self.Qm / self.bls.v_Capct(Z_last) * 1e3  # mV
+
+            # Compute average cycle value for membrane potential and rate constants
+            Vm_eff = np.mean(Vm)  # mV
+            rates_eff = self.neuron.getEffRates(Vm)
+
+            # Take final cycle value for gas content
+            ng_eff = ng[-1]  # mole
+
+            return (self.id, [Vm_eff, ng_eff, *rates_eff])
+
+        except (Warning, AssertionError) as inst:
+            logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+            user_str = input()
+            if user_str not in ['y', 'Y']:
+                return -1
+
+    def __str__(self):
+        return 'simulation {}/{} (f = {}Hz, A = {}Pa, Q = {:.2f} nC/cm2)'\
+            .format(self.id + 1, self.nsims, *si_format([self.Fdrive, self.Adrive], space=' '),
+                    self.Qm * 1e5)
+
+
+class AStimWorker():
+    ''' Worker class that runs a single A-STIM simulation a given neuron for specific
+        stimulation parameters, and save the results in a PKL file. '''
+
+    def __init__(self, wid, batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, toffset,
+                 PRF, DC, int_method, nsims):
+        ''' Class constructor.
+
+            :param wid: worker ID
+            :param solver: SolverUS object
+            :param neuron: neuron object
+            :param Fdrive: acoustic drive frequency (Hz)
+            :param Adrive: acoustic drive amplitude (Pa)
+            :param tstim: duration of US stimulation (s)
+            :param toffset: duration of the offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: pulse duty cycle (-)
+            :param int_method: selected integration method
+            :param nsims: total number or simulations
+        '''
+
+        self.id = wid
+        self.batch_dir = batch_dir
+        self.log_filepath = log_filepath
+        self.solver = solver
+        self.neuron = neuron
+        self.Fdrive = Fdrive
+        self.Adrive = Adrive
+        self.tstim = tstim
+        self.toffset = toffset
+        self.PRF = PRF
+        self.DC = DC
+        self.int_method = int_method
+        self.nsims = nsims
+
+    def __call__(self):
+        ''' Method that runs the simulation. '''
+
+        simcode = 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms_{}{}'\
+            .format(self.neuron.name, 'CW' if self.DC == 1 else 'PW', self.solver.a * 1e9,
+                    self.Fdrive * 1e-3, self.Adrive * 1e-3, self.tstim * 1e3,
+                    'PRF{:.2f}Hz_DC{:.2f}%_'.format(self.PRF, self.DC * 1e2) if self.DC < 1. else '',
+                    self.int_method)
+        try:
+
+            # Get date and time info
+            date_str = time.strftime("%Y.%m.%d")
+            daytime_str = time.strftime("%H:%M:%S")
+
+            # Run simulation
+            tstart = time.time()
+            (t, y, states) = self.solver.run(self.neuron, self.Fdrive, self.Adrive, self.tstim,
+                                             self.toffset, self.PRF, self.DC, self.int_method)
+            Z, ng, Qm, Vm, *channels = y
+            U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
+            tcomp = time.time() - tstart
+            logger.debug('completed in %ss', si_format(tcomp, 2))
+
+            # Store dataframe and metadata
+            df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
+                               'Vm': Vm})
+            for j in range(len(self.neuron.states_names)):
+                df[self.neuron.states_names[j]] = channels[j]
+            meta = {'neuron': self.neuron.name, 'a': self.solver.a, 'd': self.solver.d,
+                    'Fdrive': self.Fdrive, 'Adrive': self.Adrive, 'phi': np.pi,
+                    'tstim': self.tstim, 'toffset': self.toffset, 'PRF': self.PRF, 'DC': self.DC,
+                    'tcomp': tcomp}
+
+            # Export into to PKL file
+            output_filepath = '{}/{}.pkl'.format(self.batch_dir, simcode)
+            with open(output_filepath, 'wb') as fh:
+                pickle.dump({'meta': meta, 'data': df}, fh)
+            logger.debug('simulation data exported to "%s"', output_filepath)
+
+            # Detect spikes on Qm signal
+            dt = t[1] - t[0]
+            ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
+                                   SPIKE_MIN_QPROM)
+            n_spikes = ipeaks.size
+            lat = t[ipeaks[0]] if n_spikes > 0 else 'N/A'
+            sr = np.mean(1 / np.diff(t[ipeaks])) if n_spikes > 1 else 'N/A'
+            logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
+
+            # Export key metrics to log file
+            log = {
+                'A': date_str,
+                'B': daytime_str,
+                'C': self.neuron.name,
+                'D': self.solver.a * 1e9,
+                'E': self.solver.d * 1e6,
+                'F': self.Fdrive * 1e-3,
+                'G': self.Adrive * 1e-3,
+                'H': self.tstim * 1e3,
+                'I': self.PRF * 1e-3 if self.DC < 1 else 'N/A',
+                'J': self.DC,
+                'K': self.int_method,
+                'L': t.size,
+                'M': round(tcomp, 2),
+                'N': n_spikes,
+                'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
+                'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+            }
+
+            if xlslog(self.log_filepath, 'Data', log) == 1:
+                logger.debug('log exported to "%s"', self.log_filepath)
+            else:
+                logger.error('log export to "%s" aborted', self.log_filepath)
+
+            return output_filepath
+
+        except (Warning, AssertionError) as inst:
+            logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
+            user_str = input()
+            if user_str not in ['y', 'Y']:
+                return -1
+
+    def __str__(self):
+        worker_str = 'A-STIM {} simulation {}/{}: {} neuron, a = {}m, f = {}Hz, A = {}Pa, t = {}s'\
+            .format(self.int_method, self.id, self.nsims, self.neuron.name,
+                    *si_format([self.solver.a, self.Fdrive], 1, space=' '),
+                    si_format(self.Adrive, 2, space=' '), si_format(self.tstim, 1, space=' '))
+        if self.DC < 1.0:
+            worker_str += ', PRF = {}Hz, DC = {:.2f}%'\
+                .format(si_format(self.PRF, 2, space=' '), self.DC * 1e2)
+        return worker_str
+
+
 
 # Naming nomenclature for output files
 MECH_code = 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'
@@ -1020,95 +1238,6 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params):
     return filepaths
 
 
-def runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC,
-             int_method='effective'):
-    ''' Run a single A-STIM simulation a given neuron for specific stimulation parameters,
-        and save the results in a PKL file.
-
-        :param batch_dir: full path to output directory of batch
-        :param log_filepath: full path log file of batch
-        :param solver: SolverUS instance
-        :param Fdrive: acoustic drive frequency (Hz)
-        :param Adrive: acoustic drive amplitude (Pa)
-        :param tstim: duration of US stimulation (s)
-        :param toffset: duration of the offset (s)
-        :param PRF: pulse repetition frequency (Hz)
-        :param DC: pulse duty cycle (-)
-        :param int_method: selected integration method
-        :return: full path to the output file
-    '''
-
-    if DC == 1.0:
-        simcode = ASTIM_CW_code.format(neuron.name, solver.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3,
-                                       tstim * 1e3, int_method)
-    else:
-        simcode = ASTIM_PW_code.format(neuron.name, solver.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3,
-                                       tstim * 1e3, PRF, DC * 1e2, int_method)
-
-    # Get date and time info
-    date_str = time.strftime("%Y.%m.%d")
-    daytime_str = time.strftime("%H:%M:%S")
-
-    # Run simulation
-    tstart = time.time()
-    (t, y, states) = solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, int_method)
-    Z, ng, Qm, Vm, *channels = y
-    U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
-    tcomp = time.time() - tstart
-    logger.debug('completed in %ss', si_format(tcomp, 2))
-
-    # Store dataframe and metadata
-    df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
-                       'Vm': Vm})
-    for j in range(len(neuron.states_names)):
-        df[neuron.states_names[j]] = channels[j]
-    meta = {'neuron': neuron.name, 'a': solver.a, 'd': solver.d, 'Fdrive': Fdrive,
-            'Adrive': Adrive, 'phi': np.pi, 'tstim': tstim, 'toffset': toffset, 'PRF': PRF,
-            'DC': DC, 'tcomp': tcomp}
-
-    # Export into to PKL file
-    output_filepath = '{}/{}.pkl'.format(batch_dir, simcode)
-    with open(output_filepath, 'wb') as fh:
-        pickle.dump({'meta': meta, 'data': df}, fh)
-    logger.debug('simulation data exported to "%s"', output_filepath)
-
-    # Detect spikes on Qm signal
-    # n_spikes, lat, sr = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
-    dt = t[1] - t[0]
-    ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_QPROM)
-    n_spikes = ipeaks.size
-    lat = t[ipeaks[0]] if n_spikes > 0 else 'N/A'
-    sr = np.mean(1 / np.diff(t[ipeaks])) if n_spikes > 1 else 'N/A'
-    logger.debug('%u spike%s detected', n_spikes, "s" if n_spikes > 1 else "")
-
-    # Export key metrics to log file
-    log = {
-        'A': date_str,
-        'B': daytime_str,
-        'C': neuron.name,
-        'D': solver.a * 1e9,
-        'E': solver.d * 1e6,
-        'F': Fdrive * 1e-3,
-        'G': Adrive * 1e-3,
-        'H': tstim * 1e3,
-        'I': PRF * 1e-3 if DC < 1 else 'N/A',
-        'J': DC,
-        'K': int_method,
-        'L': t.size,
-        'M': round(tcomp, 2),
-        'N': n_spikes,
-        'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
-        'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-    }
-
-    if xlslog(log_filepath, 'Data', log) == 1:
-        logger.debug('log exported to "%s"', log_filepath)
-    else:
-        logger.error('log export to "%s" aborted', log_filepath)
-
-    return output_filepath
-
-
 def titrateAStim(solver, neuron, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=1.0,
                  int_method='effective'):
     """ Use a dichotomic recursive search to determine the threshold value of a specific
@@ -1196,7 +1325,7 @@ def titrateAStim(solver, neuron, Fdrive, Adrive, tstim, toffset, PRF=1.5e3, DC=1
 
 
 def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
-                  int_method='effective'):
+                  int_method='effective', multiprocess=False):
     ''' Run batch simulations of the system for various neuron types, sonophore and
         stimulation parameters.
 
@@ -1206,13 +1335,14 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :param a: BLS structure diameter (m)
         :param int_method: selected integration method
+        :param multiprocess: boolean statting wether or not to use multiprocessing
         :return: list of full paths to the output files
     '''
 
     mandatory_params = ['freqs', 'amps', 'durations', 'offsets', 'PRFs', 'DCs']
-    for mp in mandatory_params:
-        if mp not in stim_params:
-            raise InputError('Missing stimulation parameter field: "{}"'.format(mp))
+    for mparam in mandatory_params:
+        if mparam not in stim_params:
+            raise InputError('Missing stimulation parameter field: "{}"'.format(mparam))
 
     # Define logging format
     ASTIM_CW_log = 'A-STIM %s simulation %u/%u: %s neuron, a = %sm, f = %sHz, A = %sPa, t = %ss'
@@ -1226,9 +1356,24 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
                                stim_params['offsets'], stim_params['PRFs'], stim_params['DCs'])
     nqueue = sim_queue.shape[0]
 
+    # Initiate multiple processing objects if needed
+    if multiprocess:
+
+        mp.freeze_support()
+
+        # Create tasks and results queues
+        tasks = mp.JoinableQueue()
+        results = mp.Queue()
+
+        # Create and start consumer processes
+        nconsumers = mp.cpu_count()
+        consumers = [Consumer(tasks, results) for i in range(nconsumers)]
+        for w in consumers:
+            w.start()
+
     # Run simulations
     nsims = len(neurons) * len(stim_params['freqs']) * nqueue
-    simcount = 0
+    wid = 0
     filepaths = []
     for nname in neurons:
         neuron = getNeuronsDict()[nname]()
@@ -1237,31 +1382,33 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a=default_diam,
             # Initialize SolverUS
             solver = SolverUS(a, neuron, Fdrive)
 
+            # Run simulations in queue
             for i in range(nqueue):
-
-                simcount += 1
+                wid += 1
                 Adrive, tstim, toffset, PRF, DC = sim_queue[i, :]
-
-                # Log and define naming
-                if DC == 1.0:
-                    logger.info(ASTIM_CW_log, int_method, simcount, nsims, neuron.name,
-                                si_format(a, 1), si_format(Fdrive, 1), si_format(Adrive, 2),
-                                si_format(tstim, 1))
+                worker = AStimWorker(wid, batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
+                                     tstim, toffset, PRF, DC, int_method, nsims)
+                if multiprocess:
+                    tasks.put(worker, block=False)
                 else:
-                    logger.info(ASTIM_PW_log, int_method, simcount, nsims, neuron.name,
-                                si_format(a, 1), si_format(Fdrive, 1), si_format(Adrive, 2),
-                                si_format(tstim, 1), si_format(PRF, 2), DC * 1e2)
-
-                # Run simulation
-                try:
-                    output_filepath = runAStim(batch_dir, log_filepath, solver, neuron, Fdrive,
-                                               Adrive, tstim, toffset, PRF, DC, int_method)
+                    logger.info('%s', worker)
+                    output_filepath = worker.__call__()
                     filepaths.append(output_filepath)
-                except (Warning, AssertionError) as inst:
-                    logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
-                    user_str = input()
-                    if user_str not in ['y', 'Y']:
-                        return filepaths
+
+    if multiprocess:
+        # Stop processes
+        for i in range(nconsumers):
+            tasks.put(None, block=False)
+        tasks.join()
+
+        # Retrieve workers output
+        for x in range(nsims):
+            output_filepath = results.get()
+            filepaths.append(output_filepath)
+
+        # Close tasks and results queues
+        tasks.close()
+        results.close()
 
     return filepaths
 
@@ -1764,96 +1911,7 @@ def getMaxMap(key, root, neuron, a, f, tstim, toffset, PRF, amps, DCs, mode='max
     return maxmap
 
 
-class Consumer(mp.Process):
-    ''' Generic consumer process, taking tasks from a queue and outputing results in
-        another queue.
-    '''
-
-    def __init__(self, task_queue, result_queue):
-        mp.Process.__init__(self)
-        self.task_queue = task_queue
-        self.result_queue = result_queue
-        print('Starting {}'.format(self.name))
-
-    def run(self):
-        while True:
-            nextTask = self.task_queue.get()
-            if nextTask is None:
-                print('Exiting {}'.format(self.name))
-                self.task_queue.task_done()
-                break
-            print('{}: {}'.format(self.name, nextTask))
-            answer = nextTask()
-            self.task_queue.task_done()
-            self.result_queue.put(answer)
-        return
-
-
-class LookupWorker():
-    ''' Worker class that computes "effective" coefficients of the HH system for a specific
-        combination of stimulus frequency, stimulus amplitude and charge density.
-
-        A short mechanical simulation is run while imposing the specific charge density,
-        until periodic stabilization. The HH coefficients are then averaged over the last
-        acoustic cycle to yield "effective" coefficients.
-    '''
-
-    def __init__(self, wid, bls, neuron, Fdrive, Adrive, Qm, phi, nsims):
-        ''' Class constructor.
-
-            :param wid: worker ID
-            :param bls: BilayerSonophore object
-            :param neuron: neuron object
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param Adrive: acoustic drive amplitude (Pa)
-            :param Qm: imposed charge density (C/m2)
-            :param phi: acoustic drive phase (rad)
-            :param nsims: total number or simulations
-        '''
-
-        self.id = wid
-        self.bls = bls
-        self.neuron = neuron
-        self.Fdrive = Fdrive
-        self.Adrive = Adrive
-        self.Qm = Qm
-        self.phi = phi
-        self.nsims = nsims
-
-
-    def __call__(self):
-        ''' Method that computes effective coefficients. '''
-
-        try:
-            # Run simulation and retrieve deflection and gas content vectors from last cycle
-            _, [Z, ng], _ = self.bls.run(self.Fdrive, self.Adrive, self.Qm, self.phi)
-            Z_last = Z[-NPC_FULL:]  # m
-
-            # Compute membrane potential vector
-            Vm = self.Qm / self.bls.v_Capct(Z_last) * 1e3  # mV
-
-            # Compute average cycle value for membrane potential and rate constants
-            Vm_eff = np.mean(Vm)  # mV
-            rates_eff = self.neuron.getEffRates(Vm)
-
-            # Take final cycle value for gas content
-            ng_eff = ng[-1]  # mole
-
-            return (self.id, [Vm_eff, ng_eff, *rates_eff])
-
-        except (Warning, AssertionError) as inst:
-            logger.warning('Integration error: %s. Continue batch? (y/n)', extra={inst})
-            user_str = input()
-            if user_str not in ['y', 'Y']:
-                return -1
-
-    def __str__(self):
-        return 'simulation {}/{} (f = {}Hz, A = {}Pa, Q = {:.2f} nC/cm2)'\
-            .format(self.id + 1, self.nsims, *si_format([self.Fdrive, self.Adrive], space=' '),
-                    self.Qm * 1e5)
-
-
-def computeAStimLookups(neuron, a, freqs, amps, phi=np.pi, multiprocess=True):
+def computeAStimLookups(neuron, a, freqs, amps, phi=np.pi, multiprocess=False):
     ''' Run simulations of the mechanical system for a multiple combinations of
         imposed US frequencies, acoustic amplitudes and charge densities, compute
         effective coefficients and store them in a dictionary of 3D arrays.

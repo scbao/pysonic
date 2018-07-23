@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-18 15:40:31
+# @Last Modified time: 2018-07-23 11:35:07
 
 """ Compare output of pure-Python and NEURON acoustic simulations. """
 
@@ -13,7 +13,7 @@ import pickle
 import matplotlib.pyplot as plt
 
 from PointNICE.utils import logger, getNeuronsDict, si_format
-from PointNICE.solvers import SolverUS, checkBatchLog, runAStim, setBatchDir
+from PointNICE.solvers import SolverUS, checkBatchLog, AStimWorker, setBatchDir
 from PointNICE.plt import plotComp
 
 # Set logging level
@@ -59,10 +59,10 @@ for nname in neurons:
 
     # Run NEURON and Python A-STIM point-neuron simulations
     logger.info('Running simulations for %s neuron', nname)
-    NEURONsim_file = runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
-                              tstim, toffset, PRF, DC, int_method='NEURON')
-    effsim_file = runAStim(batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
-                           tstim, toffset, PRF, DC, int_method='effective')
+    NEURONsim_file = AStimWorker(1, batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
+                                 tstim, toffset, PRF, DC, 'NEURON', 2).__call__()
+    effsim_file = AStimWorker(1, batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
+                              tstim, toffset, PRF, DC, 'effective', 2).__call__()
 
     # Compare computation times
     with open(effsim_file, 'rb') as fh:

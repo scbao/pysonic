@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-03 11:59:40
+# @Last Modified time: 2018-07-23 11:30:27
 
 """ Script to run ASTIM simulations from command line. """
 
@@ -14,7 +14,7 @@ import logging
 from argparse import ArgumentParser
 
 from PointNICE.utils import logger, getNeuronsDict, InputError, si_format
-from PointNICE.solvers import checkBatchLog, SolverUS, runAStim
+from PointNICE.solvers import checkBatchLog, SolverUS, AStimWorker
 from PointNICE.plt import plotBatch
 
 
@@ -83,21 +83,16 @@ def main():
     else:
         logger.setLevel(logging.INFO)
 
-    PW_str = ', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2), DC * 1e2)
-
     try:
         if neuron_str not in getNeuronsDict():
             raise InputError('Unknown neuron type: "{}"'.format(neuron_str))
         log_filepath, _ = checkBatchLog(output_dir, 'A-STIM')
         neuron = getNeuronsDict()[neuron_str]()
-
-        logger.info('Running A-STIM simulation on %s neuron: a = %sm, f = %sHz, A = %sPa, t = %ss'
-                    '%s (%s method)', neuron_str, si_format(a, 1), si_format(Fdrive, 1),
-                    si_format(Adrive, 2), si_format(tstim, 1), PW_str if DC < 1.0 else "", int_method)
-
         solver = SolverUS(a, neuron, Fdrive)
-        outfile = runAStim(output_dir, log_filepath, solver, neuron, Fdrive, Adrive, tstim,
-                           toffset, PRF, DC, int_method)
+        worker = AStimWorker(1, output_dir, log_filepath, solver, neuron, Fdrive, Adrive,
+                             tstim, toffset, PRF, DC, int_method, 1)
+        logger.info('%s', worker)
+        outfile = worker.__call__()
         logger.info('Finished')
         if args.plot:
             plotBatch(output_dir, [outfile])
