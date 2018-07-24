@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-18 18:24:24
+# @Last Modified time: 2018-07-24 11:46:07
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -15,7 +15,7 @@ import numpy as np
 
 from PointNICE.utils import logger, getNeuronsDict
 from PointNICE import BilayerSonophore, SolverElec, SolverUS
-from PointNICE.solvers import findPeaks, titrateEStim, titrateAStim
+from PointNICE.solvers import findPeaks, EStimTitrator, AStimTitrator
 from PointNICE.constants import *
 
 # Set logging level
@@ -104,7 +104,6 @@ def test_ESTIM():
 
     # Initialize solver
     solver = SolverElec()
-    Arange = (0.0, 2 * TITRATION_ESTIM_A_MAX)  # mA/m2
 
     # Stimulation parameters
     tstim = 100e-3  # s
@@ -121,8 +120,8 @@ def test_ESTIM():
         # Perform titration for each neuron
         neuron = neuron_class()
         logger.info('%s neuron titration', neuron.name)
-        (Athr, t, y, _, latency) = titrateEStim(solver, neuron, Arange, tstim, toffset,
-                                                PRF=None, DC=1.0)
+        Athr, t, y, _, latency, _ = EStimTitrator(1, solver, neuron, None, tstim, toffset,
+                                                  None, 1.0, 1).__call__()
         Vm = y[0, :]
 
         # Check that final number of spikes is 1
@@ -162,8 +161,6 @@ def test_ASTIM():
     tstim = 50e-3  # s
     toffset = 30e-3  # s
 
-    Arange = (0.0, 2 * TITRATION_ASTIM_A_MAX)  # Pa
-
     # Reference values
     Athr_refs = {'FS': 38.96e3, 'LTS': 24.90e3, 'RS': 50.90e3, 'RE': 46.36e3, 'TC': 23.14e3,
                  'LeechT': 21.02e3, 'LeechP': 22.23e3, 'IB': 91.26e3}
@@ -181,12 +178,11 @@ def test_ASTIM():
         solver = SolverUS(a, neuron, Fdrive)
 
         # Perform titration
-        (Athr, t, y, _, latency) = titrateAStim(solver, neuron, Fdrive, Arange, tstim, toffset,
-                                                PRF=None, DC=1.0)
+        Athr, t, y, _, latency, _ = AStimTitrator(1, solver, neuron, Fdrive, None, tstim, toffset,
+                                                  None, 1.0, int_method='effective').__call__()
         Qm = y[2]
 
         # Check that final number of spikes is 1
-        # n_spikes, _, _ = detectSpikes(t, Qm, SPIKE_MIN_QAMP, SPIKE_MIN_DT)
         dt = t[1] - t[0]
         ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_QPROM)
         n_spikes = ipeaks.size

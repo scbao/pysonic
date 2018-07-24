@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-23 13:36:22
+# @Last Modified time: 2018-07-23 17:30:52
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
@@ -16,8 +16,6 @@ from PointNICE.utils import logger, InputError
 from PointNICE.solvers import setBatchDir, checkBatchLog, runEStimBatch
 from PointNICE.plt import plotBatch
 
-# Set logging level
-logger.setLevel(logging.INFO)
 
 # Neurons
 neurons = ['RS']
@@ -61,8 +59,9 @@ if __name__ == '__main__':
         pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
         # Plot resulting profiles
-        yvars = {'V_m': ['Vm']}
-        plotBatch(pkl_dir, pkl_filepaths, yvars)
+        if args.plot:
+            yvars = {'V_m': ['Vm']}
+            plotBatch(pkl_dir, pkl_filepaths, yvars)
 
     except InputError as err:
         logger.error(err)
