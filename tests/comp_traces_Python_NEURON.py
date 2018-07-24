@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-24 12:13:03
+# @Last Modified time: 2018-07-24 14:43:59
 
 """ Compare output of pure-Python and NEURON acoustic simulations. """
 
@@ -21,14 +21,13 @@ logger.setLevel(logging.INFO)
 
 # Set neurons
 neurons = ['RS', 'FS', 'LTS', 'RE', 'TC']
-# neurons = ['LTS']
 
 # Set stimulation parameters
 a = 32e-9  # m
 Adrive = 100e3  # Pa
 Fdrive = 500e3  # Hz
 PRF = 100.  # Hz
-DC = 1.
+DC = .5
 tstim = 150e-3  # s
 toffset = 100e-3  # s
 
@@ -80,7 +79,7 @@ for nname in neurons:
     ax = fig.gca()
     ax.set_title('{} neuron - {}Hz, {}Pa'.format(nname, *si_format([Fdrive, Adrive], space=' ')))
     fig.tight_layout()
-    fig.savefig('{}/{}.png'.format(batch_dir, simcode))
+    # fig.savefig('{}/{}.png'.format(batch_dir, simcode))
 
 mu_acc_factor /= len(neurons)
 logger.info('average acceleration factor = %.1f', mu_acc_factor)

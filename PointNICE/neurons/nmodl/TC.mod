@@ -53,11 +53,10 @@ PARAMETER {
     : Parameters set by the user upon initialization
 
     : simulation parameters (stimulus and dt)
-    duration = 100      (ms)
-    offset = 0          (ms)
-    PRF = 0             (Hz)
-    DC = 0
-    dt = 0.05           (ms)
+    duration  (ms)
+    PRF       (Hz)
+    DC
+    dt        (ms)
 
     : membrane properties
     cm = 1              (uF/cm2)
