@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-20 17:22:24
+# @Last Modified time: 2018-08-21 14:08:06
 
 """ Definition of generic utility functions used in other modules """
 
@@ -82,15 +82,6 @@ def getLookupDir():
     """
     this_dir, _ = os.path.split(__file__)
     return os.path.join(this_dir, 'lookups')
-
-
-def getNmodlDir():
-    """ Return the location of the directory holding the NEURON mechanisms dll.
-
-        :return: absolute path to the directory
-    """
-    this_dir, _ = os.path.split(__file__)
-    return os.path.join(this_dir, 'neurons\\nmodl')
 
 
 def ParseNestedDict(dict_in):
@@ -423,15 +414,15 @@ def itrpLookupsFreq(lookups3D, freqs, Fdrive):
     # If Fdrive in lookup frequencies, simply take (A, Q) slice at Fdrive index
     if Fdrive in freqs:
         iFdrive = np.searchsorted(freqs, Fdrive)
-        logger.debug('Using lookups directly at %.2f kHz', freqs[iFdrive] * 1e-3)
+        # logger.debug('Using lookups directly at %.2f kHz', freqs[iFdrive] * 1e-3)
         lookups2D = {key: np.squeeze(lookups3D[key][iFdrive, :, :]) for key in lookups3D.keys()}
 
     # Otherwise, interpolate linearly between 2 (A, Q) slices at Fdrive bounding values indexes
     else:
         ilb = np.searchsorted(freqs, Fdrive) - 1
         iub = ilb + 1
-        logger.debug('Interpolating lookups between %.2f kHz and %.2f kHz',
-                     freqs[ilb] * 1e-3, freqs[iub] * 1e-3)
+        # logger.debug('Interpolating lookups between %.2f kHz and %.2f kHz',
+        #              freqs[ilb] * 1e-3, freqs[iub] * 1e-3)
         lookups2D_lb = {key: np.squeeze(lookups3D[key][ilb, :, :]) for key in lookups3D.keys()}
         lookups2D_ub = {key: np.squeeze(lookups3D[key][iub, :, :]) for key in lookups3D.keys()}
         Fratio = (Fdrive - freqs[ilb]) / (freqs[iub] - freqs[ilb])
@@ -439,6 +430,45 @@ def itrpLookupsFreq(lookups3D, freqs, Fdrive):
                      for key in lookups3D.keys()}
 
     return lookups2D
+
+
+def getLookups2D(mechname, a, Fdrive):
+    ''' Retrieve appropriate 2D lookup tables and reference vectors
+        for a given membrane mechanism, sonophore diameter and US frequency.
+
+        :param mechname: name of membrane density mechanism
+        :param a: sonophore diameter (m)
+        :param Fdrive: US frequency (Hz)
+        :return: 3-tuple with 1D numpy arrays of reference acoustic amplitudes and charge densities,
+            and a dictionary of 2D lookup numpy arrays
+    '''
+
+    # Check lookup file existence
+    lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(mechname, a * 1e9)
+    lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
+    if not os.path.isfile(lookup_path):
+        raise InputError('Missing lookup file: "{}"'.format(lookup_file))
+
+    # Load lookups dictionary
+    with open(lookup_path, 'rb') as fh:
+        lookups3D = pickle.load(fh)
+
+    # Retrieve 1D inputs from lookups dictionary
+    Fref = lookups3D.pop('f')
+    Aref = lookups3D.pop('A')
+    Qref = lookups3D.pop('Q')
+
+    # Check that US frequency is within lookup range
+    margin = 1e-9  # adding margin to compensate for eventual round error
+    Frange = (Fref.min() - margin, Fref.max() + margin)
+    if Fdrive < Frange[0] or Fdrive > Frange[1]:
+        raise InputError('Invalid frequency: {}Hz (must be within {}Hz - {}Hz lookup interval)'
+                         .format(*si_format([Fdrive, *Frange], precision=2, space=' ')))
+
+    # Interpolate 3D lookups at US frequency
+    lookups2D = itrpLookupsFreq(lookups3D, Fref, Fdrive)
+
+    return Aref, Qref, lookups2D
 
 
 def nDindexes(dims, index):
@@ -470,3 +500,12 @@ def nDindexes(dims, index):
     indexes.append(remainder)
 
     return indexes
+
+
+def pow10_format(number, precision=2):
+    ''' Format a number in power of 10 notation. '''
+    ret_string = '{0:.{1:d}e}'.format(number, precision)
+    a, b = ret_string.split("e")
+    a = float(a)
+    b = int(b)
+    return '{}10^{{{}}}'.format('{} * '.format(a) if a != 1. else '', b)

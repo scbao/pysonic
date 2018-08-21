@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-23 14:03:27
+# @Last Modified time: 2018-08-21 14:27:37
 
 import inspect
 import logging
@@ -155,7 +155,7 @@ class BilayerSonophore:
 
     def v_curvrad(self, Z):
         ''' Vectorized curvrad function '''
-        return np.array([self.curvrad(z) for z in Z])
+        return np.array(list(map(self.curvrad, Z)))
 
 
     def surface(self, Z):
@@ -206,7 +206,7 @@ class BilayerSonophore:
 
     def v_Capct(self, Z):
         ''' Vectorized Capct function '''
-        return np.array([self.Capct(z) for z in Z])
+        return np.array(list(map(self.Capct, Z)))
 
 
     def derCapct(self, Z, U):
@@ -285,7 +285,7 @@ class BilayerSonophore:
 
     def v_PMavg(self, Z, R, S):
         ''' Vectorized PMavg function '''
-        return np.array([self.PMavg(Z[i], R[i], S[i]) for i in range(Z.size)])
+        return np.array(list(map(self.PMavg, Z, R, S)))
 
 
     def LJfitPMavg(self):

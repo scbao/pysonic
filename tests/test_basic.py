@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-19 19:59:39
+# @Last Modified time: 2018-08-21 14:24:51
 
 ''' Test the basic functionalities of the package. '''
 
@@ -16,7 +16,7 @@ import cProfile
 import pstats
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger
+from PointNICE.utils import logger, InputError
 from PointNICE import BilayerSonophore, SolverElec, SolverUS
 from PointNICE.neurons import *
 
@@ -84,23 +84,20 @@ def test_ESTIM(is_profiled=False):
 def test_ASTIM_effective(is_profiled=False):
     ''' Effective acoustic simulation '''
 
-    logger.info('Test: running ASTIM effective simulation')
+    logger.info('Test: ASTIM effective simulation')
 
-    # Initialize neuron
+    # Default parameters
     neuron = CorticalRS()
-
-    # Stimulation parameters
+    a = 32e-9  # m
     Fdrive = 500e3  # Hz
     Adrive = 100e3  # Pa
     tstim = 50e-3  # s
     toffset = 10e-3  # s
 
-    # Initialize solver
-    a = 32e-9  # m
-    solver = SolverUS(a, neuron, Fdrive)
 
     # Run simulation
     if is_profiled:
+        solver = SolverUS(a, neuron, Fdrive)
         pfile = 'tmp.stats'
         cProfile.runctx("solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='effective')",
                         globals(), locals(), pfile)
@@ -110,9 +107,33 @@ def test_ASTIM_effective(is_profiled=False):
         stats.sort_stats('cumulative')
         stats.print_stats()
     else:
+        # test error 1: no lookups exist for sonophore diameter
+        try:
+            solver = SolverUS(50e-9, neuron, Fdrive)
+            solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='effective')
+        except InputError as err:
+            logger.debug('No lookups for sonophore diameter: OK')
+
+        # test error 2: frequency outside of lookups range
+        Foutside = 10e3  # Hz
+        try:
+            solver = SolverUS(a, neuron, Foutside)
+            solver.run(neuron, Foutside, Adrive, tstim, toffset, sim_type='effective')
+        except InputError as err:
+            logger.debug('Out of range frequency: OK')
+
+        # test error 3: amplitude outside of lookups range
+        Aoutside = 1e6  # Pa
+        try:
+            solver = SolverUS(a, neuron, Fdrive)
+            solver.run(neuron, Fdrive, Aoutside, tstim, toffset, sim_type='effective')
+        except InputError as err:
+            logger.debug('Out of range amplitude: OK')
+
+        # test: normal stimulation completion (CW and PW)
+        solver = SolverUS(a, neuron, Fdrive)
         solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='effective')
         solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF=100.0, DC=0.05, sim_type='effective')
-
 
 
 def test_ASTIM_classic(is_profiled=False):

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-20 18:21:35
+# @Last Modified time: 2018-08-21 14:19:43
 
 import os
 import warnings
@@ -14,7 +14,6 @@ import progressbar as pb
 import numpy as np
 import scipy.integrate as integrate
 from scipy.interpolate import interp2d
-from neuron import h
 
 from ..bls import BilayerSonophore
 from ..utils import *
@@ -23,9 +22,6 @@ from ..neurons import BaseMech
 
 # Get package logger
 logger = logging.getLogger('PointNICE')
-
-# global list of paths already loaded by load_mechanisms
-nrn_dll_loaded = []
 
 
 class SolverUS(BilayerSonophore):
@@ -280,45 +276,23 @@ class SolverUS(BilayerSonophore):
         # Raise warnings as error
         warnings.filterwarnings('error')
 
-        # Check lookup file existence
-        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
-        lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
-        if not os.path.isfile(lookup_path):
-            raise InputError('Missing lookup file: "{}"'.format(lookup_file))
+        # Load appropriate 2D lookups
+        Aref, Qref, lookups2D = getLookups2D(neuron.name, self.a, Fdrive)
 
-        # Load lookups dictionary
-        with open(lookup_path, 'rb') as fh:
-            lookups3D = pickle.load(fh)
-
-        # Retrieve 1D inputs from lookups dictionary
-        freqs = lookups3D.pop('f')
-        amps = lookups3D.pop('A')
-        charges = lookups3D.pop('Q')
-
-        # Check that stimulation parameters are within lookup range
+        # Check that acoustic amplitude is within lookup range
         margin = 1e-9  # adding margin to compensate for eventual round error
-        frange = (freqs.min() - margin, freqs.max() + margin)
-        Arange = (amps.min() - margin, amps.max() + margin)
-
-        if Fdrive < frange[0] or Fdrive > frange[1]:
-            raise InputError(('Invalid frequency: {:.2f} kHz (must be within ' +
-                              '{:.1f} kHz - {:.1f} MHz lookup interval)')
-                             .format(Fdrive * 1e-3, frange[0] * 1e-3, frange[1] * 1e-6))
+        Arange = (Aref.min() - margin, Aref.max() + margin)
         if Adrive < Arange[0] or Adrive > Arange[1]:
-            raise InputError(('Invalid amplitude: {:.2f} kPa (must be within ' +
-                              '{:.1f} - {:.1f} kPa lookup interval)')
-                             .format(Adrive * 1e-3, Arange[0] * 1e-3, Arange[1] * 1e-3))
-
-        # Interpolate 3D lookups at US frequency
-        lookups2D = itrpLookupsFreq(lookups3D, freqs, Fdrive)
+            raise InputError('Invalid amplitude: {}Pa (must be within {}Pa - {} Pa lookup interval)'
+                             .format(*si_format([Adrive, *Arange], precision=2, space=' ')))
 
         # Interpolate 2D lookups at US amplitude (along with "ng" at zero amplitude)
-        lookups1D = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(Adrive, charges))
+        lookups1D = {key: np.squeeze(interp2d(Aref, Qref, lookups2D[key].T)(Adrive, Qref))
                      for key in lookups2D.keys()}
-        lookups1D['ng0'] = np.squeeze(interp2d(amps, charges, lookups2D['ng'].T)(0.0, charges))
+        lookups1D['ng0'] = np.squeeze(interp2d(Aref, Qref, lookups2D['ng'].T)(0.0, Qref))
 
         # Add reference charge vector to 1D lookup dictionary
-        lookups1D['Q'] = charges
+        lookups1D['Q'] = Qref
 
         # Initialize system solvers
         solver_on = integrate.ode(self.eqHHeff)
@@ -445,159 +419,6 @@ class SolverUS(BilayerSonophore):
         y = np.vstack([Zeff, ngeff, y[0, :], Vm, y[1:, :]])
 
         # return output variables
-        return (t, y, states)
-
-
-    def __runNEURON(self, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
-
-        # Raise warnings as error
-        warnings.filterwarnings('error')
-
-        # Define aliases for NMODL-protected variable names
-        neuron_aliases = {'O': 'O1', 'C': 'C1'}
-
-        # Load mechanisms DLL file
-        nmodl_dir = getNmodlDir()  # + '/{}'.format(neuron.name)
-        mod_file = nmodl_dir + '/{}.mod'.format(neuron.name)
-        dll_file = nmodl_dir + '/nrnmech.dll'
-
-        # Raise warning if source MOD file is more recent than compiled DLL file
-        if not os.path.isfile(dll_file) or os.path.getmtime(mod_file) > os.path.getmtime(dll_file):
-            logger.warning('"%s.mod" file more recent than dll -> needs recompiling', neuron.name)
-
-            # switch to NMODL directory, invoke mknrndll command and go back to original directory
-            # print('saving current working directory')
-            # cwd = os.getcwd()
-            # print('switching to NMODL directory')
-            # os.system('cd {}'.format(nmodl_dir))
-            # print('invoking mknrndll command')
-            # exit_code = os.system('c:/nrn/mingw/bin/sh c:/nrn/lib/mknrndll.sh /c/nrn')
-            # print(exit_code)
-            # print('simulating return ')
-            # print('switching back to original directory')
-            # os.system('cd {}'.format(cwd))
-
-        # Load mechanisms DLL if not already loaded
-        if dll_file not in nrn_dll_loaded:
-            h.nrn_load_dll(dll_file)
-            nrn_dll_loaded.append(dll_file)
-
-        # Check lookup file existence
-        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
-        lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
-        if not os.path.isfile(lookup_path):
-            raise InputError('Missing lookup file: "{}"'.format(lookup_file))
-
-        # Load lookups dictionary
-        with open(lookup_path, 'rb') as fh:
-            lookups3D = pickle.load(fh)
-
-        # Retrieve 1D inputs from lookups dictionary
-        freqs = lookups3D.pop('f')
-        amps = lookups3D.pop('A')
-        charges = lookups3D.pop('Q')
-
-        # Check that stimulation parameters are within lookup range
-        margin = 1e-9  # adding margin to compensate for eventual round error
-        frange = (freqs.min() - margin, freqs.max() + margin)
-        Arange = (amps.min() - margin, amps.max() + margin)
-
-        if Fdrive < frange[0] or Fdrive > frange[1]:
-            raise InputError(('Invalid frequency: {:.2f} kHz (must be within ' +
-                              '{:.1f} kHz - {:.1f} MHz lookup interval)')
-                             .format(Fdrive * 1e-3, frange[0] * 1e-3, frange[1] * 1e-6))
-        if Adrive < Arange[0] or Adrive > Arange[1]:
-            raise InputError(('Invalid amplitude: {:.2f} kPa (must be within ' +
-                              '{:.1f} - {:.1f} kPa lookup interval)')
-                             .format(Adrive * 1e-3, Arange[0] * 1e-3, Arange[1] * 1e-3))
-
-        # Interpolate 3D lookups at US frequency
-        lookups2D = itrpLookupsFreq(lookups3D, freqs, Fdrive)
-
-        # Interpolate 2D lookups at US amplitude and zero
-        lookupsA = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(Adrive, charges))
-                    for key in lookups2D.keys()}
-        lookups0 = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(0.0, charges))
-                    for key in lookups2D.keys()}
-
-        # Rescale rate constants to ms-1
-        for k in lookupsA.keys():
-            if 'alpha' in k or 'beta' in k:
-                lookupsA[k] *= 1e-3
-                lookups0[k] *= 1e-3
-
-        # Rename V lookup
-        lookupsA['veff'] = lookupsA.pop('V')
-        lookups0['veff'] = lookups0.pop('V')
-
-        # Translate 1D lookups to h-vectors
-        qvec = h.Vector(charges * 1e5)
-        lookupsA_hoc = {k: h.Vector(lookupsA[k]) for k in lookupsA.keys()}
-        lookups0_hoc = {k: h.Vector(lookups0[k]) for k in lookups0.keys()}
-
-        # Assign h-vectors lookups to mechanism tables
-        add_table_on = "h.table_{0}_on_{1}(lookupsA_hoc['{0}']._ref_x[0], qvec.size(), qvec._ref_x[0])"
-        add_table_off = "h.table_{0}_off_{1}(lookups0_hoc['{0}']._ref_x[0], qvec.size(), qvec._ref_x[0])"
-        eval(add_table_on.format('veff', neuron.name))
-        eval(add_table_off.format('veff', neuron.name))
-        for gate in neuron.getGates():
-            gate = gate.lower()
-            eval(add_table_on.format('alpha{}'.format(gate), neuron.name))
-            eval(add_table_off.format('alpha{}'.format(gate), neuron.name))
-            eval(add_table_on.format('beta{}'.format(gate), neuron.name))
-            eval(add_table_off.format('beta{}'.format(gate), neuron.name))
-
-        # Create point-neuron compartment
-        pointneuron = h.Section(name='pointneuron')
-        pointneuron.nseg = 1
-        pointneuron.Ra = 1  # dummy axoplasmic resistance
-        pointneuron.diam = 1  # unit diameter
-        pointneuron.L = 1  # unit length
-
-        # Add mechanisms
-        pointneuron.insert(neuron.name)
-
-        # Set parameters of acoustic stimulus
-        setattr(pointneuron, 'duration_{}'.format(neuron.name), tstim * 1e3)
-        if DC < 1:
-            setattr(pointneuron, 'PRF_{}'.format(neuron.name), PRF)
-        else:
-            setattr(pointneuron, 'PRF_{}'.format(neuron.name), tstim * 1e3)
-        setattr(pointneuron, 'DC_{}'.format(neuron.name), DC)
-
-        # Record evolution of time and output variables
-        t = h.Vector()
-        states = h.Vector()
-        Qm = h.Vector()
-        Vm = h.Vector()
-        t.record(h._ref_t)
-        Qm.record(getattr(pointneuron(0.5), '_ref_Q_{}'.format(neuron.name)))
-        Vm.record(getattr(pointneuron(0.5), '_ref_Vmeff_{}'.format(neuron.name)))
-        states.record(getattr(pointneuron(0.5), '_ref_stimon_{}'.format(neuron.name)))
-        probes = {}
-        for state in neuron.states_names:
-            probes[state] = h.Vector()
-            if state in neuron_aliases.keys():
-                alias = neuron_aliases[state]
-            else:
-                alias = state
-            probes[state].record(getattr(pointneuron(0.5), '_ref_{}_{}'.format(alias, neuron.name)))
-
-        # Run simulation
-        h.t = 0
-        h.finitialize(neuron.Vm0)
-        tstop = (tstim + toffset) * 1e3
-        h.dt = dt * 1e3
-        while h.t < tstop:
-            h.fadvance()
-
-        t = np.array(t.to_python()) * 1e-3  # s
-        Qm = np.array(Qm.to_python()) * 1e-5  # C/m2
-        Vm = np.array(Vm.to_python())  # mV
-        channels = [np.array(probes[state].to_python()) for state in neuron.states_names]
-        y = np.array([np.zeros(t.size), np.zeros(t.size), Qm, Vm, *channels])
-        states = np.array(states.to_python())
-
         return (t, y, states)
 
 
