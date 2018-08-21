@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-24 11:59:48
+# @Last Modified time: 2018-08-21 16:07:37
 
 """ Run batch acoustic titrations of specific "point-neuron" models. """
 
@@ -14,9 +14,9 @@ import logging
 import numpy as np
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, InputError
-from PointNICE.solvers import setBatchDir, checkBatchLog, titrateAStimBatch
-from PointNICE.plt import plotBatch
+from PySONIC.utils import logger, InputError
+from PySONIC.solvers import setBatchDir, checkBatchLog, titrateAStimBatch
+from PySONIC.plt import plotBatch
 
 
 # Neurons

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-23 14:29:15
+# @Last Modified time: 2018-08-21 16:10:36
 
 ''' Plotting utilities '''
 
@@ -35,7 +35,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 matplotlib.rcParams['font.family'] = 'arial'
 
 # Get package logger
-logger = logging.getLogger('PointNICE')
+logger = logging.getLogger('PySONIC')
 
 # Define global variables
 neuron = None

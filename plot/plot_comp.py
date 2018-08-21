@@ -4,15 +4,15 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-14 18:37:53
+# @Last Modified time: 2018-08-21 16:07:31
 
 """ Compare profiles of several specific output variables of NICE simulations. """
 
 import sys
 import logging
 
-from PointNICE.utils import logger, OpenFilesDialog, InputError
-from PointNICE.plt import plotComp
+from PySONIC.utils import logger, OpenFilesDialog, InputError
+from PySONIC.plt import plotComp
 
 # Set logging level
 logger.setLevel(logging.INFO)

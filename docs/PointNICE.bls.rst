@@ -1,7 +1,7 @@
 Bilayer Sonophore
 ----------------
 
-.. automodule:: PointNICE.bls
+.. automodule:: sonic.bls
 .. autoclass:: BilayerSonophore
     :members:
 

@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 14:24:51
+# @Last Modified time: 2018-08-21 16:08:13
 
 ''' Test the basic functionalities of the package. '''
 
@@ -16,9 +16,9 @@ import cProfile
 import pstats
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, InputError
-from PointNICE import BilayerSonophore, SolverElec, SolverUS
-from PointNICE.neurons import *
+from PySONIC.utils import logger, InputError
+from PySONIC import BilayerSonophore, SolverElec, SolverUS
+from PySONIC.neurons import *
 
 
 def test_MECH(is_profiled=False):

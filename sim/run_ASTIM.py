@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-23 13:27:52
+# @Last Modified time: 2018-08-21 16:07:36
 
 """ Script to run ASTIM simulations from command line. """
 
@@ -13,9 +13,9 @@ import os
 import logging
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, getNeuronsDict, InputError
-from PointNICE.solvers import checkBatchLog, SolverUS, AStimWorker
-from PointNICE.plt import plotBatch
+from PySONIC.utils import logger, getNeuronsDict, InputError
+from PySONIC.solvers import checkBatchLog, SolverUS, AStimWorker
+from PySONIC.plt import plotBatch
 
 
 # Default parameters

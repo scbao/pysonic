@@ -1,7 +1,7 @@
 Leech neurons
 -------------------------
 
-.. automodule:: PointNICE.channels.leech
+.. automodule:: sonic.channels.leech
 
 .. autoclass:: LeechTouch
     :members:

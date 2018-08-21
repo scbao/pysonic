@@ -1,6 +1,6 @@
 include README.md
-include PointNICE/lookups/*/*.pkl
-include PointNICE/templates/*.xlsx
+include PySONIC/lookups/*/*.pkl
+include PySONIC/templates/*.xlsx
 include /sim/*.py
 include /plot/plot_comp.py
 include /plot/plot_batch.py

@@ -1,7 +1,7 @@
 Electrical stimulation
 -------------------------
 
-.. automodule:: PointNICE.solvers.SolverElec
+.. automodule:: sonic.solvers.SolverElec
 
 .. autoclass:: SolverElec
     :members:

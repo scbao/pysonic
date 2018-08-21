@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-03-15 18:33:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-23 14:30:27
+# @Last Modified time: 2018-08-21 16:07:37
 
 
 """ Script to run MECH simulations from command line. """
@@ -12,10 +12,10 @@ import os
 import logging
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, InputError
-from PointNICE.bls import BilayerSonophore
-from PointNICE.solvers import checkBatchLog, MechWorker
-from PointNICE.plt import plotBatch
+from PySONIC.utils import logger, InputError
+from PySONIC.bls import BilayerSonophore
+from PySONIC.solvers import checkBatchLog, MechWorker
+from PySONIC.plt import plotBatch
 
 
 # Default parameters

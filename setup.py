@@ -4,7 +4,7 @@
 # @Date:   2017-06-13 09:40:02
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-17 18:06:04
+# @Last Modified time: 2018-08-21 16:05:54
 
 from setuptools import setup
 
@@ -14,12 +14,11 @@ def readme():
         return f.read()
 
 
-setup(name='PointNICE',
+setup(name='PySONIC',
       version='1.0',
-      description='A Python framework to predict the electrical response of various neuron types\
-                   to ultrasonic stimulation, according to the Neuronal Intramembrane Cavitation\
-                   Excitation (NICE) model. The framework couples an optimized implementation of\
-                   the Bilayer Sonophore (BLS) model with Hodgkin-Huxley "point-neuron" models.',
+      description='Python implementation of the **multi-Scale Optimized Neuronal Intramembrane \
+                   Cavitation** (SONIC) model to compute individual neural responses to acoustic \
+                   stimuli, as predicted by the *intramembrane cavitation* hypothesis.',
       long_description=readme(),
       url='???',
       classifiers=[
@@ -28,12 +27,12 @@ setup(name='PointNICE',
           'Programming Language :: Python :: 3',
           'Topic :: Scientific/Engineering :: Physics'
       ],
-      keywords=('ultrasound ultrasonic neuromodulation neurostimulation excitation\
-                 biophysical model intramembrane cavitation NICE'),
+      keywords=('SONIC NICE acoustic ultrasound ultrasonic neuromodulation neurostimulation excitation\
+                 computational model intramembrane cavitation'),
       author='Théo Lemaire',
       author_email='theo.lemaire@epfl.ch',
       license='MIT',
-      packages=['PointNICE'],
+      packages=['PySONIC'],
       scripts=['sim/run_ESTIM.py', 'sim/run_ASTIM.py'],
       install_requires=[
           'numpy>=1.10',

@@ -1,5 +1,5 @@
 Utils
 ----------------
 
-.. automodule:: PointNICE.utils
+.. automodule:: sonic.utils
     :members:

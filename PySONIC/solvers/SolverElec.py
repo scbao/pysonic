@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-03 12:27:21
+# @Last Modified time: 2018-08-21 16:10:37
 
 
 import warnings
@@ -17,7 +17,7 @@ from ..neurons import BaseMech
 from ..utils import InputError
 
 # Get package logger
-logger = logging.getLogger('PointNICE')
+logger = logging.getLogger('PySONIC')
 
 
 class SolverElec:

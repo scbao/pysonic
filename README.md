@@ -1,7 +1,9 @@
 Description
 ============
 
-PointNICE is a Python implementation of the **Neuronal Intramembrane Cavitation Excitation** (NICE) model introduced by Plaksin et. al in 2014 and initially developed in MATLAB by its authors. It contains optimized methods to predict the electrical response of point-neuron models to both acoustic and electrical stimuli.
+Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation** (SONIC) model to compute individual neural responses to acoustic stimuli, as predicted by the *intramembrane cavitation* hypothesis.
+
+This is an optmimized variant of the original **Neuronal Intramembrane Cavitation Excitation** (NICE) model introduced by Plaksin et. al in 2014.
 
 This package contains several core modules:
 	- **bls** defines the underlying biomechanical model of intramembrane cavitation (**BilayerSonophore** class), and provides an integration method to predict compute the mechanical oscillations of the plasma membrane subject to a periodic acoustic perturbation.
@@ -33,12 +35,12 @@ Check that the appropriate version of pip is activated:
 
 	pip --version
 
-Go to the PointNICE directory (where the setup.py file is located) and install it as a package:
+Go to the package directory (where the setup.py file is located) and install it:
 
 	cd <path_to_directory>
 	pip install -e .
 
-PointNICE and all its dependencies will be installed.
+*PySONIC* and all its dependencies will be installed.
 
 
 Usage

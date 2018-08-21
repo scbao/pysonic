@@ -4,13 +4,13 @@
 # @Date:   2017-07-17 11:47:50
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 15:21:18
+# @Last Modified time: 2018-08-21 16:07:32
 
 ''' plot profile of acoustic Intensity (in W/cm^2) vs Pressure (in kPa) '''
 
 import numpy as np
 import matplotlib.pyplot as plt
-from PointNICE.utils import Pressure2Intensity
+from PySONIC.utils import Pressure2Intensity
 
 rho = 1075  # kg/m3
 c = 1515  # m/s

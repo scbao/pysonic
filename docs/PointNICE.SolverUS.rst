@@ -1,7 +1,7 @@
 US stimulation
 -------------------------
 
-.. automodule:: PointNICE.solvers.SolverUS
+.. automodule:: sonic.solvers.SolverUS
 
 .. autoclass:: SolverUS
     :members:

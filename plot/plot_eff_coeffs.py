@@ -4,13 +4,13 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-06 11:01:27
+# @Last Modified time: 2018-08-21 16:07:31
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PointNICE.plt import plotEffVars
-from PointNICE.neurons import *
+from PySONIC.plt import plotEffVars
+from PySONIC.neurons import *
 
 ''' Plot the profiles of effective variables as a function of charge density
     with amplitude color code.

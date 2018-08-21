@@ -4,7 +4,7 @@
 # @Date:   2016-10-05 11:04:43
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-07-18 15:51:33
+# @Last Modified time: 2018-08-21 16:07:34
 
 """ Test influence of tissue embedding on BLS cavitation amplitude. """
 
@@ -12,7 +12,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
-from PointNICE.utils import ImportExcelCol
+from PySONIC.utils import ImportExcelCol
 
 
 def powerfit(x, a_, b_):

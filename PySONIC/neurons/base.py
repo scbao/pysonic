@@ -4,13 +4,13 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-08 14:23:44
+# @Last Modified time: 2018-08-21 15:27:49
 
 ''' Module standard API for all neuron mechanisms.
 
     Each mechanism class can use different methods to define the membrane dynamics of a
     specific neuron type. However, they must contain some mandatory attributes and methods
-    in order to be properly imported in other PointNICE modules and used in NICE simulations.
+    in order to be properly imported in other sonic modules and used in NICE simulations.
 '''
 
 import abc

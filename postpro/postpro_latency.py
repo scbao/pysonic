@@ -4,14 +4,14 @@
 # @Date:   2016-10-31 10:10:41
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:18:34
+# @Last Modified time: 2018-08-21 16:07:33
 
 """ Test relationship between stimulus intensity and response latency. """
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PointNICE.utils import ImportExcelCol, Presssure2Intensity
+from PySONIC.utils import ImportExcelCol, Presssure2Intensity
 
 
 # Define import settings

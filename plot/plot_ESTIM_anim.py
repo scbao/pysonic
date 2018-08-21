@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-17 15:46:41
+# @Last Modified time: 2018-08-21 16:07:31
 
 """ Run simulations of the HH system with injected electric current,
 and plot resulting dynamics. """
@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.patches as patches
 
-from PointNICE.solvers import SolverElec
-from PointNICE.neurons import *
+from PySONIC.solvers import SolverElec
+from PySONIC.neurons import *
 
 
 # -------------- SIMULATION -----------------

@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 14:08:06
+# @Last Modified time: 2018-08-21 16:10:36
 
 """ Definition of generic utility functions used in other modules """
 
@@ -40,7 +40,7 @@ def setLogger():
     )
     log_handler = colorlog.StreamHandler()
     log_handler.setFormatter(log_formatter)
-    color_logger = colorlog.getLogger('PointNICE')
+    color_logger = colorlog.getLogger('PySONIC')
     color_logger.addHandler(log_handler)
     return color_logger
 

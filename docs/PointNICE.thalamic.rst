@@ -1,7 +1,7 @@
 Thalamic neurons
 -------------------------
 
-.. automodule:: PointNICE.channels.thalamic
+.. automodule:: sonic.channels.thalamic
 
 .. autoclass:: Thalamic
     :members:

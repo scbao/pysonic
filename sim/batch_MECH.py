@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-23 14:39:27
+# @Last Modified time: 2018-08-21 16:07:36
 
 """ Run batch simulations of the NICE mechanical model with imposed charge densities """
 
@@ -14,10 +14,10 @@ import logging
 import numpy as np
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, InputError
-from PointNICE.solvers import setBatchDir, checkBatchLog, runMechBatch
-from PointNICE.neurons import *
-from PointNICE.plt import plotBatch
+from PySONIC.utils import logger, InputError
+from PySONIC.solvers import setBatchDir, checkBatchLog, runMechBatch
+from PySONIC.neurons import *
+from PySONIC.plt import plotBatch
 
 
 a = 32e-9  # in-plane diameter (m)

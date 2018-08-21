@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 14:19:43
+# @Last Modified time: 2018-08-21 16:10:37
 
 import os
 import warnings
@@ -21,7 +21,7 @@ from ..constants import *
 from ..neurons import BaseMech
 
 # Get package logger
-logger = logging.getLogger('PointNICE')
+logger = logging.getLogger('PySONIC')
 
 
 class SolverUS(BilayerSonophore):

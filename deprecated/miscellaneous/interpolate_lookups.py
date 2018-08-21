@@ -4,7 +4,7 @@ import pickle
 import logging
 import numpy as np
 from scipy.interpolate import interp2d
-from PointNICE.utils import logger, getLookupDir, InputError, itrpLookupsFreq
+from sonic.utils import logger, getLookupDir, InputError, itrpLookupsFreq
 
 # Set logging level
 logger.setLevel(logging.INFO)

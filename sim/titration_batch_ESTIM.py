@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-25 14:50:39
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-24 11:54:34
+# @Last Modified time: 2018-08-21 16:07:37
 
 """ Run batch electrical titrations of specific "point-neuron" models. """
 
@@ -12,9 +12,9 @@ import logging
 import numpy as np
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, InputError
-from PointNICE.solvers import setBatchDir, checkBatchLog, titrateEStimBatch
-from PointNICE.plt import plotBatch
+from PySONIC.utils import logger, InputError
+from PySONIC.solvers import setBatchDir, checkBatchLog, titrateEStimBatch
+from PySONIC.plt import plotBatch
 
 
 # Neurons

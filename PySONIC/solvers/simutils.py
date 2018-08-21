@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-24 12:01:13
+# @Last Modified time: 2018-08-21 16:10:36
 
 """ Utility functions used in simulations """
 
@@ -28,7 +28,7 @@ from ..utils import getNeuronsDict, InputError, PmCompMethod, si_format, getCycl
 
 
 # Get package logger
-logger = logging.getLogger('PointNICE')
+logger = logging.getLogger('PySONIC')
 
 
 class Consumer(mp.Process):

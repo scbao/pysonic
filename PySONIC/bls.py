@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 14:27:37
+# @Last Modified time: 2018-08-21 16:10:35
 
 import inspect
 import logging
@@ -17,7 +17,7 @@ from .constants import *
 
 
 # Get package logger
-logger = logging.getLogger('PointNICE')
+logger = logging.getLogger('PySONIC')
 
 
 class BilayerSonophore:

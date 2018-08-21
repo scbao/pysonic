@@ -3,11 +3,11 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
-from PointNICE.utils import logger, si_format, PmCompMethod, rmse, rsquared
-from PointNICE.plt import cm2inch
-from PointNICE.neurons import CorticalRS
-from PointNICE.solvers import BilayerSonophore
-from PointNICE.constants import *
+from PySONIC.utils import logger, si_format, PmCompMethod, rmse, rsquared
+from PySONIC.plt import cm2inch
+from PySONIC.neurons import CorticalRS
+from PySONIC.solvers import BilayerSonophore
+from PySONIC.constants import *
 
 # Set logging level
 logger.setLevel(logging.INFO)

@@ -4,7 +4,7 @@
 # @Date:   2016-10-05 11:04:43
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-07-18 15:00:50
+# @Last Modified time: 2018-08-21 16:07:34
 
 """ Test influence of acoustic pressure amplitude on cavitation amplitude of exposed BLS. """
 
@@ -13,8 +13,8 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
-sys.path.append('C:/Users/admin/Google Drive/PhD/NICE model/PointNICE')
-from PointNICE.utils import ImportExcelCol
+sys.path.append('C:/Users/admin/Google Drive/PhD/NICE model/sonic')
+from PySONIC.utils import ImportExcelCol
 
 
 def powerfit(x, a_, b_):

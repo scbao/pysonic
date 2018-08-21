@@ -4,7 +4,7 @@
 # @Date:   2016-11-01 16:35:43
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 12:35:30
+# @Last Modified time: 2018-08-21 16:07:33
 
 """ Compute RMSE between charge profiles of NICE output. """
 
@@ -13,7 +13,7 @@ import pickle
 import ntpath
 import numpy as np
 
-from PointNICE.utils import OpenFilesDialog, rmse
+from PySONIC.utils import OpenFilesDialog, rmse
 
 # Define options
 pkl_root = "../../Output/test Elec/"

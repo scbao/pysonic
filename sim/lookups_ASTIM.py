@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-20 18:39:03
+# @Last Modified time: 2018-08-21 16:07:36
 
 """ Create lookup table for specific neuron. """
 
@@ -14,9 +14,9 @@ import logging
 import numpy as np
 from argparse import ArgumentParser
 
-from PointNICE.solvers import computeAStimLookups
-from PointNICE.utils import logger, InputError, getNeuronsDict, getLookupDir
-from PointNICE.neurons import *
+from PySONIC.solvers import computeAStimLookups
+from PySONIC.utils import logger, InputError, getNeuronsDict, getLookupDir
+from PySONIC.neurons import *
 
 # Default parameters
 default = {

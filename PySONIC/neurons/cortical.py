@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-18 14:23:20
+# @Last Modified time: 2018-08-21 16:10:36
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -13,7 +13,7 @@ import numpy as np
 from .base import BaseMech
 
 # Get package logger
-logger = logging.getLogger('PointNICE')
+logger = logging.getLogger('PySONIC')
 
 
 class Cortical(BaseMech):

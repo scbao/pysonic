@@ -1,7 +1,7 @@
 Cortical neurons
 -------------------------
 
-.. automodule:: PointNICE.channels.cortical
+.. automodule:: sonic.channels.cortical
 
 .. autoclass:: Cortical
     :members:

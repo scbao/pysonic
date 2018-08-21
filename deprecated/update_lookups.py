@@ -4,13 +4,13 @@ import re
 import pickle
 import numpy as np
 
-from PointNICE.utils import getNeuronsDict
+from sonic.utils import getNeuronsDict
 
 # Get list of implemented neurons names
 neurons = list(getNeuronsDict().keys())
 
 # Define root directory and filename regular expression
-root = 'C:/Users/admin/Google Drive/PhD/NICE model/PointNICE/PointNICE/lookups'
+root = 'C:/Users/admin/Google Drive/PhD/NICE model/sonic/sonic/lookups'
 rgxp = re.compile('([A-Za-z]*)_lookups_a([0-9.]*)nm_f([0-9.]*)kHz.pkl')
 
 # For each neuron

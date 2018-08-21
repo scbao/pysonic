@@ -1,7 +1,7 @@
 Standard Mechanism API
 -------------------------
 
-.. automodule:: PointNICE.channels.base
+.. automodule:: sonic.channels.base
 
 .. autoclass:: BaseMech
     :members:

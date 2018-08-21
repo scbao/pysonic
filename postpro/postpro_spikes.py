@@ -4,7 +4,7 @@
 # @Date:   2016-10-27 09:50:55
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:18:29
+# @Last Modified time: 2018-08-21 16:07:35
 
 """ Test influence of acoustic intensity and duration on number of spikes. """
 
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from mpl_toolkits.mplot3d import Axes3D
 
-from PointNICE.utils import ImportExcelCol, ConstructMatrix, Pressure2Intensity
+from PySONIC.utils import ImportExcelCol, ConstructMatrix, Pressure2Intensity
 
 
 # Define options

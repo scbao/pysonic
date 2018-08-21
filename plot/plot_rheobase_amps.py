@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-04-30 21:06:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-08 14:41:56
+# @Last Modified time: 2018-08-21 16:07:33
 
 ''' Plot neuron-specific rheobase acoustic amplitudes for various duty cycles. '''
 
@@ -10,8 +10,8 @@ import sys
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
-from PointNICE.utils import logger, InputError, getNeuronsDict, si_format
-from PointNICE.solvers import SolverUS
+from PySONIC.utils import logger, InputError, getNeuronsDict, si_format
+from PySONIC.solvers import SolverUS
 
 # Set logging level
 logger.setLevel(logging.INFO)

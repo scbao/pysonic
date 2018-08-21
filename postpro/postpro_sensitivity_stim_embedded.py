@@ -4,7 +4,7 @@
 # @Date:   2016-10-05 11:04:43
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-07-18 15:00:48
+# @Last Modified time: 2018-08-21 16:07:34
 
 """ Test influence of acoustic amplitude and frequency on cavitation amplitude of embedded BLS. """
 
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from mpl_toolkits.mplot3d import Axes3D
 
-from PointNICE.utils import ImportExcelCol, ConstructMatrix
+from PySONIC.utils import ImportExcelCol, ConstructMatrix
 
 
 def powerfit(X_, a_, b_, c_):

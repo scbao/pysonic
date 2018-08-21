@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-24 11:46:07
+# @Last Modified time: 2018-08-21 16:08:13
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -13,10 +13,10 @@ import logging
 from argparse import ArgumentParser
 import numpy as np
 
-from PointNICE.utils import logger, getNeuronsDict
-from PointNICE import BilayerSonophore, SolverElec, SolverUS
-from PointNICE.solvers import findPeaks, EStimTitrator, AStimTitrator
-from PointNICE.constants import *
+from PySONIC.utils import logger, getNeuronsDict
+from PySONIC import BilayerSonophore, SolverElec, SolverUS
+from PySONIC.solvers import findPeaks, EStimTitrator, AStimTitrator
+from PySONIC.constants import *
 
 # Set logging level
 logger.setLevel(logging.INFO)

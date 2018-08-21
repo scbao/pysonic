@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-07-23 17:30:52
+# @Last Modified time: 2018-08-21 16:07:36
 
 """ Run batch electrical simulations of specific "point-neuron" models. """
 
@@ -12,9 +12,9 @@ import logging
 import numpy as np
 from argparse import ArgumentParser
 
-from PointNICE.utils import logger, InputError
-from PointNICE.solvers import setBatchDir, checkBatchLog, runEStimBatch
-from PointNICE.plt import plotBatch
+from PySONIC.utils import logger, InputError
+from PySONIC.solvers import setBatchDir, checkBatchLog, runEStimBatch
+from PySONIC.plt import plotBatch
 
 
 # Neurons

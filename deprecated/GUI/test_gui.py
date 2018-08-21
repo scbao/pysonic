@@ -3,15 +3,15 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-25 17:16:56
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-09-05 14:44:29
+# @Last Modified time: 2018-08-21 15:28:46
 
 ''' Simple GUI to run ASTIM and ESTIM simulations. '''
 
 import logging
 import tkinter as tk
 
-from PointNICE.solvers import SolverUS, checkBatchLog, runAStim
-from PointNICE.utils import getNeuronsDict, load_BLS_params
+from sonic.solvers import SolverUS, checkBatchLog, runAStim
+from sonic.utils import getNeuronsDict, load_BLS_params
 
 
 
@@ -169,5 +169,5 @@ class UI(tk.Tk):
 
 if __name__ == "__main__":
     app = UI(None)
-    app.title('PointNICE UI')
+    app.title('SONIC UI')
     app.mainloop()

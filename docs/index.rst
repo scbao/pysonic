@@ -1,5 +1,5 @@
 *****************************
-PointNICE Project
+SONIC model
 *****************************
 
 .. include:: ../README.md
@@ -10,10 +10,10 @@ Modules:
 .. toctree::
    :maxdepth: 2
 
-   PointNICE.bls
-   PointNICE.solvers
-   PointNICE.channels
-   PointNICE.utils
+   sonic.bls
+   sonic.solvers
+   sonic.channels
+   sonic.utils
 
 
 

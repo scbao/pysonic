@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-03-13 15:04:00
+# @Last Modified time: 2018-08-21 16:10:36
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
@@ -14,7 +14,7 @@ import numpy as np
 from .base import BaseMech
 
 # Get package logger
-logger = logging.getLogger('PointNICE')
+logger = logging.getLogger('PySONIC')
 
 
 class LeechTouch(BaseMech):

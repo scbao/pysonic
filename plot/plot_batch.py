@@ -4,15 +4,15 @@
 # @Date:   2017-03-20 12:19:55
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-06-15 18:02:07
+# @Last Modified time: 2018-08-21 16:07:30
 
 """ Batch plot profiles of several specific output variables of NICE simulations. """
 
 import sys
 import logging
 
-from PointNICE.utils import logger, OpenFilesDialog, InputError
-from PointNICE.plt import plotBatch
+from PySONIC.utils import logger, OpenFilesDialog, InputError
+from PySONIC.plt import plotBatch
 
 # Set logging level
 logger.setLevel(logging.INFO)

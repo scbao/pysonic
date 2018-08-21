@@ -4,7 +4,7 @@
 # @Date:   2016-10-30 21:48:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-08-28 14:18:23
+# @Last Modified time: 2018-08-21 16:07:35
 
 """ Test relationship between stimulus frequency and minimum acoustic intensity
 for AP generation. """
@@ -13,7 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-from PointNICE.utils import ImportExcelCol, Pressure2Intensity
+from PySONIC.utils import ImportExcelCol, Pressure2Intensity
 
 # Import data
 xls_file = "C:/Users/admin/Desktop/Model output/NBLS titration frequency 30ms/nbls_log_titration_frequency_30ms.xlsx"

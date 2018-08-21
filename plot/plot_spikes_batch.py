@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-04-04 11:49:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-04 12:06:32
+# @Last Modified time: 2018-08-21 16:07:33
 
 ''' Plot detected spikes on charge profiles. '''
 
@@ -13,9 +13,9 @@ import logging
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PointNICE.utils import logger, OpenFilesDialog, InputError
-from PointNICE.solvers import findPeaks
-from PointNICE.constants import *
+from PySONIC.utils import logger, OpenFilesDialog, InputError
+from PySONIC.solvers import findPeaks
+from PySONIC.constants import *
 
 # Set logging level
 logger.setLevel(logging.INFO)
