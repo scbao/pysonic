@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:10:36
+# @Last Modified time: 2018-08-24 16:19:36
 
 """ Definition of generic utility functions used in other modules """
 
@@ -509,3 +509,13 @@ def pow10_format(number, precision=2):
     a = float(a)
     b = int(b)
     return '{}10^{{{}}}'.format('{} * '.format(a) if a != 1. else '', b)
+
+
+def checkNumBounds(values, bounds):
+    ''' Check if a set of numbers is within predefined bounds. '''
+
+    # checking parameters against reference bounds
+    for x, bound in zip(values, bounds):
+        if x < bound[0] or x > bound[1]:
+            raise ValueError('Input value {} out of [{}, {}] range'.format(x, bound[0], bound[1]))
+    pass
