@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:07:36
+# @Last Modified time: 2018-08-25 02:14:36
 
 """ Script to run ASTIM simulations from command line. """
 
@@ -28,7 +28,7 @@ default = {
     'off': 100.0,  # ms
     'PRF': 100.0,  # Hz
     'DC': 100.0,  # %
-    'int_method': 'effective'
+    'int_method': 'sonic'
 }
 
 
@@ -57,7 +57,7 @@ def main():
     ap.add_argument('-o', '--outputdir', type=str, default=os.getcwd(),
                     help='Output directory')
     ap.add_argument('-m', '--method', type=str, default=default['int_method'],
-                    help='Numerical integration method ("classic", "hybrid" or "effective"')
+                    help='Numerical integration method ("classic", "hybrid" or "sonic"')
 
     # Boolean parameters
     ap.add_argument('-v', '--verbose', default=False, action='store_true',

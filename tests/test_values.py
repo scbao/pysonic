@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:08:13
+# @Last Modified time: 2018-08-25 02:11:58
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -179,7 +179,7 @@ def test_ASTIM():
 
         # Perform titration
         Athr, t, y, _, latency, _ = AStimTitrator(1, solver, neuron, Fdrive, None, tstim, toffset,
-                                                  None, 1.0, int_method='effective').__call__()
+                                                  None, 1.0, int_method='sonic').__call__()
         Qm = y[2]
 
         # Check that final number of spikes is 1

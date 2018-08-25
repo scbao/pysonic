@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:10:37
+# @Last Modified time: 2018-08-25 02:10:33
 
 import os
 import warnings
@@ -257,7 +257,7 @@ class SolverUS(BilayerSonophore):
         return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), states)
 
 
-    def __runEffective(self, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
+    def __runSONIC(self, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
         """ Compute solutions of the system for a specific set of
             US stimulation parameters, using charge-predicted "effective"
             coefficients to solve the HH equations at each step.
@@ -593,7 +593,7 @@ class SolverUS(BilayerSonophore):
 
 
     def run(self, neuron, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0,
-            sim_type='effective'):
+            sim_type='sonic'):
         """ Run simulation of the system for a specific set of
             US stimulation parameters.
 
@@ -609,7 +609,7 @@ class SolverUS(BilayerSonophore):
         """
 
         # Check validity of simulation type
-        if sim_type not in ('classic', 'effective', 'NEURON', 'hybrid'):
+        if sim_type not in ('classic', 'hybrid', 'sonic'):
             raise InputError('Invalid integration method: "{}"'.format(sim_type))
 
         # Check validity of stimulation parameters
@@ -647,10 +647,8 @@ class SolverUS(BilayerSonophore):
         # Call appropriate simulation function
         if sim_type == 'classic':
             return self.__runClassic(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC)
-        elif sim_type == 'effective':
-            return self.__runEffective(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC)
-        elif sim_type == 'NEURON':
-            return self.__runNEURON(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC)
+        elif sim_type == 'sonic':
+            return self.__runSONIC(neuron, Fdrive, Adrive, tstim, toffset, PRF, DC)
         elif sim_type == 'hybrid':
             if DC < 1.0:
                 raise InputError('Pulsed protocol incompatible with hybrid integration method')

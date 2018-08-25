@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:10:36
+# @Last Modified time: 2018-08-25 02:10:06
 
 """ Utility functions used in simulations """
 
@@ -608,7 +608,7 @@ class AStimTitrator():
     '''
 
     def __init__(self, wid, solver, neuron, Fdrive, Adrive, tstim, toffset, PRF, DC,
-                 int_method='effective', nsims=1):
+                 int_method='sonic', nsims=1):
         ''' Class constructor.
 
             :param wid: worker ID
@@ -1557,7 +1557,7 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params, multiproces
     return filepaths
 
 
-def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a, int_method='effective',
+def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a, int_method='sonic',
                   multiprocess=False):
     ''' Run batch simulations of the system for various neuron types, sonophore and
         stimulation parameters.
@@ -1641,7 +1641,7 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a, int_method='
     return filepaths
 
 
-def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a, int_method='effective',
+def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a, int_method='sonic',
                       multiprocess=False):
     ''' Run batch acoustic titrations of the system for various neuron types, sonophore and
         stimulation parameters, to determine the threshold of a specific stimulus parameter

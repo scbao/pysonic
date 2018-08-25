@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:08:13
+# @Last Modified time: 2018-08-25 02:14:53
 
 ''' Test the basic functionalities of the package and output graphs of the call flows. '''
 
@@ -83,12 +83,12 @@ def graph_ASTIM():
     with PyCallGraph(output=graphviz):
         solver.run(rs_neuron, Fdrive, Adrive, tstim, toffset, sim_type='classic')
 
-    logger.info('Graph 3: A-STIM effective simulation')
+    logger.info('Graph 3: A-STIM sonic simulation')
     tstim = 1e-3  # s
     toffset = 0.0  # s
-    graphviz.output_file = 'graphs/ASTIM_sim_effective.png'
+    graphviz.output_file = 'graphs/ASTIM_sim_sonic.png'
     with PyCallGraph(output=graphviz):
-        solver.run(rs_neuron, Fdrive, Adrive, tstim, toffset, sim_type='effective')
+        solver.run(rs_neuron, Fdrive, Adrive, tstim, toffset, sim_type='sonic')
 
     logger.info('Graph 4: A-STIM hybrid simulation')
     tstim = 1e-3  # s

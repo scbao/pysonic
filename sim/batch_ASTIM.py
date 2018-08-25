@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:07:35
+# @Last Modified time: 2018-08-25 02:10:49
 
 """ Run batch acoustic simulations of specific "point-neuron" models. """
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
         # Run A-STIM batch
         pkl_filepaths = runAStimBatch(batch_dir, log_filepath, neurons, stim_params,
-                                      int_method='effective', multiprocess=args.multiprocessing)
+                                      int_method='sonic', multiprocess=args.multiprocessing)
         pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
         # Plot resulting profiles
