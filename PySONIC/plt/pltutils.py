@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-22 01:41:49
+# @Last Modified time: 2018-08-28 15:36:12
 
 ''' Plotting utilities '''
 
@@ -155,7 +155,7 @@ def getPatchesLoc(t, states):
     # Compute states derivatives and identify bounds indexes of pulses
     dstates = np.diff(states)
     ipatch_on = np.insert(np.where(dstates > 0.0)[0] + 1, 0, 0)
-    ipatch_off = np.where(dstates < 0.0)[0]
+    ipatch_off = np.where(dstates < 0.0)[0] + 1
     if ipatch_off.size < ipatch_on.size:
         ioff = t.size - 1
         if ipatch_off.size == 0:
@@ -1264,6 +1264,13 @@ def plotSignals(t, signals, states=None, ax=None, onset=None, lbls=None, fs=10):
     # Compute number of signals
     nsignals = len(signals)
 
+    # Add stimulation patches if states provided
+    if states is not None:
+        npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
+        for i in range(npatches):
+            ax.axvspan(tpatch_on[i], tpatch_off[i], edgecolor='none',
+                       facecolor='#8A8A8A', alpha=0.2)
+
     # Add onset of provided
     if onset is not None:
         t0, y0 = onset
@@ -1273,13 +1280,6 @@ def plotSignals(t, signals, states=None, ax=None, onset=None, lbls=None, fs=10):
     # Plot signals
     for i, var in enumerate(signals):
         ax.plot(t, var, label=lbls[i] if lbls is not None else None, c='C{}'.format(i))
-
-    # Add stimulation patches if states provided
-    if states is not None:
-        npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
-        for i in range(npatches):
-            ax.axvspan(tpatch_on[i], tpatch_off[i], edgecolor='none',
-                       facecolor='#8A8A8A', alpha=0.2)
 
     # Add legend
     if lbls is not None:

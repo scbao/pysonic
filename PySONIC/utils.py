@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-24 16:19:36
+# @Last Modified time: 2018-08-25 11:32:12
 
 """ Definition of generic utility functions used in other modules """
 
@@ -411,9 +411,12 @@ def itrpLookupsFreq(lookups3D, freqs, Fdrive):
         :return: a dictionary of 2D lookups interpolated a the given frequency
     """
 
+    # Converting frequencies to integers for a better equality check
+    int_freqs = list(map(int, freqs))
+
     # If Fdrive in lookup frequencies, simply take (A, Q) slice at Fdrive index
-    if Fdrive in freqs:
-        iFdrive = np.searchsorted(freqs, Fdrive)
+    if int(Fdrive) in int_freqs:
+        iFdrive = np.searchsorted(int_freqs, int(Fdrive))
         # logger.debug('Using lookups directly at %.2f kHz', freqs[iFdrive] * 1e-3)
         lookups2D = {key: np.squeeze(lookups3D[key][iFdrive, :, :]) for key in lookups3D.keys()}
 
