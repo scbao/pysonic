@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-28 15:36:12
+# @Last Modified time: 2018-08-29 18:02:07
 
 ''' Plotting utilities '''
 
@@ -1235,7 +1235,7 @@ def plotTraces(fpath, keys, tbounds):
     return fig
 
 
-def plotSignals(t, signals, states=None, ax=None, onset=None, lbls=None, fs=10):
+def plotSignals(t, signals, states=None, ax=None, onset=None, lbls=None, fs=10, cmode='qual'):
     ''' Plot several signals on one graph.
 
         :param t: time vector
@@ -1245,8 +1245,10 @@ def plotSignals(t, signals, states=None, ax=None, onset=None, lbls=None, fs=10):
         :param onset (optional): onset to add to signals on graph
         :param lbls (optional): list of legend labels
         :param fs (optional): font size to use on graph
+        :param cmode: color mode ('seq' for sequentiual or 'qual' for qualitative)
         :return: figure handle (if no axis provided as input)
     '''
+
 
     # If no axis provided, create figure
     if ax is None:
@@ -1264,6 +1266,10 @@ def plotSignals(t, signals, states=None, ax=None, onset=None, lbls=None, fs=10):
     # Compute number of signals
     nsignals = len(signals)
 
+    # Adapt labels for sequential color mode
+    if cmode == 'seq' and lbls is not None:
+        lbls[1:-1] = ['.'] * (nsignals - 2)
+
     # Add stimulation patches if states provided
     if states is not None:
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
@@ -1277,9 +1283,24 @@ def plotSignals(t, signals, states=None, ax=None, onset=None, lbls=None, fs=10):
         t = np.hstack((np.array([t0, 0.]), t))
         signals = np.hstack((np.ones((nsignals, 2)) * y0, signals))
 
+    # Determine colorset
+    nlevels = nsignals
+    if cmode == 'seq':
+        norm = matplotlib.colors.Normalize(0, nlevels - 1)
+        sm = cm.ScalarMappable(norm=norm, cmap=cm.get_cmap('viridis'))
+        sm._A = []
+        colors = [sm.to_rgba(i) for i in range(nlevels)]
+    elif cmode == 'qual':
+        nlevels_max = 10
+        if nlevels > nlevels_max:
+            raise Warning('Number of signals higher than number of color levels')
+        colors = ['C{}'.format(i) for i in range(nlevels)]
+    else:
+        raise InputError('Unknown color mode')
+
     # Plot signals
     for i, var in enumerate(signals):
-        ax.plot(t, var, label=lbls[i] if lbls is not None else None, c='C{}'.format(i))
+        ax.plot(t, var, label=lbls[i] if lbls is not None else None, c=colors[i])
 
     # Add legend
     if lbls is not None:
