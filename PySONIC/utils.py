@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-25 11:32:12
+# @Last Modified time: 2018-09-10 16:13:35
 
 """ Definition of generic utility functions used in other modules """
 
@@ -522,3 +522,18 @@ def checkNumBounds(values, bounds):
         if x < bound[0] or x > bound[1]:
             raise ValueError('Input value {} out of [{}, {}] range'.format(x, bound[0], bound[1]))
     pass
+
+
+def getDefaultIndexes(params, defaults):
+    ''' Return the indexes of default values found in lists of parameters.
+
+        :param params: dictionary of parameter arrays
+        :param defaults: dictionary of default values
+        :return: dictionary of resolved default indexes
+    '''
+    idefs = {}
+    for key, default in defaults.items():
+        if default not in params[key]:
+            raise Exception('default {} ({}) not found in parameter values'.format(key, default))
+        idefs[key] = np.where(params[key] == default)[0][0]
+    return idefs
