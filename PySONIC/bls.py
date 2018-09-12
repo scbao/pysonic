@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:10:35
+# @Last Modified time: 2018-09-12 18:37:48
 
 import inspect
 import logging
@@ -51,9 +51,9 @@ class BilayerSonophore:
     epsilon0 = 8.854e-12  # Vacuum permittivity (F/m)
     epsilonR = 1.0  # Relative permittivity of intramembrane cavity (dimensionless)
 
-    def __init__(self, diameter, Fdrive, Cm0, Qm0, embedding_depth=0.0):
+    def __init__(self, a, Fdrive, Cm0, Qm0, embedding_depth=0.0):
         """ Constructor of the class.
-            :param diameter: in-plane diameter of the sonophore structure within the membrane (m)
+            :param a: in-plane diameter of the sonophore structure within the membrane (m)
             :param Fdrive: frequency of acoustic perturbation (Hz)
             :param Cm0: membrane resting capacitance (F/m2)
             :param Qm0: membrane resting charge density (C/m2)
@@ -61,12 +61,12 @@ class BilayerSonophore:
         """
 
         logger.debug('%.1f nm BLS initialization at %.2f kHz, %.2f nC/cm2',
-                     diameter * 1e9, Fdrive * 1e-3, Qm0 * 1e5)
+                     a * 1e9, Fdrive * 1e-3, Qm0 * 1e5)
 
         # Extract resting constants and geometry
         self.Cm0 = Cm0
         self.Qm0 = Qm0
-        self.a = diameter
+        self.a = a
         self.d = embedding_depth
         self.S0 = np.pi * self.a**2
 
@@ -75,12 +75,12 @@ class BilayerSonophore:
         self.kA_tissue = 2 * G_tissue * self.d  # kA of the tissue layer (N/m)
 
         # Check existence of lookups for derived parameters
-        lookups = get_BLS_lookups(self.a)
+        lookups = get_BLS_lookups()
+        akey = '{:.1f}'.format(a * 1e9)
         Qkey = '{:.2f}'.format(Qm0 * 1e5)
 
         # If no lookup, compute parameters and store them in lookup
-        if not lookups or Qkey not in lookups:
-
+        if akey not in lookups or Qkey not in lookups[akey]:
             # Find Delta that cancels out Pm + Pec at Z = 0 (m)
             if self.Qm0 == 0.0:
                 D_eq = self.Delta_
@@ -94,15 +94,19 @@ class BilayerSonophore:
             assert std_err < PMAVG_STD_ERR_MAX, 'High error in PmAvg nonlinear fit:'\
                 ' std_err =  %.2f Pa' % std_err
             self.LJ_approx = LJ_approx
-            lookups[Qkey] = {'LJ_approx': LJ_approx, 'Delta_eq': D_eq}
+
+            if akey not in lookups:
+                lookups[akey] = {Qkey: {'LJ_approx': LJ_approx, 'Delta_eq': D_eq}}
+            else:
+                lookups[akey][Qkey] = {'LJ_approx': LJ_approx, 'Delta_eq': D_eq}
             logger.debug('Saving BLS derived parameters to lookup file')
-            save_BLS_lookups(self.a, lookups)
+            save_BLS_lookups(lookups)
 
         # If lookup exists, load parameters from it
         else:
             logger.debug('Loading BLS derived parameters from lookup file')
-            self.LJ_approx = lookups[Qkey]['LJ_approx']
-            self.Delta = lookups[Qkey]['Delta_eq']
+            self.LJ_approx = lookups[akey][Qkey]['LJ_approx']
+            self.Delta = lookups[akey][Qkey]['Delta_eq']
 
         # Compute initial volume and gas content
         self.V0 = np.pi * self.Delta * self.a**2

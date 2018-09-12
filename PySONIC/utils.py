@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-10 16:13:35
+# @Last Modified time: 2018-09-12 18:37:09
 
 """ Definition of generic utility functions used in other modules """
 
@@ -291,8 +291,8 @@ def getNeuronsDict():
     return neurons_dict
 
 
-def get_BLS_lookups(a):
-    lookup_path = getLookupDir() + '/BLS_lookups_a{:.1f}nm.json'.format(a * 1e9)
+def get_BLS_lookups():
+    lookup_path = getLookupDir() + '/BLS_lookups.json'
     try:
         with open(lookup_path) as fh:
             sample = json.load(fh)
@@ -301,13 +301,13 @@ def get_BLS_lookups(a):
         return {}
 
 
-def save_BLS_lookups(a, lookups):
+def save_BLS_lookups(lookups):
     """ Save BLS parameter into specific lookup file
         :return: absolute path to the directory
     """
-    lookup_path = getLookupDir() + '/BLS_lookups_a{:.1f}nm.json'.format(a * 1e9)
+    lookup_path = getLookupDir() + '/BLS_lookups.json'
     with open(lookup_path, 'w') as fh:
-        json.dump(lookups, fh)
+        json.dump(lookups, fh, indent=2)
 
 
 def extractCompTimes(filenames):

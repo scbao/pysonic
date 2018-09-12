@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-25 02:10:06
+# @Last Modified time: 2018-09-12 18:41:37
 
 """ Utility functions used in simulations """
 
@@ -2202,12 +2202,13 @@ def getMaxMap(key, root, neuron, a, f, tstim, toffset, PRF, amps, DCs, mode='max
     return maxmap
 
 
-def computeAStimLookups(neuron, a, freqs, amps, phi=np.pi, multiprocess=False):
+def computeAStimLookups(neuron, diams, freqs, amps, phi=np.pi, multiprocess=False):
     ''' Run simulations of the mechanical system for a multiple combinations of
         imposed US frequencies, acoustic amplitudes and charge densities, compute
         effective coefficients and store them in a dictionary of 3D arrays.
 
         :param neuron: neuron object
+        :param diams: array of sonophore diameters (m)
         :param freqs: array of acoustic drive frequencies (Hz)
         :param amps: array of acoustic drive amplitudes (Pa)
         :param phi: acoustic drive phase (rad)
