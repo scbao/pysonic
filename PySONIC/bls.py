@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-12 18:37:48
+# @Last Modified time: 2018-09-14 14:42:02
 
 import inspect
 import logging
@@ -308,8 +308,8 @@ class BilayerSonophore:
         PMmax = LJFIT_PM_MAX  # Pa
         Zminlb = -0.49 * self.Delta
         Zminub = 0.0
-        f = lambda Z, Pmmax: self.PMavg(Z, self.curvrad(Z), self.surface(Z)) - PMmax
-        Zmin = brentq(f, Zminlb, Zminub, args=(PMmax), xtol=1e-16)
+        Zmin = brentq(lambda Z, Pmmax: self.PMavg(Z, self.curvrad(Z), self.surface(Z)) - PMmax,
+                      Zminlb, Zminub, args=(PMmax), xtol=1e-16)
 
         # Create vectors for geometric variables
         Zmax = 2 * self.a

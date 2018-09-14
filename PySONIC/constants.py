@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-04-17 11:37:35
+# @Last Modified time: 2018-09-14 14:42:25
 
 ''' Algorithmic constants used in the package. '''
 
@@ -12,13 +12,13 @@
 # Fitting and pre-processing
 LJFIT_PM_MAX = 1e8  # intermolecular pressure at the deflection lower bound for LJ fitting (Pa)
 PNET_EQ_MAX = 1e-1  # error threshold for net pressure at computed equilibrium position (Pa)
-PMAVG_STD_ERR_MAX = 1500  # error threshold in nonlinear fit of molecular pressure (Pa)
+PMAVG_STD_ERR_MAX = 2000  # error threshold in nonlinear fit of molecular pressure (Pa)
 
 
 # Mechanical simulations
 Z_ERR_MAX = 1e-11  # periodic convergence threshold for deflection (m)
 NG_ERR_MAX = 1e-24  # periodic convergence threshold for gas content (mol)
-NCYCLES_MAX = 50  # max number of acoustic cycles in mechanical simulations
+NCYCLES_MAX = 10  # max number of acoustic cycles in mechanical simulations
 CHARGE_RANGE = (-120e-5, 70e-5)  # physiological charge range constraining the membrane (C/m2)
 
 # E-STIM simulations

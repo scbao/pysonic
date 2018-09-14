@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-12 18:41:37
+# @Last Modified time: 2018-09-14 14:02:30
 
 """ Utility functions used in simulations """
 
@@ -115,9 +115,9 @@ class LookupWorker():
                 return -1
 
     def __str__(self):
-        return 'simulation {}/{} (f = {}Hz, A = {}Pa, Q = {:.2f} nC/cm2)'\
-            .format(self.id + 1, self.nsims, *si_format([self.Fdrive, self.Adrive], space=' '),
-                    self.Qm * 1e5)
+        return 'simulation {}/{} (a = {}m, f = {}Hz, A = {}Pa, Q = {:.2f} nC/cm2)'\
+            .format(self.id + 1, self.nsims,
+                    *si_format([self.bls.a, self.Fdrive, self.Adrive], space=' '), self.Qm * 1e5)
 
 
 class AStimWorker():
@@ -2202,15 +2202,15 @@ def getMaxMap(key, root, neuron, a, f, tstim, toffset, PRF, amps, DCs, mode='max
     return maxmap
 
 
-def computeAStimLookups(neuron, diams, freqs, amps, phi=np.pi, multiprocess=False):
+def computeAStimLookups(neuron, aref, fref, Aref, phi=np.pi, multiprocess=False):
     ''' Run simulations of the mechanical system for a multiple combinations of
         imposed US frequencies, acoustic amplitudes and charge densities, compute
         effective coefficients and store them in a dictionary of 3D arrays.
 
         :param neuron: neuron object
-        :param diams: array of sonophore diameters (m)
-        :param freqs: array of acoustic drive frequencies (Hz)
-        :param amps: array of acoustic drive amplitudes (Pa)
+        :param aref: array of sonophore diameters (m)
+        :param fref: array of acoustic drive frequencies (Hz)
+        :param Aref: array of acoustic drive amplitudes (Pa)
         :param phi: acoustic drive phase (rad)
         :param multiprocess: boolean statting wether or not to use multiprocessing
         :return: lookups dictionary
@@ -2220,42 +2220,28 @@ def computeAStimLookups(neuron, diams, freqs, amps, phi=np.pi, multiprocess=Fals
     if not isinstance(neuron, BaseMech):
         raise InputError('Invalid neuron type: "{}" (must inherit from BaseMech class)'
                          .format(neuron.name))
-    if not isinstance(freqs, np.ndarray):
-        if isinstance(freqs, list):
-            if not all(isinstance(x, float) for x in freqs):
-                raise InputError('Invalid frequencies (must all be float typed)')
-            freqs = np.array(freqs)
-        else:
-            raise InputError('Invalid frequencies (must be provided as list or numpy array)')
-    if not isinstance(amps, np.ndarray):
-        if isinstance(amps, list):
-            if not all(isinstance(x, float) for x in amps):
-                raise InputError('Invalid amplitudes (must all be float typed)')
-            amps = np.array(amps)
-        else:
-            raise InputError('Invalid amplitudes (must be provided as list or numpy array)')
-
-    nf = freqs.size
-    nA = amps.size
-    if nf == 0:
-        raise InputError('Empty frequencies array')
-    if nA == 0:
-        raise InputError('Empty amplitudes array')
-    if freqs.min() <= 0:
-        raise InputError('Invalid US driving frequencies (must all be strictly positive)')
-    if amps.min() < 0:
-        raise InputError('Invalid US pressure amplitudes (must all be positive or null)')
+    for key, values in {'diameters': aref, 'frequencies': fref, 'amplitudes': Aref}.items():
+        if not (isinstance(values, list) or isinstance(values, np.ndarray)):
+            raise InputError('Invalid {} (must be provided as list or numpy array)'.format(key))
+        if not all(isinstance(x, float) for x in values):
+            raise InputError('Invalid {} (must all be float typed)'.format(key))
+        if len(values) == 0:
+            raise InputError('Empty {} array'.format(key))
+        if key in ('diameters', 'frequencies') and min(values) <= 0:
+            raise InputError('Invalid {} (must all be strictly positive)'.format(key))
+        if key is 'amplitudes' and min(values) < 0:
+            raise InputError('Invalid {} (must all be positive or null)'.format(key))
 
     logger.info('Starting batch lookup creation for %s neuron', neuron.name)
     t0 = time.time()
 
-    # Initialize BLS object
-    bls = BilayerSonophore(a, 0.0, neuron.Cm0, neuron.Cm0 * neuron.Vm0 * 1e-3)
+    # Get input dimensions
+    na, nf, nA = len(aref), len(fref), len(Aref)
 
     # Create neuron-specific charge vector
-    charges = np.arange(neuron.Qbounds[0], neuron.Qbounds[1] + 1e-5, 1e-5)  # C/m2
-    nQ = charges.size
-    dims = (nf, nA, nQ)
+    Qref = np.arange(neuron.Qbounds[0], neuron.Qbounds[1] + 1e-5, 1e-5)  # C/m2
+    nQ = Qref.size
+    dims = (na, nf, nA, nQ)
 
     # Initialize lookup dictionary of 3D array to store effective coefficients
     coeffs_names = ['V', 'ng', *neuron.coeff_names]
@@ -2264,7 +2250,6 @@ def computeAStimLookups(neuron, diams, freqs, amps, phi=np.pi, multiprocess=Fals
 
     # Initiate multipleprocessing objects if needed
     if multiprocess:
-
         mp.freeze_support()
 
         # Create tasks and results queues
@@ -2277,20 +2262,24 @@ def computeAStimLookups(neuron, diams, freqs, amps, phi=np.pi, multiprocess=Fals
         for w in consumers:
             w.start()
 
-    # Loop through all (f, A, Q) combinations
+    # Loop through all (a, f, A, Q) combinations and launch workers
     nsims = np.prod(np.array(dims))
-    for i in range(nf):
-        for j in range(nA):
-            for k in range(nQ):
-                wid = i * (nA * nQ) + j * nQ + k
-                worker = LookupWorker(wid, bls, neuron, freqs[i], amps[j], charges[k], phi, nsims)
-                if multiprocess:
-                    tasks.put(worker, block=False)
-                else:
-                    logger.info('%s', worker)
-                    _, Qcoeffs = worker.__call__()
-                    for icoeff in range(ncoeffs):
-                        lookup_dict[coeffs_names[icoeff]][i, j, k] = Qcoeffs[icoeff]
+    wid = 0
+    for ia, a in enumerate(aref):
+        # Initialize BLS object
+        bls = BilayerSonophore(a, 0.0, neuron.Cm0, neuron.Cm0 * neuron.Vm0 * 1e-3)
+        for iF, f in enumerate(fref):
+            for iA, A in enumerate(Aref):
+                for iQ, Q in enumerate(Qref):
+                    worker = LookupWorker(wid, bls, neuron, f, A, Q, phi, nsims)
+                    if multiprocess:
+                        tasks.put(worker, block=False)
+                    else:
+                        logger.info('%s', worker)
+                        _, Qcoeffs = worker.__call__()
+                        for icoeff in range(ncoeffs):
+                            lookup_dict[coeffs_names[icoeff]][ia, iF, iA, iQ] = Qcoeffs[icoeff]
+                    wid += 1
 
     if multiprocess:
         # Stop processes
@@ -2301,18 +2290,19 @@ def computeAStimLookups(neuron, diams, freqs, amps, phi=np.pi, multiprocess=Fals
         # Retrieve workers output
         for x in range(nsims):
             wid, Qcoeffs = results.get()
-            i, j, k = nDindexes(dims, wid)
+            ia, iF, iA, iQ = nDindexes(dims, wid)
             for icoeff in range(ncoeffs):
-                lookup_dict[coeffs_names[icoeff]][i, j, k] = Qcoeffs[icoeff]
+                lookup_dict[coeffs_names[icoeff]][ia, iF, iA, iQ] = Qcoeffs[icoeff]
 
         # Close tasks and results queues
         tasks.close()
         results.close()
 
-    # Add input frequency, amplitude and charge arrays to lookup dictionary
-    lookup_dict['f'] = freqs  # Hz
-    lookup_dict['A'] = amps  # Pa
-    lookup_dict['Q'] = charges  # C/m2
+    # Add input vectors to lookup dictionary
+    lookup_dict['a'] = aref  # nm
+    lookup_dict['f'] = fref  # Hz
+    lookup_dict['A'] = Aref  # Pa
+    lookup_dict['Q'] = Qref  # C/m2
 
     logger.info('%s lookups computed in %.0f s', neuron.name, time.time() - t0)
 

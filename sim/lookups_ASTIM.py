@@ -4,11 +4,12 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:07:36
+# @Last Modified time: 2018-09-14 14:35:05
 
 """ Create lookup table for specific neuron. """
 
 import os
+import sys
 import pickle
 import logging
 import numpy as np
@@ -16,12 +17,12 @@ from argparse import ArgumentParser
 
 from PySONIC.solvers import computeAStimLookups
 from PySONIC.utils import logger, InputError, getNeuronsDict, getLookupDir
-from PySONIC.neurons import *
+
 
 # Default parameters
 default = {
     'neuron': 'RS',
-    'a': 32.0,  # nm
+    'diams': np.array([15.0, 32.0, 70.0, 150.0]),  # nm
     'freqs': np.array([20., 100., 500., 1e3, 2e3, 3e3, 4e3]),  # kHz
     'amps': np.insert(np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0),  # kPa
 }
@@ -35,8 +36,8 @@ def main():
     # Stimulation parameters
     ap.add_argument('-n', '--neuron', type=str, default=default['neuron'],
                     help='Neuron name (string)')
-    ap.add_argument('-a', '--diameter', type=float, default=default['a'],
-                    help='Sonophore diameter (nm)')
+    ap.add_argument('-a', '--diameters', nargs='+', type=float, default=None,
+                    help='Sonophore diameters (nm)')
     ap.add_argument('-f', '--frequencies', nargs='+', type=float, default=None,
                     help='Acoustic drive frequencies (kHz)')
     ap.add_argument('-A', '--amplitudes', nargs='+', type=float, default=None,
@@ -51,7 +52,7 @@ def main():
     # Parse arguments
     args = ap.parse_args()
     neuron_str = args.neuron
-    a = args.diameter * 1e-9  # m
+    diams = (default['diams'] if args.diameters is None else np.array(args.diameters)) * 1e-9  # m
     freqs = (default['freqs'] if args.frequencies is None else np.array(args.frequencies)) * 1e3  # Hz
     amps = (default['amps'] if args.amplitudes is None else np.array(args.amplitudes)) * 1e3  # Pa
 
@@ -66,7 +67,7 @@ def main():
     neuron = getNeuronsDict()[neuron_str]()
 
     # Check if lookup file already exists
-    lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, a * 1e9)
+    lookup_file = '{}_lookups.pkl'.format(neuron.name)
     lookup_filepath = '{0}/{1}'.format(getLookupDir(), lookup_file)
     if os.path.isfile(lookup_filepath):
         logger.warning('"%s" file already exists and will be overwritten. ' +
@@ -78,7 +79,7 @@ def main():
 
     try:
         # Compute lookups
-        lookup_dict = computeAStimLookups(neuron, a, freqs, amps,
+        lookup_dict = computeAStimLookups(neuron, diams, freqs, amps,
                                           multiprocess=args.multiprocessing)
         # Save dictionary in lookup file
         logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_file)
