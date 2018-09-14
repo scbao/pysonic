@@ -4,16 +4,14 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-25 02:10:33
+# @Last Modified time: 2018-09-14 17:19:31
 
-import os
 import warnings
-import pickle
 import logging
 import progressbar as pb
 import numpy as np
 import scipy.integrate as integrate
-from scipy.interpolate import interp2d
+from scipy.interpolate import interp1d
 
 from ..bls import BilayerSonophore
 from ..utils import *
@@ -287,9 +285,8 @@ class SolverUS(BilayerSonophore):
                              .format(*si_format([Adrive, *Arange], precision=2, space=' ')))
 
         # Interpolate 2D lookups at US amplitude (along with "ng" at zero amplitude)
-        lookups1D = {key: np.squeeze(interp2d(Aref, Qref, lookups2D[key].T)(Adrive, Qref))
-                     for key in lookups2D.keys()}
-        lookups1D['ng0'] = np.squeeze(interp2d(Aref, Qref, lookups2D['ng'].T)(0.0, Qref))
+        lookups1D = {key: interp1d(Aref, y2D, axis=0)(Adrive) for key, y2D in lookups2D.items()}
+        lookups1D['ng0'] = interp1d(Aref, lookups2D['ng'], axis=0)(0.0)
 
         # Add reference charge vector to 1D lookup dictionary
         lookups1D['Q'] = Qref
@@ -666,35 +663,10 @@ class SolverUS(BilayerSonophore):
             :return: rheobase amplitudes vector (Pa)
         '''
 
-        # Check lookup file existence
-        lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, self.a * 1e9)
-        lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
-        if not os.path.isfile(lookup_path):
-            raise InputError('Missing lookup file: "{}"'.format(lookup_file))
-
-        # Load lookups dictionary
-        with open(lookup_path, 'rb') as fh:
-            lookups3D = pickle.load(fh)
-
-        # Retrieve 1D inputs from lookups dictionary
-        freqs = lookups3D.pop('f')
-        amps = lookups3D.pop('A')
-        charges = lookups3D.pop('Q')
-
-        # Check that stimulation parameters are within lookup range
-        margin = 1e-9  # adding margin to compensate for eventual round error
-        frange = (freqs.min() - margin, freqs.max() + margin)
-
-        if Fdrive < frange[0] or Fdrive > frange[1]:
-            raise InputError(('Invalid frequency: {:.2f} kHz (must be within ' +
-                              '{:.1f} kHz - {:.1f} MHz lookup interval)')
-                             .format(Fdrive * 1e-3, frange[0] * 1e-3, frange[1] * 1e-6))
-
-        # Interpolate 3D lookpus at given frequency and threshold charge
-        lookups2D = itrpLookupsFreq(lookups3D, freqs, Fdrive)
+        # Get lookups projected at specific (a, Fdrive, Qthr) combination.
+        Aref, Qref, lookups2D = getLookups2D(neuron.name, self.a, Fdrive)
         Qthr = neuron.Cm0 * Vthr * 1e-3  # C/m2
-        lookups1D = {key: np.squeeze(interp2d(amps, charges, lookups2D[key].T)(amps, Qthr))
-                     for key in lookups2D.keys()}
+        lookups1D = {key: interp1d(Qref, y2D, axis=1)(Qthr) for key, y2D in lookups2D.items()}
 
         # Remove unnecessary items ot get ON rates and effective potential at threshold charge
         rates_on = lookups1D
@@ -707,7 +679,7 @@ class SolverUS(BilayerSonophore):
         # Compute rheobase amplitudes
         rheboase_amps = np.empty(DCs.size)
         for i, DC in enumerate(DCs):
-            sstates_pulse = np.empty((len(neuron.states_names), amps.size))
+            sstates_pulse = np.empty((len(neuron.states_names), Aref.size))
             for j, x in enumerate(neuron.states_names):
                 # If channel state, compute pulse-average steady-state values
                 if x in neuron.getGates():
@@ -718,7 +690,7 @@ class SolverUS(BilayerSonophore):
                     sstates_pulse[j, :] = alphax_pulse / (alphax_pulse + betax_pulse)
                 # Otherwise assume the state has reached a steady-state value for Vthr
                 else:
-                    sstates_pulse[j, :] = np.ones(amps.size) * neuron.steadyStates(Vthr)[j]
+                    sstates_pulse[j, :] = np.ones(Aref.size) * neuron.steadyStates(Vthr)[j]
 
             # Compute the pulse average net (or leakage) current along the amplitude space
             if curr == 'net':
@@ -730,16 +702,16 @@ class SolverUS(BilayerSonophore):
             iNet_avg = iNet_on * DC + iNet_off * (1 - DC)
 
             # Find the threshold amplitude that cancels the pulse average net current
-            rheboase_amps[i] = np.interp(0, -iNet_avg, amps, left=0., right=np.nan)
+            rheboase_amps[i] = np.interp(0, -iNet_avg, Aref, left=0., right=np.nan)
 
         inan = np.where(np.isnan(rheboase_amps))[0]
         if inan.size > 0:
             if inan.size == rheboase_amps.size:
                 logger.error('No rheobase amplitudes within [%s - %sPa] for the provided duty cycles',
-                             *si_format((amps.min(), amps.max())))
+                             *si_format((Aref.min(), Aref.max())))
             else:
                 minDC = DCs[inan.max() + 1]
                 logger.warning('No rheobase amplitudes within [%s - %sPa] below %.1f%% duty cycle',
-                               *si_format((amps.min(), amps.max())), minDC * 1e2)
+                               *si_format((Aref.min(), Aref.max())), minDC * 1e2)
 
         return rheboase_amps

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-29 18:02:07
+# @Last Modified time: 2018-09-14 17:28:52
 
 ''' Plotting utilities '''
 
@@ -22,11 +22,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.cm as cm
 from matplotlib.ticker import FormatStrFormatter
-import pandas as pd
 
-from .. import neurons
-from ..constants import DT_EFF
-from ..utils import getNeuronsDict, getLookupDir, rescale, InputError, computeMeshEdges, si_format, itrpLookupsFreq
+from ..utils import getNeuronsDict, rescale, InputError, computeMeshEdges, si_format, getLookups2D
 from ..bls import BilayerSonophore
 from .pltvars import pltvars
 
@@ -45,13 +42,6 @@ timeunits = {'ASTIM': 't_ms', 'ESTIM': 't_ms', 'MECH': 't_us'}
 # Regular expression for input files
 rgxp = re.compile('(ESTIM|ASTIM)_([A-Za-z]*)_(.*).pkl')
 rgxp_mech = re.compile('(MECH)_(.*).pkl')
-
-
-# nb = '[0-9]*[.]?[0-9]+'
-# rgxp_ASTIM = re.compile('(ASTIM)_(\w+)_(PW|CW)_({0})nm_({0})kHz_({0})kPa_({0})ms(.*)_(\w+).pkl'.format(nb))
-# rgxp_ESTIM = re.compile('(ESTIM)_(\w+)_(PW|CW)_({0})mA_per_m2_({0})ms(.*).pkl'.format(nb))
-# rgxp_PW = re.compile('_PRF({0})kHz_DC({0})_(PW|CW)_(\d+)kHz_(\d+)kPa_(\d+)ms_(.*).pkl'.format(nb))
-
 
 # Figure naming conventions
 ESTIM_CW_title = '{} neuron: CW E-STIM {:.2f}mA/m2, {:.0f}ms'
@@ -892,34 +882,16 @@ def plotEffVars(neuron, Fdrive, a=32e-9, amps=None, charges=None, keys=None, fs=
         :return: handle to the created figure
     '''
 
-    # Check lookup file existence
-    lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(neuron.name, a * 1e9)
-    lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
-    if not os.path.isfile(lookup_path):
-        raise InputError('Missing lookup file: "{}"'.format(lookup_file))
+    # Get 2D lookups at specific (a, Fdrive) combination
+    Aref, Qref, lookups2D = getLookups2D(neuron.name, a, Fdrive)
 
-    # Load coefficients
-    with open(lookup_path, 'rb') as fh:
-        lookups3D = pickle.load(fh)
-
-    # Retrieve 1D inputs from lookup dictionary
-    freqs = lookups3D.pop('f')
-    amps_ref = lookups3D.pop('A')
-    charges_ref = lookups3D.pop('Q')
-
-    #  Filter lookups keys if provided
-    if keys is not None:
-        lookups3D = {key: lookups3D[key] for key in keys}
-
-    # Interpolate 3D lookups at US frequency
-    lookups2D = itrpLookupsFreq(lookups3D, freqs, Fdrive)
     if 'V' in lookups2D:
         lookups2D['Vm'] = lookups2D.pop('V')
         keys[keys.index('V')] = 'Vm'
 
     #  Define log-amplitude color code
     if amps is None:
-        amps = amps_ref
+        amps = Aref
     mymap = cm.get_cmap('Oranges')
     norm = matplotlib.colors.LogNorm(amps.min(), amps.max())
     sm = cm.ScalarMappable(norm=norm, cmap=mymap)
@@ -930,7 +902,7 @@ def plotEffVars(neuron, Fdrive, a=32e-9, amps=None, charges=None, keys=None, fs=
     nrows, ncols = setGrid(len(lookups2D), ncolmax=ncolmax)
     xvar = pltvars['Qm']
     if charges is None:
-        charges = charges_ref
+        charges = Qref
     Qbounds = np.array([charges.min(), charges.max()]) * xvar['factor']
 
     fig, _ = plt.subplots(figsize=(3 * ncols, 1 * nrows), squeeze=False)
@@ -955,11 +927,10 @@ def plotEffVars(neuron, Fdrive, a=32e-9, amps=None, charges=None, keys=None, fs=
         ymin = np.inf
         ymax = -np.inf
 
-        y0 = np.squeeze(interp2d(amps_ref, charges_ref, lookups2D[key].T)(0, charges))
-
         # Plot effective variable for each selected amplitude
+        y0 = np.squeeze(interp2d(Aref, Qref, lookups2D[key].T)(0, charges))
         for Adrive in amps:
-            y = np.squeeze(interp2d(amps_ref, charges_ref, lookups2D[key].T)(Adrive, charges))
+            y = np.squeeze(interp2d(Aref, Qref, lookups2D[key].T)(Adrive, charges))
             if 'alpha' in key or 'beta' in key:
                 y[y > y0.max() * 2] = np.nan
             ax.plot(charges * xvar['factor'], y * yvar['factor'], c=sm.to_rgba(Adrive))

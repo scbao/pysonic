@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-14 14:42:02
+# @Last Modified time: 2018-09-14 17:31:30
 
 import inspect
 import logging
@@ -279,11 +279,10 @@ class BilayerSonophore:
 
             .. warning:: quadratic integration is computationally expensive.
         """
-        # Intermolecular force over an infinitely thin ring of radius r
-        fMring = lambda r, Z, R: 2 * np.pi * r * self.PMlocal(r, Z, R)
 
-        # Integrate from 0 to a
-        fTotal, _ = integrate.quad(fMring, 0, self.a, args=(Z, R))
+        # Integrate intermolecular force over an infinitely thin ring of radius r from 0 to a
+        fTotal, _ = integrate.quad(lambda r, Z, R: 2 * np.pi * r * self.PMlocal(r, Z, R),
+                                   0, self.a, args=(Z, R))
         return fTotal / S
 
 

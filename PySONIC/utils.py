@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-12 18:37:09
+# @Last Modified time: 2018-09-14 17:29:20
 
 """ Definition of generic utility functions used in other modules """
 
@@ -20,6 +20,8 @@ import yaml
 from openpyxl import load_workbook
 import numpy as np
 import colorlog
+from scipy.interpolate import interp1d
+
 
 from . import neurons
 
@@ -469,7 +471,7 @@ def getLookups2D(mechname, a, Fdrive):
                          .format(*si_format([Fdrive, *Frange], precision=2, space=' ')))
 
     # Interpolate 3D lookups at US frequency
-    lookups2D = itrpLookupsFreq(lookups3D, Fref, Fdrive)
+    lookups2D = {key: interp1d(Fref, y3D, axis=0)(Fdrive) for key, y3D in lookups3D.items()}
 
     return Aref, Qref, lookups2D
 
