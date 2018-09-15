@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-14 14:02:30
+# @Last Modified time: 2018-09-15 17:06:42
 
 """ Utility functions used in simulations """
 
@@ -56,7 +56,27 @@ class Consumer(mp.Process):
         return
 
 
-class LookupWorker():
+class Worker():
+    ''' Generic worker class. '''
+
+    def __init__(self, wid, nsims):
+        ''' Class constructor.
+
+            :param wid: worker ID
+            :param nsims: total number or simulations
+        '''
+        self.id = wid
+        self.nsims = nsims
+
+    def __call__(self):
+        ''' worker method. '''
+        return (self.id, None)
+
+    def __str__(self):
+        return 'simulation {}/{}'.format(self.id + 1, self.nsims)
+
+
+class LookupWorker(Worker):
     ''' Worker class that computes "effective" coefficients of the HH system for a specific
         combination of stimulus frequency, stimulus amplitude and charge density.
 
@@ -78,15 +98,13 @@ class LookupWorker():
             :param nsims: total number or simulations
         '''
 
-        self.id = wid
+        super().__init__(wid, nsims)
         self.bls = bls
         self.neuron = neuron
         self.Fdrive = Fdrive
         self.Adrive = Adrive
         self.Qm = Qm
         self.phi = phi
-        self.nsims = nsims
-
 
     def __call__(self):
         ''' Method that computes effective coefficients. '''
@@ -115,12 +133,12 @@ class LookupWorker():
                 return -1
 
     def __str__(self):
-        return 'simulation {}/{} (a = {}m, f = {}Hz, A = {}Pa, Q = {:.2f} nC/cm2)'\
-            .format(self.id + 1, self.nsims,
-                    *si_format([self.bls.a, self.Fdrive, self.Adrive], space=' '), self.Qm * 1e5)
+        return '{} (a = {}m, f = {}Hz, A = {}Pa, Q = {:.2f} nC/cm2)'.format(
+            super().__str__(),
+            *si_format([self.bls.a, self.Fdrive, self.Adrive], space=' '), self.Qm * 1e5)
 
 
-class AStimWorker():
+class AStimWorker(Worker):
     ''' Worker class that runs a single A-STIM simulation a given neuron for specific
         stimulation parameters, and save the results in a PKL file. '''
 
@@ -141,7 +159,7 @@ class AStimWorker():
             :param nsims: total number or simulations
         '''
 
-        self.id = wid
+        super().__init__(wid, nsims)
         self.batch_dir = batch_dir
         self.log_filepath = log_filepath
         self.solver = solver
@@ -153,7 +171,6 @@ class AStimWorker():
         self.PRF = PRF
         self.DC = DC
         self.int_method = int_method
-        self.nsims = nsims
 
     def __call__(self):
         ''' Method that runs the simulation. '''
@@ -237,8 +254,8 @@ class AStimWorker():
                 return -1
 
     def __str__(self):
-        worker_str = 'A-STIM {} simulation {}/{}: {} neuron, a = {}m, f = {}Hz, A = {}Pa, t = {}s'\
-            .format(self.int_method, self.id, self.nsims, self.neuron.name,
+        worker_str = 'A-STIM {} {}: {} neuron, a = {}m, f = {}Hz, A = {}Pa, t = {}s'\
+            .format(self.int_method, super().__str__(), self.neuron.name,
                     *si_format([self.solver.a, self.Fdrive], 1, space=' '),
                     si_format(self.Adrive, 2, space=' '), si_format(self.tstim, 1, space=' '))
         if self.DC < 1.0:
@@ -247,7 +264,7 @@ class AStimWorker():
         return worker_str
 
 
-class EStimWorker():
+class EStimWorker(Worker):
     ''' Worker class that runs a single E-STIM simulation a given neuron for specific
         stimulation parameters, and save the results in a PKL file. '''
 
@@ -266,7 +283,7 @@ class EStimWorker():
             :param nsims: total number or simulations
         '''
 
-        self.id = wid
+        super().__init__(wid, nsims)
         self.batch_dir = batch_dir
         self.log_filepath = log_filepath
         self.solver = solver
@@ -276,7 +293,6 @@ class EStimWorker():
         self.toffset = toffset
         self.PRF = PRF
         self.DC = DC
-        self.nsims = nsims
 
     def __call__(self):
         ''' Method that runs the simulation. '''
@@ -350,8 +366,8 @@ class EStimWorker():
                 return -1
 
     def __str__(self):
-        worker_str = 'E-STIM simulation {}/{}: {} neuron, A = {}A/m2, t = {}s'\
-            .format(self.id, self.nsims, self.neuron.name,
+        worker_str = 'E-STIM {}: {} neuron, A = {}A/m2, t = {}s'\
+            .format(super().__str__(), self.neuron.name,
                     si_format(self.Astim * 1e-3, 2, space=' '),
                     si_format(self.tstim, 1, space=' '))
         if self.DC < 1.0:
@@ -360,7 +376,7 @@ class EStimWorker():
         return worker_str
 
 
-class MechWorker():
+class MechWorker(Worker):
     ''' Worker class that runs a single simulation of the mechanical system with specific parameters
         and an imposed value of charge density, and save the results in a PKL file. '''
 
@@ -377,14 +393,13 @@ class MechWorker():
             :param nsims: total number or simulations
         '''
 
-        self.id = wid
+        super().__init__(wid, nsims)
         self.batch_dir = batch_dir
         self.log_filepath = log_filepath
         self.bls = bls
         self.Fdrive = Fdrive
         self.Adrive = Adrive
         self.Qm = Qm
-        self.nsims = nsims
 
     def __call__(self):
         ''' Method that runs the simulation. '''
@@ -464,8 +479,8 @@ class MechWorker():
 
     def __str__(self):
 
-        return 'Mechanical simulation {}/{}: a = {}m, d = {}m, f = {}Hz, A = {}Pa, Q = {}C/cm2'\
-            .format(self.id, self.nsims,
+        return 'Mechanical {}: a = {}m, d = {}m, f = {}Hz, A = {}Pa, Q = {}C/cm2'\
+            .format(super().__str__(),
                     *si_format([self.bls.a, self.bls.d, self.Fdrive], 1, space=' '),
                     *si_format([self.Adrive, self.Qm * 1e-4], 2, space=' '))
 
@@ -2290,6 +2305,97 @@ def computeAStimLookups(neuron, aref, fref, Aref, phi=np.pi, multiprocess=False)
         # Retrieve workers output
         for x in range(nsims):
             wid, Qcoeffs = results.get()
+            ia, iF, iA, iQ = nDindexes(dims, wid)
+            for icoeff in range(ncoeffs):
+                lookup_dict[coeffs_names[icoeff]][ia, iF, iA, iQ] = Qcoeffs[icoeff]
+
+        # Close tasks and results queues
+        tasks.close()
+        results.close()
+
+    # Add input vectors to lookup dictionary
+    lookup_dict['a'] = aref  # nm
+    lookup_dict['f'] = fref  # Hz
+    lookup_dict['A'] = Aref  # Pa
+    lookup_dict['Q'] = Qref  # C/m2
+
+    logger.info('%s lookups computed in %.0f s', neuron.name, time.time() - t0)
+
+    return lookup_dict
+
+
+def computeTestLookups(neuron, aref, fref, Aref, phi=np.pi, multiprocess=False):
+    ''' Run simulations of the mechanical system for a multiple combinations of
+        imposed US frequencies, acoustic amplitudes and charge densities, compute
+        effective coefficients and store them in a dictionary of 3D arrays.
+
+        :param neuron: neuron object
+        :param aref: array of sonophore diameters (m)
+        :param fref: array of acoustic drive frequencies (Hz)
+        :param Aref: array of acoustic drive amplitudes (Pa)
+        :param phi: acoustic drive phase (rad)
+        :param multiprocess: boolean statting wether or not to use multiprocessing
+        :return: lookups dictionary
+    '''
+
+    logger.info('Starting dummy lookup creation for %s neuron', neuron.name)
+    t0 = time.time()
+
+    # Get input dimensions
+    na, nf, nA = len(aref), len(fref), len(Aref)
+
+    # Create neuron-specific charge vector
+    Qref = np.arange(neuron.Qbounds[0], neuron.Qbounds[1] + 1e-5, 1e-5)  # C/m2
+    nQ = Qref.size
+    dims = (na, nf, nA, nQ)
+
+    # Initialize lookup dictionary of 3D array to store effective coefficients
+    coeffs_names = ['V', 'ng', *neuron.coeff_names]
+    ncoeffs = len(coeffs_names)
+    lookup_dict = {cn: np.empty(dims) for cn in coeffs_names}
+
+    # Initiate multipleprocessing objects if needed
+    if multiprocess:
+        mp.freeze_support()
+
+        # Create tasks and results queues
+        tasks = mp.JoinableQueue()
+        results = mp.Queue()
+
+        # Create and start consumer processes
+        nconsumers = mp.cpu_count()
+        consumers = [Consumer(tasks, results) for i in range(nconsumers)]
+        for w in consumers:
+            w.start()
+
+    # Loop through all (a, f, A, Q) combinations and launch workers
+    nsims = np.prod(np.array(dims))
+    wid = 0
+    for ia, a in enumerate(aref):
+        for iF, f in enumerate(fref):
+            for iA, A in enumerate(Aref):
+                for iQ, Q in enumerate(Qref):
+                    worker = Worker(wid, nsims)
+                    if multiprocess:
+                        tasks.put(worker, block=False)
+                    else:
+                        logger.info('%s', worker)
+                        _, Qcoeffs = worker.__call__()
+                        Qcoeffs = [0] * ncoeffs
+                        for icoeff in range(ncoeffs):
+                            lookup_dict[coeffs_names[icoeff]][ia, iF, iA, iQ] = Qcoeffs[icoeff]
+                    wid += 1
+
+    if multiprocess:
+        # Stop processes
+        for i in range(nconsumers):
+            tasks.put(None, block=False)
+        tasks.join()
+
+        # Retrieve workers output
+        for x in range(nsims):
+            wid, Qcoeffs = results.get()
+            Qcoeffs = [0] * ncoeffs
             ia, iF, iA, iQ = nDindexes(dims, wid)
             for icoeff in range(ncoeffs):
                 lookup_dict[coeffs_names[icoeff]][ia, iF, iA, iQ] = Qcoeffs[icoeff]

@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-14 14:35:05
+# @Last Modified time: 2018-09-15 17:07:56
 
 """ Create lookup table for specific neuron. """
 
@@ -15,7 +15,7 @@ import logging
 import numpy as np
 from argparse import ArgumentParser
 
-from PySONIC.solvers import computeAStimLookups
+from PySONIC.solvers import computeAStimLookups, computeTestLookups
 from PySONIC.utils import logger, InputError, getNeuronsDict, getLookupDir
 
 
@@ -48,6 +48,8 @@ def main():
                     help='Use multiprocessing')
     ap.add_argument('-v', '--verbose', default=False, action='store_true',
                     help='Increase verbosity')
+    ap.add_argument('-t', '--test', default=False, action='store_true',
+                    help='Run test batch')
 
     # Parse arguments
     args = ap.parse_args()
@@ -78,9 +80,14 @@ def main():
             sys.exit(0)
 
     try:
-        # Compute lookups
-        lookup_dict = computeAStimLookups(neuron, diams, freqs, amps,
-                                          multiprocess=args.multiprocessing)
+        if args.test:
+            # Compute test lookups
+            lookup_dict = computeTestLookups(neuron, diams, freqs, amps,
+                                             multiprocess=args.multiprocessing)
+        else:
+            # Compute real lookups
+            lookup_dict = computeAStimLookups(neuron, diams, freqs, amps,
+                                              multiprocess=args.multiprocessing)
         # Save dictionary in lookup file
         logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_file)
         with open(lookup_filepath, 'wb') as fh:
