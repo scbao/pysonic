@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-15 17:06:42
+# @Last Modified time: 2018-09-15 18:07:18
 
 """ Utility functions used in simulations """
 
@@ -59,7 +59,7 @@ class Consumer(mp.Process):
 class Worker():
     ''' Generic worker class. '''
 
-    def __init__(self, wid, nsims):
+    def __init__(self, wid, nsims, ncoeffs=0):
         ''' Class constructor.
 
             :param wid: worker ID
@@ -67,10 +67,11 @@ class Worker():
         '''
         self.id = wid
         self.nsims = nsims
+        self.ncoeffs = ncoeffs
 
     def __call__(self):
         ''' worker method. '''
-        return (self.id, None)
+        return (self.id, [1e9] * self.ncoeffs)
 
     def __str__(self):
         return 'simulation {}/{}'.format(self.id + 1, self.nsims)
@@ -485,7 +486,7 @@ class MechWorker(Worker):
                     *si_format([self.Adrive, self.Qm * 1e-4], 2, space=' '))
 
 
-class EStimTitrator():
+class EStimTitrator(Worker):
 
     ''' Worker class that uses a dichotomic recursive search to determine the threshold value
         of a specific electric stimulation parameter needed to obtain neural excitation, keeping
@@ -507,7 +508,7 @@ class EStimTitrator():
             :param nsims: total number or simulations
         '''
 
-        self.id = wid
+        super().__init__(wid, nsims)
         self.solver = solver
         self.neuron = neuron
         self.Astim = Astim
@@ -515,7 +516,6 @@ class EStimTitrator():
         self.toffset = toffset
         self.PRF = PRF
         self.DC = DC
-        self.nsims = nsims
 
         # Determine titration type
         if Astim is None:
@@ -614,7 +614,7 @@ class EStimTitrator():
             .format(self.neuron.name, self.id, self.nsims, log_str)
 
 
-class AStimTitrator():
+class AStimTitrator(Worker):
 
     ''' Worker class that uses a dichotomic recursive search to determine the threshold value
         of a specific acoustic stimulation parameter needed to obtain neural excitation, keeping
@@ -639,7 +639,7 @@ class AStimTitrator():
             :param nsims: total number or simulations
         '''
 
-        self.id = wid
+        super().__init__(wid, nsims)
         self.solver = solver
         self.neuron = neuron
         self.Fdrive = Fdrive
@@ -649,7 +649,6 @@ class AStimTitrator():
         self.PRF = PRF
         self.DC = DC
         self.int_method = int_method
-        self.nsims = nsims
 
         # Determine titration type
         if Adrive is None:
@@ -2375,13 +2374,12 @@ def computeTestLookups(neuron, aref, fref, Aref, phi=np.pi, multiprocess=False):
         for iF, f in enumerate(fref):
             for iA, A in enumerate(Aref):
                 for iQ, Q in enumerate(Qref):
-                    worker = Worker(wid, nsims)
+                    worker = Worker(wid, nsims, ncoeffs)
                     if multiprocess:
                         tasks.put(worker, block=False)
                     else:
                         logger.info('%s', worker)
                         _, Qcoeffs = worker.__call__()
-                        Qcoeffs = [0] * ncoeffs
                         for icoeff in range(ncoeffs):
                             lookup_dict[coeffs_names[icoeff]][ia, iF, iA, iQ] = Qcoeffs[icoeff]
                     wid += 1
@@ -2395,7 +2393,6 @@ def computeTestLookups(neuron, aref, fref, Aref, phi=np.pi, multiprocess=False):
         # Retrieve workers output
         for x in range(nsims):
             wid, Qcoeffs = results.get()
-            Qcoeffs = [0] * ncoeffs
             ia, iF, iA, iQ = nDindexes(dims, wid)
             for icoeff in range(ncoeffs):
                 lookup_dict[coeffs_names[icoeff]][ia, iF, iA, iQ] = Qcoeffs[icoeff]
