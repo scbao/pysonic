@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-19 15:54:52
+# @Last Modified time: 2018-09-19 19:59:55
 
 """ Create lookup table for specific neuron. """
 
@@ -69,7 +69,7 @@ def main():
     neuron = getNeuronsDict()[neuron_str]()
 
     # Check if lookup file already exists
-    lookup_file = '{}_lookups.pkl'.format(neuron.name)
+    lookup_file = 'SONIC_{}.pkl'.format(neuron.name)
     lookup_filepath = '{0}/{1}'.format(getLookupDir(), lookup_file)
     if os.path.isfile(lookup_filepath):
         logger.warning('"%s" file already exists and will be overwritten. ' +

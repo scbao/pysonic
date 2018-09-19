@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-19 15:43:48
+# @Last Modified time: 2018-09-19 20:07:27
 
 """ Definition of generic utility functions used in other modules """
 
@@ -459,31 +459,27 @@ def getLookups2D(mechname, a, Fdrive):
     '''
 
     # Check lookup file existence
-    lookup_file = '{}_lookups_a{:.1f}nm.pkl'.format(mechname, a * 1e9)
-    # lookup_file = '{}_coeffs.pkl'.format(mechname)
+    lookup_file = 'SONIC_{}.pkl'.format(mechname)
     lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
     if not os.path.isfile(lookup_path):
         raise InputError('Missing lookup file: "{}"'.format(lookup_file))
 
     # Load lookups dictionary
+    logger.debug('Loading lookup table')
     with open(lookup_path, 'rb') as fh:
-        # lookups4D = pickle.load(fh)
-        lookups3D = pickle.load(fh)
+        lookups4D = pickle.load(fh)
 
     # Retrieve 1D inputs from lookups dictionary
-    # aref = lookups4D.pop('a')
-    # Fref = lookups4D.pop('f')
-    # Aref = lookups4D.pop('A')
-    # Qref = lookups4D.pop('Q')
-    Fref = lookups3D.pop('f')
-    Aref = lookups3D.pop('A')
-    Qref = lookups3D.pop('Q')
+    aref = lookups4D.pop('a')
+    Fref = lookups4D.pop('f')
+    Aref = lookups4D.pop('A')
+    Qref = lookups4D.pop('Q')
 
     # Check that sonophore diameter is within lookup range
-    # arange = (aref.min() - 1e-12, aref.max() + 1e-12)
-    # if a < arange[0] or a > arange[1]:
-    #     raise InputError('Invalid sonophore diameter: {}m (must be within {}m - {}m lookup interval)'
-    #                      .format(*si_format([a, *arange], precision=2, space=' ')))
+    arange = (aref.min() - 1e-12, aref.max() + 1e-12)
+    if a < arange[0] or a > arange[1]:
+        raise InputError('Invalid sonophore diameter: {}m (must be within {}m - {}m lookup interval)'
+                         .format(*si_format([a, *arange], precision=2, space=' ')))
 
     # Check that US frequency is within lookup range
     Frange = (Fref.min() - 1e-9, Fref.max() + 1e-9)
@@ -492,7 +488,9 @@ def getLookups2D(mechname, a, Fdrive):
                          .format(*si_format([Fdrive, *Frange], precision=2, space=' ')))
 
     # Interpolate 4D lookups at sonophore diameter and then at US frequency
-    # lookups3D = {key: interp1d(aref, y4D, axis=0)(a) for key, y4D in lookups4D.items()}
+    logger.debug('Interpolating lookups at a = {}m'.format(si_format(a, space=' ')))
+    lookups3D = {key: interp1d(aref, y4D, axis=0)(a) for key, y4D in lookups4D.items()}
+    logger.debug('Interpolating lookups at f = {}Hz'.format(si_format(Fdrive, space=' ')))
     lookups2D = {key: interp1d(Fref, y3D, axis=0)(Fdrive) for key, y3D in lookups3D.items()}
 
     return Aref, Qref, lookups2D
