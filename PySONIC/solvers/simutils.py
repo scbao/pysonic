@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-15 18:07:18
+# @Last Modified time: 2018-09-19 13:38:53
 
 """ Utility functions used in simulations """
 
@@ -71,7 +71,7 @@ class Worker():
 
     def __call__(self):
         ''' worker method. '''
-        return (self.id, [1e9] * self.ncoeffs)
+        return (self.id, np.random.rand(self.ncoeffs) * 1e9)
 
     def __str__(self):
         return 'simulation {}/{}'.format(self.id + 1, self.nsims)
@@ -1055,26 +1055,45 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
     # Define empty output
     empty = (np.array([]),) * 4
 
-    # Find all peaks and valleys
+    # Differentiate signal
     dy = np.diff(y)
-    s = np.sign(dy)
-    ipeaks = np.where(np.diff(s) < 0)[0] + 1
-    ivalleys = np.where(np.diff(s) > 0)[0] + 1
+
+    # Find all peaks and valleys
+    # s = np.sign(dy)
+    # ipeaks = np.where(np.diff(s) < 0.0)[0] + 1
+    # ivalleys = np.where(np.diff(s) > 0.0)[0] + 1
+    ipeaks = np.where((np.hstack((dy, 0)) <= 0) & (np.hstack((0, dy)) > 0))[0]
+    ivalleys = np.where((np.hstack((dy, 0)) >= 0) & (np.hstack((0, dy)) < 0))[0]
 
     # Return empty output if no peak detected
     if ipeaks.size == 0:
         return empty
 
+    logger.debug('%u peaks found, starting at index %u and ending at index %u',
+                 ipeaks.size, ipeaks[0], ipeaks[-1])
+    logger.debug('%u valleys found, starting at index %u and ending at index %u',
+                 ivalleys.size, ivalleys[0], ivalleys[-1])
+
     # Ensure each peak is bounded by two valleys, adding signal boundaries as valleys if necessary
     if ivalleys.size == 0 or ipeaks[0] < ivalleys[0]:
-        ivalleys = np.insert(ivalleys, 0, 0)
+        ivalleys = np.insert(ivalleys, 0, -1)
     if ipeaks[-1] > ivalleys[-1]:
         ivalleys = np.insert(ivalleys, ivalleys.size, y.size - 1)
-    # assert ivalleys.size - ipeaks.size == 1, 'Number of peaks and valleys not matching'
     if ivalleys.size - ipeaks.size != 1:
-        logger.warning('detection incongruity: %u peaks vs. %u valleys detected',
-                       ipeaks.size, ivalleys.size)
-        return empty
+        logger.debug('Cleaning up incongruities')
+        i = 0
+        while i < min(ipeaks.size, ivalleys.size) - 1:
+            if ipeaks[i] < ivalleys[i]:  # 2 peaks between consecutive valleys -> remove lowest
+                idel = i - 1 if y[ipeaks[i - 1]] < y[ipeaks[i]] else i
+                logger.debug('Removing abnormal peak at index %u', ipeaks[idel])
+                ipeaks = np.delete(ipeaks, idel)
+            if ipeaks[i] > ivalleys[i + 1]:
+                idel = i + 1 if y[ivalleys[i]] < y[ivalleys[i + 1]] else i
+                logger.debug('Removing abnormal valley at index %u', ivalleys[idel])
+                ivalleys = np.delete(ivalleys, idel)
+            else:
+                i += 1
+        logger.debug('Post-cleanup: %u peaks and %u valleys', ipeaks.size, ivalleys.size)
 
     # Remove peaks < minimum peak height
     if mph is not None:
@@ -1187,7 +1206,7 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
     # Compute peaks widths at half-prominence
     widths = np.diff(ibounds, axis=1)
 
-    return (ipeaks, prominences, widths, ibounds)
+    return (ipeaks - 1, prominences, widths, ibounds)
 
 
 def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a, d=0.0, multiprocess=False):
