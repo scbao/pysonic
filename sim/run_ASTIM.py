@@ -4,16 +4,15 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-25 02:14:36
+# @Last Modified time: 2018-09-19 16:02:28
 
 """ Script to run ASTIM simulations from command line. """
 
 import sys
-import os
 import logging
 from argparse import ArgumentParser
 
-from PySONIC.utils import logger, getNeuronsDict, InputError
+from PySONIC.utils import logger, getNeuronsDict, InputError, selectDirDialog
 from PySONIC.solvers import checkBatchLog, SolverUS, AStimWorker
 from PySONIC.plt import plotBatch
 
@@ -54,7 +53,7 @@ def main():
                     help='PRF (Hz)')
     ap.add_argument('--DC', type=float, default=default['DC'],
                     help='Duty cycle (%%)')
-    ap.add_argument('-o', '--outputdir', type=str, default=os.getcwd(),
+    ap.add_argument('-o', '--outputdir', type=str, default=None,
                     help='Output directory')
     ap.add_argument('-m', '--method', type=str, default=default['int_method'],
                     help='Numerical integration method ("classic", "hybrid" or "sonic"')
@@ -75,7 +74,7 @@ def main():
     toffset = args.offset * 1e-3  # s
     PRF = args.PRF  # Hz
     DC = args.DC * 1e-2
-    output_dir = args.outputdir
+    output_dir = selectDirDialog() if args.outputdir is None else args.outputdir
     int_method = args.method
 
     if args.verbose:
@@ -88,7 +87,7 @@ def main():
             raise InputError('Unknown neuron type: "{}"'.format(neuron_str))
         log_filepath, _ = checkBatchLog(output_dir, 'A-STIM')
         neuron = getNeuronsDict()[neuron_str]()
-        worker = AStimWorker(1, output_dir, log_filepath, SolverUS(a, neuron, Fdrive), neuron,
+        worker = AStimWorker(0, output_dir, log_filepath, SolverUS(a, neuron, Fdrive), neuron,
                              Fdrive, Adrive, tstim, toffset, PRF, DC, int_method, 1)
         logger.info('%s', worker)
         outfile = worker.__call__()

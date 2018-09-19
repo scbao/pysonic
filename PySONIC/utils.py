@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-15 17:11:56
+# @Last Modified time: 2018-09-19 15:43:48
 
 """ Definition of generic utility functions used in other modules """
 
@@ -116,6 +116,16 @@ def OpenFilesDialog(filetype, dirname=''):
     else:
         par_dir = None
     return (filenames, par_dir)
+
+
+def selectDirDialog():
+    """ Open a dialog box to select a directory.
+
+        :return: full path to selected directory
+    """
+    root = tk.Tk()
+    root.withdraw()
+    return filedialog.askdirectory()
 
 
 def ImportExcelCol(filename, sheetname, colstr, startrow):

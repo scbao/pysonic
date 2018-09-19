@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-19 13:38:53
+# @Last Modified time: 2018-09-19 16:01:35
 
 """ Utility functions used in simulations """
 
@@ -1266,7 +1266,6 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a, d=0.0, multi
         bls = BilayerSonophore(a, Fdrive, Cm0, Qm0, d)
 
         for i in range(nqueue):
-            wid += 1
             Adrive, Qm = sim_queue[i, :]
             worker = MechWorker(wid, batch_dir, log_filepath, bls, Fdrive, Adrive, Qm, nsims)
             if multiprocess:
@@ -1275,6 +1274,7 @@ def runMechBatch(batch_dir, log_filepath, Cm0, Qm0, stim_params, a, d=0.0, multi
                 logger.info('%s', worker)
                 output_filepath = worker.__call__()
                 filepaths.append(output_filepath)
+            wid += 1
 
     if multiprocess:
         # Stop processes
@@ -1345,8 +1345,6 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params, multiprocess=Fa
 
         # Run simulations in queue
         for i in range(nqueue):
-
-            wid += 1
             Astim, tstim, toffset, PRF, DC = sim_queue[i, :]
             worker = EStimWorker(wid, batch_dir, log_filepath, solver, neuron, Astim,
                                  tstim, toffset, PRF, DC, nsims)
@@ -1356,6 +1354,7 @@ def runEStimBatch(batch_dir, log_filepath, neurons, stim_params, multiprocess=Fa
                 logger.info('%s', worker)
                 output_filepath = worker.__call__()
                 filepaths.append(output_filepath)
+            wid += 1
 
     if multiprocess:
         # Stop processes
@@ -1433,8 +1432,6 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params, multiproces
     for nname in neurons:
         neuron = getNeuronsDict()[nname]()
         for i in range(nqueue):
-            wid += 1
-
             # Extract parameters
             Astim, tstim, toffset, PRF, DC = sim_queue[i, :]
 
@@ -1514,6 +1511,7 @@ def titrateEStimBatch(batch_dir, log_filepath, neurons, stim_params, multiproces
                 user_str = input()
                 if user_str not in ['y', 'Y']:
                     return filepaths
+        wid += 1
 
     if multiprocess:
         # Stop processes
@@ -1645,7 +1643,6 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a, int_method='
 
             # Run simulations in queue
             for i in range(nqueue):
-                wid += 1
                 Adrive, tstim, toffset, PRF, DC = sim_queue[i, :]
                 worker = AStimWorker(wid, batch_dir, log_filepath, solver, neuron, Fdrive, Adrive,
                                      tstim, toffset, PRF, DC, int_method, nsims)
@@ -1655,6 +1652,7 @@ def runAStimBatch(batch_dir, log_filepath, neurons, stim_params, a, int_method='
                     logger.info('%s', worker)
                     output_filepath = worker.__call__()
                     filepaths.append(output_filepath)
+        wid += 1
 
     if multiprocess:
         # Stop processes
@@ -1713,8 +1711,6 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a, int_meth
     nqueue = sim_queue.shape[0]
     nsims = len(neurons) * len(stim_params['freqs']) * nqueue
 
-    print(nsims)
-
     # Initialize multiprocessing pobjects if needed
     if multiprocess:
 
@@ -1740,7 +1736,6 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a, int_meth
             solver = SolverUS(a, neuron, Fdrive)
 
             for i in range(nqueue):
-                wid += 1
 
                 # Extract parameters
                 Adrive, tstim, toffset, PRF, DC = sim_queue[i, :]
@@ -1831,6 +1826,7 @@ def titrateAStimBatch(batch_dir, log_filepath, neurons, stim_params, a, int_meth
                     user_str = input()
                     if user_str not in ['y', 'Y']:
                         return filepaths
+        wid += 1
 
     if multiprocess:
         # Stop processes

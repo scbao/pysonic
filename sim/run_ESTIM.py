@@ -4,16 +4,15 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:07:37
+# @Last Modified time: 2018-09-19 16:02:38
 
 """ Script to run ESTIM simulations from command line. """
 
 import sys
-import os
 import logging
 from argparse import ArgumentParser
 
-from PySONIC.utils import logger, getNeuronsDict, InputError
+from PySONIC.utils import logger, getNeuronsDict, InputError, selectDirDialog
 from PySONIC.solvers import checkBatchLog, SolverElec, EStimWorker
 from PySONIC.plt import plotBatch
 
@@ -47,7 +46,7 @@ def main():
                     help='PRF (Hz)')
     ap.add_argument('--DC', type=float, default=default['DC'],
                     help='Duty cycle (%%)')
-    ap.add_argument('-o', '--outputdir', type=str, default=os.getcwd(),
+    ap.add_argument('-o', '--outputdir', type=str, default=None,
                     help='Output directory')
 
     # Boolean arguments
@@ -64,7 +63,7 @@ def main():
     toffset = args.offset * 1e-3  # s
     PRF = args.PRF  # Hz
     DC = args.DC * 1e-2
-    output_dir = args.outputdir
+    output_dir = selectDirDialog() if args.outputdir is None else args.outputdir
 
     if args.verbose:
         logger.setLevel(logging.DEBUG)
@@ -76,7 +75,7 @@ def main():
             raise InputError('Unknown neuron type: "{}"'.format(neuron_str))
         log_filepath, _ = checkBatchLog(output_dir, 'E-STIM')
         neuron = getNeuronsDict()[neuron_str]()
-        worker = EStimWorker(1, output_dir, log_filepath, SolverElec(), neuron, Astim, tstim, toffset,
+        worker = EStimWorker(0, output_dir, log_filepath, SolverElec(), neuron, Astim, tstim, toffset,
                              PRF, DC, 1)
         logger.info('%s', worker)
         outfile = worker.__call__()

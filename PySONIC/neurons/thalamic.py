@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:10:36
+# @Last Modified time: 2018-09-19 16:10:09
 
 ''' Channels mechanisms for thalamic neurons. '''
 
@@ -61,7 +61,7 @@ class Thalamic(BaseMech):
         '''
 
         Vdiff = Vm - self.VT
-        alpha = (-0.32 * (Vdiff - 13) / (np.exp(- (Vdiff - 13) / 4) - 1))  # ms-1
+        alpha = 0.32 * self.vtrap(13 - Vdiff, 4)  # ms-1
         return alpha * 1e3  # s-1
 
 
@@ -73,7 +73,7 @@ class Thalamic(BaseMech):
         '''
 
         Vdiff = Vm - self.VT
-        beta = (0.28 * (Vdiff - 40) / (np.exp((Vdiff - 40) / 5) - 1))  # ms-1
+        beta = 0.28 * self.vtrap(Vdiff - 40, 5)  # ms-1
         return beta * 1e3  # s-1
 
 
@@ -109,7 +109,7 @@ class Thalamic(BaseMech):
         '''
 
         Vdiff = Vm - self.VT
-        alpha = (-0.032 * (Vdiff - 15) / (np.exp(-(Vdiff - 15) / 5) - 1))  # ms-1
+        alpha = 0.032 * self.vtrap(15 - Vdiff, 5)  # ms-1
         return alpha * 1e3  # s-1
 
 

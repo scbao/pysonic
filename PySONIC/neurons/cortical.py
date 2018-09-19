@@ -4,13 +4,14 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:10:36
+# @Last Modified time: 2018-09-19 15:53:34
 
 ''' Channels mechanisms for thalamic neurons. '''
 
 import logging
 import numpy as np
 from .base import BaseMech
+
 
 # Get package logger
 logger = logging.getLogger('PySONIC')
@@ -62,7 +63,7 @@ class Cortical(BaseMech):
         '''
 
         Vdiff = Vm - self.VT
-        alpha = (-0.32 * (Vdiff - 13) / (np.exp(- (Vdiff - 13) / 4) - 1))  # ms-1
+        alpha = 0.32 * self.vtrap(13 - Vdiff, 4)  # ms-1
         return alpha * 1e3  # s-1
 
 
@@ -74,7 +75,7 @@ class Cortical(BaseMech):
         '''
 
         Vdiff = Vm - self.VT
-        beta = (0.28 * (Vdiff - 40) / (np.exp((Vdiff - 40) / 5) - 1))  # ms-1
+        beta = 0.28 * self.vtrap(Vdiff - 40, 5)  # ms-1
         return beta * 1e3  # s-1
 
 
@@ -110,7 +111,7 @@ class Cortical(BaseMech):
         '''
 
         Vdiff = Vm - self.VT
-        alpha = (-0.032 * (Vdiff - 15) / (np.exp(-(Vdiff - 15) / 5) - 1))  # ms-1
+        alpha = 0.032 * self.vtrap(15 - Vdiff, 5)  # ms-1
         return alpha * 1e3  # s-1
 
 
@@ -280,6 +281,7 @@ class Cortical(BaseMech):
         bh_avg = np.mean(self.betah(Vm))
         an_avg = np.mean(self.alphan(Vm))
         bn_avg = np.mean(self.betan(Vm))
+
         Tp = self.taup(Vm)
         pinf = self.pinf(Vm)
         ap_avg = np.mean(pinf / Tp)
@@ -666,8 +668,7 @@ class CorticalIB(Cortical):
             :return: rate constant (s-1)
         '''
 
-
-        alpha = - 0.055 * (Vm + 27) / (np.exp(-(Vm + 27) / 3.8) - 1)  # ms-1
+        alpha = 0.055 * self.vtrap(-(Vm + 27), 3.8)  # ms-1
         return alpha * 1e3  # s-1
 
 

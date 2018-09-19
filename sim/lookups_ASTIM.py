@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-15 17:07:56
+# @Last Modified time: 2018-09-19 15:54:52
 
 """ Create lookup table for specific neuron. """
 
@@ -22,7 +22,7 @@ from PySONIC.utils import logger, InputError, getNeuronsDict, getLookupDir
 # Default parameters
 default = {
     'neuron': 'RS',
-    'diams': np.array([15.0, 32.0, 70.0, 150.0]),  # nm
+    'diams': np.array([16.0, 32.0, 64.0]),  # nm
     'freqs': np.array([20., 100., 500., 1e3, 2e3, 3e3, 4e3]),  # kHz
     'amps': np.insert(np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0),  # kPa
 }

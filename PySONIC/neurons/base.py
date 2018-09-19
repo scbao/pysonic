@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 15:27:49
+# @Last Modified time: 2018-09-19 15:26:56
 
 ''' Module standard API for all neuron mechanisms.
 
@@ -14,6 +14,7 @@
 '''
 
 import abc
+import numpy as np
 
 
 class BaseMech(metaclass=abc.ABCMeta):
@@ -158,3 +159,7 @@ class BaseMech(metaclass=abc.ABCMeta):
             rates[alpha_str] = alphax
             rates[beta_str] = betax
         return rates
+
+    def vtrap(self, x, y):
+        ''' Generic function used to compute rate constants. '''
+        return x / (np.exp(x / y) - 1)
