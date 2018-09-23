@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 14:09:47
+# @Last Modified time: 2018-09-23 14:34:40
 
 import time
 import warnings
@@ -40,7 +40,7 @@ class SonicNeuron(BilayerSonophore):
 
         # Check validity of input parameters
         if not isinstance(neuron, PointNeuron):
-            raise InputError('Invalid neuron type: "{}" (must inherit from PointNeuron class)'
+            raise ValueError('Invalid neuron type: "{}" (must inherit from PointNeuron class)'
                              .format(neuron.name))
         self.neuron = neuron
 
@@ -576,7 +576,7 @@ class SonicNeuron(BilayerSonophore):
 
         # Check validity of simulation type
         if method not in ('full', 'hybrid', 'sonic'):
-            raise InputError('Invalid integration method: "{}"'.format(method))
+            raise ValueError('Invalid integration method: "{}"'.format(method))
 
 
     def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0,
@@ -604,7 +604,7 @@ class SonicNeuron(BilayerSonophore):
             return self.runSONIC(Fdrive, Adrive, tstim, toffset, PRF, DC)
         elif method == 'hybrid':
             if DC < 1.0:
-                raise InputError('Pulsed protocol incompatible with hybrid integration method')
+                raise ValueError('Pulsed protocol incompatible with hybrid integration method')
             return self.runHybrid(Fdrive, Adrive, tstim, toffset)
 
 

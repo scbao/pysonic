@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-22 17:30:15
+# @Last Modified time: 2018-09-23 14:39:55
 
 """ Definition of generic utility functions used in other modules """
 
@@ -451,7 +451,7 @@ def getLookups2D(mechname, a, Fdrive):
     lookup_file = 'SONIC_{}.pkl'.format(mechname)
     lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
     if not os.path.isfile(lookup_path):
-        raise InputError('Missing lookup file: "{}"'.format(lookup_file))
+        raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_file))
 
     # Load lookups dictionary
     logger.debug('Loading lookup table')
@@ -594,7 +594,7 @@ def checkBatchLog(batch_dir, batch_type):
 
     # Check for directory existence
     if not os.path.isdir(batch_dir):
-        raise InputError('"{}" output directory does not exist'.format(batch_dir))
+        raise IOError('"{}" output directory does not exist'.format(batch_dir))
 
     # Determine log template from batch type
     if batch_type == 'MECH':

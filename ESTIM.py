@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 12:44:45
+# @Last Modified time: 2018-09-23 14:32:39
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -41,7 +41,7 @@ def runEStimBatch(outdir, logpath, neuron, stim_params, mpi=False):
     mandatory_params = ['durations', 'offsets', 'PRFs', 'DCs']
     for mparam in mandatory_params:
         if mparam not in stim_params:
-            raise InputError('Missing stimulation parameter field: "{}"'.format(mparam))
+            raise ValueError('Missing stimulation parameter field: "{}"'.format(mparam))
 
     logger.info("Starting E-STIM simulation batch")
 

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 13:58:51
+# @Last Modified time: 2018-09-23 14:34:12
 
 import time
 import inspect
@@ -614,18 +614,18 @@ class BilayerSonophore:
             :param Qm: imposed membrane charge density (C/m2)
         '''
         if not all(isinstance(param, float) for param in [Fdrive, Adrive, Qm, phi]):
-            raise InputError('Invalid stimulation parameters (must be float typed)')
+            raise TypeError('Invalid stimulation parameters (must be float typed)')
         if Fdrive <= 0:
-            raise InputError('Invalid US driving frequency: {} kHz (must be strictly positive)'
+            raise ValueError('Invalid US driving frequency: {} kHz (must be strictly positive)'
                              .format(Fdrive * 1e-3))
         if Adrive < 0:
-            raise InputError('Invalid US pressure amplitude: {} kPa (must be positive or null)'
+            raise ValueError('Invalid US pressure amplitude: {} kPa (must be positive or null)'
                              .format(Adrive * 1e-3))
         if Qm < CHARGE_RANGE[0] or Qm > CHARGE_RANGE[1]:
-            raise InputError('Invalid applied charge: {} nC/cm2 (must be within [{}, {}] interval'
+            raise ValueError('Invalid applied charge: {} nC/cm2 (must be within [{}, {}] interval'
                              .format(Qm * 1e5, CHARGE_RANGE[0] * 1e5, CHARGE_RANGE[1] * 1e5))
         if phi < 0 or phi >= 2 * np.pi:
-            raise InputError('Invalid US pressure phase: {:.2f} rad (must be within [0, 2 PI[ rad'
+            raise ValueError('Invalid US pressure phase: {:.2f} rad (must be within [0, 2 PI[ rad'
                              .format(phi))
 
 
