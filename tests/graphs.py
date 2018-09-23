@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-21 16:12:32
+# @Last Modified time: 2018-09-23 15:28:04
 
 ''' Test the basic functionalities of the package and output graphs of the call flows. '''
 
@@ -13,7 +13,7 @@ from pycallgraph import PyCallGraph
 from pycallgraph.output import GraphvizOutput
 
 from PySONIC.utils import logger
-from PySONIC import BilayerSonophore, SolverUS
+from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 from PySONIC.neurons import CorticalRS
 
 
@@ -32,12 +32,12 @@ def graph_BLS():
     Qm0 = -80e-5  # membrane resting charge density (C/m2)
     graphviz.output_file = 'graphs/bls_init.png'
     with PyCallGraph(output=graphviz):
-        bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
+        bls = BilayerSonophore(a, Cm0, Qm0)
     logger.info('Graph 2: Mechanical simulation')
     Adrive = 1e5  # Pa
     graphviz.output_file = 'graphs/MECH_sim.png'
     with PyCallGraph(output=graphviz):
-        bls.run(Fdrive, Adrive, Qm0)
+        bls.simulate(Fdrive, Adrive, Qm0)
 
 
 def graph_neuron_init():
@@ -60,7 +60,7 @@ def graph_ESTIM():
     toffset = 1e-3  # s
     graphviz.output_file = 'graphs/ESTIM_sim.png'
     with PyCallGraph(output=graphviz):
-        neuron.run(Astim, tstim, toffset)
+        neuron.simulate(Astim, tstim, toffset)
 
 
 def graph_ASTIM():
@@ -73,28 +73,28 @@ def graph_ASTIM():
     logger.info('Graph 1: SolverUS initialization')
     graphviz.output_file = 'graphs/ASTIM_solver_init.png'
     with PyCallGraph(output=graphviz):
-        solver = SolverUS(a, rs_neuron, Fdrive)
+        nbls = NeuronalBilayerSonophore(a, rs_neuron)
 
     logger.info('Graph 2: A-STIM classic simulation')
     tstim = 1e-6  # s
     toffset = 0.0  # s
-    graphviz.output_file = 'graphs/ASTIM_sim_classic.png'
+    graphviz.output_file = 'graphs/ASTIM_sim_full.png'
     with PyCallGraph(output=graphviz):
-        solver.run(rs_neuron, Fdrive, Adrive, tstim, toffset, sim_type='classic')
+        nbls.simulate(Fdrive, Adrive, tstim, toffset, sim_type='full')
 
     logger.info('Graph 3: A-STIM sonic simulation')
     tstim = 1e-3  # s
     toffset = 0.0  # s
     graphviz.output_file = 'graphs/ASTIM_sim_sonic.png'
     with PyCallGraph(output=graphviz):
-        solver.run(rs_neuron, Fdrive, Adrive, tstim, toffset, sim_type='sonic')
+        nbls.simulate(Fdrive, Adrive, tstim, toffset, sim_type='sonic')
 
     logger.info('Graph 4: A-STIM hybrid simulation')
     tstim = 1e-3  # s
     toffset = 0.0  # s
     graphviz.output_file = 'graphs/ASTIM_sim_hybrid.png'
     with PyCallGraph(output=graphviz):
-        solver.run(rs_neuron, Fdrive, Adrive, tstim, toffset, sim_type='hybrid')
+        nbls.simulate(Fdrive, Adrive, tstim, toffset, sim_type='hybrid')
 
 
 if __name__ == '__main__':

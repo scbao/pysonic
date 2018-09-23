@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 13:53:01
+# @Last Modified time: 2018-09-23 15:28:05
 
 ''' Test the basic functionalities of the package. '''
 
@@ -16,8 +16,8 @@ import cProfile
 import pstats
 from argparse import ArgumentParser
 
+from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 from PySONIC.utils import logger
-from PySONIC import BilayerSonophore, SonicNeuron
 from PySONIC.neurons import *
 
 
@@ -86,7 +86,7 @@ def test_ASTIM_sonic(is_profiled=False):
     # Default parameters
     a = 32e-9  # m
     neuron = CorticalRS()
-    sonic_neuron = SonicNeuron(a, neuron)
+    nbls = NeuronalBilayerSonophore(a, neuron)
 
     Fdrive = 500e3  # Hz
     Adrive = 100e3  # Pa
@@ -95,9 +95,9 @@ def test_ASTIM_sonic(is_profiled=False):
 
     # Run simulation
     if is_profiled:
-        sonic_neuron = SonicNeuron(a, neuron)
+        nbls = NeuronalBilayerSonophore(a, neuron)
         pfile = 'tmp.stats'
-        cProfile.runctx("sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')",
+        cProfile.runctx("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')",
                         globals(), locals(), pfile)
         stats = pstats.Stats(pfile)
         os.remove(pfile)
@@ -107,29 +107,29 @@ def test_ASTIM_sonic(is_profiled=False):
     else:
         # test error 1: sonophore diameter outside of lookup range
         try:
-            sonic_neuron = SonicNeuron(100e-9, neuron)
-            sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
+            nbls = NeuronalBilayerSonophore(100e-9, neuron)
+            nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
         except ValueError as err:
             logger.debug('Out of range diameter: OK')
 
         # test error 2: frequency outside of lookups range
         try:
-            sonic_neuron = SonicNeuron(a, neuron)
-            sonic_neuron.simulate(10e3, Adrive, tstim, toffset, method='sonic')
+            nbls = NeuronalBilayerSonophore(a, neuron)
+            nbls.simulate(10e3, Adrive, tstim, toffset, method='sonic')
         except ValueError as err:
             logger.debug('Out of range frequency: OK')
 
         # test error 3: amplitude outside of lookups range
         try:
-            sonic_neuron = SonicNeuron(a, neuron)
-            sonic_neuron.simulate(Fdrive, 1e6, tstim, toffset, method='sonic')
+            nbls = NeuronalBilayerSonophore(a, neuron)
+            nbls.simulate(Fdrive, 1e6, tstim, toffset, method='sonic')
         except ValueError as err:
             logger.debug('Out of range amplitude: OK')
 
         # test: normal stimulation completion (CW and PW)
-        sonic_neuron = SonicNeuron(a, neuron)
-        sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
-        sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, PRF=100.0, DC=0.05, method='sonic')
+        nbls = NeuronalBilayerSonophore(a, neuron)
+        nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
+        nbls.simulate(Fdrive, Adrive, tstim, toffset, PRF=100.0, DC=0.05, method='sonic')
 
 
 def test_ASTIM_full(is_profiled=False):
@@ -140,7 +140,7 @@ def test_ASTIM_full(is_profiled=False):
     # Initialize sonic neuron
     a = 32e-9  # m
     neuron = CorticalRS()
-    sonic_neuron = SonicNeuron(a, neuron)
+    nbls = NeuronalBilayerSonophore(a, neuron)
 
     # Stimulation parameters
     Fdrive = 500e3  # Hz
@@ -151,7 +151,7 @@ def test_ASTIM_full(is_profiled=False):
     # Run simulation
     if is_profiled:
         pfile = 'tmp.stats'
-        cProfile.runctx("sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='full')",
+        cProfile.runctx("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='full')",
                         globals(), locals(), pfile)
         stats = pstats.Stats(pfile)
         os.remove(pfile)
@@ -159,7 +159,7 @@ def test_ASTIM_full(is_profiled=False):
         stats.sort_stats('cumulative')
         stats.print_stats()
     else:
-        sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='full')
+        nbls.simulate(Fdrive, Adrive, tstim, toffset, method='full')
 
 
 def test_ASTIM_hybrid(is_profiled=False):
@@ -170,7 +170,7 @@ def test_ASTIM_hybrid(is_profiled=False):
     # Initialize sonic neuron
     a = 32e-9  # m
     neuron = CorticalRS()
-    sonic_neuron = SonicNeuron(a, neuron)
+    nbls = NeuronalBilayerSonophore(a, neuron)
 
     # Stimulation parameters
     Fdrive = 350e3  # Hz
@@ -181,7 +181,7 @@ def test_ASTIM_hybrid(is_profiled=False):
     # Run simulation
     if is_profiled:
         pfile = 'tmp.stats'
-        cProfile.runctx("sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')",
+        cProfile.runctx("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')",
                         globals(), locals(), pfile)
         stats = pstats.Stats(pfile)
         os.remove(pfile)
@@ -189,7 +189,7 @@ def test_ASTIM_hybrid(is_profiled=False):
         stats.sort_stats('cumulative')
         stats.print_stats()
     else:
-        sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')
+        nbls.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')
 
 
 def test_all():

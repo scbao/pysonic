@@ -4,11 +4,11 @@
 # @Date:   2017-06-06 13:36:00
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-22 18:41:54
+# @Last Modified time: 2018-09-23 15:28:56
 
 ''' Import the core classes, generic utilities and algorithmic constants. '''
 
-from .core import BilayerSonophore, PointNeuron, SonicNeuron
+from .core import *
 from .neurons import *
 from .utils import *
 from .batches import *

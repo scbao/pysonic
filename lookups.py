@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 11:24:24
+# @Last Modified time: 2018-09-23 15:27:50
 
 """ Create lookup table for specific neuron. """
 
@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 from PySONIC.utils import logger, getLookupDir
 from PySONIC.batches import createQueue, runBatch
 from PySONIC.neurons import getNeuronsDict
-from PySONIC.core import SonicNeuron
+from PySONIC.core import NeuronalBilayerSonophore
 
 
 # Default parameters
@@ -65,8 +65,8 @@ def computeAStimLookups(neuron, aref, fref, Aref, phi=np.pi, mpi=False, loglevel
     logger.info('Starting simulation batch for %s neuron', neuron.name)
     outputs = []
     for a in aref:
-        sonic_neuron = SonicNeuron(a, neuron)
-        outputs += runBatch(sonic_neuron, 'computeEffVars', queue, mpi=mpi, loglevel=loglevel)
+        nbls = NeuronalBilayerSonophore(a, neuron)
+        outputs += runBatch(nbls, 'computeEffVars', queue, mpi=mpi, loglevel=loglevel)
     outputs = np.array(outputs).T
 
     # populate lookups dictionary with input vectors

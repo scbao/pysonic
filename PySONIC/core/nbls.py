@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 14:34:40
+# @Last Modified time: 2018-09-23 15:32:04
 
 import time
 import warnings
@@ -25,7 +25,7 @@ from ..postpro import findPeaks
 logger = logging.getLogger('PySONIC')
 
 
-class SonicNeuron(BilayerSonophore):
+class NeuronalBilayerSonophore(BilayerSonophore):
     """ This class inherits from the BilayerSonophore class and receives an PointNeuron instance
         at initialization, to define the electro-mechanical NICE model and its SONIC variant. """
 
@@ -49,17 +49,15 @@ class SonicNeuron(BilayerSonophore):
                                   embedding_depth)
 
     def __repr__(self):
-        return 'Sonic{}({}m)'.format(
-            self.neuron,
-            si_format(self.a, precision=1, space=' '))
+        return 'NeuronalBilayerSonophore({}m, {})'.format(
+            si_format(self.a, precision=1, space=' '),
+            self.neuron)
 
     def pprint(self):
-        return '{} {}m diameter SONIC neuron'.format(
-            PointNeuron.__class__.__name__,
-            si_format(self.a, precision=0, space=' '))
+        return '{}m diameter NBLS - {} neuron'.format(
+            si_format(self.a, precision=0, space=' '),
+            self.neuron.name)
 
-    def eqHH2(self, t, y, neuron, Cm):
-        return self.eqHH(y, t, neuron, Cm)
 
     def fullDerivatives(self, y, t, Adrive, Fdrive, phi):
         """ Compute the derivatives of the (n+3) ODE full NBLS system variables.

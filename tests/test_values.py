@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-22 17:05:22
+# @Last Modified time: 2018-09-23 15:28:07
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -14,7 +14,7 @@ from argparse import ArgumentParser
 import numpy as np
 
 from PySONIC.utils import logger
-from PySONIC import BilayerSonophore, SonicNeuron
+from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 from PySONIC.neurons import getNeuronsDict
 
 from PySONIC.constants import *
@@ -155,11 +155,11 @@ def test_ASTIM():
 
         # Initialize sonic neuron
         neuron = Neuron()
-        sonic_neuron = SonicNeuron(a, neuron)
+        nbls = NeuronalBilayerSonophore(a, neuron)
         logger.info('%s neuron titration', neuron.name)
 
         # Perform titration
-        Athr, _, _, _, latency, _ = sonic_neuron.titrate(Fdrive, tstim, toffset, method='sonic')
+        Athr, _, _, _, latency, _ = nbls.titrate(Fdrive, tstim, toffset, method='sonic')
 
         # Check threshold amplitude
         Athr_diff = (Athr - Athr_refs[neuron.name]) * 1e-3

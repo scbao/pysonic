@@ -4,9 +4,9 @@
 # @Date:   2017-06-06 13:36:00
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-21 16:28:18
+# @Last Modified time: 2018-09-23 15:26:55
 
 
 from .pneuron import PointNeuron
 from .bls import BilayerSonophore
-from .sonic import SonicNeuron
+from .nbls import NeuronalBilayerSonophore

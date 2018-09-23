@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-04-30 21:06:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:07:33
+# @Last Modified time: 2018-09-23 15:28:02
 
 ''' Plot neuron-specific rheobase acoustic amplitudes for various duty cycles. '''
 
@@ -11,7 +11,7 @@ import logging
 import numpy as np
 import matplotlib.pyplot as plt
 from PySONIC.utils import logger, InputError, getNeuronsDict, si_format
-from PySONIC.solvers import SolverUS
+from PySONIC.core import NeuronalBilayerSonophore
 
 # Set logging level
 logger.setLevel(logging.INFO)
@@ -41,9 +41,9 @@ for n in neurons:
     neuron = getNeuronsDict()[n]()
     try:
         # Find and plot rheobase amplitudes for duty cycles
-        solver = SolverUS(a, neuron, Fdrive)
+        nbls = NeuronalBilayerSonophore(a, neuron)
         logger.info('Computing %s neuron rheobase amplitudes at %sHz', neuron.name, si_format(Fdrive))
-        Athrs = solver.findRheobaseAmps(neuron, Fdrive, DCs, neuron.VT)
+        Athrs = nbls.findRheobaseAmps(Fdrive, DCs, neuron.VT)
         ax.plot(DCs * 1e2, Athrs * 1e-3, label='{} neuron'.format(neuron.name))
 
     except InputError as err:

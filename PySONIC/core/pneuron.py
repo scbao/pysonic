@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 14:05:42
+# @Last Modified time: 2018-09-23 15:33:16
 
 ''' Module standard API for all neuron mechanisms.
 
@@ -58,10 +58,10 @@ class PointNeuron(metaclass=abc.ABCMeta):
     '''
 
     def __repr__(self):
-        return 'Point{}'.format(self.__class__.__name__)
+        return self.__class__.__name__
 
     def pprint(self):
-        return '{} point-neuron'.format(self.__class__.__name__)
+        return '{} neuron'.format(self.__class__.__name__)
 
     @property
     @abc.abstractmethod

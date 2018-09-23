@@ -4,7 +4,7 @@
 # @Date:   2016-10-07 10:22:24
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:09:21
+# @Last Modified time: 2018-09-23 15:20:43
 
 """ Analysis of the system geometric variables and interplaying forces at
 stake in a static quasi-steady NICE system. """
@@ -13,7 +13,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PySONIC import BilayerSonophore
+from PySONIC.core import BilayerSonophore
 from PySONIC.utils import PmCompMethod
 
 
@@ -21,10 +21,9 @@ plt_bool = 1
 
 # Initialization: create a BLS instance
 a = 32e-9  # in-plane radius (m)
-Fdrive = 0.0  # dummy stimulation frequency
 Cm0 = 1e-2  # membrane resting capacitance (F/m2)
 Qm0 = -71.9e-5  # membrane resting charge density (C/m2)
-bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
+bls = BilayerSonophore(a, Cm0, Qm0)
 
 
 # Input 1: leaflet deflections

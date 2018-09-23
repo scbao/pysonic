@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 12:44:40
+# @Last Modified time: 2018-09-23 15:27:47
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -13,7 +13,7 @@ import logging
 import numpy as np
 from argparse import ArgumentParser
 
-from PySONIC.core import SonicNeuron
+from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.utils import logger, checkBatchLog, selectDirDialog
 from PySONIC.neurons import getNeuronsDict
 from PySONIC.batches import createSimQueue, runBatch
@@ -33,7 +33,7 @@ defaults = dict(
 )
 
 
-def runAStimBatch(outdir, logpath, sonic_neuron, stim_params, method, mpi=False):
+def runAStimBatch(outdir, logpath, nbls, stim_params, method, mpi=False):
     ''' Run batch A-STIM simulations of the system for various neuron types and
         stimulation parameters.
 
@@ -70,7 +70,7 @@ def runAStimBatch(outdir, logpath, sonic_neuron, stim_params, method, mpi=False)
         item.append(method)
 
     # Run batch
-    return runBatch(sonic_neuron, 'runAndSave', queue, extra_params=[outdir, logpath], mpi=mpi)
+    return runBatch(nbls, 'runAndSave', queue, extra_params=[outdir, logpath], mpi=mpi)
 
 
 if __name__ == '__main__':
@@ -126,8 +126,8 @@ if __name__ == '__main__':
     neuron = getNeuronsDict()[neuron_str]()
     pkl_filepaths = []
     for a in diams:
-        sonic_neuron = SonicNeuron(a, neuron)
-        pkl_filepaths += runAStimBatch(outdir, logpath, sonic_neuron, stim_params, method, mpi=mpi)
+        nbls = NeuronalBilayerSonophore(a, neuron)
+        pkl_filepaths += runAStimBatch(outdir, logpath, nbls, stim_params, method, mpi=mpi)
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
