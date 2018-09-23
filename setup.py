@@ -4,7 +4,7 @@
 # @Date:   2017-06-13 09:40:02
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 13:51:29
+# @Last Modified time: 2018-09-23 16:14:35
 
 from setuptools import setup
 
@@ -34,7 +34,7 @@ setup(
     author_email='theo.lemaire@epfl.ch',
     license='MIT',
     packages=['PySONIC'],
-    scripts=['scripts/MECH.py', 'scripts/ESTIM.py', 'scripts/ASTIM.py'],
+    scripts=['mech.py', 'estim.py', 'astim.py'],
     install_requires=[
         'numpy>=1.10',
         'scipy>=0.17',

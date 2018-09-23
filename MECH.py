@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 13:03:02
+# @Last Modified time: 2018-09-23 16:12:32
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -60,8 +60,7 @@ def runMechBatch(outdir, logpath, bls, stim_params, mpi=False):
     return runBatch(bls, 'runAndSave', queue, extra_params=[outdir, logpath], mpi=mpi)
 
 
-if __name__ == '__main__':
-
+def main():
     ap = ArgumentParser()
 
     # Runtime options
@@ -110,3 +109,7 @@ if __name__ == '__main__':
     # Plot resulting profiles
     if plot:
         plotBatch(pkl_dir, pkl_filepaths)
+
+
+if __name__ == '__main__':
+    main()

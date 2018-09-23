@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 15:27:47
+# @Last Modified time: 2018-09-23 16:11:08
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -73,7 +73,7 @@ def runAStimBatch(outdir, logpath, nbls, stim_params, method, mpi=False):
     return runBatch(nbls, 'runAndSave', queue, extra_params=[outdir, logpath], mpi=mpi)
 
 
-if __name__ == '__main__':
+def main():
 
     ap = ArgumentParser()
 
@@ -122,7 +122,8 @@ if __name__ == '__main__':
     # Run A-STIM batch
     logpath, _ = checkBatchLog(outdir, 'A-STIM')
     if neuron_str not in getNeuronsDict():
-        raise ValueError('Unknown neuron type: "{}"'.format(neuron_str))
+        logger.error('Unknown neuron type: "%s"', neuron_str)
+        return
     neuron = getNeuronsDict()[neuron_str]()
     pkl_filepaths = []
     for a in diams:
@@ -134,3 +135,7 @@ if __name__ == '__main__':
     if plot:
         yvars = {'Q_m': ['Qm']}
         plotBatch(pkl_dir, pkl_filepaths, yvars)
+
+
+if __name__ == '__main__':
+    main()

@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 15:27:50
+# @Last Modified time: 2018-09-23 16:16:28
 
 """ Create lookup table for specific neuron. """
 
@@ -21,12 +21,12 @@ from PySONIC.core import NeuronalBilayerSonophore
 
 
 # Default parameters
-default = {
-    'neuron': 'RS',
-    'diams': np.array([16.0, 32.0, 64.0]),  # nm
-    'freqs': np.array([20., 100., 500., 1e3, 2e3, 3e3, 4e3]),  # kHz
-    'amps': np.insert(np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0),  # kPa
-}
+defaults = dict(
+    neuron='RS',
+    diams=np.array([16.0, 32.0, 64.0]),  # nm
+    freqs=np.array([20., 100., 500., 1e3, 2e3, 3e3, 4e3]),  # kHz
+    amps=np.insert(np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0)  # kPa
+)
 
 
 def computeAStimLookups(neuron, aref, fref, Aref, phi=np.pi, mpi=False, loglevel=logging.INFO):
@@ -86,35 +86,28 @@ def computeAStimLookups(neuron, aref, fref, Aref, phi=np.pi, mpi=False, loglevel
 
 
 def main():
-
-    # Define argument parser
     ap = ArgumentParser()
 
-    # Stimulation parameters
-    ap.add_argument('-n', '--neuron', type=str, default=default['neuron'],
-                    help='Neuron name (string)')
-    ap.add_argument('-a', '--diameters', nargs='+', type=float, default=None,
-                    help='Sonophore diameters (nm)')
-    ap.add_argument('-f', '--frequencies', nargs='+', type=float, default=None,
-                    help='Acoustic drive frequencies (kHz)')
-    ap.add_argument('-A', '--amplitudes', nargs='+', type=float, default=None,
-                    help='Acoustic pressure amplitudes (kPa)')
+    # Runtime options
+    ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
 
-    # Boolean parameters
-    ap.add_argument('-m', '--multiprocessing', default=False, action='store_true',
-                    help='Use multiprocessing')
-    ap.add_argument('-v', '--verbose', default=False, action='store_true',
-                    help='Increase verbosity')
+    # Stimulation parameters
+    ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
+                    help='Neuron name (string)')
+    ap.add_argument('-a', '--diams', nargs='+', type=float, help='Sonophore diameter (nm)')
+    ap.add_argument('-f', '--freqs', nargs='+', type=float, help='US frequency (kHz)')
+    ap.add_argument('-A', '--amps', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
 
     # Parse arguments
-    args = ap.parse_args()
-    neuron_str = args.neuron
-    diams = (default['diams'] if args.diameters is None else np.array(args.diameters)) * 1e-9  # m
-    freqs = (default['freqs'] if args.frequencies is None else np.array(args.frequencies)) * 1e3  # Hz
-    amps = (default['amps'] if args.amplitudes is None else np.array(args.amplitudes)) * 1e3  # Pa
-
-    loglevel = logging.DEBUG if args.verbose else logging.INFO
+    args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
+    loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
+    mpi = args['mpi']
+    neuron_str = args['neuron']
+    diams = np.array(args.get('diams', defaults['diams'])) * 1e-9  # m
+    freqs = np.array(args.get('freqs', defaults['freqs'])) * 1e3  # Hz
+    amps = np.array(args.get('amps', defaults['amps'])) * 1e3  # Pa
 
     # Check neuron name validity
     if neuron_str not in getNeuronsDict():
@@ -133,8 +126,9 @@ def main():
             logger.error('%s Lookup creation canceled', neuron.name)
             return
 
-    lookup_dict = computeAStimLookups(neuron, diams, freqs, amps,
-                                      mpi=args.multiprocessing, loglevel=loglevel)
+    # compute lookups
+    lookup_dict = computeAStimLookups(neuron, diams, freqs, amps, mpi=mpi, loglevel=loglevel)
+
     # Save dictionary in lookup file
     logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_file)
     with open(lookup_filepath, 'wb') as fh:

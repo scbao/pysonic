@@ -45,17 +45,17 @@ $ pip install -e .
 
 Open a terminal at the package root directory.
 
-Use `ESTIM.py` to simulate a point-neuron model upon electrical stimulation, e.g. for a *regular-spiking neuron* injected with 10 mA/m2 intracellular current for 30 ms:
+Use `estim.py` to simulate a point-neuron model upon electrical stimulation, e.g. for a *regular-spiking neuron* injected with 10 mA/m2 intracellular current for 30 ms:
 
-```$ python ESTIM.py -n=RS -A=10 -d=30```
+```$ python estim.py -n=RS -A=10 -d=30```
 
-Use `MECH.py` to simulate mechanical model upon sonication (until periodic stabilization), e.g. for a 32 nm diameter sonophore sonicated at 500 kHz and 100 kPa:
+Use `mech.py` to simulate mechanical model upon sonication (until periodic stabilization), e.g. for a 32 nm diameter sonophore sonicated at 500 kHz and 100 kPa:
 
-```$ python MECH.py -a=32 -f=500 -A=100```
+```$ python mech.py -a=32 -f=500 -A=100```
 
-Use `ASTIM.py` to simulate the full electro-mechanical model of a given neuron type upon sonication, e.g. for a 32 nm diameter sonophore within a *regular-spiking neuron* sonicated at 500 kHz and 100 kPa for 150 ms:
+Use `astim.py` to simulate the full electro-mechanical model of a given neuron type upon sonication, e.g. for a 32 nm diameter sonophore within a *regular-spiking neuron* sonicated at 500 kHz and 100 kPa for 150 ms:
 
-```$ python ASTIM.py -n=RS -a=32 -f=500 -A=100 -d=150```
+```$ python astim.py -n=RS -a=32 -f=500 -A=100 -d=150```
 
 If several values are defined for a given parameter, a batch of simulations is run (for every value of the parameter sweep).
 You can also specify these values from within the script (*defaults* dictionary)

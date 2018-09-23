@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 14:32:39
+# @Last Modified time: 2018-09-23 16:11:57
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -53,8 +53,7 @@ def runEStimBatch(outdir, logpath, neuron, stim_params, mpi=False):
     return runBatch(neuron, 'runAndSave', queue, extra_params=[outdir, logpath], mpi=mpi)
 
 
-if __name__ == '__main__':
-
+def main():
     ap = ArgumentParser()
 
     # Runtime options
@@ -95,7 +94,8 @@ if __name__ == '__main__':
     # Run E-STIM batch
     logpath, _ = checkBatchLog(outdir, 'E-STIM')
     if neuron_str not in getNeuronsDict():
-        raise ValueError('Unknown neuron type: "{}"'.format(neuron_str))
+        logger.error('Unknown neuron type: "%s"', neuron_str)
+        return
     neuron = getNeuronsDict()[neuron_str]()
     pkl_filepaths = runEStimBatch(outdir, logpath, neuron, stim_params, mpi=mpi)
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
@@ -104,3 +104,7 @@ if __name__ == '__main__':
     if plot:
         yvars = {'V_m': ['Vm']}
         plotBatch(pkl_dir, pkl_filepaths, yvars)
+
+
+if __name__ == '__main__':
+    main()
