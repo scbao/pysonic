@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-14 17:28:52
+# @Last Modified time: 2018-09-23 14:13:50
 
 ''' Plotting utilities '''
 
@@ -16,16 +16,16 @@ import tkinter as tk
 from tkinter import filedialog
 import numpy as np
 from scipy.interpolate import interp2d
-# from scipy.optimize import brentq
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.cm as cm
 from matplotlib.ticker import FormatStrFormatter
 
-from ..utils import getNeuronsDict, rescale, InputError, computeMeshEdges, si_format, getLookups2D
-from ..bls import BilayerSonophore
+from ..utils import rescale, InputError, computeMeshEdges, si_format, getLookups2D
+from ..core import BilayerSonophore
 from .pltvars import pltvars
+from ..neurons import getNeuronsDict
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -325,7 +325,7 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
         # Initialize BLS if needed
         if sim_type in ['MECH', 'ASTIM'] and 'alias' in pltvar and 'bls' in pltvar['alias']:
             global bls
-            bls = BilayerSonophore(meta['a'], meta['Fdrive'], Cm0, Qm0)
+            bls = BilayerSonophore(meta['a'], Cm0, Qm0)
 
         # Determine patches location
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)
@@ -554,7 +554,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
             global bls
             Fdrive = meta['Fdrive']
             a = meta['a']
-            bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
+            bls = BilayerSonophore(a, Cm0, Qm0)
 
         # Determine patches location
         npatches, tpatch_on, tpatch_off = getPatchesLoc(t, states)

@@ -4,19 +4,19 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-19 16:10:09
+# @Last Modified time: 2018-09-22 13:48:12
 
 ''' Channels mechanisms for thalamic neurons. '''
 
 import logging
 import numpy as np
-from .base import BaseMech
+from ..core import PointNeuron
 
 # Get package logger
 logger = logging.getLogger('PySONIC')
 
 
-class Thalamic(BaseMech):
+class Thalamic(PointNeuron):
     ''' Class defining the generic membrane channel dynamics of a thalamic neuron
         with 4 different current types:
             - Inward Sodium current

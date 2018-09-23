@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-25 02:11:58
+# @Last Modified time: 2018-09-22 17:05:22
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -13,17 +13,14 @@ import logging
 from argparse import ArgumentParser
 import numpy as np
 
-from PySONIC.utils import logger, getNeuronsDict
-from PySONIC import BilayerSonophore, SolverElec, SolverUS
-from PySONIC.solvers import findPeaks, EStimTitrator, AStimTitrator
+from PySONIC.utils import logger
+from PySONIC import BilayerSonophore, SonicNeuron
+from PySONIC.neurons import getNeuronsDict
+
 from PySONIC.constants import *
 
 # Set logging level
 logger.setLevel(logging.INFO)
-
-# List of implemented neurons
-neurons = getNeuronsDict()
-neurons = list(neurons.values())
 
 
 def test_MECH():
@@ -34,15 +31,15 @@ def test_MECH():
 
     # Create BLS instance
     a = 32e-9  # m
-    Fdrive = 350e3  # Hz
     Cm0 = 1e-2  # membrane resting capacitance (F/m2)
     Qm0 = -80e-5  # membrane resting charge density (C/m2)
-    bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
+    bls = BilayerSonophore(a, Cm0, Qm0)
 
     # Run mechanical simulation
+    Fdrive = 350e3  # Hz
     Adrive = 100e3  # Pa
     Qm = 50e-5  # C/m2
-    _, y, _ = bls.run(Fdrive, Adrive, Qm)
+    _, y, _ = bls.simulate(Fdrive, Adrive, Qm)
 
     # Check validity of deflection extrema
     Z, _ = y
@@ -67,16 +64,14 @@ def test_resting_potential():
 
     logger.info('Starting test: neurons resting potential')
 
-    # Initialize solver
-    solver = SolverElec()
-    for neuron_class in neurons:
+    for Neuron in getNeuronsDict().values():
 
         # Simulate each neuron in free conditions
-        neuron = neuron_class()
+        neuron = Neuron()
 
         logger.info('%s neuron simulation in free conditions', neuron.name)
 
-        _, y, _ = solver.run(neuron, Astim=0.0, tstim=20.0, toffset=0.0)
+        _, y, _ = neuron.simulate(Astim=0.0, tstim=20.0, toffset=0.0)
         Vm_free, *_ = y
 
         # Check membrane potential convergence
@@ -102,9 +97,6 @@ def test_ESTIM():
 
     logger.info('Starting test: E-STIM titration')
 
-    # Initialize solver
-    solver = SolverElec()
-
     # Stimulation parameters
     tstim = 100e-3  # s
     toffset = 50e-3  # s
@@ -115,21 +107,12 @@ def test_ESTIM():
     latency_refs = {'FS': 101.00e-3, 'LTS': 128.56e-3, 'RS': 103.81e-3, 'RE': 148.50e-3,
                     'TC': 63.46e-3, 'LeechT': 21.32e-3, 'LeechP': 36.84e-3, 'IB': 121.04e-3}
 
-    for neuron_class in neurons:
+    for Neuron in getNeuronsDict().values():
 
         # Perform titration for each neuron
-        neuron = neuron_class()
+        neuron = Neuron()
         logger.info('%s neuron titration', neuron.name)
-        Athr, t, y, _, latency, _ = EStimTitrator(1, solver, neuron, None, tstim, toffset,
-                                                  None, 1.0, 1).__call__()
-        Vm = y[0, :]
-
-        # Check that final number of spikes is 1
-        # n_spikes, _, _ = detectSpikes(t, Vm, SPIKE_MIN_VAMP, SPIKE_MIN_DT)
-        dt = t[1] - t[0]
-        ipeaks, *_ = findPeaks(Vm, SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_VPROM)
-        n_spikes = ipeaks.size
-        assert n_spikes == 1, 'Number of spikes after titration should be exactly 1'
+        Athr, _, _, _, latency, _ = neuron.titrate(tstim, toffset)
 
         # Check threshold amplitude
         Athr_diff = Athr - Athr_refs[neuron.name]
@@ -168,25 +151,15 @@ def test_ASTIM():
                     'TC': 70.73e-3, 'LeechT': 43.25e-3, 'LeechP': 58.01e-3, 'IB': 79.35e-3}
 
     # Titration for each neuron
-    for neuron_class in neurons:
+    for Neuron in getNeuronsDict().values():
 
-        # Initialize neuron
-        neuron = neuron_class()
+        # Initialize sonic neuron
+        neuron = Neuron()
+        sonic_neuron = SonicNeuron(a, neuron)
         logger.info('%s neuron titration', neuron.name)
 
-        # Initialize solver
-        solver = SolverUS(a, neuron, Fdrive)
-
         # Perform titration
-        Athr, t, y, _, latency, _ = AStimTitrator(1, solver, neuron, Fdrive, None, tstim, toffset,
-                                                  None, 1.0, int_method='sonic').__call__()
-        Qm = y[2]
-
-        # Check that final number of spikes is 1
-        dt = t[1] - t[0]
-        ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)), SPIKE_MIN_QPROM)
-        n_spikes = ipeaks.size
-        assert n_spikes == 1, 'Number of spikes after titration should be exactly 1'
+        Athr, _, _, _, latency, _ = sonic_neuron.titrate(Fdrive, tstim, toffset, method='sonic')
 
         # Check threshold amplitude
         Athr_diff = (Athr - Athr_refs[neuron.name]) * 1e-3

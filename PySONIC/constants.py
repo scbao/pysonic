@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-14 14:42:25
+# @Last Modified time: 2018-09-22 20:35:56
 
 ''' Algorithmic constants used in the package. '''
 
@@ -46,7 +46,7 @@ SPIKE_MIN_DT = 1e-3  # minimal time interval for spike detection on charge signa
 
 # Titrations
 TITRATION_T_OFFSET = 50e-3  # offset period for titration procedures (s)
-TITRATION_ASTIM_A_MAX = 3e5  # initial acoustic pressure upper bound for titration (Pa)
+TITRATION_ASTIM_A_MAX = 6e5 - 1  # initial acoustic pressure upper bound for titration (Pa)
 TITRATION_ASTIM_DA_MAX = 1e3  # acoustic pressure search range threshold for titration (Pa)
 TITRATION_ESTIM_A_MAX = 50.0  # initial current density upper bound for titration (mA/m2)
 TITRATION_ESTIM_DA_MAX = 0.1  # current density search range threshold for titration (mA/m2)

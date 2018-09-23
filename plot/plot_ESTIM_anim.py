@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:07:31
+# @Last Modified time: 2018-09-21 16:10:53
 
 """ Run simulations of the HH system with injected electric current,
 and plot resulting dynamics. """
@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.patches as patches
 
-from PySONIC.solvers import SolverElec
 from PySONIC.neurons import *
 
 
@@ -48,8 +47,7 @@ for Astim in amps:
 
     # Run simulation
     print('sim {}/{} ({:.2f} mA/m2, {:.0f} ms)'.format(i, nA, Astim, tstim * 1e3))
-    solver = SolverElec()
-    t, y, _ = solver.run(neuron, Astim, tstim, toffset)
+    t, y, _ = neuron.simulate(Astim, tstim, toffset)
     Vm = y[0, :]
 
     # Plot membrane potential profile

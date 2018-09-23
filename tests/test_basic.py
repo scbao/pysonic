@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-12 18:40:11
+# @Last Modified time: 2018-09-23 13:53:01
 
 ''' Test the basic functionalities of the package. '''
 
@@ -16,8 +16,8 @@ import cProfile
 import pstats
 from argparse import ArgumentParser
 
-from PySONIC.utils import logger, InputError
-from PySONIC import BilayerSonophore, SolverElec, SolverUS
+from PySONIC.utils import logger
+from PySONIC import BilayerSonophore, SonicNeuron
 from PySONIC.neurons import *
 
 
@@ -27,12 +27,12 @@ def test_MECH(is_profiled=False):
 
     # Create BLS instance
     a = 32e-9  # m
-    Fdrive = 350e3  # Hz
-    Cm0 = 1e-2  # membrane resting capacitance (F/m2)
     Qm0 = -80e-5  # membrane resting charge density (C/m2)
-    bls = BilayerSonophore(a, Fdrive, Cm0, Qm0)
+    Cm0 = 1e-2  # membrane resting capacitance (F/m2)
+    bls = BilayerSonophore(a, Cm0, Qm0)
 
     # Stimulation parameters
+    Fdrive = 350e3  # Hz
     Adrive = 100e3  # Pa
     Qm = 50e-5  # C/m2
 
@@ -46,7 +46,7 @@ def test_MECH(is_profiled=False):
         stats.sort_stats('cumulative')
         stats.print_stats()
     else:
-        bls.run(Fdrive, Adrive, Qm)
+        bls.simulate(Fdrive, Adrive, Qm)
 
 
 
@@ -57,9 +57,6 @@ def test_ESTIM(is_profiled=False):
 
     # Initialize neuron
     neuron = CorticalRS()
-
-    # Initialize solver
-    solver = SolverElec()
 
     # Stimulation parameters
     Astim = 10.0  # mA/m2
@@ -77,8 +74,8 @@ def test_ESTIM(is_profiled=False):
         stats.sort_stats('cumulative')
         stats.print_stats()
     else:
-        solver.run(neuron, Astim, tstim, toffset, PRF=None, DC=1.0)
-        solver.run(neuron, Astim, tstim, toffset, PRF=100.0, DC=0.05)
+        neuron.simulate(Astim, tstim, toffset)
+        neuron.simulate(Astim, tstim, toffset, PRF=100.0, DC=0.05)
 
 
 def test_ASTIM_sonic(is_profiled=False):
@@ -87,19 +84,20 @@ def test_ASTIM_sonic(is_profiled=False):
     logger.info('Test: ASTIM sonic simulation')
 
     # Default parameters
-    neuron = CorticalRS()
     a = 32e-9  # m
+    neuron = CorticalRS()
+    sonic_neuron = SonicNeuron(a, neuron)
+
     Fdrive = 500e3  # Hz
     Adrive = 100e3  # Pa
     tstim = 50e-3  # s
     toffset = 10e-3  # s
 
-
     # Run simulation
     if is_profiled:
-        solver = SolverUS(a, neuron, Fdrive)
+        sonic_neuron = SonicNeuron(a, neuron)
         pfile = 'tmp.stats'
-        cProfile.runctx("solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='sonic')",
+        cProfile.runctx("sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')",
                         globals(), locals(), pfile)
         stats = pstats.Stats(pfile)
         os.remove(pfile)
@@ -107,42 +105,42 @@ def test_ASTIM_sonic(is_profiled=False):
         stats.sort_stats('cumulative')
         stats.print_stats()
     else:
-        # test error 1: no lookups exist for sonophore diameter
+        # test error 1: sonophore diameter outside of lookup range
         try:
-            solver = SolverUS(50e-9, neuron, Fdrive)
-            solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='sonic')
-        except InputError as err:
-            logger.debug('No lookups for sonophore diameter: OK')
+            sonic_neuron = SonicNeuron(100e-9, neuron)
+            sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
+        except ValueError as err:
+            logger.debug('Out of range diameter: OK')
 
         # test error 2: frequency outside of lookups range
-        Foutside = 10e3  # Hz
         try:
-            solver = SolverUS(a, neuron, Foutside)
-            solver.run(neuron, Foutside, Adrive, tstim, toffset, sim_type='sonic')
-        except InputError as err:
+            sonic_neuron = SonicNeuron(a, neuron)
+            sonic_neuron.simulate(10e3, Adrive, tstim, toffset, method='sonic')
+        except ValueError as err:
             logger.debug('Out of range frequency: OK')
 
         # test error 3: amplitude outside of lookups range
-        Aoutside = 1e6  # Pa
         try:
-            solver = SolverUS(a, neuron, Fdrive)
-            solver.run(neuron, Fdrive, Aoutside, tstim, toffset, sim_type='sonic')
-        except InputError as err:
+            sonic_neuron = SonicNeuron(a, neuron)
+            sonic_neuron.simulate(Fdrive, 1e6, tstim, toffset, method='sonic')
+        except ValueError as err:
             logger.debug('Out of range amplitude: OK')
 
         # test: normal stimulation completion (CW and PW)
-        solver = SolverUS(a, neuron, Fdrive)
-        solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='sonic')
-        solver.run(neuron, Fdrive, Adrive, tstim, toffset, PRF=100.0, DC=0.05, sim_type='sonic')
+        sonic_neuron = SonicNeuron(a, neuron)
+        sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
+        sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, PRF=100.0, DC=0.05, method='sonic')
 
 
-def test_ASTIM_classic(is_profiled=False):
+def test_ASTIM_full(is_profiled=False):
     ''' Classic acoustic simulation '''
 
     logger.info('Test: running ASTIM classic simulation')
 
-    # Initialize neuron
+    # Initialize sonic neuron
+    a = 32e-9  # m
     neuron = CorticalRS()
+    sonic_neuron = SonicNeuron(a, neuron)
 
     # Stimulation parameters
     Fdrive = 500e3  # Hz
@@ -150,14 +148,10 @@ def test_ASTIM_classic(is_profiled=False):
     tstim = 1e-6  # s
     toffset = 1e-6  # s
 
-    # Initialize solver
-    a = 32e-9  # m
-    solver = SolverUS(a, neuron, Fdrive)
-
     # Run simulation
     if is_profiled:
         pfile = 'tmp.stats'
-        cProfile.runctx("solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='classic')",
+        cProfile.runctx("sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='full')",
                         globals(), locals(), pfile)
         stats = pstats.Stats(pfile)
         os.remove(pfile)
@@ -165,7 +159,7 @@ def test_ASTIM_classic(is_profiled=False):
         stats.sort_stats('cumulative')
         stats.print_stats()
     else:
-        solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='classic')
+        sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='full')
 
 
 def test_ASTIM_hybrid(is_profiled=False):
@@ -173,8 +167,10 @@ def test_ASTIM_hybrid(is_profiled=False):
 
     logger.info('Test: running ASTIM hybrid simulation')
 
-    # Initialize neuron
+    # Initialize sonic neuron
+    a = 32e-9  # m
     neuron = CorticalRS()
+    sonic_neuron = SonicNeuron(a, neuron)
 
     # Stimulation parameters
     Fdrive = 350e3  # Hz
@@ -182,14 +178,10 @@ def test_ASTIM_hybrid(is_profiled=False):
     tstim = 1e-3  # s
     toffset = 1e-3  # s
 
-    # Initialize solver
-    a = 32e-9  # m
-    solver = SolverUS(a, neuron, Fdrive)
-
     # Run simulation
     if is_profiled:
         pfile = 'tmp.stats'
-        cProfile.runctx("solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='hybrid')",
+        cProfile.runctx("sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')",
                         globals(), locals(), pfile)
         stats = pstats.Stats(pfile)
         os.remove(pfile)
@@ -197,7 +189,7 @@ def test_ASTIM_hybrid(is_profiled=False):
         stats.sort_stats('cumulative')
         stats.print_stats()
     else:
-        solver.run(neuron, Fdrive, Adrive, tstim, toffset, sim_type='hybrid')
+        sonic_neuron.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')
 
 
 def test_all():
@@ -205,7 +197,7 @@ def test_all():
     test_MECH()
     test_ESTIM()
     test_ASTIM_sonic()
-    test_ASTIM_classic()
+    test_ASTIM_full()
     test_ASTIM_hybrid()
     tcomp = time.time() - t0
     logger.info('All tests completed in %.0f s', tcomp)
@@ -220,7 +212,7 @@ def main():
         'MECH',
         'ESTIM',
         'ASTIM_sonic',
-        'ASTIM_classic',
+        'ASTIM_full',
         'ASTIM_hybrid',
         'all'
     ]

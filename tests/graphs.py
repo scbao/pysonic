@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-25 02:14:53
+# @Last Modified time: 2018-09-21 16:12:32
 
 ''' Test the basic functionalities of the package and output graphs of the call flows. '''
 
@@ -13,7 +13,7 @@ from pycallgraph import PyCallGraph
 from pycallgraph.output import GraphvizOutput
 
 from PySONIC.utils import logger
-from PySONIC import BilayerSonophore, SolverUS, SolverElec
+from PySONIC import BilayerSonophore, SolverUS
 from PySONIC.neurons import CorticalRS
 
 
@@ -48,12 +48,11 @@ def graph_neuron_init():
 
 
 def graph_ESTIM():
-    rs_neuron = CorticalRS()
 
-    logger.info('Graph 1: SolverElec initialization')
+    logger.info('Graph 1: Neuron initialization')
     graphviz.output_file = 'graphs/ESTIM_solver_init.png'
     with PyCallGraph(output=graphviz):
-        solver = SolverElec()
+        neuron = CorticalRS()
 
     logger.info('Graph 2: E-STIM simulation')
     Astim = 1.0  # mA/m2
@@ -61,7 +60,7 @@ def graph_ESTIM():
     toffset = 1e-3  # s
     graphviz.output_file = 'graphs/ESTIM_sim.png'
     with PyCallGraph(output=graphviz):
-        solver.run(rs_neuron, Astim, tstim, toffset)
+        neuron.run(Astim, tstim, toffset)
 
 
 def graph_ASTIM():

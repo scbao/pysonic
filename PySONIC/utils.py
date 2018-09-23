@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-19 20:07:27
+# @Last Modified time: 2018-09-22 17:30:15
 
 """ Definition of generic utility functions used in other modules """
 
@@ -14,16 +14,14 @@ import os
 import pickle
 import tkinter as tk
 from tkinter import filedialog
-import inspect
 import json
+import lockfile
+import shutil
 import yaml
 from openpyxl import load_workbook
 import numpy as np
 import colorlog
 from scipy.interpolate import interp1d
-
-
-from . import neurons
 
 
 def setLogger():
@@ -294,15 +292,6 @@ def LennardJones(x, beta, alpha, C, m, n):
     return C * (np.power((alpha / (2 * x + beta)), m) - np.power((alpha / (2 * x + beta)), n))
 
 
-def getNeuronsDict():
-    ''' Return dictionary of neurons classes that can be instantiated. '''
-    neurons_dict = {}
-    for _, obj in inspect.getmembers(neurons):
-        if inspect.isclass(obj) and isinstance(obj.name, str):
-            neurons_dict[obj.name] = obj
-    return neurons_dict
-
-
 def get_BLS_lookups():
     lookup_path = getLookupDir() + '/BLS_lookups.json'
     try:
@@ -478,13 +467,13 @@ def getLookups2D(mechname, a, Fdrive):
     # Check that sonophore diameter is within lookup range
     arange = (aref.min() - 1e-12, aref.max() + 1e-12)
     if a < arange[0] or a > arange[1]:
-        raise InputError('Invalid sonophore diameter: {}m (must be within {}m - {}m lookup interval)'
+        raise ValueError('Invalid sonophore diameter: {}m (must be within {}m - {}m lookup interval)'
                          .format(*si_format([a, *arange], precision=2, space=' ')))
 
     # Check that US frequency is within lookup range
     Frange = (Fref.min() - 1e-9, Fref.max() + 1e-9)
     if Fdrive < Frange[0] or Fdrive > Frange[1]:
-        raise InputError('Invalid frequency: {}Hz (must be within {}Hz - {}Hz lookup interval)'
+        raise ValueError('Invalid frequency: {}Hz (must be within {}Hz - {}Hz lookup interval)'
                          .format(*si_format([Fdrive, *Frange], precision=2, space=' ')))
 
     # Interpolate 4D lookups at sonophore diameter and then at US frequency
@@ -559,3 +548,74 @@ def getDefaultIndexes(params, defaults):
             raise Exception('default {} ({}) not found in parameter values'.format(key, default))
         idefs[key] = np.where(params[key] == default)[0][0]
     return idefs
+
+
+def xlslog(filename, sheetname, data):
+    """ Append log data on a new row to specific sheet of excel workbook, using a lockfile
+        to avoid read/write errors between concurrent processes.
+
+        :param filename: absolute or relative path to the Excel workbook
+        :param sheetname: name of the Excel spreadsheet to which data is appended
+        :param data: data structure to be added to specific columns on a new row
+        :return: boolean indicating success (1) or failure (0) of operation
+    """
+    try:
+        lock = lockfile.FileLock(filename)
+        lock.acquire()
+        wb = load_workbook(filename)
+        ws = wb[sheetname]
+        keys = data.keys()
+        i = 1
+        row_data = {}
+        for k in keys:
+            row_data[k] = data[k]
+            i += 1
+        ws.append(row_data)
+        wb.save(filename)
+        lock.release()
+        return 1
+    except PermissionError:
+        # If file cannot be accessed for writing because already opened
+        logger.warning('Cannot write to "%s". Close the file and type "Y"', filename)
+        user_str = input()
+        if user_str in ['y', 'Y']:
+            return xlslog(filename, sheetname, data)
+        else:
+            return 0
+
+
+def checkBatchLog(batch_dir, batch_type):
+    ''' Check for appropriate log file in batch directory, and create one if it is absent.
+
+        :param batch_dir: full path to batch directory
+        :param batch_type: type of simulation batch
+        :return: 2 tuple with full path to log file and boolean stating if log file was created
+    '''
+
+    # Check for directory existence
+    if not os.path.isdir(batch_dir):
+        raise InputError('"{}" output directory does not exist'.format(batch_dir))
+
+    # Determine log template from batch type
+    if batch_type == 'MECH':
+        logfile = 'log_MECH.xlsx'
+    elif batch_type == 'A-STIM':
+        logfile = 'log_ASTIM.xlsx'
+    elif batch_type == 'E-STIM':
+        logfile = 'log_ESTIM.xlsx'
+    else:
+        raise InputError('Unknown batch type', batch_type)
+
+    # Get template in package subdirectory
+    this_dir, _ = os.path.split(__file__)
+    # parent_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
+    logsrc = this_dir + '/templates/' + logfile
+    assert os.path.isfile(logsrc), 'template log file "{}" not found'.format(logsrc)
+
+    # Copy template in batch directory if no appropriate log file
+    logdst = batch_dir + '/' + logfile
+    is_log = os.path.isfile(logdst)
+    if not is_log:
+        shutil.copy2(logsrc, logdst)
+
+    return (logdst, not is_log)

@@ -2,21 +2,18 @@
 
 Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation** (SONIC) model to compute individual neural responses to acoustic stimuli, as predicted by the *intramembrane cavitation* hypothesis.
 
-This is an optmimized variant of the original **Neuronal Intramembrane Cavitation Excitation** (NICE) model introduced by Plaksin et. al in 2014.
-
 This package contains several core modules:
-- **bls** defines the underlying biomechanical model of intramembrane cavitation (**BilayerSonophore** class), and provides an integration method to predict compute the mechanical oscillations of the plasma membrane subject to a periodic acoustic perturbation.
-- **solvers** contains a simple solver for electrical stimuli (**SolverElec** class) as well as a tailored solver for acoustic stimuli (**SolverUS** class). The latter directly inherits from the BilayerSonophore class upon instantiation, and is hooked to a specific "channel mechanism" in order to link the mechanical model to an electrical model of membrane dynamics. It also provides several integration methods (detailed below) to compute the behaviour of the full electro-mechanical model subject to a continuous or pulsed ultrasonic stimulus.
-- **neurons** contains the definitions of the different channels mechanisms inherent to specific neurons, including several types of **cortical** and **thalamic** neurons.
-- **plt** defines plotting utilities to load results of several simulations and display/compare temporal profiles of multiple variables of interest across simulations.
-- **utils** defines generic utilities used across the different modules
+- `bls` defines the underlying biomechanical model of intramembrane cavitation (`BilayerSonophore` class), and provides an integration method to predict compute the mechanical oscillations of the plasma membrane subject to a periodic acoustic perturbation.
+- `pneuron` defines a generic `PointNeuron` class that contains methods to simulate a *Hodgkin-Huxley* point-neuron model.
+- `neurons` contains classes that inherit from `PointNeuron` and define intrinsic channels mechanisms of several neurons types.
+- `sonic` defines a `SonicNeuron` class that inherits from `BilayerSonophore` and receives a specific `PointNeuron` child instance at initialization, and implements the bi-directional link between the mechanical and electrical parts of the NICE model. It also provides several integration methods (detailed below) to simulate the full electro-mechanical model behavior upon sonication:
+	- `runFull` solves all variables for the entire duration of the simulation. This method uses very small time steps and is computationally expensive (simulation time: several hours)
+	- `runHybrid` integrates the system by consecutive “slices” of time, during which the full system is solved until mechanical stabilization, at which point the electrical system is solely solved with predicted mechanical variables until the end of the slice. This method is more efficient (simulation time: several minutes) and provides accurate results.
+	- `runSONIC` integrates a coarse-grained, effective differential system to grasp the net effect of the acoustic stimulus on the electrical system. This method allows to run simulations of the electrical system in only a few seconds, with very accurate results of the net membrane charge density evolution, but requires the pre-computation of lookup tables.
 
-The **SolverUS** class incorporates optimized numerical integration methods to perform dynamic simulations of the model subject to acoustic perturbation, and compute the evolution of its mechanical and electrical variables:
-- a **classic** method that solves all variables for the entire duration of the simulation. This method uses very small time steps and is computationally expensive (simulation time: several hours)
-- a **hybrid** method (initially developed by Plaskin et al.) in which integration is performed in consecutive “slices” of time, during which the full system is solved until mechanical stabilization, at which point the electrical system is solely solved with predicted mechanical variables until the end of the slice. This method is more efficient (simulation time: several minutes) and provides accurate results.
-- a newly developed **effective** method that neglects the high amplitude oscillations of mechanical and electrical variables during each acoustic cycle, to instead grasp the net effect of the acoustic stimulus on the electrical system. To do so, the sole electrical system is solved using pre-computed coefficients that depend on membrane charge and acoustic amplitude. This method allows to run simulations of the electrical system in only a few seconds, with very accurate results of the net membrane charge density evolution.
-
-This package is meant to be easy to use as a predictive and comparative tool for researchers investigating ultrasonic and/or electrical neuro-stimulation experimentally.
+As well as some additional modules:
+- `plt` defines graphing utilities to load results of several simulations and display/compare temporal profiles of multiple variables of interest across simulations.
+- `utils` defines generic utilities used across the different modules
 
 
 ## Installation
@@ -42,24 +39,30 @@ $ pip install -e .
 
 *PySONIC* and all its dependencies will be installed.
 
-
 ## Usage
 
 ### Command line scripts
 
-To run single simulations of a given point-neuron model under specific stimulation parameters, you can use the `ASTIM_run.py` and `ESTIM_run.py` command-line scripts provided by the package.
+Open a terminal at the package root directory.
 
-For instance, to simulate a regular-spiking neuron under continuous wave ultrasonic stimulation at 500kHz and 100kPa, for 150 ms:
+Use `ESTIM.py` to simulate a point-neuron model upon electrical stimulation, e.g. for a *regular-spiking neuron* injected with 10 mA/m2 intracellular current for 30 ms:
 
-```python run_ASTIM.py -n=RS -f=500 -A=100 -t=150```
+```python ESTIM.py -n=RS -A=10 -d=30```
 
-Similarly, to simulate the electrical stimulation of a thalamo-cortical neuron at 10 mA/m2 for 150 ms:
+Use `MECH.py` to simulate mechanical model upon sonication (until periodic stabilization), e.g. for a 32 nm diameter sonophore sonicated at 500 kHz and 100 kPa:
 
-```python run_ESTIM.py -n=TC -A=10 -t=150```
+```python MECH.py -a=32 -f=500 -A=100```
 
-The simulation results will be save in an output PKL file in the current working directory. To view these results, you can use the dedicated
+Use `ASTIM.py` to simulate the full electro-mechanical model of a given neuron type upon sonication, e.g. for a 32 nm diameter sonophore within a *regular-spiking neuron* sonicated at 500 kHz and 100 kPa for 150 ms:
 
+```python ASTIM.py -n=RS -a=32 -f=500 -A=100 -d=150```
 
-### Batch scripts
+If several values are defined for a given parameter, a batch of simulations is run (for every value of the parameter sweep).
+You can also specify these values from within the script (*defaults* dictionary)
 
-To run a batch of simulations on different neuron types and spanning ranges of several stimulation parameters, you can run the `batch_ASTIM.py` and `batch_ESTIM.py` scripts. To do so, simply modify the **stim_params** and **neurons** variables with your own neuron types and parameter sweeps, and then run the scripts (without command-line arguments).
+The simulation results will be save in an output PKL file. To view these results, you can use the `-p` option
+
+Several more options are available. To view them, type in
+
+```python <script_name> -h```
+

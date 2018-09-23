@@ -4,20 +4,20 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:10:36
+# @Last Modified time: 2018-09-22 13:48:19
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
 import logging
 from functools import partialmethod
 import numpy as np
-from .base import BaseMech
+from ..core import PointNeuron
 
 # Get package logger
 logger = logging.getLogger('PySONIC')
 
 
-class LeechTouch(BaseMech):
+class LeechTouch(PointNeuron):
     ''' Class defining the membrane channel dynamics of a leech touch sensory neuron.
         with 4 different current types:
             - Inward Sodium current
@@ -369,7 +369,7 @@ class LeechTouch(BaseMech):
 
 
 
-class LeechMech(BaseMech):
+class LeechMech(PointNeuron):
     ''' Class defining the basic dynamics of Sodium, Potassium and Calcium channels for several
         neurons of the leech.
 

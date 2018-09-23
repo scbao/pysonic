@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:07:32
+# @Last Modified time: 2018-09-21 16:11:08
 
 """ Plot the voltage-dependent kinetics of the hyperpolarization-activated
     cationic current found in thalamo-cortical neurons. """
@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.colors import LogNorm
 
-# from PySONIC.solvers import SolverElec
 from PySONIC.neurons import ThalamoCortical
 from PySONIC.utils import rescale
 

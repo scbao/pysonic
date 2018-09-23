@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from PySONIC.utils import logger, si_format, PmCompMethod, rmse, rsquared
 from PySONIC.plt import cm2inch
 from PySONIC.neurons import CorticalRS
-from PySONIC.solvers import BilayerSonophore
+from PySONIC.core import BilayerSonophore
 from PySONIC.constants import *
 
 # Set logging level
@@ -31,7 +31,7 @@ Qm0 = neuron.Vm0 * Cm0 * 1e-3
 Qm = Qm0
 
 # Create sonophore object
-bls = BilayerSonophore(a, f, Cm0, Qm0)
+bls = BilayerSonophore(a, Cm0, Qm0)
 
 # Compare profiles of direct and approximated intermolecular pressures along Z
 Z = np.linspace(-0.4 * bls.Delta_, bls.a, 1000)
@@ -55,14 +55,14 @@ ax.legend(fontsize=fs, frameon=False)
 fig.tight_layout()
 
 # Run simulation with integrated intermolecular pressure
-_, y, _ = bls.run(f, A, Qm, Pm_comp_method=PmCompMethod.direct)
+_, y, _ = bls.simulate(f, A, Qm, Pm_comp_method=PmCompMethod.direct)
 Z1, _ = y[:, -NPC_FULL:]
 deltaZ1 = Z1.max() - Z1.min()
 logger.info('simulation with standard Pm: Zmin = %.2f nm, Zmax = %.2f nm, dZ = %.2f nm',
             Z1.min() * 1e9, Z1.max() * 1e9, deltaZ1 * 1e9)
 
 # Run simulation with predicted intermolecular pressure
-_, y, _ = bls.run(f, A, Qm, Pm_comp_method=PmCompMethod.predict)
+_, y, _ = bls.simulate(f, A, Qm, Pm_comp_method=PmCompMethod.predict)
 Z2, _ = y[:, -NPC_FULL:]
 deltaZ2 = Z2.max() - Z2.min()
 logger.info('simulation with predicted Pm: Zmin = %.2f nm, Zmax = %.2f nm, dZ = %.2f nm',
