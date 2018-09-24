@@ -4,11 +4,10 @@
 # @Date:   2017-06-06 13:36:00
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-24 21:40:15
+# @Last Modified time: 2018-09-24 23:00:00
 
 import inspect
 import sys
-import os
 
 from .cortical import CorticalRS, CorticalFS, CorticalLTS, CorticalIB
 from .thalamic import ThalamicRE, ThalamoCortical

@@ -4,13 +4,13 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-24 21:07:21
+# @Last Modified time: 2018-09-24 23:52:32
 
 """ Compare profiles of several specific output variables of NICE simulations. """
 
 import logging
 
-from PySONIC.utils import logger, OpenFilesDialog, InputError
+from PySONIC.utils import logger, OpenFilesDialog
 from PySONIC.plt import plotComp
 
 # Set logging level
@@ -31,7 +31,7 @@ def main():
     # Comparative plot
     try:
         plotComp(default, pkl_filepaths)
-    except InputError as err:
+    except Exception as err:
         logger.error(err)
 
 

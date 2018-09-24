@@ -4,11 +4,10 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-24 21:43:11
+# @Last Modified time: 2018-09-24 23:53:10
 
 """ Definition of generic utility functions used in other modules """
 
-from enum import Enum
 import operator
 import os
 import pickle
@@ -16,7 +15,6 @@ import tkinter as tk
 from tkinter import filedialog
 import lockfile
 import shutil
-import yaml
 from openpyxl import load_workbook
 import numpy as np
 import colorlog
@@ -46,44 +44,6 @@ def setLogger():
 
 # Get package logger
 logger = setLogger()
-
-
-class InputError(Exception):
-    ''' Exception raised for errors in the input. '''
-    pass
-
-
-class PmCompMethod(Enum):
-    """ Enum: types of computation method for the intermolecular pressure """
-    direct = 1
-    predict = 2
-
-
-def loadYAML(filepath):
-    """ Load a dictionary of parameters from an external YAML file.
-
-        :param filepath: full path to the YAML file
-        :return: parameters dictionary
-    """
-
-    _, filename = os.path.split(filepath)
-    logger.debug('Loading parameters from "%s"', filename)
-    with open(filepath, 'r') as f:
-        stream = f.read()
-    params = yaml.load(stream)
-    return ParseNestedDict(params)
-
-
-def ParseNestedDict(dict_in):
-    """ Loop through a nested dictionary object and convert all string fields
-        to floats.
-    """
-    for key, value in dict_in.items():
-        if isinstance(value, dict):  # If value itself is dictionary
-            dict_in[key] = ParseNestedDict(value)
-        elif isinstance(dict_in[key], str):
-            dict_in[key] = float(dict_in[key])
-    return dict_in
 
 
 def OpenFilesDialog(filetype, dirname=''):
@@ -429,37 +389,6 @@ def getLookups2D(mechname, a, Fdrive):
     return Aref, Qref, lookups2D
 
 
-def nDindexes(dims, index):
-    ''' Find index positions in a n-dimensional array.
-
-        :param dims: dimensions of the n-dimensional array (tuple or list)
-        :param index: index position in the flattened n-dimensional array
-        :return: list of indexes along each array dimension
-    '''
-
-    dims = list(dims)
-
-    # Find size of each array dimension
-    dims.reverse()
-    dimsizes = [1]
-    r = 1
-    for x in dims[:-1]:
-        r *= x
-        dimsizes.append(r)
-    dims.reverse()
-    dimsizes.reverse()
-
-    # Find indexes
-    indexes = []
-    remainder = index
-    for dimsize in dimsizes[:-1]:
-        idim, remainder = divmod(remainder, dimsize)
-        indexes.append(idim)
-    indexes.append(remainder)
-
-    return indexes
-
-
 def pow10_format(number, precision=2):
     ''' Format a number in power of 10 notation. '''
     ret_string = '{0:.{1:d}e}'.format(number, precision)
@@ -548,7 +477,7 @@ def checkBatchLog(batch_dir, batch_type):
     elif batch_type == 'E-STIM':
         logfile = 'log_ESTIM.xlsx'
     else:
-        raise InputError('Unknown batch type', batch_type)
+        raise ValueError('Unknown batch type', batch_type)
 
     # Get template in package subdirectory
     this_dir, _ = os.path.split(__file__)

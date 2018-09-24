@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-23 14:55:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-24 20:56:48
+# @Last Modified time: 2018-09-24 23:51:37
 
 ''' Plotting utilities '''
 
@@ -21,7 +21,7 @@ from matplotlib.patches import Rectangle
 import matplotlib.cm as cm
 from matplotlib.ticker import FormatStrFormatter
 
-from ..utils import rescale, InputError, computeMeshEdges, si_format
+from ..utils import rescale, computeMeshEdges, si_format
 from ..core import BilayerSonophore
 from .pltvars import pltvars
 from ..neurons import getNeuronsDict
@@ -195,16 +195,16 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
 
     # Input check 1: variable name
     if varname not in pltvars:
-        raise InputError('Unknown plot variable: "{}"'.format(varname))
+        raise KeyError('Unknown plot variable: "{}"'.format(varname))
     pltvar = pltvars[varname]
 
     # Input check 2: labels
     if labels is not None:
         if len(labels) != len(filepaths):
-            raise InputError('Invalid labels ({}): not matching number of compared files ({})'
-                             .format(len(labels), len(filepaths)))
+            raise AssertionError('Invalid labels ({}): not matching number of compared files ({})'
+                                 .format(len(labels), len(filepaths)))
         if not all(isinstance(x, str) for x in labels):
-            raise InputError('Invalid labels: must be string typed')
+            raise TypeError('Invalid labels: must be string typed')
 
     # Input check 3: line styles and colors
     if colors is None:
@@ -223,12 +223,12 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
         greypatch = True
     elif isinstance(patches, list):
         if len(patches) != len(filepaths):
-            raise InputError('Invalid patches ({}): not matching number of compared files ({})'
-                             .format(len(patches), len(filepaths)))
+            raise AssertionError('Invalid patches ({}): not matching number of compared files ({})'
+                                 .format(len(patches), len(filepaths)))
         if not all(isinstance(p, bool) for p in patches):
-            raise InputError('Invalid patch sequence: all list items must be boolean typed')
+            raise TypeError('Invalid patch sequence: all list items must be boolean typed')
     else:
-        raise InputError('Invalid patches: must be either "none", all", "one", or a boolean list')
+        raise ValueError('Invalid patches: must be either "none", all", "one", or a boolean list')
 
     # Initialize figure and axis
     fig, ax = plt.subplots(figsize=figsize)
@@ -286,13 +286,13 @@ def plotComp(varname, filepaths, labels=None, fs=15, lw=2, colors=None, lines=No
             sys.exit(1)
         sim_type = mo.group(1)
         if sim_type not in ('MECH', 'ASTIM', 'ESTIM'):
-            raise InputError('Invalid simulation type: {}'.format(sim_type))
+            raise ValueError('Invalid simulation type: {}'.format(sim_type))
 
         if j == 0:
             sim_type_ref = sim_type
             t_plt = pltvars[timeunits[sim_type]]
         elif sim_type != sim_type_ref:
-            raise InputError('Invalid comparison: different simulation types')
+            raise ValueError('Invalid comparison: different simulation types')
 
         # Load data
         logger.info('Loading data from "%s"', pkl_filename)
@@ -495,7 +495,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
         yvars = list(sum(list(vars_dict.values()), []))
         for key in yvars:
             if key not in pltvars:
-                raise InputError('Unknown plot variable: "{}"'.format(key))
+                raise KeyError('Unknown plot variable: "{}"'.format(key))
 
     # Dictionary of neurons
     neurons_dict = getNeuronsDict()
@@ -519,7 +519,7 @@ def plotBatch(directory, filepaths, vars_dict=None, plt_show=True, plt_save=Fals
             sys.exit(1)
         sim_type = mo.group(1)
         if sim_type not in ('MECH', 'ASTIM', 'ESTIM'):
-            raise InputError('Invalid simulation type: {}'.format(sim_type))
+            raise ValueError('Invalid simulation type: {}'.format(sim_type))
 
         # Load data
         logger.info('Loading data from "%s"', pkl_filename)
@@ -770,7 +770,7 @@ def plotRawTrace(fpath, key, ybounds):
     # Check file existence
     fname = ntpath.basename(fpath)
     if not os.path.isfile(fpath):
-        raise InputError('Error: "{}" file does not exist'.format(fname))
+        raise FileNotFoundError('Error: "{}" file does not exist'.format(fname))
 
     # Load data
     logger.debug('Loading data from "%s"', fname)
@@ -809,7 +809,7 @@ def plotTraces(fpath, keys, tbounds):
     # Check file existence
     fname = ntpath.basename(fpath)
     if not os.path.isfile(fpath):
-        raise InputError('Error: "{}" file does not exist'.format(fname))
+        raise FileNotFoundError('Error: "{}" file does not exist'.format(fname))
 
     # Load data
     logger.debug('Loading data from "%s"', fname)
@@ -923,7 +923,7 @@ def plotSignals(t, signals, states=None, ax=None, onset=None, lbls=None, fs=10, 
             raise Warning('Number of signals higher than number of color levels')
         colors = ['C{}'.format(i) for i in range(nlevels)]
     else:
-        raise InputError('Unknown color mode')
+        raise ValueError('Unknown color mode')
 
     # Plot signals
     for i, var in enumerate(signals):

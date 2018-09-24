@@ -4,8 +4,9 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-24 21:30:13
+# @Last Modified time: 2018-09-24 23:06:47
 
+from enum import Enum
 import time
 import os
 import json
@@ -22,6 +23,13 @@ from ..constants import *
 
 # Get package logger
 logger = logging.getLogger('PySONIC')
+
+
+class PmCompMethod(Enum):
+    """ Enum: types of computation method for the intermolecular pressure """
+    direct = 1
+    predict = 2
+
 
 
 class BilayerSonophore:
