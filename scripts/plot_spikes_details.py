@@ -2,36 +2,26 @@
 # @Author: Theo
 # @Date:   2018-04-04 11:49:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-08-21 16:07:33
+# @Last Modified time: 2018-09-24 20:54:26
 
 ''' Plot detected spikes on charge profiles. '''
 
-import sys
 import os
 import pickle
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PySONIC.utils import logger, OpenFilesDialog, InputError
-from PySONIC.solvers import findPeaks
+from PySONIC.utils import logger, OpenFilesDialog
+from PySONIC.postpro import findPeaks
 from PySONIC.constants import *
 
 # Set logging level
 logger.setLevel(logging.INFO)
 
-# Set plot parameters
-fs = 15  # font size
-lw = 2  # linewidth
 
-# Select data files
-pkl_filepaths, pkl_dir = OpenFilesDialog('pkl')
-if not pkl_filepaths:
-    logger.error('No input file')
-    sys.exit(1)
-
-try:
-    for fpath in pkl_filepaths:
+def plotSpikesDetails(filepaths, fs=15, lw=2):
+    for fpath in filepaths:
 
         # Load charge profile from file
         fname = os.path.basename(fpath)
@@ -67,10 +57,19 @@ try:
                 ax.plot(np.array([tleftbounds[i], trightbounds[i]]) * 1e3,
                         np.array([Qm[ipeaks[i]] - 0.5 * prominences[i]] * 2) * 1e5, color='C2',
                         label='widths' if i == 0 else '')
-        ax.legend()
+        ax.legend(frameon=False)
 
     plt.show()
 
-except InputError as err:
-    logger.error(err)
-    sys.exit(1)
+
+def main():
+    # Select data files
+    pkl_filepaths, _ = OpenFilesDialog('pkl')
+    if not pkl_filepaths:
+        logger.error('No input file')
+        return
+    plotSpikesDetails(pkl_filepaths)
+
+
+if __name__ == '__main__':
+    main()
