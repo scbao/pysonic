@@ -4,9 +4,11 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 14:34:12
+# @Last Modified time: 2018-09-24 21:30:13
 
 import time
+import os
+import json
 import inspect
 import logging
 import warnings
@@ -77,7 +79,7 @@ class BilayerSonophore:
             self.kA_tissue = 0.
 
         # Check existence of lookups for derived parameters
-        lookups = get_BLS_lookups()
+        lookups = self.getLookups()
         akey = '{:.1f}'.format(a * 1e9)
         Qkey = '{:.2f}'.format(Qm0 * 1e5)
 
@@ -102,7 +104,7 @@ class BilayerSonophore:
             else:
                 lookups[akey][Qkey] = {'LJ_approx': LJ_approx, 'Delta_eq': D_eq}
             logger.debug('Saving BLS derived parameters to lookup file')
-            save_BLS_lookups(lookups)
+            self.saveLookups(lookups)
 
         # If lookup exists, load parameters from it
         else:
@@ -124,7 +126,23 @@ class BilayerSonophore:
         return '{}m diameter BilayerSonophore'.format(
             si_format(self.a, precision=0, space=' '))
 
-    def params(self):
+    def getLookupsPath(self):
+        return os.path.join(os.path.split(__file__)[0], 'bls_lookups.json')
+
+    def getLookups(self):
+        try:
+            with open(self.getLookupsPath()) as fh:
+                sample = json.load(fh)
+            return sample
+        except FileNotFoundError:
+            return {}
+
+    def saveLookups(self, lookups):
+        with open(self.getLookupsPath(), 'w') as fh:
+            json.dump(lookups, fh, indent=2)
+
+
+    def pparams(self):
         s = '-------- Bilayer Sonophore --------\n'
         s += 'class attributes:\n'
         class_attrs = inspect.getmembers(self.__class__, lambda a: not(inspect.isroutine(a)))

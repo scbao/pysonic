@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-04-30 21:06:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-24 20:48:04
+# @Last Modified time: 2018-09-24 21:08:10
 
 ''' Plot neuron-specific rheobase acoustic amplitudes for various duty cycles. '''
 
@@ -29,8 +29,6 @@ defaults = dict(
 
 
 def plotRheobaseAmps(a, Fdrive, neurons):
-
-    print(a, Fdrive, neurons)
 
     # Initialize figure
     fs = 15  # font size

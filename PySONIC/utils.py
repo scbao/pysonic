@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 14:39:55
+# @Last Modified time: 2018-09-24 21:43:11
 
 """ Definition of generic utility functions used in other modules """
 
@@ -14,7 +14,6 @@ import os
 import pickle
 import tkinter as tk
 from tkinter import filedialog
-import json
 import lockfile
 import shutil
 import yaml
@@ -73,15 +72,6 @@ def loadYAML(filepath):
         stream = f.read()
     params = yaml.load(stream)
     return ParseNestedDict(params)
-
-
-def getLookupDir():
-    """ Return the location of the directory holding lookups files.
-
-        :return: absolute path to the directory
-    """
-    this_dir, _ = os.path.split(__file__)
-    return os.path.join(this_dir, 'lookups')
 
 
 def ParseNestedDict(dict_in):
@@ -292,25 +282,6 @@ def LennardJones(x, beta, alpha, C, m, n):
     return C * (np.power((alpha / (2 * x + beta)), m) - np.power((alpha / (2 * x + beta)), n))
 
 
-def get_BLS_lookups():
-    lookup_path = getLookupDir() + '/BLS_lookups.json'
-    try:
-        with open(lookup_path) as fh:
-            sample = json.load(fh)
-        return sample
-    except FileNotFoundError:
-        return {}
-
-
-def save_BLS_lookups(lookups):
-    """ Save BLS parameter into specific lookup file
-        :return: absolute path to the directory
-    """
-    lookup_path = getLookupDir() + '/BLS_lookups.json'
-    with open(lookup_path, 'w') as fh:
-        json.dump(lookups, fh, indent=2)
-
-
 def extractCompTimes(filenames):
     ''' Extract computation times from a list of simulation files. '''
     tcomps = np.empty(len(filenames))
@@ -403,37 +374,11 @@ def getCycleAverage(t, y, T):
     return np.mean(np.reshape(y[:ncycles * npercycle], (ncycles, npercycle)), axis=1)
 
 
-def itrpLookupsFreq(lookups3D, freqs, Fdrive):
-    """ Interpolate a dictionary of 3D lookups at a given frequency.
-
-        :param lookups3D: dictionary of 3D lookups
-        :param freqs: array of lookup frequencies (Hz)
-        :param Fdrive: acoustic drive frequency (Hz)
-        :return: a dictionary of 2D lookups interpolated a the given frequency
-    """
-
-    # Converting frequencies to integers for a better equality check
-    int_freqs = list(map(int, freqs))
-
-    # If Fdrive in lookup frequencies, simply take (A, Q) slice at Fdrive index
-    if int(Fdrive) in int_freqs:
-        iFdrive = np.searchsorted(int_freqs, int(Fdrive))
-        # logger.debug('Using lookups directly at %.2f kHz', freqs[iFdrive] * 1e-3)
-        lookups2D = {key: np.squeeze(lookups3D[key][iFdrive, :, :]) for key in lookups3D.keys()}
-
-    # Otherwise, interpolate linearly between 2 (A, Q) slices at Fdrive bounding values indexes
-    else:
-        ilb = np.searchsorted(freqs, Fdrive) - 1
-        iub = ilb + 1
-        # logger.debug('Interpolating lookups between %.2f kHz and %.2f kHz',
-        #              freqs[ilb] * 1e-3, freqs[iub] * 1e-3)
-        lookups2D_lb = {key: np.squeeze(lookups3D[key][ilb, :, :]) for key in lookups3D.keys()}
-        lookups2D_ub = {key: np.squeeze(lookups3D[key][iub, :, :]) for key in lookups3D.keys()}
-        Fratio = (Fdrive - freqs[ilb]) / (freqs[iub] - freqs[ilb])
-        lookups2D = {key: lookups2D_lb[key] + (lookups2D_ub[key] - lookups2D_lb[key]) * Fratio
-                     for key in lookups3D.keys()}
-
-    return lookups2D
+def getNeuronLookupsFile(mechname):
+    return os.path.join(
+        os.path.split(__file__)[0],
+        'neurons',
+        '{}_lookups.pkl'.format(mechname))
 
 
 def getLookups2D(mechname, a, Fdrive):
@@ -448,10 +393,9 @@ def getLookups2D(mechname, a, Fdrive):
     '''
 
     # Check lookup file existence
-    lookup_file = 'SONIC_{}.pkl'.format(mechname)
-    lookup_path = '{}/{}'.format(getLookupDir(), lookup_file)
+    lookup_path = getNeuronLookupsFile(mechname)
     if not os.path.isfile(lookup_path):
-        raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_file))
+        raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 
     # Load lookups dictionary
     logger.debug('Loading lookup table')
