@@ -14,21 +14,19 @@
 			"file_exclude_patterns":
 			[
 				"*.sublime-workspace",
+				"*.sublime-project",
 				"MANIFEST.in",
 				"LICENSE",
 				"conf.py",
 				"index.rst",
 				"*.gitignore",
 				"__init__.py",
-				"*.c"
+				"*.c",
+				"run_tests.sh"
 			],
 			"folder_exclude_patterns":
 			[
-				"deprecated",
 				"docs",
-				"lookups",
-				"graphs",
-				"templates",
 				"*.egg-info"
 			],
 			"path": "."
