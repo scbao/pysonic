@@ -2,13 +2,14 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 10:19:07
+# @Last Modified time: 2018-09-25 17:58:47
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
 import os
 import logging
 import numpy as np
+import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.utils import logger, selectDirDialog
@@ -100,8 +101,8 @@ def main():
 
     # Plot resulting profiles
     if plot:
-        yvars = {'V_m': ['Vm']}
-        plotBatch(pkl_dir, pkl_filepaths, yvars)
+        plotBatch(pkl_filepaths, vars_dict={'V_m': ['Vm']})
+        plt.show()
 
 
 if __name__ == '__main__':

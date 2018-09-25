@@ -4,13 +4,14 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 14:36:20
+# @Last Modified time: 2018-09-25 18:01:00
 
 ''' Run simulations of the NICE mechanical model. '''
 
 import os
 import logging
 import numpy as np
+import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.core import BilayerSonophore
@@ -113,7 +114,8 @@ def main():
 
     # Plot resulting profiles
     if plot:
-        plotBatch(pkl_dir, pkl_filepaths)
+        plotBatch(pkl_filepaths, vars_dict={'Z': ['Z']})
+        plt.show()
 
 
 if __name__ == '__main__':

@@ -4,13 +4,14 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 14:34:49
+# @Last Modified time: 2018-09-25 17:59:55
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
 import os
 import logging
 import numpy as np
+import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
@@ -140,8 +141,8 @@ def main():
 
     # Plot resulting profiles
     if plot:
-        yvars = {'Q_m': ['Qm']}
-        plotBatch(pkl_dir, pkl_filepaths, yvars)
+        plotBatch(pkl_filepaths, vars_dict={'Q_m': ['Qm']})
+        plt.show()
 
 
 if __name__ == '__main__':
