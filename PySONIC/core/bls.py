@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-24 23:06:47
+# @Last Modified time: 2018-09-25 14:39:19
 
 from enum import Enum
 import time
@@ -12,13 +12,13 @@ import os
 import json
 import inspect
 import logging
-import warnings
 import numpy as np
 import pandas as pd
 import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
 from ..utils import *
 from ..constants import *
+from ..batches import xlslog
 
 
 # Get package logger
@@ -30,6 +30,20 @@ class PmCompMethod(Enum):
     direct = 1
     predict = 2
 
+
+def LennardJones(x, beta, alpha, C, m, n):
+    """ Generic expression of a Lennard-Jones function, adapted for the context of
+        symmetric deflection (distance = 2x).
+
+        :param x: deflection (i.e. half-distance)
+        :param beta: x-shifting factor
+        :param alpha: x-scaling factor
+        :param C: y-scaling factor
+        :param m: exponent of the repulsion term
+        :param n: exponent of the attraction term
+        :return: Lennard-Jones potential at given distance (2x)
+    """
+    return C * (np.power((alpha / (2 * x + beta)), m) - np.power((alpha / (2 * x + beta)), n))
 
 
 class BilayerSonophore:
@@ -670,9 +684,6 @@ class BilayerSonophore:
         # Check validity of stimulation parameters
         self.checkInputs(Fdrive, Adrive, Qm, phi)
 
-        # Raise warnings as error
-        warnings.filterwarnings('error')
-
         # Determine mechanical system time step
         Tdrive = 1 / Fdrive
         dt_mech = Tdrive / NPC_FULL
@@ -735,14 +746,13 @@ class BilayerSonophore:
         # return output variables
         return (t, y[1:, :], states)
 
-    def runAndSave(self, outdir, logpath, Fdrive, Adrive, Qm):
-        ''' Run a simulation of the mechanical system with specific parameters
+    def runAndSave(self, outdir, Fdrive, Adrive, Qm):
+        ''' Run a simulation of the mechanical system with specific stimulation parameters
             and an imposed value of charge density, and save the results in a PKL file.
 
             :param outdir: full path to output directory
-            :param logpath: full path log file
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param Adrive: acoustic drive amplitude (Pa)
+            :param Fdrive: US frequency (Hz)
+            :param Adrive: acoustic pressure amplitude (Pa)
             :param Qm: applided membrane charge density (C/m2)
         '''
 
@@ -786,29 +796,29 @@ class BilayerSonophore:
         dUdtmax = np.amax(np.abs(np.diff(U) / np.diff(t)**2))
 
         # Export key metrics to log file
-        log = {
-            'A': date_str,
-            'B': daytime_str,
-            'C': self.a * 1e9,
-            'D': self.d * 1e6,
-            'E': Fdrive * 1e-3,
-            'F': Adrive * 1e-3,
-            'G': Qm * 1e5,
-            'H': t.size,
-            'I': round(tcomp, 2),
-            'J': self.kA + self.kA_tissue,
-            'K': Zmax * 1e9,
-            'L': eAmax,
-            'M': Tmax * 1e3,
-            'N': (ngmax - self.ng0) / self.ng0,
-            'O': Pmmax * 1e-3,
-            'P': dUdtmax
+        logpath = os.path.join(outdir, 'log_MECH.xlsx')
+        logentry = {
+            'Date': date_str,
+            'Time': daytime_str,
+            'Radius (nm)': self.a * 1e9,
+            'Thickness (um)': self.d * 1e6,
+            'Fdrive (kHz)': Fdrive * 1e-3,
+            'Adrive (kPa)': Adrive * 1e-3,
+            'Charge (nC/cm2)': Qm * 1e5,
+            '# samples': t.size,
+            'Comp. time (s)': round(tcomp, 2),
+            'kA total (N/m)': self.kA + self.kA_tissue,
+            'Max Z (nm)': Zmax * 1e9,
+            'Max eA (-)': eAmax,
+            'Max Te (mN/m)': Tmax * 1e3,
+            'Max rel. ng increase (-)': (ngmax - self.ng0) / self.ng0,
+            'Max Pm (kPa)': Pmmax * 1e-3,
+            'Max acc. (m/s2)': dUdtmax
         }
-
-        if xlslog(logpath, 'Data', log) == 1:
+        if xlslog(logpath, logentry) == 1:
             logger.debug('log exported to "%s"', logpath)
         else:
-            logger.error('log export to "%s" aborted', self.logpath)
+            logger.error('log export to "%s" aborted', logpath)
 
         return outpath
 

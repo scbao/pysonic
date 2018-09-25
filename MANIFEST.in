@@ -1,6 +1,3 @@
 include README.md
-include PySONIC/lookups/*/*.pkl
-include PySONIC/templates/*.xlsx
-include /sim/*.py
-include /plot/plot_comp.py
-include /plot/plot_batch.py
+include PySONIC/neurons/*.pkl
+include /scripts/*.py

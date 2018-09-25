@@ -4,10 +4,9 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 15:32:04
+# @Last Modified time: 2018-09-25 14:37:51
 
 import time
-import warnings
 import logging
 import progressbar as pb
 import numpy as np
@@ -20,6 +19,7 @@ from .pneuron import PointNeuron
 from ..utils import *
 from ..constants import *
 from ..postpro import findPeaks
+from ..batches import xlslog
 
 # Get package logger
 logger = logging.getLogger('PySONIC')
@@ -115,9 +115,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param phi: acoustic drive phase (rad)
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         """
-
-        # Raise warnings as error
-        warnings.filterwarnings('error')
 
         # Determine system time step
         Tdrive = 1 / Fdrive
@@ -235,9 +232,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param dt: integration time step (s)
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         """
-
-        # Raise warnings as error
-        warnings.filterwarnings('error')
 
         # Load appropriate 2D lookups
         Aref, Qref, lookups2D = getLookups2D(self.neuron.name, self.a, Fdrive)
@@ -412,9 +406,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             .. warning:: This method cannot handle pulsed stimuli
         """
 
-        # Raise warnings as error
-        warnings.filterwarnings('error')
-
         # Initialize full and HH systems solvers
         solver_full = ode(
             lambda t, y, Adrive, Fdrive, phi: self.fullDerivatives(y, t, Adrive, Fdrive, phi))
@@ -500,7 +491,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             mech_last = y[0:3, -npc_pred:]
 
             # Downsample signals to specified HH system time step
-            (_, mech_pred) = DownSample(t_last, mech_last, NPC_HH)
+            (_, mech_pred) = downsample(t_last, mech_last, NPC_HH)
 
             # Integrate HH system until certain dQ or dT is reached
             Q0 = y[3, -1]
@@ -652,8 +643,20 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             return self.titrate(Fdrive, tstim, toffset, PRF, DC, Arange=Arange, method=method)
 
 
-    def runAndSave(self, outdir, logpath, Fdrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None,
+    def runAndSave(self, outdir, Fdrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None,
                    method='sonic'):
+        ''' Run a simulation of the full electro-mechanical system for a given neuron type
+            with specific parameters, and save the results in a PKL file.
+
+            :param outdir: full path to output directory
+            :param Fdrive: US frequency (Hz)
+            :param tstim: stimulus duration (s)
+            :param toffset: stimulus offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: stimulus duty cycle (-)
+            :param Adrive: acoustic pressure amplitude (Pa)
+            :param method: integration method
+        '''
 
         # Get date and time info
         date_str = time.strftime("%Y.%m.%d")
@@ -724,31 +727,32 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         logger.debug('simulation data exported to "%s"', outpath)
 
         # Export key metrics to log file
-        log = {
-            'A': date_str,
-            'B': daytime_str,
-            'C': self.neuron.name,
-            'D': self.a * 1e9,
-            'E': self.d * 1e6,
-            'F': Fdrive * 1e-3,
-            'G': Adrive * 1e-3,
-            'H': tstim * 1e3,
-            'I': PRF * 1e-3 if DC < 1 else 'N/A',
-            'J': DC,
-            'K': method,
-            'L': t.size,
-            'M': round(tcomp, 2),
-            'N': nspikes,
-            'O': lat * 1e3 if isinstance(lat, float) else 'N/A',
-            'P': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+        logpath = os.path.join(outdir, 'log_ASTIM.xlsx')
+        logentry = {
+            'Date': date_str,
+            'Time': daytime_str,
+            'Neuron Type': self.neuron.name,
+            'Radius (nm)': self.a * 1e9,
+            'Thickness (um)': self.d * 1e6,
+            'Fdrive (kHz)': Fdrive * 1e-3,
+            'Adrive (kPa)': Adrive * 1e-3,
+            'Tstim (ms)': tstim * 1e3,
+            'PRF (kHz)': PRF * 1e-3 if DC < 1 else 'N/A',
+            'Duty factor': DC,
+            'Sim. Type': method,
+            '# samples': t.size,
+            'Comp. time (s)': round(tcomp, 2),
+            '# spikes': nspikes,
+            'Latency (ms)': lat * 1e3 if isinstance(lat, float) else 'N/A',
+            'Spike rate (sp/ms)': sr * 1e-3 if isinstance(sr, float) else 'N/A'
         }
-
-        if xlslog(logpath, 'Data', log) == 1:
+        if xlslog(logpath, logentry) == 1:
             logger.debug('log exported to "%s"', logpath)
         else:
             logger.error('log export to "%s" aborted', self.logpath)
 
         return outpath
+
 
     def findRheobaseAmps(self, Fdrive, DCs, Vthr, curr='net'):
         ''' Find the rheobase amplitudes (i.e. threshold acoustic amplitudes of infinite duration

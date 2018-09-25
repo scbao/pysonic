@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 16:11:08
+# @Last Modified time: 2018-09-25 14:34:49
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -14,7 +14,7 @@ import numpy as np
 from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
-from PySONIC.utils import logger, checkBatchLog, selectDirDialog
+from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
 from PySONIC.neurons import getNeuronsDict
 from PySONIC.batches import createSimQueue, runBatch
 from PySONIC.plt import plotBatch
@@ -33,12 +33,11 @@ defaults = dict(
 )
 
 
-def runAStimBatch(outdir, logpath, nbls, stim_params, method, mpi=False):
+def runAStimBatch(outdir, nbls, stim_params, method, mpi=False):
     ''' Run batch A-STIM simulations of the system for various neuron types and
         stimulation parameters.
 
         :param outdir: full path to output directory
-        :param logpath: full path log file
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :param method: numerical integration method ("classic", "hybrid" or "sonic")
         :param mpi: boolean statting wether or not to use multiprocessing
@@ -70,7 +69,7 @@ def runAStimBatch(outdir, logpath, nbls, stim_params, method, mpi=False):
         item.append(method)
 
     # Run batch
-    return runBatch(nbls, 'runAndSave', queue, extra_params=[outdir, logpath], mpi=mpi)
+    return runBatch(nbls, 'runAndSave', queue, extra_params=[outdir], mpi=mpi)
 
 
 def main():
@@ -92,6 +91,7 @@ def main():
     ap.add_argument('-a', '--diams', nargs='+', type=float, help='Sonophore diameter (nm)')
     ap.add_argument('-f', '--freqs', nargs='+', type=float, help='US frequency (kHz)')
     ap.add_argument('-A', '--amps', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('-I', '--intensities', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
     ap.add_argument('-d', '--durations', nargs='+', type=float, help='Stimulus duration (ms)')
     ap.add_argument('--offset', nargs='+', type=float, help='Offset duration (ms)')
     ap.add_argument('--PRF', nargs='+', type=float, help='PRF (Hz)')
@@ -108,9 +108,17 @@ def main():
     method = args['method']
     neuron_str = args['neuron']
     diams = np.array(args.get('diams', defaults['diams'])) * 1e-9  # m
+
+    if 'amps' in args:
+        amps = np.array(args['amps']) * 1e3  # Pa
+    elif 'intensities' in args:
+        amps = Intensity2Pressure(np.array(args['intensities']) * 1e4)  # Pa
+    else:
+        amps = np.array(defaults['amps']) * 1e3  # Pa
+
     stim_params = dict(
         freqs=np.array(args.get('freqs', defaults['freqs'])) * 1e3,  # Hz
-        amps=np.array(args.get('amps', defaults['amps'])) * 1e3,  # Pa
+        amps=amps,  # Pa
         durations=np.array(args.get('durations', defaults['durations'])) * 1e-3,  # s
         PRFs=np.array(args.get('PRFs', defaults['PRFs'])),  # Hz
         DCs=np.array(args.get('DCs', defaults['DCs'])) * 1e-2,  # (-)
@@ -120,7 +128,6 @@ def main():
         stim_params['amps'] = [None]
 
     # Run A-STIM batch
-    logpath, _ = checkBatchLog(outdir, 'A-STIM')
     if neuron_str not in getNeuronsDict():
         logger.error('Unknown neuron type: "%s"', neuron_str)
         return
@@ -128,7 +135,7 @@ def main():
     pkl_filepaths = []
     for a in diams:
         nbls = NeuronalBilayerSonophore(a, neuron)
-        pkl_filepaths += runAStimBatch(outdir, logpath, nbls, stim_params, method, mpi=mpi)
+        pkl_filepaths += runAStimBatch(outdir, nbls, stim_params, method, mpi=mpi)
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles

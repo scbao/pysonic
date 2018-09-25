@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 16:12:32
+# @Last Modified time: 2018-09-25 14:36:20
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -14,7 +14,7 @@ import numpy as np
 from argparse import ArgumentParser
 
 from PySONIC.core import BilayerSonophore
-from PySONIC.utils import logger, selectDirDialog, checkBatchLog
+from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
 from PySONIC.neurons import CorticalRS
 from PySONIC.batches import createQueue, runBatch
 from PySONIC.plt import plotBatch
@@ -31,11 +31,10 @@ defaults = dict(
 )
 
 
-def runMechBatch(outdir, logpath, bls, stim_params, mpi=False):
+def runMechBatch(outdir, bls, stim_params, mpi=False):
     ''' Run batch simulations of the mechanical system with imposed values of charge density.
 
         :param outdir: full path to output directory
-        :param logpath: full path log file
         :param bls: BilayerSonophore object
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :param mpi: boolean stating whether or not to use multiprocessing
@@ -57,7 +56,7 @@ def runMechBatch(outdir, logpath, bls, stim_params, mpi=False):
 
     # Generate simulations queue and run batch
     queue = createQueue((freqs, amps, charges))
-    return runBatch(bls, 'runAndSave', queue, extra_params=[outdir, logpath], mpi=mpi)
+    return runBatch(bls, 'runAndSave', queue, extra_params=[outdir], mpi=mpi)
 
 
 def main():
@@ -78,6 +77,7 @@ def main():
     ap.add_argument('-d', '--embeddings', nargs='+', type=float, help='Embedding depth (um)')
     ap.add_argument('-f', '--freqs', nargs='+', type=float, help='US frequency (kHz)')
     ap.add_argument('-A', '--amps', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('-I', '--intensities', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
     ap.add_argument('-Q', '--charges', nargs='+', type=float, help='Membrane charge density (nC/cm2)')
 
     # Parse arguments
@@ -91,19 +91,24 @@ def main():
     Qm0 = args['Qm0'] * 1e-5  # C/m2
     diams = np.array(args.get('diams', defaults['diams'])) * 1e-9  # m
     embeddings = np.array(args.get('embeddings', defaults['embeddings'])) * 1e-6  # m
+    if 'amps' in args:
+        amps = np.array(args['amps']) * 1e3  # Pa
+    elif 'intensities' in args:
+        amps = Intensity2Pressure(np.array(args['intensities']) * 1e4)  # Pa
+    else:
+        amps = np.array(defaults['amps']) * 1e3  # Pa
     stim_params = dict(
         freqs=np.array(args.get('freqs', defaults['freqs'])) * 1e3,  # Hz
-        amps=np.array(args.get('amps', defaults['amps'])) * 1e3,  # Pa
+        amps=amps,  # Pa
         charges=np.array(args.get('charges', defaults['charges'])) * 1e-5  # C/m2
     )
 
     # Run MECH batch
-    logpath, _ = checkBatchLog(outdir, 'MECH')
     pkl_filepaths = []
     for a in diams:
         for d in embeddings:
             bls = BilayerSonophore(a, Cm0, Qm0, embedding_depth=d)
-            pkl_filepaths += runMechBatch(outdir, logpath, bls, stim_params, mpi=mpi)
+            pkl_filepaths += runMechBatch(outdir, bls, stim_params, mpi=mpi)
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles

@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 15:33:16
+# @Last Modified time: 2018-09-25 14:20:59
 
 ''' Module standard API for all neuron mechanisms.
 
@@ -13,17 +13,18 @@
     in order to be properly imported in other sonic modules and used in NICE simulations.
 '''
 
+import os
 import time
 import pickle
 import abc
-import warnings
 import numpy as np
 from scipy.integrate import odeint
 import pandas as pd
 
 from ..postpro import findPeaks
 from ..constants import *
-from ..utils import si_format, logger, xlslog
+from ..utils import si_format, logger
+from ..batches import xlslog
 
 
 class PointNeuron(metaclass=abc.ABCMeta):
@@ -239,9 +240,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
         # Check validity of stimulation parameters
         self.checkInputs(Astim, tstim, toffset, PRF, DC)
 
-        # Raise warnings as error
-        warnings.filterwarnings('error')
-
         # Determine system time step
         dt = DT_ESTIM
 
@@ -359,7 +357,17 @@ class PointNeuron(metaclass=abc.ABCMeta):
                 Arange = (Arange[0], Astim)
             return self.titrate(tstim, toffset, PRF, DC, Arange=Arange)
 
-    def runAndSave(self, outdir, logpath, tstim, toffset, PRF=None, DC=1.0, Astim=None):
+    def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
+        ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
+            and save the results in a PKL file.
+
+            :param outdir: full path to output directory
+            :param tstim: stimulus duration (s)
+            :param toffset: stimulus offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: stimulus duty cycle (-)
+            :param Astim: stimulus amplitude (mA/m2)
+        '''
 
         # Get date and time info
         date_str = time.strftime("%Y.%m.%d")
@@ -420,22 +428,23 @@ class PointNeuron(metaclass=abc.ABCMeta):
         logger.debug('simulation data exported to "%s"', outpath)
 
         # Export key metrics to log file
-        log = {
-            'A': date_str,
-            'B': daytime_str,
-            'C': self.name,
-            'D': Astim,
-            'E': tstim * 1e3,
-            'F': PRF * 1e-3 if DC < 1 else 'N/A',
-            'G': DC,
-            'H': t.size,
-            'I': round(tcomp, 2),
-            'J': nspikes,
-            'K': lat * 1e3 if isinstance(lat, float) else 'N/A',
-            'L': sr * 1e-3 if isinstance(sr, float) else 'N/A'
+        logpath = os.path.join(outdir, 'log_ESTIM.xlsx')
+        logentry = {
+            'Date': date_str,
+            'Time': daytime_str,
+            'Neuron Type': self.name,
+            'Astim (mA/m2)': Astim,
+            'Tstim (ms)': tstim * 1e3,
+            'PRF (kHz)': PRF * 1e-3 if DC < 1 else 'N/A',
+            'Duty factor': DC,
+            '# samples': t.size,
+            'Comp. time (s)': round(tcomp, 2),
+            '# spikes': nspikes,
+            'Latency (ms)': lat * 1e3 if isinstance(lat, float) else 'N/A',
+            'Spike rate (sp/ms)': sr * 1e-3 if isinstance(sr, float) else 'N/A'
         }
 
-        if xlslog(logpath, 'Data', log) == 1:
+        if xlslog(logpath, logentry) == 1:
             logger.debug('log exported to "%s"', logpath)
         else:
             logger.error('log export to "%s" aborted', self.logpath)

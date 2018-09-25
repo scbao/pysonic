@@ -2,13 +2,16 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 12:31:58
+# @Last Modified time: 2018-09-25 14:24:35
 
 """ Utility functions used in simulations """
 
+import os
+import lockfile
 import logging
 import multiprocessing as mp
 import numpy as np
+import pandas as pd
 
 # Get package logger
 logger = logging.getLogger('PySONIC')
@@ -142,3 +145,41 @@ def runBatch(obj, method_str, queue, extra_params=[], mpi=False,
         results.close()
 
     return outputs
+
+
+def xlslog(filepath, logentry, sheetname='Data'):
+    """ Append log data on a new row to specific sheet of excel workbook, using a lockfile
+        to avoid read/write errors between concurrent processes.
+
+        :param filepath: absolute or relative path to the Excel workbook
+        :param logentry: log entry (dictionary) to add to log file
+        :param sheetname: name of the Excel spreadsheet to which data is appended
+        :return: boolean indicating success (1) or failure (0) of operation
+    """
+
+    # Parse log dataframe from Excel file if it exists, otherwise create new one
+    if not os.path.isfile(filepath):
+        df = pd.DataFrame(columns=logentry.keys())
+    else:
+        df = pd.read_excel(filepath, sheet_name=sheetname)
+
+    # Add log entry to log dataframe
+    df = df.append(pd.Series(logentry), ignore_index=True)
+
+    # Write log dataframe to Excel file
+    try:
+        lock = lockfile.FileLock(filepath)
+        lock.acquire()
+        writer = pd.ExcelWriter(filepath)
+        df.to_excel(writer, sheet_name=sheetname, index=False)
+        writer.save()
+        lock.release()
+        return 1
+    except PermissionError:
+        # If file cannot be accessed for writing because already opened
+        logger.warning('Cannot write to "%s". Close the file and type "Y"', filepath)
+        user_str = input()
+        if user_str in ['y', 'Y']:
+            return xlslog(filepath, logentry, sheetname)
+        else:
+            return 0
