@@ -4,17 +4,16 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-22 13:48:19
+# @Last Modified time: 2018-09-26 17:22:59
 
 ''' Channels mechanisms for leech ganglion neurons. '''
 
-import logging
 from functools import partialmethod
 import numpy as np
-from ..core import PointNeuron
 
-# Get package logger
-logger = logging.getLogger('PySONIC')
+from ..core import PointNeuron
+from ..utils import logger
+
 
 
 class LeechTouch(PointNeuron):

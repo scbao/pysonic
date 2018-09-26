@@ -2,19 +2,16 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-22 19:45:11
+# @Last Modified time: 2018-09-26 17:23:51
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
-import logging
 import pickle
 import numpy as np
 import pandas as pd
 
 from .constants import *
-
-# Get package logger
-logger = logging.getLogger('PySONIC')
+from .utils import logger
 
 
 def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising', kpsh=False, valley=False, ax=None):

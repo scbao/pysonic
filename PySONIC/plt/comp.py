@@ -6,8 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import FormatStrFormatter
 
-from .pltutils import *
-from ..utils import rescale, getStimPulses
+from ..utils import *
 from .pltvars import pltvars
 from ..core import BilayerSonophore
 from ..neurons import getNeuronsDict

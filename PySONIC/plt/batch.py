@@ -4,8 +4,7 @@ import ntpath
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .pltutils import *
-from ..utils import logger, SaveFileDialog, getStimPulses
+from ..utils import *
 from ..core import BilayerSonophore
 from .pltvars import pltvars
 from ..neurons import getNeuronsDict

@@ -7,8 +7,7 @@ import matplotlib
 from matplotlib.ticker import FormatStrFormatter
 
 from ..core import NeuronalBilayerSonophore
-from ..utils import logger, si_format, ASTIM_filecode
-from .pltutils import cm2inch
+from ..utils import logger, si_format, ASTIM_filecode, cm2inch
 from ..postpro import findPeaks
 from ..constants import *
 from ..neurons import getNeuronsDict

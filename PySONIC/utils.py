@@ -4,35 +4,26 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 14:43:28
+# @Last Modified time: 2018-09-26 17:19:06
 
 """ Definition of generic utility functions used in other modules """
 
 import operator
 import os
 import pickle
+import re
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
 import colorlog
 from scipy.interpolate import interp1d
+import matplotlib
 
 
-def ESTIM_filecode(neuron, Astim, tstim, PRF, DC):
-    return 'ESTIM_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'.format(
-        neuron, 'CW' if DC == 1 else 'PW', Astim, tstim * 1e3,
-        '_PRF{:.2f}Hz_DC{:.2f}%'.format(PRF, DC * 1e2) if DC < 1. else '')
-
-
-def ASTIM_filecode(neuron, a, Fdrive, Adrive, tstim, PRF, DC, method):
-    return 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms_{}{}'.format(
-        neuron, 'CW' if DC == 1 else 'PW', a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
-        'PRF{:.2f}Hz_DC{:.2f}%_'.format(PRF, DC * 1e2) if DC < 1. else '', method)
-
-
-def MECH_filecode(a, Fdrive, Adrive, Qm):
-    return 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
-        a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
+# Matplotlib parameters
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+matplotlib.rcParams['font.family'] = 'arial'
 
 
 def setLogger():
@@ -58,6 +49,61 @@ def setLogger():
 
 # Get package logger
 logger = setLogger()
+
+
+# File naming conventions
+def ESTIM_filecode(neuron, Astim, tstim, PRF, DC):
+    return 'ESTIM_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'.format(
+        neuron, 'CW' if DC == 1 else 'PW', Astim, tstim * 1e3,
+        '_PRF{:.2f}Hz_DC{:.2f}%'.format(PRF, DC * 1e2) if DC < 1. else '')
+
+
+def ASTIM_filecode(neuron, a, Fdrive, Adrive, tstim, PRF, DC, method):
+    return 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms_{}{}'.format(
+        neuron, 'CW' if DC == 1 else 'PW', a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
+        'PRF{:.2f}Hz_DC{:.2f}%_'.format(PRF, DC * 1e2) if DC < 1. else '', method)
+
+
+def MECH_filecode(a, Fdrive, Adrive, Qm):
+    return 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
+        a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
+
+
+rgxp = re.compile('(ESTIM|ASTIM)_([A-Za-z]*)_(.*).pkl')
+rgxp_mech = re.compile('(MECH)_(.*).pkl')
+
+
+# Figure naming conventions
+def ESTIM_title(name, A, t, PRF, DC):
+    return '{} neuron: {} E-STIM {:.2f}mA/m2, {:.0f}ms{}'.format(
+        name, 'PW' if DC < 1. else 'CW', A, t,
+        ', {:.2f}Hz PRF, {:.0f}% DC'.format(PRF, DC) if DC < 1. else '')
+
+
+def ASTIM_title(name, f, A, t, PRF, DC):
+    return '{} neuron: {} A-STIM {:.0f}kHz {:.0f}kPa, {:.0f}ms{}'.format(
+        name, 'PW' if DC < 1. else 'CW', f, A, t,
+        ', {:.2f}Hz PRF, {:.0f}% DC'.format(PRF, DC) if DC < 1. else '')
+
+
+def MECH_title(a, f, A):
+    return '{:.0f}nm BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa'.format(a, f, A)
+
+
+timeunits = {
+    'ASTIM': 't_ms',
+    'ESTIM': 't_ms',
+    'MECH': 't_us'
+}
+
+
+def cm2inch(*tupl):
+    inch = 2.54
+    if isinstance(tupl[0], tuple):
+        return tuple(i / inch for i in tupl[0])
+    else:
+        return tuple(i / inch for i in tupl)
+
 
 # SI units prefixes
 si_prefixes = {

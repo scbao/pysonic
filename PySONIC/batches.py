@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 14:24:35
+# @Last Modified time: 2018-09-26 17:21:50
 
 """ Utility functions used in simulations """
 
@@ -13,8 +13,7 @@ import multiprocessing as mp
 import numpy as np
 import pandas as pd
 
-# Get package logger
-logger = logging.getLogger('PySONIC')
+from .utils import logger
 
 
 class Consumer(mp.Process):
