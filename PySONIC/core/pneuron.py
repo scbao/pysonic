@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 14:20:59
+# @Last Modified time: 2018-09-26 13:52:21
 
 ''' Module standard API for all neuron mechanisms.
 
@@ -23,7 +23,7 @@ import pandas as pd
 
 from ..postpro import findPeaks
 from ..constants import *
-from ..utils import si_format, logger
+from ..utils import si_format, logger, ESTIM_filecode
 from ..batches import xlslog
 
 
@@ -412,16 +412,27 @@ class PointNeuron(metaclass=abc.ABCMeta):
         sr = np.mean(1 / np.diff(t[ipeaks])) if nspikes > 1 else None
 
         # Store dataframe and metadata
-        df = pd.DataFrame({'t': t, 'states': states, 'Vm': Vm, 'Qm': Vm * self.Cm0 * 1e-3})
+        df = pd.DataFrame({
+            't': t,
+            'states': states,
+            'Vm': Vm,
+            'Qm': Vm * self.Cm0 * 1e-3
+        })
         for j in range(len(self.states_names)):
             df[self.states_names[j]] = channels[j]
-        meta = {'neuron': self.name, 'Astim': Astim, 'tstim': tstim,
-                'toffset': toffset, 'PRF': PRF, 'DC': DC, 'tcomp': tcomp}
+
+        meta = {
+            'neuron': self.name,
+            'Astim': Astim,
+            'tstim': tstim,
+            'toffset': toffset,
+            'PRF': PRF,
+            'DC': DC,
+            'tcomp': tcomp
+        }
 
         # Export into to PKL file
-        simcode = 'ESTIM_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'.format(
-            self.name, 'CW' if DC == 1 else 'PW', Astim, tstim * 1e3,
-            '_PRF{:.2f}Hz_DC{:.2f}%'.format(PRF, DC * 1e2) if DC < 1. else '')
+        simcode = ESTIM_filecode(self.name, Astim, tstim, PRF, DC)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': df}, fh)

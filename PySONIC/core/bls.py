@@ -4,25 +4,21 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 14:39:19
+# @Last Modified time: 2018-09-26 13:51:38
 
 from enum import Enum
 import time
 import os
 import json
 import inspect
-import logging
+import pickle
 import numpy as np
 import pandas as pd
 import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
-from ..utils import *
+from ..utils import logger, rmse, si_format, MECH_filecode
 from ..constants import *
 from ..batches import xlslog
-
-
-# Get package logger
-logger = logging.getLogger('PySONIC')
 
 
 class PmCompMethod(Enum):
@@ -424,9 +420,9 @@ class BilayerSonophore:
             :return: equilibrium value (m) and associated pressure (Pa)
         """
 
-        f = lambda Delta: (self.pDelta *
-                           ((self.Delta_ / Delta)**self.m - (self.Delta_ / Delta)**self.n) +
-                           self.Pelec(0.0, Qm))
+        f = lambda Delta: (self.pDelta * (
+            (self.Delta_ / Delta)**self.m - (self.Delta_ / Delta)**self.n) + self.Pelec(0.0, Qm)
+        )
 
         Delta_lb = 0.1 * self.Delta_
         Delta_ub = 2.0 * self.Delta_
@@ -772,14 +768,28 @@ class BilayerSonophore:
         U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
 
         # Store dataframe and metadata
-        df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng})
-        meta = {'a': self.a, 'd': self.d, 'Cm0': self.Cm0, 'Qm0': self.Qm0,
-                'Fdrive': Fdrive, 'Adrive': Adrive, 'phi': np.pi, 'Qm': Qm,
-                'tcomp': tcomp}
+        df = pd.DataFrame({
+            't': t,
+            'states': states,
+            'U': U,
+            'Z': Z,
+            'ng': ng
+        })
+
+        meta = {
+            'a': self.a,
+            'd': self.d,
+            'Cm0': self.Cm0,
+            'Qm0': self.Qm0,
+            'Fdrive': Fdrive,
+            'Adrive': Adrive,
+            'phi': np.pi,
+            'Qm': Qm,
+            'tcomp': tcomp
+        }
 
         # Export into to PKL file
-        simcode = 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
-            self.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
+        simcode = MECH_filecode(self.a, Fdrive, Adrive, Qm)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': df}, fh)

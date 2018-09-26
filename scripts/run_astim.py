@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 17:59:55
+# @Last Modified time: 2018-09-26 14:44:37
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -74,7 +74,6 @@ def runAStimBatch(outdir, nbls, stim_params, method, mpi=False):
 
 
 def main():
-
     ap = ArgumentParser()
 
     # Runtime options

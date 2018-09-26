@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 09:30:16
+# @Last Modified time: 2018-09-26 14:43:28
 
 """ Definition of generic utility functions used in other modules """
 
@@ -16,6 +16,23 @@ from tkinter import filedialog
 import numpy as np
 import colorlog
 from scipy.interpolate import interp1d
+
+
+def ESTIM_filecode(neuron, Astim, tstim, PRF, DC):
+    return 'ESTIM_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'.format(
+        neuron, 'CW' if DC == 1 else 'PW', Astim, tstim * 1e3,
+        '_PRF{:.2f}Hz_DC{:.2f}%'.format(PRF, DC * 1e2) if DC < 1. else '')
+
+
+def ASTIM_filecode(neuron, a, Fdrive, Adrive, tstim, PRF, DC, method):
+    return 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms_{}{}'.format(
+        neuron, 'CW' if DC == 1 else 'PW', a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
+        'PRF{:.2f}Hz_DC{:.2f}%_'.format(PRF, DC * 1e2) if DC < 1. else '', method)
+
+
+def MECH_filecode(a, Fdrive, Adrive, Qm):
+    return 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
+        a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
 
 
 def setLogger():
@@ -64,7 +81,7 @@ si_prefixes = {
 }
 
 
-def si_format(x, precision=0, space=''):
+def si_format(x, precision=0, space=' '):
     ''' Format a float according to the SI unit system, with the appropriate prefix letter. '''
     if isinstance(x, float) or isinstance(x, int) or isinstance(x, np.float) or\
        isinstance(x, np.int32) or isinstance(x, np.int64):
@@ -235,6 +252,34 @@ def rescale(x, lb=None, ub=None, lb_new=0, ub_new=1):
         ub = x.max()
     xnorm = (x - lb) / (ub - lb)
     return xnorm * (ub_new - lb_new) + lb_new
+
+
+def getStimPulses(t, states):
+    ''' Determine the onset and offset times of pulses from a stimulation vector.
+
+        :param t: time vector (s).
+        :param states: a vector of stimulation state (ON/OFF) at each instant in time.
+        :return: 3-tuple with number of patches, timing of STIM-ON an STIM-OFF instants.
+    '''
+
+    # Compute states derivatives and identify bounds indexes of pulses
+    dstates = np.diff(states)
+    ipulse_on = np.insert(np.where(dstates > 0.0)[0] + 1, 0, 0)
+    ipulse_off = np.where(dstates < 0.0)[0] + 1
+    if ipulse_off.size < ipulse_on.size:
+        ioff = t.size - 1
+        if ipulse_off.size == 0:
+            ipulse_off = np.array([ioff])
+        else:
+            ipulse_off = np.insert(ipulse_off, ipulse_off.size - 1, ioff)
+
+    # Get time instants for pulses ON and OFF
+    npulses = ipulse_on.size
+    tpulse_on = t[ipulse_on]
+    tpulse_off = t[ipulse_off]
+
+    # return 3-tuple with #pulses, pulse ON and pulse OFF instants
+    return npulses, tpulse_on, tpulse_off
 
 
 def extractCompTimes(filenames):

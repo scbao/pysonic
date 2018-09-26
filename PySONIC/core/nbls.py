@@ -4,10 +4,12 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 14:37:51
+# @Last Modified time: 2018-09-26 17:06:42
 
+import os
 import time
 import logging
+import pickle
 import progressbar as pb
 import numpy as np
 import pandas as pd
@@ -16,13 +18,10 @@ from scipy.interpolate import interp1d
 
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
-from ..utils import *
+from ..utils import logger, si_format, downsample, rmse, ASTIM_filecode, getLookups2D
 from ..constants import *
 from ..postpro import findPeaks
 from ..batches import xlslog
-
-# Get package logger
-logger = logging.getLogger('PySONIC')
 
 
 class NeuronalBilayerSonophore(BilayerSonophore):
@@ -706,21 +705,35 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Store dataframe and metadata
         U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
-        df = pd.DataFrame({'t': t, 'states': states, 'U': U, 'Z': Z, 'ng': ng, 'Qm': Qm,
-                           'Vm': Vm})
+        df = pd.DataFrame({
+            't': t,
+            'states': states,
+            'U': U,
+            'Z': Z,
+            'ng': ng,
+            'Qm': Qm,
+            'Vm': Vm
+        })
         for j in range(len(self.neuron.states_names)):
             df[self.neuron.states_names[j]] = channels[j]
-        meta = {'neuron': self.neuron.name, 'a': self.a, 'd': self.d,
-                'Fdrive': Fdrive, 'Adrive': Adrive, 'phi': np.pi,
-                'tstim': tstim, 'toffset': toffset, 'PRF': PRF, 'DC': DC,
-                'tcomp': tcomp}
+
+        meta = {
+            'neuron': self.neuron.name,
+            'a': self.a,
+            'd': self.d,
+            'Fdrive': Fdrive,
+            'Adrive': Adrive,
+            'phi': np.pi,
+            'tstim': tstim,
+            'toffset': toffset,
+            'PRF': PRF,
+            'DC': DC,
+            'tcomp': tcomp,
+            'method': method
+        }
 
         # Export into to PKL file
-        simcode = 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms_{}{}'\
-            .format(self.neuron.name, 'CW' if DC == 1 else 'PW', self.a * 1e9,
-                    Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
-                    'PRF{:.2f}Hz_DC{:.2f}%_'.format(PRF, DC * 1e2) if DC < 1. else '',
-                    method)
+        simcode = ASTIM_filecode(self.neuron.name, self.a, Fdrive, Adrive, tstim, PRF, DC, method)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': df}, fh)
@@ -754,12 +767,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return outpath
 
 
-    def findRheobaseAmps(self, Fdrive, DCs, Vthr, curr='net'):
+    def findRheobaseAmps(self, DCs, Fdrive, Vthr, curr='net'):
         ''' Find the rheobase amplitudes (i.e. threshold acoustic amplitudes of infinite duration
             that would result in excitation) of a specific neuron for various stimulation duty cycles.
 
-            :param Fdrive: acoustic drive frequency (Hz)
             :param DCs: duty cycles vector (-)
+            :param Fdrive: acoustic drive frequency (Hz)
             :param Vthr: threshold membrane potential above which the neuron necessarily fires (mV)
             :return: rheobase amplitudes vector (Pa)
         '''
@@ -852,8 +865,3 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Return effective coefficients
         return [Vm_eff, ng_eff, *rates_eff]
-
-
-    def testEffVars(self, Fdrive, Adrive, Qm, phi=np.pi):
-
-        return np.random.rand(len(self.neuron.coeff_names)).tolist()
