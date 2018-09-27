@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 17:58:47
+# @Last Modified time: 2018-09-27 11:11:02
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -84,8 +84,8 @@ def main():
     stim_params = dict(
         amps=np.array(args.get('amps', defaults['amps'])),  # mA/m2
         durations=np.array(args.get('durations', defaults['durations'])) * 1e-3,  # s
-        PRFs=np.array(args.get('PRFs', defaults['PRFs'])),  # Hz
-        DCs=np.array(args.get('DCs', defaults['DCs'])) * 1e-2,  # (-)
+        PRFs=np.array(args.get('PRF', defaults['PRFs'])),  # Hz
+        DCs=np.array(args.get('DC', defaults['DCs'])) * 1e-2,  # (-)
         offsets=np.array(args.get('offsets', defaults['offsets'])) * 1e-3  # s
     )
     if titrate:

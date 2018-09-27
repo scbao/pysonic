@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 14:44:37
+# @Last Modified time: 2018-09-27 11:10:34
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -116,16 +116,20 @@ def main():
     else:
         amps = np.array(defaults['amps']) * 1e3  # Pa
 
+    print(args)
+
     stim_params = dict(
         freqs=np.array(args.get('freqs', defaults['freqs'])) * 1e3,  # Hz
         amps=amps,  # Pa
         durations=np.array(args.get('durations', defaults['durations'])) * 1e-3,  # s
-        PRFs=np.array(args.get('PRFs', defaults['PRFs'])),  # Hz
-        DCs=np.array(args.get('DCs', defaults['DCs'])) * 1e-2,  # (-)
+        PRFs=np.array(args.get('PRF', defaults['PRFs'])),  # Hz
+        DCs=np.array(args.get('DC', defaults['DCs'])) * 1e-2,  # (-)
         offsets=np.array(args.get('offsets', defaults['offsets'])) * 1e-3  # s
     )
     if titrate:
         stim_params['amps'] = [None]
+
+    print(stim_params)
 
     # Run A-STIM batch
     if neuron_str not in getNeuronsDict():
