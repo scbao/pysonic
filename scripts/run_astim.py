@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-27 11:10:34
+# @Last Modified time: 2018-09-27 11:17:31
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -116,8 +116,6 @@ def main():
     else:
         amps = np.array(defaults['amps']) * 1e3  # Pa
 
-    print(args)
-
     stim_params = dict(
         freqs=np.array(args.get('freqs', defaults['freqs'])) * 1e3,  # Hz
         amps=amps,  # Pa
@@ -128,8 +126,6 @@ def main():
     )
     if titrate:
         stim_params['amps'] = [None]
-
-    print(stim_params)
 
     # Run A-STIM batch
     if neuron_str not in getNeuronsDict():
