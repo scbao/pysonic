@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 17:21:50
+# @Last Modified time: 2018-09-27 02:02:34
 
 """ Utility functions used in simulations """
 
@@ -135,9 +135,12 @@ def runBatch(obj, method_str, queue, extra_params=[], mpi=False,
         for i in range(nconsumers):
             tasks.put(None, block=False)
         tasks.join()
-        for x in range(nsims):
-            _, out = results.get()
+        idxs = []
+        for i in range(nsims):
+            wid, out = results.get()
             outputs.append(out)
+            idxs.append(wid)
+        outputs = [x for _, x in sorted(zip(idxs, outputs))]
 
         # Close tasks and results queues
         tasks.close()

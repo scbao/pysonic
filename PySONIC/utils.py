@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 17:19:06
+# @Last Modified time: 2018-09-27 02:23:20
 
 """ Definition of generic utility functions used in other modules """
 
@@ -26,6 +26,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 matplotlib.rcParams['font.family'] = 'arial'
 
 
+# Package logger
 def setLogger():
     log_formatter = colorlog.ColoredFormatter(
         '%(log_color)s %(asctime)s %(message)s',
@@ -47,7 +48,6 @@ def setLogger():
     return color_logger
 
 
-# Get package logger
 logger = setLogger()
 
 

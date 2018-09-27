@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 09:32:17
+# @Last Modified time: 2018-09-27 02:03:15
 
 """ Create lookup table for specific neuron. """
 
@@ -95,6 +95,7 @@ def main():
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-t', '--test', default=False, action='store_true', help='Test configuration')
 
     # Stimulation parameters
     ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
@@ -124,6 +125,12 @@ def main():
         charges = np.array(args['charges']) * 1e-5  # C/m2
     else:
         charges = np.arange(neuron.Qbounds[0], neuron.Qbounds[1] + 1e-5, 1e-5)  # C/m2
+
+    if args['test']:
+        diams = np.array([diams.min(), diams.max()])
+        freqs = np.array([freqs.min(), freqs.max()])
+        amps = np.array([amps.min(), amps.max()])
+        charges = np.array([charges.min(), 0., charges.max()])
 
     # Check if lookup file already exists
     lookup_path = getNeuronLookupsFile(neuron.name)
