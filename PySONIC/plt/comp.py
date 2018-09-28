@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+# @Author: Theo Lemaire
+# @Date:   2018-09-25 16:18:45
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2018-09-28 14:14:10
+
 import sys
 import pickle
 import ntpath
@@ -13,13 +19,13 @@ from ..neurons import getNeuronsDict
 
 
 class InteractiveLegend(object):
-    """ Class defining an interactive matplotlib legend, where lines visibility can
+    ''' Class defining an interactive matplotlib legend, where lines visibility can
     be toggled by simply clicking on the corresponding legend label. Other graphic
     objects can also be associated to the toggle of a specific line
 
     Adapted from:
     http://stackoverflow.com/questions/31410043/hiding-lines-after-showing-a-pyplot-figure
-    """
+    '''
 
     def __init__(self, legend, aliases):
         self.legend = legend

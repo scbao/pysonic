@@ -6,7 +6,8 @@ Makefile
 *.bat
 conf.py
 
-# Sublime Workspace files
+# Sublime files
+*.sublime-project
 *.sublime-workspace
 
 # PNG images

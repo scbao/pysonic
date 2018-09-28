@@ -4,14 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 13:52:21
-
-''' Module standard API for all neuron mechanisms.
-
-    Each mechanism class can use different methods to define the membrane dynamics of a
-    specific neuron type. However, they must contain some mandatory attributes and methods
-    in order to be properly imported in other sonic modules and used in NICE simulations.
-'''
+# @Last Modified time: 2018-09-28 14:14:12
 
 import os
 import time
@@ -178,14 +171,14 @@ class PointNeuron(metaclass=abc.ABCMeta):
         return [dVmdt, *dstates]
 
     def Qderivatives(self, y, t, Cm=None):
-        """ Compute the derivatives of the n-ODE HH system variables,
+        ''' Compute the derivatives of the n-ODE HH system variables,
             based on a value of membrane capacitance.
 
             :param y: vector of HH system variables at time t
             :param t: specific instant in time (s)
             :param Cm: membrane capacitance (F/m2)
             :return: vector of HH system derivatives at time t
-        """
+        '''
         if Cm is None:
             Cm = self.Cm0
 

@@ -4,10 +4,10 @@
 # @Date:   2017-03-21 11:38:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-03-29 19:12:27
+# @Last Modified time: 2018-09-28 14:14:11
 
 
-""" Taylor expansions of the alpha_m function around different potential values.  """
+''' Taylor expansions of the alpha_m function around different potential values.  '''
 
 import numpy as np
 from scipy.special import factorial

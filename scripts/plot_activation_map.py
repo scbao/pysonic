@@ -2,7 +2,9 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 16:50:27
+# @Last Modified time: 2018-09-28 14:11:11
+
+''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
 import numpy as np
 import logging
@@ -11,7 +13,6 @@ from argparse import ArgumentParser
 
 from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
 from PySONIC.plt import plotActivationMap
-
 
 # Default parameters
 defaults = dict(

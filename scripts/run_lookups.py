@@ -4,9 +4,9 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-27 02:03:15
+# @Last Modified time: 2018-09-28 14:14:11
 
-""" Create lookup table for specific neuron. """
+''' Create lookup table for specific neuron. '''
 
 import os
 import pickle

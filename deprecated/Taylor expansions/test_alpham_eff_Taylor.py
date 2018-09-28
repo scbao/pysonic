@@ -4,11 +4,11 @@
 # @Date:   2017-03-21 11:38:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2017-03-29 19:40:44
+# @Last Modified time: 2018-09-28 14:14:11
 
 
-""" Perform Taylor expansions (up to 4th order) of the alpha_m function
-    along one acoustic cycle. """
+''' Perform Taylor expansions (up to 4th order) of the alpha_m function
+    along one acoustic cycle. '''
 
 import importlib
 import numpy as np

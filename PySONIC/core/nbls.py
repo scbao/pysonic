@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-27 01:48:07
+# @Last Modified time: 2018-09-28 14:14:12
 
 import os
 import time
@@ -25,17 +25,17 @@ from ..batches import xlslog
 
 
 class NeuronalBilayerSonophore(BilayerSonophore):
-    """ This class inherits from the BilayerSonophore class and receives an PointNeuron instance
-        at initialization, to define the electro-mechanical NICE model and its SONIC variant. """
+    ''' This class inherits from the BilayerSonophore class and receives an PointNeuron instance
+        at initialization, to define the electro-mechanical NICE model and its SONIC variant. '''
 
     def __init__(self, diameter, neuron, Fdrive=None, embedding_depth=0.0):
-        """ Constructor of the class.
+        ''' Constructor of the class.
 
             :param diameter: in-plane diameter of the sonophore structure within the membrane (m)
             :param neuron: neuron object
             :param Fdrive: frequency of acoustic perturbation (Hz)
             :param embedding_depth: depth of the embedding tissue around the membrane (m)
-        """
+        '''
 
         # Check validity of input parameters
         if not isinstance(neuron, PointNeuron):
@@ -59,7 +59,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
 
     def fullDerivatives(self, y, t, Adrive, Fdrive, phi):
-        """ Compute the derivatives of the (n+3) ODE full NBLS system variables.
+        ''' Compute the derivatives of the (n+3) ODE full NBLS system variables.
 
             :param y: vector of state variables
             :param t: specific instant in time (s)
@@ -67,14 +67,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param Fdrive: acoustic drive frequency (Hz)
             :param phi: acoustic drive phase (rad)
             :return: vector of derivatives
-        """
+        '''
         dydt_mech = BilayerSonophore.derivatives(self, y[:3], t, Adrive, Fdrive, y[3], phi)
         dydt_elec = self.neuron.Qderivatives(y[3:], t, self.Capct(y[1]))
         return dydt_mech + dydt_elec
 
 
     def effDerivatives(self, t, y, interp_data):
-        """ Compute the derivatives of the n-ODE effective HH system variables,
+        ''' Compute the derivatives of the n-ODE effective HH system variables,
             based on 1-dimensional linear interpolation of "effective" coefficients
             that summarize the system's behaviour over an acoustic cycle.
 
@@ -83,7 +83,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param interp_data: dictionary of 1D data points of "effective" coefficients
              over the charge domain, for specific frequency and amplitude values.
             :return: vector of effective system derivatives at time t
-        """
+        '''
 
         # Split input vector explicitly
         Qm, *states = y
@@ -98,7 +98,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
 
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
-        """ Compute solutions of the full electro-mechanical system for a specific set of
+        ''' Compute solutions of the full electro-mechanical system for a specific set of
             US stimulation parameters, using a classic integration scheme.
 
             The first iteration uses the quasi-steady simplification to compute
@@ -113,7 +113,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param DC: pulse duty cycle (-)
             :param phi: acoustic drive phase (rad)
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
-        """
+        '''
 
         # Determine system time step
         Tdrive = 1 / Fdrive
@@ -218,7 +218,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
 
     def runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
-        """ Compute solutions of the system for a specific set of
+        ''' Compute solutions of the system for a specific set of
             US stimulation parameters, using charge-predicted "effective"
             coefficients to solve the HH equations at each step.
 
@@ -230,7 +230,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param DC: pulse duty cycle (-)
             :param dt: integration time step (s)
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
-        """
+        '''
 
         # Load appropriate 2D lookups
         Aref, Qref, lookups2D = getLookups2D(self.neuron.name, self.a, Fdrive)
@@ -379,7 +379,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
 
     def runHybrid(self, Fdrive, Adrive, tstim, toffset, phi=np.pi):
-        """ Compute solutions of the system for a specific set of
+        ''' Compute solutions of the system for a specific set of
             US stimulation parameters, using a hybrid integration scheme.
 
             The first iteration uses the quasi-steady simplification to compute
@@ -403,7 +403,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: 3-tuple with the time profile, the solution matrix and a state vector
 
             .. warning:: This method cannot handle pulsed stimuli
-        """
+        '''
 
         # Initialize full and HH systems solvers
         solver_full = ode(
@@ -547,7 +547,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     def checkInputsFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC,
                         method):
-        """ Check validity of simulation parameters.
+        ''' Check validity of simulation parameters.
 
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
@@ -557,7 +557,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param DC: pulse duty cycle (-)
             :param method: selected integration method
             :return: 3-tuple with the time profile, the solution matrix and a state vector
-        """
+        '''
 
         BilayerSonophore.checkInputs(self, Fdrive, Adrive, 0.0, 0.0)
         self.neuron.checkInputs(Adrive, tstim, toffset, PRF, DC)
@@ -569,7 +569,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0,
                  method='sonic'):
-        """ Run simulation of the system for a specific set of
+        ''' Run simulation of the system for a specific set of
             US stimulation parameters.
 
             :param Fdrive: acoustic drive frequency (Hz)
@@ -580,7 +580,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param DC: pulse duty cycle (-)
             :param method: selected integration method
             :return: 3-tuple with the time profile, the solution matrix and a state vector
-        """
+        '''
 
         # Check validity of stimulation parameters
         self.checkInputsFull(Fdrive, Adrive, tstim, toffset, PRF, DC, method)

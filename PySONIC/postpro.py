@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 17:23:51
+# @Last Modified time: 2018-09-28 14:14:11
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -94,7 +94,7 @@ def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising', kpsh=False, vall
 
 
 def detectPeaksTime(t, y, mph, mtd, mpp=0):
-    """ Extension of the detectPeaks function to detect peaks in data based on their
+    ''' Extension of the detectPeaks function to detect peaks in data based on their
         amplitude and time difference, with a non-uniform time vector.
 
         :param t: time vector (not necessarily uniform)
@@ -103,7 +103,7 @@ def detectPeaksTime(t, y, mph, mtd, mpp=0):
         :param mtd: minimal time difference
         :mpp: minmal peak prominence
         :return: array of peak indexes
-    """
+    '''
 
     # Determine whether time vector is uniform (threshold in time step variation)
     dt = np.diff(t)

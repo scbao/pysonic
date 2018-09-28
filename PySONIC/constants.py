@@ -4,16 +4,14 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-22 20:35:56
+# @Last Modified time: 2018-09-28 14:08:01
 
 ''' Algorithmic constants used in the package. '''
-
 
 # Fitting and pre-processing
 LJFIT_PM_MAX = 1e8  # intermolecular pressure at the deflection lower bound for LJ fitting (Pa)
 PNET_EQ_MAX = 1e-1  # error threshold for net pressure at computed equilibrium position (Pa)
 PMAVG_STD_ERR_MAX = 2000  # error threshold in nonlinear fit of molecular pressure (Pa)
-
 
 # Mechanical simulations
 Z_ERR_MAX = 1e-11  # periodic convergence threshold for deflection (m)
@@ -23,7 +21,6 @@ CHARGE_RANGE = (-120e-5, 70e-5)  # physiological charge range constraining the m
 
 # E-STIM simulations
 DT_ESTIM = 1e-4
-
 
 # A-STIM simulations
 SOLVER_NSTEPS = 1000  # maximum number of steps allowed during one call to the LSODA/DOP853 solvers
@@ -35,14 +32,12 @@ DT_UPDATE = 5e-4  # time interval between two hybrid integrations (s)
 DT_EFF = 5e-5  # time step for effective integration (s)
 MIN_SAMPLES_PER_PULSE_INT = 1  # minimal number of time points per pulse interval (TON of TOFF)
 
-
 # Spike detection
 SPIKE_MIN_QAMP = 5e-5  # threshold amplitude for spike detection on charge signal (C/m2)
 SPIKE_MIN_QPROM = 5e-5  # threshold prominence for spike detection on charge signal (C/m2)
 SPIKE_MIN_VAMP = 10.0  # threshold amplitude for spike detection on potential signal (mV)
 SPIKE_MIN_VPROM = 10.0  # threshold prominence for spike detection on potential signal (mV)
 SPIKE_MIN_DT = 1e-3  # minimal time interval for spike detection on charge signal (s)
-
 
 # Titrations
 TITRATION_T_OFFSET = 50e-3  # offset period for titration procedures (s)

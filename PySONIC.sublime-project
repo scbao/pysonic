@@ -14,7 +14,6 @@
 			"file_exclude_patterns":
 			[
 				"*.sublime-workspace",
-				"*.sublime-project",
 				"MANIFEST.in",
 				"LICENSE",
 				"conf.py",
@@ -22,12 +21,18 @@
 				"*.gitignore",
 				"__init__.py",
 				"*.c",
-				"run_tests.sh"
+				"*.sh",
+				"*.bat",
+				"Makefile"
 			],
 			"folder_exclude_patterns":
 			[
 				"docs",
-				"*.egg-info"
+				"*.egg-info",
+				".ipynb_checkpoints",
+				"_build",
+				"_static",
+				"_templates"
 			],
 			"path": "."
 		}

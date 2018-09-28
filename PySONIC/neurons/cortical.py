@@ -4,9 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 17:23:09
-
-''' Channels mechanisms for thalamic neurons. '''
+# @Last Modified time: 2018-09-28 14:05:49
 
 import numpy as np
 from ..core import PointNeuron

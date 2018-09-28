@@ -2,9 +2,9 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-27 02:02:34
+# @Last Modified time: 2018-09-28 14:14:11
 
-""" Utility functions used in simulations """
+''' Utility functions used in simulations '''
 
 import os
 import lockfile
@@ -150,14 +150,14 @@ def runBatch(obj, method_str, queue, extra_params=[], mpi=False,
 
 
 def xlslog(filepath, logentry, sheetname='Data'):
-    """ Append log data on a new row to specific sheet of excel workbook, using a lockfile
+    ''' Append log data on a new row to specific sheet of excel workbook, using a lockfile
         to avoid read/write errors between concurrent processes.
 
         :param filepath: absolute or relative path to the Excel workbook
         :param logentry: log entry (dictionary) to add to log file
         :param sheetname: name of the Excel spreadsheet to which data is appended
         :return: boolean indicating success (1) or failure (0) of operation
-    """
+    '''
 
     # Parse log dataframe from Excel file if it exists, otherwise create new one
     if not os.path.isfile(filepath):

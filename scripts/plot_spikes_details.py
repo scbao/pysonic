@@ -2,9 +2,9 @@
 # @Author: Theo
 # @Date:   2018-04-04 11:49:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-24 20:54:26
+# @Last Modified time: 2018-09-28 14:12:50
 
-''' Plot detected spikes on charge profiles. '''
+''' Plot features of detected spikes on charge profiles. '''
 
 import os
 import pickle

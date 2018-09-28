@@ -4,9 +4,9 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-27 02:23:20
+# @Last Modified time: 2018-09-28 14:14:11
 
-""" Definition of generic utility functions used in other modules """
+''' Definition of generic utility functions used in other modules '''
 
 import operator
 import os
@@ -163,7 +163,7 @@ def pow10_format(number, precision=2):
 
 
 def rmse(x1, x2):
-    """ Compute the root mean square error between two 1D arrays """
+    ''' Compute the root mean square error between two 1D arrays '''
     return np.sqrt(((x1 - x2) ** 2).mean())
 
 
@@ -176,38 +176,38 @@ def rsquared(x1, x2):
 
 
 def Pressure2Intensity(p, rho=1075.0, c=1515.0):
-    """ Return the spatial peak, pulse average acoustic intensity (ISPPA)
+    ''' Return the spatial peak, pulse average acoustic intensity (ISPPA)
         associated with the specified pressure amplitude.
 
         :param p: pressure amplitude (Pa)
         :param rho: medium density (kg/m3)
         :param c: speed of sound in medium (m/s)
         :return: spatial peak, pulse average acoustic intensity (W/m2)
-    """
+    '''
     return p**2 / (2 * rho * c)
 
 
 def Intensity2Pressure(I, rho=1075.0, c=1515.0):
-    """ Return the pressure amplitude associated with the specified
+    ''' Return the pressure amplitude associated with the specified
         spatial peak, pulse average acoustic intensity (ISPPA).
 
         :param I: spatial peak, pulse average acoustic intensity (W/m2)
         :param rho: medium density (kg/m3)
         :param c: speed of sound in medium (m/s)
         :return: pressure amplitude (Pa)
-    """
+    '''
     return np.sqrt(2 * rho * c * I)
 
 
 def OpenFilesDialog(filetype, dirname=''):
-    """ Open a FileOpenDialogBox to select one or multiple file.
+    ''' Open a FileOpenDialogBox to select one or multiple file.
 
         The default directory and file type are given.
 
         :param dirname: default directory
         :param filetype: default file type
         :return: tuple of full paths to the chosen filenames
-    """
+    '''
     root = tk.Tk()
     root.withdraw()
     filenames = filedialog.askopenfilenames(filetypes=[(filetype + " files", '.' + filetype)],
@@ -220,10 +220,10 @@ def OpenFilesDialog(filetype, dirname=''):
 
 
 def selectDirDialog():
-    """ Open a dialog box to select a directory.
+    ''' Open a dialog box to select a directory.
 
         :return: full path to selected directory
-    """
+    '''
     root = tk.Tk()
     root.withdraw()
     return filedialog.askdirectory()
@@ -245,7 +245,7 @@ def SaveFileDialog(filename, dirname=None, ext=None):
 
 
 def downsample(t_dense, y, nsparse):
-    """ Decimate periodic signals to a specified number of samples."""
+    ''' Decimate periodic signals to a specified number of samples.'''
 
     if(y.ndim) > 1:
         nsignals = y.shape[0]

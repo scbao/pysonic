@@ -4,11 +4,9 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-24 20:35:30
+# @Last Modified time: 2018-09-28 14:10:11
 
-''' Plot the profiles of effective variables as a function of charge density
-    with amplitude color code. '''
-
+''' Plot the effective variables as a function of charge density with amplitude color code. '''
 
 import numpy as np
 from scipy.interpolate import interp2d

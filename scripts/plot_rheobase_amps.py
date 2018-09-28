@@ -2,9 +2,10 @@
 # @Author: Theo
 # @Date:   2018-04-30 21:06:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-26 11:44:29
+# @Last Modified time: 2018-09-28 14:12:31
 
-''' Plot neuron-specific rheobase acoustic amplitudes for various duty cycles. '''
+''' Plot duty-cycle dependent rheobase acoustic amplitudes of various neurons
+    for a specific US frequency and PRF. '''
 
 import logging
 import numpy as np

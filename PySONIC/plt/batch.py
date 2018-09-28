@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+# @Author: Theo Lemaire
+# @Date:   2018-09-25 16:19:19
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2018-09-28 14:06:57
+
 import sys
 import pickle
 import ntpath

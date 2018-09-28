@@ -1,19 +1,20 @@
-*****************************
-SONIC model
-*****************************
+.. PySONIC documentation master file, created by
+   sphinx-quickstart on Fri Sep 28 11:49:08 2018.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
 
-.. include:: ../README.md
-
-Modules:
-==========
+Welcome to PySONIC's documentation!
+===================================
 
 .. toctree::
    :maxdepth: 2
 
-   sonic.bls
-   sonic.solvers
-   sonic.channels
-   sonic.utils
+   core
+   neurons
+   utils
+   batches
+   postpro
+   plt
 
 
 
@@ -23,4 +24,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
