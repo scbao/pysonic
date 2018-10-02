@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:14:11
+# @Last Modified time: 2018-10-01 15:18:29
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -342,7 +342,7 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
     return (ipeaks - 1, prominences, widths, ibounds)
 
 
-def computeSpikeMetrics(filenames):
+def computeSpikingMetrics(filenames):
     ''' Analyze the charge density profile from a list of files and compute for each one of them
         the following spiking metrics:
         - latency (ms)

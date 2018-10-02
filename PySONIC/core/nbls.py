@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:14:12
+# @Last Modified time: 2018-09-29 14:45:20
 
 import os
 import time
@@ -596,8 +596,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             return self.runHybrid(Fdrive, Adrive, tstim, toffset)
 
 
-    def titrate(self, Fdrive, tstim, toffset, PRF=None, DC=1.0,
-                Arange=(0., 2 * TITRATION_ASTIM_A_MAX), method='sonic'):
+    def titrate(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Arange=None, method='sonic'):
         ''' Use a dichotomic recursive search to determine the threshold amplitude needed
             to obtain neural excitation for a given frequency, duration, PRF and duty cycle.
 
@@ -610,7 +609,16 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: 5-tuple with the determined threshold, time profile,
                  solution matrix, state vector and response latency
         '''
-        Adrive = (Arange[0] + Arange[1]) / 2
+
+        # Determine amplitude interval
+        if Arange is None:
+            Adrive = self.findRheobaseAmps(np.array([DC]), Fdrive, self.neuron.VT)[0]
+            Arange = (
+                Adrive / TITRATION_ASTIM_RHEOBASE_LOG_CONF_INTERVAL,
+                min(Adrive * TITRATION_ASTIM_RHEOBASE_LOG_CONF_INTERVAL, 2 * TITRATION_ASTIM_A_MAX)
+            )
+        else:
+            Adrive = (Arange[0] + Arange[1]) / 2
 
         # Run simulation and detect spikes
         t0 = time.time()

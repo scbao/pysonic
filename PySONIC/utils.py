@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:14:11
+# @Last Modified time: 2018-10-01 21:14:37
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -328,18 +328,6 @@ def getStimPulses(t, states):
     return npulses, tpulse_on, tpulse_off
 
 
-def extractCompTimes(filenames):
-    ''' Extract computation times from a list of simulation files. '''
-    tcomps = np.empty(len(filenames))
-    for i, fn in enumerate(filenames):
-        logger.info('Loading data from "%s"', fn)
-        with open(fn, 'rb') as fh:
-            frame = pickle.load(fh)
-            meta = frame['meta']
-        tcomps[i] = meta['tcomp']
-    return tcomps
-
-
 def getNeuronLookupsFile(mechname):
     return os.path.join(
         os.path.split(__file__)[0],
@@ -387,9 +375,9 @@ def getLookups2D(mechname, a, Fdrive):
                          .format(*si_format([Fdrive, *Frange], precision=2, space=' ')))
 
     # Interpolate 4D lookups at sonophore diameter and then at US frequency
-    logger.debug('Interpolating lookups at a = {}m'.format(si_format(a, space=' ')))
+    logger.debug('Interpolating lookups at (a = {}m, f = {}Hz)'.format(
+        *si_format([a, Fdrive], space=' ')))
     lookups3D = {key: interp1d(aref, y4D, axis=0)(a) for key, y4D in lookups4D.items()}
-    logger.debug('Interpolating lookups at f = {}Hz'.format(si_format(Fdrive, space=' ')))
     lookups2D = {key: interp1d(Fref, y3D, axis=0)(Fdrive) for key, y3D in lookups3D.items()}
 
     return Aref, Qref, lookups2D

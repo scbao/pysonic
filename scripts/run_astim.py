@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-27 11:17:31
+# @Last Modified time: 2018-10-01 12:03:09
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
 from PySONIC.neurons import getNeuronsDict
-from PySONIC.batches import createSimQueue, runBatch
+from PySONIC.batches import createAStimQueue, runBatch
 from PySONIC.plt import plotBatch
 
 # Default parameters
@@ -53,21 +53,15 @@ def runAStimBatch(outdir, nbls, stim_params, method, mpi=False):
     logger.info("Starting A-STIM simulation batch")
 
     # Generate queue
-    nofreq_queue = createSimQueue(stim_params.get('amps', [None]), stim_params['durations'],
-                                  stim_params['offsets'], stim_params['PRFs'], stim_params['DCs'])
-
-    # Repeat queue for each US frequency
-    nofreq_queue = np.array(nofreq_queue)
-    freqs = stim_params['freqs']
-    nf = len(freqs)
-    nqueue = nofreq_queue.shape[0]
-    queue = np.tile(nofreq_queue, (nf, 1))
-    freqs_col = np.vstack([np.ones(nqueue) * f for f in freqs]).reshape(nf * nqueue, 1)
-    queue = np.hstack((freqs_col, queue)).tolist()
-
-    # Add method to queue items
-    for item in queue:
-        item.append(method)
+    queue = createAStimQueue(
+        stim_params['freqs'],
+        stim_params.get('amps', [None]),
+        stim_params['durations'],
+        stim_params['offsets'],
+        stim_params['PRFs'],
+        stim_params['DCs'],
+        method
+    )
 
     # Run batch
     return runBatch(nbls, 'runAndSave', queue, extra_params=[outdir], mpi=mpi)

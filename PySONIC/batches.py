@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:14:11
+# @Last Modified time: 2018-10-01 14:28:12
 
 ''' Utility functions used in simulations '''
 
@@ -82,7 +82,7 @@ def createQueue(dims):
     return queue.tolist()
 
 
-def createSimQueue(amps, durations, offsets, PRFs, DCs):
+def createEStimQueue(amps, durations, offsets, PRFs, DCs):
     ''' Create a serialized 2D array of all parameter combinations for a series of individual
         parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 
@@ -96,9 +96,33 @@ def createSimQueue(amps, durations, offsets, PRFs, DCs):
     DCs = np.array(DCs)
     queue = []
     if 1.0 in DCs:
-        queue += createQueue((durations, offsets, PRFs.min(), 1.0, amps))
+        queue += createQueue((durations, offsets, min(PRFs), 1.0, amps))
     if np.any(DCs != 1.0):
         queue += createQueue((durations, offsets, PRFs, DCs[DCs != 1.0], amps))
+    return queue
+
+
+def createAStimQueue(freqs, amps, durations, offsets, PRFs, DCs, method):
+    ''' Create a serialized 2D array of all parameter combinations for a series of individual
+        parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
+
+        :param freqs: list (or 1D-array) of US frequencies
+        :param amps: list (or 1D-array) of acoustic amplitudes
+        :param durations: list (or 1D-array) of stimulus durations
+        :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
+        :param PRFs: list (or 1D-array) of pulse-repetition frequencies
+        :param DCs: list (or 1D-array) of duty cycle values
+        :params method: integration method
+        :return: list of parameters (list) for each simulation
+    '''
+    DCs = np.array(DCs)
+    queue = []
+    if 1.0 in DCs:
+        queue += createQueue((freqs, durations, offsets, min(PRFs), 1.0, amps))
+    if np.any(DCs != 1.0):
+        queue += createQueue((freqs, durations, offsets, PRFs, DCs[DCs != 1.0], amps))
+    for item in queue:
+        item.append(method)
     return queue
 
 

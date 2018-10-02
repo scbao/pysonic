@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:06:48
+# @Last Modified time: 2018-10-02 01:19:38
 
 import os
 import ntpath
@@ -259,7 +259,7 @@ def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='lo
         DCs_dense = np.arange(dDC, 100 + dDC / 2, dDC) / 1e2
         neuronobj = getNeuronsDict()[neuron]()
         nbls = NeuronalBilayerSonophore(a, neuronobj)
-        Athrs = nbls.findRheobaseAmps(DCs_dense, Fdrive, neuron.VT)
+        Athrs = nbls.findRheobaseAmps(DCs_dense, Fdrive, neuronobj.VT)
         ax.plot(DCs_dense * 1e2, Athrs * 1e-3, '-', color='#F26522', linewidth=2,
                 label='threshold amplitudes')
         ax.legend(loc='lower center', frameon=False, fontsize=8)
