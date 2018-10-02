@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 18:30:55
+# @Last Modified time: 2018-10-02 13:23:30
 
 
 import os
@@ -19,8 +19,6 @@ from PySONIC.constants import NPC_FULL
 from PySONIC.neurons import CorticalRS
 from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 
-# Set logging level
-logger.setLevel(logging.INFO)
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -28,7 +26,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 matplotlib.rcParams['font.family'] = 'arial'
 
 
-def plotPmavg(bls, Z, fs=12, lw=2):
+def fig2a(bls, Z, fs=12, lw=2):
     fig, ax = plt.subplots(figsize=cm2inch(7, 7))
     for key in ['right', 'top']:
         ax.spines[key].set_visible(False)
@@ -49,10 +47,11 @@ def plotPmavg(bls, Z, fs=12, lw=2):
     ax.axhline(y=0, color='k')
     ax.legend(fontsize=fs, frameon=False)
     fig.tight_layout()
+    fig.canvas.set_window_title('fig2a')
     return fig
 
 
-def plotZoomVQ(nbls, Fdrive, Adrive, fs=12, lw=2, ps=15):
+def fig2b(nbls, Fdrive, Adrive, fs=12, lw=2, ps=15):
 
     # Run effective simulation
     t, y, states = nbls.simulate(Fdrive, Adrive, 5 / Fdrive, 0., method='full')
@@ -104,10 +103,11 @@ def plotZoomVQ(nbls, Fdrive, Adrive, fs=12, lw=2, ps=15):
     delta = 0.05
     ax.set_ylim(Qrange[0] - delta * dQ, Qrange[1] + delta * dQ)
 
+    fig.canvas.set_window_title('fig2b')
     return fig
 
 
-def plotMechSim(bls, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
+def fig2c_mechsim(bls, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
 
     # Run mechanical simulation
     t, (Z, ng), _ = bls.simulate(Fdrive, Adrive, Qm)
@@ -154,10 +154,11 @@ def plotMechSim(bls, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
             horizontalalignment='left', verticalalignment='center')
     ax.scatter([t_plot[-1]], [y_plot[-1]], color='orange', s=ps)
 
+    fig.canvas.set_window_title('fig2c mechsim')
     return fig
 
 
-def plotCycleAveraging(bls, neuron, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
+def fig2c_cycleavg(bls, neuron, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
 
     # Run mechanical simulation
     t, (Z, ng), _ = bls.simulate(Fdrive, Adrive, Qm)
@@ -198,10 +199,11 @@ def plotCycleAveraging(bls, neuron, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
         ax.text(t_last[0] - 0.1, y[0], '$\mathregular{{{}}}$'.format(ykey), fontsize=fs,
                 horizontalalignment='right', verticalalignment='center')
 
+    fig.canvas.set_window_title('fig2c cycleavg')
     return fig
 
 
-def plotQtrace(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC, fs=12, lw=2, ps=15):
+def fig2e_Qtrace(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC, fs=12, lw=2, ps=15):
 
     # Run effective simulation
     t, y, states = nbls.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method='sonic')
@@ -237,6 +239,8 @@ def plotQtrace(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC, fs=12, lw=2, ps=15
     for item in ax.get_yticklabels():
         item.set_fontsize(fs)
     ax.legend(fontsize=fs, frameon=False)
+
+    fig.canvas.set_window_title('fig2e Qtrace')
     return fig
 
 
@@ -244,13 +248,18 @@ def main():
     ap = ArgumentParser()
 
     # Runtime options
+    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-o', '--outdir', type=str, help='Output directory')
+    ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
     ap.add_argument('-s', '--save', default=False, action='store_true',
                     help='Save output figures as pdf')
 
     args = ap.parse_args()
-    if args.save:
-        # Select output directory
-        outdir = selectDirDialog()
+    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
+    logger.setLevel(loglevel)
+    figset = args.figset
+    if figset == 'all':
+        figset = ['a', 'b', 'c', 'e']
 
     # Parameters
     neuron = CorticalRS()
@@ -266,18 +275,27 @@ def main():
     nbls = NeuronalBilayerSonophore(a, neuron)
 
     # Figures
-    fig2a = plotPmavg(bls, np.linspace(-0.4 * bls.Delta_, bls.a, 1000))
-    fig2b = plotZoomVQ(nbls, Fdrive, Adrive)
-    fig2c1 = plotMechSim(bls, Fdrive, Adrive, Qm)
-    fig2c2 = plotCycleAveraging(bls, neuron, Fdrive, Adrive, Qm)
-    fig2e = plotQtrace(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC)
+    figs = []
+    if 'a' in figset:
+        figs.append(fig2a(bls, np.linspace(-0.4 * bls.Delta_, bls.a, 1000)))
+    if 'b' in figset:
+        figs.append(fig2b(nbls, Fdrive, Adrive))
+    if 'c' in figset:
+        figs += [
+            fig2c_mechsim(bls, Fdrive, Adrive, Qm),
+            fig2c_cycleavg(bls, neuron, Fdrive, Adrive, Qm)
+        ]
+    if 'e' in figset:
+        figs.append(fig2e_Qtrace(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC))
 
     if args.save:
-        fig2a.savefig(os.path.join(outdir, 'fig2a.pdf'), transparent=True)
-        fig2b.savefig(os.path.join(outdir, 'fig2b.pdf'), transparent=True)
-        fig2c1.savefig(os.path.join(outdir, 'fig2c1.pdf'), transparent=True)
-        fig2c2.savefig(os.path.join(outdir, 'fig2c2.pdf'), transparent=True)
-        fig2e.savefig(os.path.join(outdir, 'fig2e.pdf'), transparent=True)
+        outdir = selectDirDialog() if args.outdir is None else args.outdir
+        if outdir == '':
+            logger.error('No input directory chosen')
+            return
+        for fig in figs:
+            figname = '{}.pdf'.format(fig.canvas.get_window_title())
+            fig.savefig(os.path.join(outdir, figname), transparent=True)
     else:
         plt.show()
 

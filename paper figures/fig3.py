@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-01 20:56:07
+# @Last Modified time: 2018-10-02 13:28:20
 
 import os
 import logging
@@ -15,10 +15,8 @@ from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.utils import logger, getLookups2D, selectDirDialog
-from PySONIC.neurons import CorticalRS, CorticalLTS
+from PySONIC.neurons import getNeuronsDict
 
-# Set logging level
-logger.setLevel(logging.INFO)
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -27,6 +25,8 @@ matplotlib.rcParams['font.family'] = 'arial'
 
 
 def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', '.-'], title=None):
+
+    neuron = getNeuronsDict()[neuron]()
 
     # Determine spiking threshold
     Vthr = neuron.VT  # mV
@@ -176,6 +176,8 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
 
 def plotdQvsDC(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
 
+    neuron = getNeuronsDict()[neuron]()
+
     # Determine spiking threshold
     Vthr = neuron.VT  # mV
     Qthr = neuron.Cm0 * Vthr * 1e-3  # C/m2
@@ -273,6 +275,7 @@ def plotRheobaseAmps(neurons, a, Fdrive, DCs_dense, DCs_sparse, fs=8, title=None
     sm = cm.ScalarMappable(norm=norm, cmap='viridis')
     sm._A = []
     for i, neuron in enumerate(neurons):
+        neuron = getNeuronsDict()[neuron]()
         nbls = NeuronalBilayerSonophore(a, neuron)
         Athrs_dense = nbls.findRheobaseAmps(DCs_dense, Fdrive, neuron.VT) * 1e-3  # kPa
         Athrs_sparse = nbls.findRheobaseAmps(DCs_sparse, Fdrive, neuron.VT) * 1e-3  # kPa
@@ -292,13 +295,18 @@ def main():
     ap = ArgumentParser()
 
     # Runtime options
+    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-o', '--outdir', type=str, help='Output directory')
+    ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
     ap.add_argument('-s', '--save', default=False, action='store_true',
                     help='Save output figures as pdf')
 
     args = ap.parse_args()
-    if args.save:
-        # Select output directory
-        outdir = selectDirDialog()
+    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
+    logger.setLevel(loglevel)
+    figset = args.figset
+    if figset == 'all':
+        figset = ['a', 'b', 'c', 'e']
 
     # Parameters
     a = 32e-9  # m
@@ -307,19 +315,27 @@ def main():
     DC = 0.5
     DCs_sparse = np.array([5, 15, 50, 75, 95]) / 1e2
     DCs_dense = np.arange(1, 101) / 1e2
-    RS = CorticalRS()
-    LTS = CorticalLTS()
 
     # Figures
-    figs = [
-        plotQuasiSteadySystem(RS, a, Fdrive, PRF, DC, title='fig3a left'),
-        plotQuasiSteadySystem(LTS, a, Fdrive, PRF, DC, title='fig3a right'),
-        plotdQvsDC(RS, a, Fdrive, PRF, DCs_sparse, title='fig3b top'),
-        plotdQvsDC(LTS, a, Fdrive, PRF, DCs_sparse, title='fig3b bottom'),
-        plotRheobaseAmps([RS, LTS], a, Fdrive, DCs_dense, DCs_sparse, title='fig3c')
-    ]
+    figs = []
+    if 'a' in figset:
+        figs += [
+            plotQuasiSteadySystem('RS', a, Fdrive, PRF, DC, title='fig3a RS'),
+            plotQuasiSteadySystem('LTS', a, Fdrive, PRF, DC, title='fig3a LTS')
+        ]
+    if 'b' in figset:
+        figs += [
+            plotdQvsDC('RS', a, Fdrive, PRF, DCs_sparse, title='fig3b RS'),
+            plotdQvsDC('LTS', a, Fdrive, PRF, DCs_sparse, title='fig3b LTS')
+        ]
+    if 'c' in figset:
+        figs.append(plotRheobaseAmps(['RS', 'LTS'], a, Fdrive, DCs_dense, DCs_sparse, title='fig3c'))
 
     if args.save:
+        outdir = selectDirDialog() if args.outdir is None else args.outdir
+        if outdir == '':
+            logger.error('No input directory chosen')
+            return
         for fig in figs:
             figname = '{}.pdf'.format(fig.canvas.get_window_title())
             fig.savefig(os.path.join(outdir, figname), transparent=True)

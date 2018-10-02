@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-02 01:39:49
+# @Last Modified time: 2018-10-02 13:50:12
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -31,7 +31,7 @@ def plot_traces(inputdir, neuron, a, Fdrive, Adrive, tstim, PRF, DC, tmax, Vboun
     fname = '{}.pkl'.format(ASTIM_filecode(neuron, a, Fdrive, Adrive, tstim, PRF, DC, 'sonic'))
     fpath = os.path.join(subdir, fname)
     fig = plotQVeff(fpath, tmax=tmax, ybounds=Vbounds)
-    figcode = '{} VQ trace {}kPa {}%DC'.format(prefix, Adrive * 1e-3, DC * 1e2)
+    figcode = '{} VQ trace {:.1f}kPa {:.0f}%DC'.format(prefix, Adrive * 1e-3, DC * 1e2)
     fig.canvas.set_window_title(figcode)
     return fig
 

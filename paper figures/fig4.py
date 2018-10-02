@@ -4,13 +4,14 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-02 02:53:08
+# @Last Modified time: 2018-10-02 13:38:32
 
 ''' Plot the effective variables as a function of charge density with amplitude color code. '''
 
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 from argparse import ArgumentParser
 import logging
 
@@ -42,9 +43,11 @@ def fig4_gas(a, neuron, Fdrive, Adrive, charges, fs=8):
     for item in ax.get_xticklabels() + ax.get_yticklabels():
         item.set_fontsize(fs)
     ax.set_xlabel('$\\rm {:.0f}\ \mu s$'.format(t[-1]), fontsize=fs)
-    ax.set_ylabel('$\\rm 10^{22}\ mol$', fontsize=fs)
-    insetax.set_xlim([1e6 / Fdrive - 0.05, 1e6 / Fdrive])
-    insetax.set_ylim([1.4, 1.7])
+    ax.set_ylabel('$\\rm 10^{-22}\ mol$', fontsize=fs)
+    inset_xbounds = (1e6 / Fdrive - 0.05, 1e6 / Fdrive)
+    inset_ybounds = (1.4, 1.7)
+    insetax.set_xlim(inset_xbounds)
+    insetax.set_ylim(inset_ybounds)
     insetax.set_xticks([])
     insetax.set_yticks([])
     ngmin, ngmax = np.inf, -np.inf
@@ -55,6 +58,12 @@ def fig4_gas(a, neuron, Fdrive, Adrive, charges, fs=8):
         ax.plot(t, ng * 1e22, label='{:.0f} nC/cm2'.format(Qm * 1e5))
         insetax.plot(t, ng * 1e22, label='{:.0f} nC/cm2'.format(Qm * 1e5))
     ax.set_yticks([np.floor(ngmin * 1e22), np.ceil(ngmax * 1e22)])
+    ax.add_patch(Rectangle(
+        (inset_xbounds[0], inset_ybounds[0]),
+        inset_xbounds[1] - inset_xbounds[0],
+        inset_ybounds[1] - inset_ybounds[0],
+        fill=False, edgecolor='k'
+    ))
     ax.legend(frameon=False, fontsize=fs)
     fig.tight_layout()
     fig.canvas.set_window_title('fig4 gas')
