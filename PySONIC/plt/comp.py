@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:14:10
+# @Last Modified time: 2018-10-25 14:27:17
 
 import sys
 import pickle
@@ -270,15 +270,7 @@ def plotComp(filepaths, varname, labels=None, fs=15, lw=2, colors=None, lines=No
         if labels is not None:
             label = labels[j]
         else:
-            if sim_type == 'ESTIM':
-                label = ESTIM_title(
-                    neuron.name, meta['Astim'], meta['tstim'] * 1e3, meta['PRF'], meta['DC'] * 1e2)
-            elif sim_type == 'ASTIM':
-                label = ASTIM_title(
-                    neuron.name, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3, meta['tstim'] * 1e3,
-                    meta['PRF'], meta['DC'] * 1e2)
-            elif sim_type == 'MECH':
-                label = MECH_title(a * 1e9, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3)
+            label = figtitle(meta)
 
         # Plot trace
         handle = ax.plot(t * t_plt['factor'], var * pltvar['factor'],

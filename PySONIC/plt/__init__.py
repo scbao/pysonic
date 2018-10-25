@@ -4,11 +4,11 @@
 # @Date:   2017-06-06 13:36:00
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-02 02:21:20
+# @Last Modified time: 2018-10-25 12:14:03
 
 from .pltvars import *
 from .batch import plotBatch
 from .comp import plotComp
 from .actmap import plotActivationMap, plotQVeff
-from .spikemetrics import plotSpikingMetrics
+from .spikeutils import plotSpikingMetrics, plotPhasePlane
 from .effvars import plotEffectiveVariables, plotEffectiveCapacitance

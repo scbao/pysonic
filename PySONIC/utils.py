@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-01 21:14:37
+# @Last Modified time: 2018-10-25 14:30:11
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -74,20 +74,25 @@ rgxp_mech = re.compile('(MECH)_(.*).pkl')
 
 
 # Figure naming conventions
-def ESTIM_title(name, A, t, PRF, DC):
-    return '{} neuron: {} E-STIM {:.2f}mA/m2, {:.0f}ms{}'.format(
-        name, 'PW' if DC < 1. else 'CW', A, t,
-        ', {:.2f}Hz PRF, {:.0f}% DC'.format(PRF, DC) if DC < 1. else '')
-
-
-def ASTIM_title(name, f, A, t, PRF, DC):
-    return '{} neuron: {} A-STIM {:.0f}kHz {:.0f}kPa, {:.0f}ms{}'.format(
-        name, 'PW' if DC < 1. else 'CW', f, A, t,
-        ', {:.2f}Hz PRF, {:.0f}% DC'.format(PRF, DC) if DC < 1. else '')
-
-
-def MECH_title(a, f, A):
-    return '{:.0f}nm BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa'.format(a, f, A)
+def figtitle(meta):
+    ''' Return appropriate title based on simulation metadata. '''
+    if 'Cm0' in meta:
+        return '{:.0f}nm BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa'.format(
+            meta['a'] * 1e9, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3)
+    else:
+        if meta['DC'] < 1:
+            wavetype = 'PW'
+            suffix = ', {:.2f}Hz PRF, {:.0f}% DC'.format(meta['PRF'], meta['DC'] * 1e2)
+        else:
+            wavetype = 'CW'
+            suffix = ''
+        if 'Astim' in meta:
+            return '{} neuron: {} E-STIM {:.2f}mA/m2, {:.0f}ms{}'.format(
+                meta['neuron'], wavetype, meta['Astim'], meta['tstim'] * 1e3, suffix)
+        else:
+            return '{} neuron: {} A-STIM {:.0f}kHz {:.0f}kPa, {:.0f}ms{}'.format(
+                meta['neuron'], wavetype, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3,
+                meta['tstim'] * 1e3, suffix)
 
 
 timeunits = {

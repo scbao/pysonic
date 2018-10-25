@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:06:57
+# @Last Modified time: 2018-10-25 14:26:08
 
 import sys
 import pickle
@@ -18,7 +18,7 @@ from ..neurons import getNeuronsDict
 
 def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
               ask_before_save=True, fig_ext='png', tag='fig', fs=15, lw=2, title=True,
-              show_patches=True):
+              show_patches=True, frequency=1):
     ''' Plot a figure with profiles of several specific NICE output variables, for several
         NICE simulations.
 
@@ -77,8 +77,8 @@ def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
 
         # Extract variables
         logger.info('Extracting variables')
-        t = df['t'].values
-        states = df['states'].values
+        t = df['t'].values[::frequency]
+        states = df['states'].values[::frequency]
         nsamples = t.size
 
         # Initialize channel mechanism
@@ -86,7 +86,7 @@ def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
             neuron_name = mo.group(2)
             global neuron
             neuron = neurons_dict[neuron_name]()
-            neuron_states = [df[sn].values for sn in neuron.states_names]
+            neuron_states = [df[sn].values[::frequency] for sn in neuron.states_names]
             Cm0 = neuron.Cm0
             Qm0 = Cm0 * neuron.Vm0 * 1e-3
             t_plt = pltvars['t_ms']
@@ -170,11 +170,11 @@ def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
                 if 'alias' in pltvar:
                     var = eval(pltvar['alias'])
                 elif 'key' in pltvar:
-                    var = df[pltvar['key']].values
+                    var = df[pltvar['key']].values[::frequency]
                 elif 'constant' in pltvar:
                     var = eval(pltvar['constant']) * np.ones(nsamples)
                 else:
-                    var = df[vars_dict[labels[i]][j]].values
+                    var = df[vars_dict[labels[i]][j]].values[::frequency]
                 if var.size == t.size - 2:
                     if pltvar['desc'] == 'membrane potential':
                         var = np.hstack((np.array([neuron.Vm0] * 2), var))
@@ -204,17 +204,7 @@ def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
 
         # Title
         if title:
-            if sim_type == 'ESTIM':
-                fig_title = ESTIM_title(
-                    neuron.name, meta['Astim'], meta['tstim'] * 1e3, meta['PRF'], meta['DC'] * 1e2)
-            elif sim_type == 'ASTIM':
-                fig_title = ASTIM_title(
-                    neuron.name, Fdrive * 1e-3, meta['Adrive'] * 1e-3, meta['tstim'] * 1e3,
-                    meta['PRF'], meta['DC'] * 1e2)
-            elif sim_type == 'MECH':
-                fig_title = MECH_title(a * 1e9, Fdrive * 1e-3, meta['Adrive'] * 1e-3)
-
-            axes[0].set_title(fig_title, fontsize=fs)
+            axes[0].set_title(figtitle(meta), fontsize=fs)
 
         fig.tight_layout()
 

@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:09:53
+# @Last Modified time: 2018-10-17 18:01:31
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -19,7 +19,8 @@ from PySONIC.plt import plotComp, plotBatch
 logger.setLevel(logging.INFO)
 
 default_comp = 'Qm'
-defaults_batch = {'V_m': ['Vm'], 'Q_m': ['Qm']}
+defaults_batch = {'Q_m': ['Qm']}
+# defaults_batch = {'Pac': ['Pac'], 'Z': ['Z'], 'Cm': ['Cm'], 'Vm': ['Vm'], 'Qm': ['Qm']}
 
 
 def main():
@@ -32,6 +33,7 @@ def main():
     ap.add_argument('-c', '--compare', default=False, action='store_true', help='Comparative graph')
     ap.add_argument('-s', '--save', default=False, action='store_true', help='Save output')
     ap.add_argument('--vars', type=str, nargs='+', default=None, help='Variables to plot')
+    ap.add_argument('-f', '--frequency', type=int, default=1, help='Sampling frequency for plot')
 
     # Parse arguments
     args = ap.parse_args()
