@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-25 11:36:13
+# @Last Modified time: 2018-10-25 22:47:00
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -309,7 +309,7 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
     refheights = y[ipeaks] - prominences / 2
 
     # Compute half-prominence bounds
-    ibounds = np.empty((ipeaks.size, 2))
+    halfmaxbounds = np.empty((ipeaks.size, 2))
     for i in range(ipeaks.size):
 
         # compute the index of the left-intercept at half max
@@ -317,29 +317,37 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
         while ileft >= ivalleys[i] and y[ileft] > refheights[i]:
             ileft -= 1
         if ileft < ivalleys[i]:  # intercept exactly on valley
-            ibounds[i, 0] = ivalleys[i]
+            halfmaxbounds[i, 0] = ivalleys[i]
         else:  # interpolate intercept linearly between signal boundary points
             a = (y[ileft + 1] - y[ileft]) / 1
             b = y[ileft] - a * ileft
-            ibounds[i, 0] = (refheights[i] - b) / a
+            halfmaxbounds[i, 0] = (refheights[i] - b) / a
 
         # compute the index of the right-intercept at half max
         iright = ipeaks[i]
         while iright <= ivalleys[i + 1] and y[iright] > refheights[i]:
             iright += 1
         if iright > ivalleys[i + 1]:  # intercept exactly on valley
-            ibounds[i, 1] = ivalleys[i + 1]
+            halfmaxbounds[i, 1] = ivalleys[i + 1]
         else:  # interpolate intercept linearly between signal boundary points
             if iright == y.size - 1:  # special case: if end of signal is reached, decrement iright
                 iright -= 1
             a = (y[iright + 1] - y[iright]) / 1
             b = y[iright] - a * iright
-            ibounds[i, 1] = (refheights[i] - b) / a
+            halfmaxbounds[i, 1] = (refheights[i] - b) / a
 
     # Compute peaks widths at half-prominence
-    widths = np.diff(ibounds, axis=1)
+    widths = np.diff(halfmaxbounds, axis=1)
 
-    return (ipeaks - 1, prominences, widths, ibounds)
+    # Convert halfmaxbounds to true integers
+    halfmaxbounds[:, 0] = np.floor(halfmaxbounds[:, 0])
+    halfmaxbounds[:, 1] = np.ceil(halfmaxbounds[:, 1])
+    halfmaxbounds = halfmaxbounds.astype(int)
+
+    bounds = np.array([ivalleys[:-1], ivalleys[1:]]).T - 1
+    bounds[bounds < 0] = 0
+
+    return (ipeaks - 1, prominences, widths, halfmaxbounds, bounds)
 
 
 def computeSpikingMetrics(filenames):
@@ -382,7 +390,7 @@ def computeSpikingMetrics(filenames):
 
         # Detect spikes on charge profile
         mpd = int(np.ceil(SPIKE_MIN_DT / dt))
-        ispikes, prominences, widths, _ = findPeaks(Qm, SPIKE_MIN_QAMP, mpd, SPIKE_MIN_QPROM)
+        ispikes, prominences, widths, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, mpd, SPIKE_MIN_QPROM)
         widths *= dt
 
         if ispikes.size > 0:

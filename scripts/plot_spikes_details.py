@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-04-04 11:49:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:12:50
+# @Last Modified time: 2018-10-25 22:48:23
 
 ''' Plot features of detected spikes on charge profiles. '''
 
@@ -35,12 +35,12 @@ def plotSpikesDetails(filepaths, fs=15, lw=2):
         indexes = np.arange(t.size)
         mpd = int(np.ceil(SPIKE_MIN_DT / dt))
 
-        ipeaks, prominences, widths, ibounds = findPeaks(Qm, mph=SPIKE_MIN_QAMP, mpd=mpd,
-                                                         mpp=SPIKE_MIN_QPROM)
+        ipeaks, prominences, widths, halfmaxbounds, _ = findPeaks(
+            Qm, mph=SPIKE_MIN_QAMP, mpd=mpd, mpp=SPIKE_MIN_QPROM)
         if ipeaks is not None:
             widths *= dt
-            tleftbounds = np.interp(ibounds[:, 0], indexes, t)
-            trightbounds = np.interp(ibounds[:, 1], indexes, t)
+            tleftbounds = np.interp(halfmaxbounds[:, 0], indexes, t)
+            trightbounds = np.interp(halfmaxbounds[:, 1], indexes, t)
 
         # Plot results
         fig, ax = plt.subplots(figsize=(8, 4))
