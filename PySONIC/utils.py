@@ -4,12 +4,13 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-25 14:30:11
+# @Last Modified time: 2018-10-28 15:26:03
 
 ''' Definition of generic utility functions used in other modules '''
 
 import operator
 import os
+import math
 import pickle
 import re
 import tkinter as tk
@@ -367,17 +368,9 @@ def getLookups2D(mechname, a, Fdrive):
     Aref = lookups4D.pop('A')
     Qref = lookups4D.pop('Q')
 
-    # Check that sonophore diameter is within lookup range
-    arange = (aref.min() - 1e-12, aref.max() + 1e-12)
-    if a < arange[0] or a > arange[1]:
-        raise ValueError('Invalid sonophore diameter: {}m (must be within {}m - {}m lookup interval)'
-                         .format(*si_format([a, *arange], precision=2, space=' ')))
-
-    # Check that US frequency is within lookup range
-    Frange = (Fref.min() - 1e-9, Fref.max() + 1e-9)
-    if Fdrive < Frange[0] or Fdrive > Frange[1]:
-        raise ValueError('Invalid frequency: {}Hz (must be within {}Hz - {}Hz lookup interval)'
-                         .format(*si_format([Fdrive, *Frange], precision=2, space=' ')))
+    # Check that sonophore diameter and US frequency are within lookup range
+    a = isWithin('diameter', a, (aref.min(), aref.max()))
+    Fdrive = isWithin('frequency', Fdrive, (Fref.min(), Fref.max()))
 
     # Interpolate 4D lookups at sonophore diameter and then at US frequency
     logger.debug('Interpolating lookups at (a = {}m, f = {}Hz)'.format(
@@ -386,3 +379,28 @@ def getLookups2D(mechname, a, Fdrive):
     lookups2D = {key: interp1d(Fref, y3D, axis=0)(Fdrive) for key, y3D in lookups3D.items()}
 
     return Aref, Qref, lookups2D
+
+
+def isWithin(name, val, bounds, rel_tol=1e-9):
+    ''' Check if a floating point number is within an interval.
+
+        If the value falls outside the interval, an error is raised.
+
+        If the value falls just outside the interval due to rounding errors,
+        the associated interval bound is returned.
+
+        :param val: float value
+        :param bounds: interval bounds (float tuple)
+        :return: original or corrected value
+    '''
+    if val >= bounds[0] and val <= bounds[1]:
+        return val
+    elif val < bounds[0] and math.isclose(val, bounds[0], rel_tol=rel_tol):
+        logger.warning('Rounding %s value (%s) to interval lower bound (%s)', name, val, bounds[0])
+        return bounds[0]
+    elif val > bounds[1] and math.isclose(val, bounds[1], rel_tol=rel_tol):
+        logger.warning('Rounding %s value (%s) to interval upper bound (%s)', name, val, bounds[1])
+        return bounds[1]
+    else:
+        raise ValueError('{} value ({}) out of [{}, {}] interval'.format(
+            name, val, bounds[0], bounds[1]))

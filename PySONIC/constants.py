@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-29 14:45:08
+# @Last Modified time: 2018-10-28 12:08:20
 
 ''' Algorithmic constants used in the package. '''
 
@@ -36,7 +36,7 @@ MIN_SAMPLES_PER_PULSE_INT = 1  # minimal number of time points per pulse interva
 SPIKE_MIN_QAMP = 5e-5  # threshold amplitude for spike detection on charge signal (C/m2)
 SPIKE_MIN_QPROM = 5e-5  # threshold prominence for spike detection on charge signal (C/m2)
 SPIKE_MIN_VAMP = 10.0  # threshold amplitude for spike detection on potential signal (mV)
-SPIKE_MIN_VPROM = 10.0  # threshold prominence for spike detection on potential signal (mV)
+SPIKE_MIN_VPROM = 20.0  # threshold prominence for spike detection on potential signal (mV)
 SPIKE_MIN_DT = 1e-3  # minimal time interval for spike detection on charge signal (s)
 
 # Titrations

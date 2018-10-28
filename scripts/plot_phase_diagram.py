@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-25 22:36:33
+# @Last Modified time: 2018-10-28 17:28:15
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -32,6 +32,7 @@ def main():
                     help='Discard first spike')
     ap.add_argument('--tbounds', type=float, nargs='+', default=None, help='Spike interval bounds')
     ap.add_argument('-l', '--labels', type=str, nargs='+', default=None, help='Labels')
+    ap.add_argument('-p', '--pretty', default=False, action='store_true', help='Pretty axes')
 
     # Parse arguments
     args = ap.parse_args()
@@ -48,9 +49,8 @@ def main():
     logger.setLevel(loglevel)
 
     # Plot phase-plane diagram
-    print(args.var)
     plotPhasePlane(filepaths, args.var, no_offset=args.nooffset, no_first=args.nofirst,
-                   tbounds=args.tbounds, labels=args.labels)
+                   tbounds=args.tbounds, labels=args.labels, pretty=args.pretty)
     plt.show()
 
 

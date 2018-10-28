@@ -2,14 +2,14 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-25 22:38:42
+# @Last Modified time: 2018-10-28 22:47:59
 
 
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..utils import cm2inch, logger, figtitle
+from ..utils import *
 from ..constants import *
 from ..postpro import findPeaks
 
@@ -21,7 +21,7 @@ phaseplotvars = {
         'factor': 1e0,
         'lim': (-80.0, 50.0),
         'dfactor': 1e-3,
-        'dlim': (-300, 600),
+        'dlim': (-300, 700),
         'thr_amp': SPIKE_MIN_VAMP,
         'thr_prom': SPIKE_MIN_VPROM
     },
@@ -39,7 +39,7 @@ phaseplotvars = {
 
 
 def plotPhasePlane(filepaths, varname, no_offset=False, no_first=False,
-                   labels=None, fs=15, lw=2, tbounds=None):
+                   labels=None, colors=None, fs=15, lw=2, tbounds=None, pretty=True):
     ''' Plot phase-plane diagrams of spiking dynamics from simulation results.
 
         :param filepaths: list of full paths to data files
@@ -67,24 +67,26 @@ def plotPhasePlane(filepaths, varname, no_offset=False, no_first=False,
     ax.set_xlabel('$\\rm time\ (ms)$', fontsize=fs)
     ax.set_ylabel('$\\rm {}$'.format(pltvar['label']), fontsize=fs)
     ax.set_xlim(tbounds)
-    ax.set_xticks(tbounds)
     ax.set_ylim(pltvar['lim'])
-    ax.set_yticks(pltvar['lim'])
-    ax.set_xticklabels(['{:+.1f}'.format(x) for x in ax.get_xticks()])
-    ax.set_yticklabels(['{:+.0f}'.format(x) for x in ax.get_yticks()])
+    if pretty:
+        ax.set_xticks(tbounds)
+        ax.set_yticks(pltvar['lim'])
+        ax.set_xticklabels(['{:+.1f}'.format(x) for x in ax.get_xticks()])
+        ax.set_yticklabels(['{:+.0f}'.format(x) for x in ax.get_yticks()])
 
     # 2nd axis: phase plot (derivative of variable vs variable)
     ax = axes[1]
     ax.set_xlabel('$\\rm {}$'.format(pltvar['label']), fontsize=fs)
     ax.set_ylabel('$\\rm {}$'.format(pltvar['dlabel']), fontsize=fs)
     ax.set_xlim(pltvar['lim'])
-    ax.set_xticks(pltvar['lim'])
     ax.set_ylim(pltvar['dlim'])
-    ax.set_yticks(pltvar['dlim'])
     ax.plot([0, 0], [pltvar['dlim'][0], pltvar['dlim'][1]], '--', color='k', linewidth=1)
     ax.plot([pltvar['lim'][0], pltvar['lim'][1]], [0, 0], '--', color='k', linewidth=1)
-    ax.set_xticklabels(['{:+.0f}'.format(x) for x in ax.get_xticks()])
-    ax.set_yticklabels(['{:+.0f}'.format(x) for x in ax.get_yticks()])
+    if pretty:
+        ax.set_xticks(pltvar['lim'])
+        ax.set_yticks(pltvar['dlim'])
+        ax.set_xticklabels(['{:+.0f}'.format(x) for x in ax.get_xticks()])
+        ax.set_yticklabels(['{:+.0f}'.format(x) for x in ax.get_yticks()])
 
     for ax in axes:
         for item in ax.get_xticklabels() + ax.get_yticklabels():
@@ -95,7 +97,6 @@ def plotPhasePlane(filepaths, varname, no_offset=False, no_first=False,
 
     # For each file
     for i, filepath in enumerate(filepaths):
-        color = 'C{}'.format(i)
 
         # Load data
         logger.info('loading data from file "{}"'.format(filepath))
@@ -103,6 +104,7 @@ def plotPhasePlane(filepaths, varname, no_offset=False, no_first=False,
             frame = pickle.load(fh)
         df = frame['data']
         meta = frame['meta']
+
         tstim = meta['tstim']
         t = df['t'].values
         y = df[varname].values
@@ -112,51 +114,66 @@ def plotPhasePlane(filepaths, varname, no_offset=False, no_first=False,
         # Prominence-based spike detection
         ispikes, *_, ibounds = findPeaks(
             y,
-            # mph=pltvar['thr_amp'],
+            mph=pltvar['thr_amp'],
             # mpd=int(np.ceil(SPIKE_MIN_DT / dt)),
             mpp=pltvar['thr_prom']
         )
 
-        # Discard potential irrelevant spikes
-        if no_offset:
-            inds = np.where(t[ispikes] < tstim)[0]
-            ispikes = ispikes[inds]
-            ibounds = ibounds[inds]
-        if no_first:
-            ispikes = ispikes[1:]
-            ibounds = ibounds[1:]
+        if len(ispikes) > 0:
+            # Discard potential irrelevant spikes
+            if no_offset:
+                ibounds_right = [x[1] for x in ibounds]
+                inds = np.where(t[ibounds_right] < tstim)[0]
+                ispikes = ispikes[inds]
+                ibounds = ibounds[inds]
+            if no_first:
+                ispikes = ispikes[1:]
+                ibounds = ibounds[1:]
 
         # Store spikes in dedicated lists
         tspikes = []
         yspikes = []
         dydtspikes = []
         for ispike, ibound in zip(ispikes, ibounds):
-            inds = np.where((t > t[ibound[0]]) & (t < t[ibound[1]]))[0]
+            tmin = max(t[ibound[0]], tbounds[0] * 1e-3 + t[ispike])
+            tmax = min(t[ibound[1]], tbounds[1] * 1e-3 + t[ispike])
+            inds = np.where((t > tmin) & (t < tmax))[0]
             tspikes.append(t[inds] - t[ispike])
             yspikes.append(y[inds])
             dinds = np.hstack(([inds[0] - 1], inds, [inds[-1] + 1]))
             dydt = np.diff(y[dinds]) / np.diff(t[dinds])
             dydtspikes.append((dydt[:-1] + dydt[1:]) / 2)
 
-        # Plot spikes temporal profiles
-        for tspike, yspike in zip(tspikes, yspikes):
-            lh = axes[0].plot(tspike * 1e3, yspike * pltvar['factor'], linewidth=lw, c=color)[0]
+        if len(tspikes) == 0:
+            logger.warning('No spikes detected')
+        else:
+            # Plot spikes temporal profiles and phase-plane diagrams
+            for j in range(len(tspikes)):
+                if colors is None:
+                    color = 'C{}'.format(i if len(filepaths) > 1 else j % 10)
+                else:
+                    color = colors[i]
+                lh = axes[0].plot(tspikes[j] * 1e3, yspikes[j] * pltvar['factor'],
+                                  linewidth=lw, c=color)[0]
+                axes[1].plot(yspikes[j] * pltvar['factor'], dydtspikes[j] * pltvar['dfactor'],
+                             linewidth=lw, c=color)
 
-        # Plot spikes phase-plane-diagrams
-        for yspike, dydtspike in zip(yspikes, dydtspikes):
-            axes[1].plot(yspike * pltvar['factor'], dydtspike * pltvar['dfactor'], linewidth=lw,
-                         c=color)
-
-        # Populate legend
-        handles.append(lh)
-        autolabels.append(figtitle(meta))
+            # Populate legend
+            handles.append(lh)
+            autolabels.append(figtitle(meta))
 
     fig.tight_layout()
 
+    if labels is None:
+        labels = autolabels
+
     # Add legend
     fig.subplots_adjust(top=0.8)
-    axes[0].legend(handles, labels if labels is not None else autolabels, fontsize=fs,
-                   loc='upper center', frameon=False, bbox_to_anchor=(1.0, 1.35))
+    if len(filepaths) > 1:
+        axes[0].legend(handles, labels, fontsize=fs, frameon=False,
+                       loc='upper center', bbox_to_anchor=(1.0, 1.35))
+    else:
+        fig.suptitle(labels[0], fontsize=fs)
 
     # Return
     return fig

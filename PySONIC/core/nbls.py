@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-29 14:45:20
+# @Last Modified time: 2018-10-28 15:29:16
 
 import os
 import time
@@ -18,7 +18,7 @@ from scipy.interpolate import interp1d
 
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
-from ..utils import logger, si_format, downsample, rmse, ASTIM_filecode, getLookups2D
+from ..utils import logger, si_format, downsample, rmse, ASTIM_filecode, getLookups2D, isWithin
 from ..constants import *
 from ..postpro import findPeaks
 from ..batches import xlslog
@@ -236,11 +236,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Aref, Qref, lookups2D = getLookups2D(self.neuron.name, self.a, Fdrive)
 
         # Check that acoustic amplitude is within lookup range
-        margin = 1e-9  # adding margin to compensate for eventual round error
-        Arange = (Aref.min() - margin, Aref.max() + margin)
-        if Adrive < Arange[0] or Adrive > Arange[1]:
-            raise ValueError('Invalid amplitude: {}Pa (must be within {}Pa - {} Pa lookup interval)'
-                             .format(*si_format([Adrive, *Arange], precision=2, space=' ')))
+        Adrive = isWithin('amplitude', Adrive, (Aref.min(), Aref.max()))
 
         # Interpolate 2D lookups at US amplitude (along with "ng" at zero amplitude)
         lookups1D = {key: interp1d(Aref, y2D, axis=0)(Adrive) for key, y2D in lookups2D.items()}
