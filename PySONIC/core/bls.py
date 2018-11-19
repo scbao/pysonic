@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:14:11
+# @Last Modified time: 2018-11-19 17:42:20
 
 from enum import Enum
 import time
@@ -408,7 +408,7 @@ class BilayerSonophore:
         '''
         relS = self.S0 / self.surface(Z)
         abs_perm = self.epsilon0 * self.epsilonR  # F/m
-        return -relS * Qm**2 / (2 * abs_perm)  # Pa
+        return - relS * Qm**2 / (2 * abs_perm)  # Pa
 
 
     def findDeltaEq(self, Qm):

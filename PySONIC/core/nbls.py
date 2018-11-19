@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-28 15:29:16
+# @Last Modified time: 2018-11-19 20:55:13
 
 import os
 import time
@@ -73,13 +73,13 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return dydt_mech + dydt_elec
 
 
-    def effDerivatives(self, t, y, interp_data):
+    def effDerivatives(self, y, t, interp_data):
         ''' Compute the derivatives of the n-ODE effective HH system variables,
             based on 1-dimensional linear interpolation of "effective" coefficients
             that summarize the system's behaviour over an acoustic cycle.
 
-            :param t: specific instant in time (s)
             :param y: vector of HH system variables at time t
+            :param t: specific instant in time (s)
             :param interp_data: dictionary of 1D data points of "effective" coefficients
              over the charge domain, for specific frequency and amplitude values.
             :return: vector of effective system derivatives at time t
@@ -238,19 +238,13 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Check that acoustic amplitude is within lookup range
         Adrive = isWithin('amplitude', Adrive, (Aref.min(), Aref.max()))
 
-        # Interpolate 2D lookups at US amplitude (along with "ng" at zero amplitude)
-        lookups1D = {key: interp1d(Aref, y2D, axis=0)(Adrive) for key, y2D in lookups2D.items()}
-        lookups1D['ng0'] = interp1d(Aref, lookups2D['ng'], axis=0)(0.0)
+        # Interpolate 2D lookups at zero and US amplitude
+        lookups_on = {key: interp1d(Aref, y2D, axis=0)(Adrive) for key, y2D in lookups2D.items()}
+        lookups_off = {key: interp1d(Aref, y2D, axis=0)(0.0) for key, y2D in lookups2D.items()}
 
-        # Add reference charge vector to 1D lookup dictionary
-        lookups1D['Q'] = Qref
-
-        # Initialize system solvers
-        solver_on = ode(self.effDerivatives)
-        solver_on.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
-        solver_on.set_f_params(lookups1D)
-        solver_off = ode(lambda t, y, Cm: self.neuron.Qderivatives(y, t, Cm))
-        solver_off.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
+        # Add reference charge vector to 1D lookup dictionaries
+        lookups_on['Q'] = Qref
+        lookups_off['Q'] = Qref
 
         # if CW stimulus: change PRF to have exactly one integration interval during stimulus
         if DC == 1.0:
@@ -280,8 +274,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         t = np.array([0.0])
         y = np.atleast_2d(np.insert(self.neuron.states0, 0, self.Qm0)).T
         nvar = y.shape[0]
-        Zeff = np.array([0.0])
-        ngeff = np.array([self.ng0])
 
         # Initializing accurate pulse time vector
         t_pulse_on = np.linspace(0, Tpulse_on, n_pulse_on)
@@ -295,77 +287,45 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             # Construct and initialize arrays
             t_pulse = t_pulse0 + t[-1]
             y_pulse = np.empty((nvar, n_pulse_on + n_pulse_off))
-            ngeff_pulse = np.empty(n_pulse_on + n_pulse_off)
-            Zeff_pulse = np.empty(n_pulse_on + n_pulse_off)
             y_pulse[:, 0] = y[:, -1]
-            ngeff_pulse[0] = ngeff[-1]
-            Zeff_pulse[0] = Zeff[-1]
-
-            # Initialize iterator
-            k = 0
 
             # Integrate ON system
-            solver_on.set_initial_value(y_pulse[:, k], t_pulse[k])
-            while solver_on.successful() and k < n_pulse_on - 1:
-                k += 1
-                solver_on.integrate(t_pulse[k])
-                y_pulse[:, k] = solver_on.y
-                ngeff_pulse[k] = np.interp(y_pulse[0, k], lookups1D['Q'], lookups1D['ng'])  # mole
-                Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
+            y_pulse[:, :n_pulse_on] = odeint(
+                self.effDerivatives, y[:, -1], t_pulse[:n_pulse_on], args=(lookups_on, )).T
 
             # Integrate OFF system
             if n_pulse_off > 0:
-                solver_off.set_initial_value(y_pulse[:, k], t_pulse[k])
-                solver_off.set_f_params(self.Capct(Zeff_pulse[k]))
-                while solver_off.successful() and k < n_pulse_on + n_pulse_off - 1:
-                    k += 1
-                    solver_off.integrate(t_pulse[k])
-                    y_pulse[:, k] = solver_off.y
-                    ngeff_pulse[k] = np.interp(y_pulse[0, k], lookups1D['Q'],
-                                               lookups1D['ng0'])  # mole
-                    Zeff_pulse[k] = self.balancedefQS(ngeff_pulse[k], y_pulse[0, k])  # m
-                    solver_off.set_f_params(self.Capct(Zeff_pulse[k]))
+                y_pulse[:, n_pulse_on:] = odeint(
+                    self.effDerivatives, y_pulse[:, n_pulse_on - 1], t_pulse[n_pulse_on:],
+                    args=(lookups_off, )).T
 
             # Append pulse arrays to global arrays
             states = np.concatenate([states[:-1], states_pulse])
             t = np.concatenate([t, t_pulse[1:]])
             y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
-            Zeff = np.concatenate([Zeff, Zeff_pulse[1:]])
-            ngeff = np.concatenate([ngeff, ngeff_pulse[1:]])
 
         # Integrate offset interval
         if n_off > 0:
             t_off = np.linspace(0, toffset, n_off) + t[-1]
-            states_off = np.zeros(n_off)
-            y_off = np.empty((nvar, n_off))
-            ngeff_off = np.empty(n_off)
-            Zeff_off = np.empty(n_off)
-
-            y_off[:, 0] = y[:, -1]
-            ngeff_off[0] = ngeff[-1]
-            Zeff_off[0] = Zeff[-1]
-            solver_off.set_initial_value(y_off[:, 0], t_off[0])
-            solver_off.set_f_params(self.Capct(Zeff_pulse[-1]))
-            k = 0
-            while solver_off.successful() and k < n_off - 1:
-                k += 1
-                solver_off.integrate(t_off[k])
-                y_off[:, k] = solver_off.y
-                ngeff_off[k] = np.interp(y_off[0, k], lookups1D['Q'], lookups1D['ng0'])  # mole
-                Zeff_off[k] = self.balancedefQS(ngeff_off[k], y_off[0, k])  # m
-                solver_off.set_f_params(self.Capct(Zeff_off[k]))
+            y_off = odeint(self.effDerivatives, y[:, -1], t_off, args=(lookups_off, )).T
 
             # Concatenate offset arrays to global arrays
-            states = np.concatenate([states, states_off[1:]])
+            states = np.concatenate([states, np.zeros(n_off - 1)])
             t = np.concatenate([t, t_off[1:]])
             y = np.concatenate([y, y_off[:, 1:]], axis=1)
-            Zeff = np.concatenate([Zeff, Zeff_off[1:]])
-            ngeff = np.concatenate([ngeff, ngeff_off[1:]])
+
+        # Compute effective gas content vector
+        ngeff = np.zeros(states.size)
+        ngeff[states == 0] = np.interp(y[0, states == 0], lookups_on['Q'], lookups_on['ng'])  # mole
+        ngeff[states == 1] = np.interp(y[0, states == 1], lookups_off['Q'], lookups_off['ng'])  # mole
+
+        # Compute quasi-steady deflection vector
+        Zeff = np.array([self.balancedefQS(ng, Qm) for ng, Qm in zip(ngeff, y[0, :])])  # m
 
         # Compute membrane potential vector (in mV)
         Vm = np.zeros(states.size)
-        Vm[states == 0] = y[0, states == 0] / self.v_Capct(Zeff[states == 0]) * 1e3  # mV
-        Vm[states == 1] = np.interp(y[0, states == 1], lookups1D['Q'], lookups1D['V'])  # mV
+        Vm[states == 0] = np.interp(y[0, states == 0], lookups_on['Q'], lookups_on['V'])  # mV
+        Vm[states == 1] = np.interp(y[0, states == 1], lookups_off['Q'], lookups_off['V'])  # mV
 
         # Add Zeff, ngeff and Vm to solution matrix
         y = np.vstack([Zeff, ngeff, y[0, :], Vm, y[1:, :]])
@@ -704,7 +664,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             else:
                 outstr = 'Athr = {}Pa'.format(si_format(Adrive, 2, space=' '))
                 nspikes = 1
-        logger.debug('completed in %s, %s', si_format(tcomp, 1), outstr)
+        logger.debug('completed in %ss, %s', si_format(tcomp, 1), outstr)
         sr = np.mean(1 / np.diff(t[ipeaks])) if nspikes > 1 else None
 
         # Store dataframe and metadata
