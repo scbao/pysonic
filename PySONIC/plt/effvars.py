@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-19 19:58:51
+# @Last Modified time: 2018-11-20 19:26:26
 
 import numpy as np
 from scipy.interpolate import interp1d, interp2d
@@ -11,7 +11,7 @@ import matplotlib.cm as cm
 import matplotlib
 
 from PySONIC.plt import pltvars
-from PySONIC.utils import logger, getLookups2D
+from PySONIC.utils import logger, si_prefixes, isWithin, getLookups2D
 
 
 def setGrid(n, ncolmax=3):
@@ -23,30 +23,68 @@ def setGrid(n, ncolmax=3):
         return ((n - 1) // ncolmax + 1, ncolmax)
 
 
-def plotEffectiveVariables(neuron, a, Fdrive, amps=None, fs=12, ncolmax=2):
-    ''' Plot the profiles of effective variables of a specific neuron for a given frequency.
-        For each variable, one line chart per amplitude is plotted, using charge as the
-        input variable on the abscissa and a linear color code for the amplitude value.
+def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
+                           nlevels=10, zscale='lin', cmap=None, fs=12, ncolmax=1):
+    ''' Plot the profiles of effective variables of a specific neuron as a function of charge density
+        and another reference variable (z-variable). For each effective variable, one charge-profile
+        per z-value is plotted, with a color code based on the z-variable value.
 
         :param neuron: channel mechanism object
         :param a: sonophore diameter (m)
         :param Fdrive: acoustic drive frequency (Hz)
-        :param amps: vector of amplitudes at which variables must be plotted (Pa)
+        :param Adrive: acoustic pressure amplitude (Pa)
+        :param nlevels: number of levels for the z-variable
+        :param zscale: scale type for the z-variable ('lin' or 'log')
+        :param cmap: colormap name
         :param fs: figure fontsize
         :param ncolmax: max number of columns on the figure
         :return: handle to the created figure
     '''
 
-    # Get 2D lookups at specific (a, Fdrive) combination
-    Aref, Qref, lookups2D = getLookups2D(neuron.name, a, Fdrive)
-    lookups2D['Vm'] = lookups2D.pop('V')
-    keys = ['Vm'] + list(lookups2D.keys())[:-1]
+    if cmap is None:
+        cmap = 'viridis'
 
-    #  Define log-amplitude color code
-    if amps is None:
-        amps = Aref
-    mymap = cm.get_cmap('Oranges')
-    norm = matplotlib.colors.LogNorm(amps.min(), amps.max())
+    # Get 2D lookups at specific (a, Fdrive) combination
+    zref, Qref, lookups2D, zvar = getLookups2D(neuron.name, a=a, Fdrive=Fdrive, Adrive=Adrive)
+    lookups2D.pop('ng')
+    lookups2D['Cm'] = Qref / lookups2D['V'] * 1e5  # uF/cm2
+
+    zref *= zvar['factor']
+    prefix = {value: key for key, value in si_prefixes.items()}[1 / zvar['factor']]
+
+    # Get reference US-OFF lookups
+    if Adrive is None:  # Adrive is the z-dimension
+        lookupsoff = {key: interp1d(zref, y2D, axis=0)(0) for key, y2D in lookups2D.items()}
+        lookups2D = {key: y2d[1:, :] for key, y2d in lookups2D.items()}
+        zref = zref[1:]
+    else:  # Adrive is not the z-dimension
+        _, _, lookups2Doff, _ = getLookups2D(neuron.name, a=a, Fdrive=Fdrive, Adrive=0)
+        lookups2Doff.pop('ng')
+        lookupsoff = {key: y2D[0, :] for key, y2D in lookups2Doff.items()}
+
+    # Optional: interpolate along z dimension if nlevels specified
+    if zscale is 'log':
+        znew = np.logspace(np.log10(zref.min()), np.log10(zref.max()), nlevels)
+    elif zscale is 'lin':
+        znew = np.linspace(zref.min(), zref.max(), nlevels)
+    else:
+        raise ValueError('unknown scale type (should be "lin" or "log")')
+    znew = np.array([isWithin(zvar['label'], z, (zref.min(), zref.max())) for z in znew])
+    lookups2D = {key: interp1d(zref, y2D, axis=0)(znew) for key, y2D in lookups2D.items()}
+    zref = znew
+
+    lookups2D['Vm'] = lookups2D.pop('V')  # mV
+    lookupsoff['Vm'] = lookupsoff.pop('V')  # mV
+    lookups2D['Cm'] = Qref / lookups2D['Vm'] * 1e3  # uF/cm2
+    lookupsoff['Cm'] = Qref / lookupsoff['Vm'] * 1e3  # uF/cm2
+    keys = ['Cm', 'Vm'] + list(lookups2D.keys())[:-2]
+
+    #  Define color code
+    mymap = cm.get_cmap(cmap)
+    if zscale == 'lin':
+        norm = matplotlib.colors.Normalize(zref.min(), zref.max())
+    elif zscale == 'log':
+        norm = matplotlib.colors.LogNorm(zref.min(), zref.max())
     sm = cm.ScalarMappable(norm=norm, cmap=mymap)
     sm._A = []
 
@@ -56,7 +94,7 @@ def plotEffectiveVariables(neuron, a, Fdrive, amps=None, fs=12, ncolmax=2):
     xvar = pltvars['Qm']
     Qbounds = np.array([Qref.min(), Qref.max()]) * xvar['factor']
 
-    fig, _ = plt.subplots(figsize=(3 * ncols, 1 * nrows), squeeze=False)
+    fig, _ = plt.subplots(figsize=(3.5 * ncols, 1 * nrows), squeeze=False)
     for j, key in enumerate(keys):
         ax = plt.subplot2grid((nrows, ncols), (j // ncols, j % ncols))
         for s in ['right', 'top']:
@@ -78,13 +116,13 @@ def plotEffectiveVariables(neuron, a, Fdrive, amps=None, fs=12, ncolmax=2):
         ymin = np.inf
         ymax = -np.inf
 
-        # Plot effective variable for each selected amplitude
-        y0 = np.squeeze(interp2d(Aref, Qref, lookups2D[key].T)(0, Qref))
-        for Adrive in amps:
-            y = np.squeeze(interp2d(Aref, Qref, lookups2D[key].T)(Adrive, Qref))
+        # Plot effective variable for each selected z-value
+        y0 = lookupsoff[key]
+        for i, z in enumerate(zref):
+            y = lookups2D[key][i]
             if 'alpha' in key or 'beta' in key:
                 y[y > y0.max() * 2] = np.nan
-            ax.plot(Qref * xvar['factor'], y * yvar['factor'], c=sm.to_rgba(Adrive))
+            ax.plot(Qref * xvar['factor'], y * yvar['factor'], c=sm.to_rgba(z))
             ymin = min(ymin, y.min())
             ymax = max(ymax, y.max())
 
@@ -97,8 +135,9 @@ def plotEffectiveVariables(neuron, a, Fdrive, amps=None, fs=12, ncolmax=2):
         if 'alpha' in key or 'beta' in key:
             ymax = y0.max() * 2
         ylim = [ymin * yvar['factor'], ymax * yvar['factor']]
-        if key == 'ng':
-            ylim = [np.floor(ylim[0] * 1e2) / 1e2, np.ceil(ylim[1] * 1e2) / 1e2]
+        if key == 'Cm':
+            factor = 1e1
+            ylim = [np.floor(ylim[0] * factor) / factor, np.ceil(ylim[1] * factor) / factor]
         else:
             factor = 1 / np.power(10, np.floor(np.log10(ylim[1])))
             ylim = [np.floor(ylim[0] * factor) / factor, np.ceil(ylim[1] * factor) / factor]
@@ -108,82 +147,29 @@ def plotEffectiveVariables(neuron, a, Fdrive, amps=None, fs=12, ncolmax=2):
         # ax.set_ylim([ylim[0] - 0.05 * dy, ylim[1] + 0.05 * dy])
 
         # Annotate variable and unit
-        xlim = ax.get_xlim()
-        if np.argmax(y0) < np.argmin(y0):
-            xtext = xlim[0] + 0.6 * (xlim[1] - xlim[0])
-        else:
-            xtext = xlim[0] + 0.01 * (xlim[1] - xlim[0])
-        if key in ['Vm', 'ng']:
-            ytext = ylim[0] + 0.85 * dy
-        else:
-            ytext = ylim[0] + 0.15 * dy
-        ax.text(xtext, ytext, '$\\rm {}\ ({})$'.format(yvar['label'], yvar['unit']), fontsize=fs)
+        # xlim = ax.get_xlim()
+        # if np.argmax(y0) < np.argmin(y0):
+        #     xtext = xlim[0] + 0.6 * (xlim[1] - xlim[0])
+        # else:
+        #     xtext = xlim[0] + 0.01 * (xlim[1] - xlim[0])
+        # if key in ['Vm', 'ng']:
+        #     ytext = ylim[0] + 0.85 * dy
+        # else:
+        #     ytext = ylim[0] + 0.15 * dy
+        # ax.text(xtext, ytext, '$\\rm {}\ ({})$'.format(yvar['label'], yvar['unit']), fontsize=fs)
 
-    fig.suptitle('{} neuron: original vs. effective variables @ {:.0f} kHz'.format(
-        neuron.name, Fdrive * 1e-3))
+        ax.set_ylabel('$\\rm {}\ ({})$'.format(yvar['label'], yvar['unit']), fontsize=fs,
+                      rotation=0, ha='right', va='center')
+
+    fig.suptitle('{} neuron: {} \n modulated effective variables'.format(neuron.name, zvar['label']))
 
     # Plot colorbar
-    fig.subplots_adjust(left=0.10, bottom=0.05, top=0.9, right=0.85)
-    cbarax = fig.add_axes([0.87, 0.05, 0.04, 0.85])
-    fig.colorbar(sm, cax=cbarax)
-    cbarax.set_ylabel('amplitude (Pa)', fontsize=fs)
+    fig.subplots_adjust(left=0.20, bottom=0.05, top=0.8, right=0.80, hspace=0.5)
+    cbarax = fig.add_axes([0.10, 0.90, 0.80, 0.02])
+    fig.colorbar(sm, cax=cbarax, orientation='horizontal')
+    cbarax.set_xlabel('{} ({}{})'.format(
+        zvar['label'], prefix, zvar['unit']), fontsize=fs)
     for item in cbarax.get_yticklabels():
         item.set_fontsize(fs)
-
-    return fig
-
-
-
-def plotEffectiveCapacitance(neuron, a, Fdrive, amps=None, fs=12):
-    ''' Plot the profiles of effective membrane capacitance of a specific neuron for a given frequency.
-        One line chart per amplitude is plotted, using charge as the input variable on the abscissa
-        and a linear color code for the amplitude value.
-
-        :param neuron: channel mechanism object
-        :param a: sonophore diameter (m)
-        :param Fdrive: acoustic drive frequency (Hz)
-        :param amps: vector of amplitudes at which variables must be plotted (Pa)
-        :param fs: figure fontsize
-        :param ncolmax: max number of columns on the figure
-        :return: handle to the created figure
-    '''
-
-    # Get 2D lookups at specific (a, Fdrive) combination
-    Aref, Qref, lookups2D = getLookups2D(neuron.name, a, Fdrive)
-
-    # Compute effective capacitance
-    Cmeff = Qref / lookups2D.pop('V') * 1e5  # uF/cm2
-
-    #  Define log-amplitude color code
-    if amps is None:
-        amps = Aref
-    mymap = cm.get_cmap('Oranges')
-    norm = matplotlib.colors.LogNorm(amps.min(), amps.max())
-    sm = cm.ScalarMappable(norm=norm, cmap=mymap)
-    sm._A = []
-
-    # Plot
-    logger.info('plotting')
-    xvar = pltvars['Qm']
-    Qbounds = np.array([Qref.min(), Qref.max()]) * xvar['factor']
-
-    # Create figure
-    fig, ax = plt.subplots(figsize=(3, 3))
-    for s in ['right', 'top']:
-        ax.spines[s].set_visible(False)
-    ax.set_xlabel('$\\rm {}\ ({})$'.format(xvar['label'], xvar['unit']), fontsize=fs)
-    ax.set_ylabel('$\\rm C_{m,eff}\ (\mu F /cm^2)$', fontsize=fs)
-    ax.set_xticks(Qbounds)
-    for item in ax.get_xticklabels() + ax.get_yticklabels():
-        item.set_fontsize(fs)
-
-    # Plot effective variable for each selected amplitude, and reference variable
-    y0 = interp1d(Aref, Cmeff, axis=0)(0)
-    for Adrive in amps:
-        y = interp1d(Aref, Cmeff, axis=0)(Adrive)
-        ax.plot(Qref * xvar['factor'], y, c=sm.to_rgba(Adrive))
-    ax.plot(Qref * xvar['factor'], y0, '--', c='k')
-
-    fig.tight_layout()
 
     return fig

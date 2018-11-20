@@ -4,9 +4,9 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-02 01:46:25
+# @Last Modified time: 2018-11-20 14:25:29
 
-''' Plot the effective variables as a function of charge density with amplitude color code. '''
+''' Plot the effective variables as a function of charge density with color code. '''
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -32,25 +32,37 @@ def main():
     # Stimulation parameters
     ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
                     help='Neuron name (string)')
-    ap.add_argument('-a', '--diam', type=float, default=defaults['diam'],
+    ap.add_argument('-a', '--diam', type=float, default=None,
                     help='Sonophore diameter (nm)')
-    ap.add_argument('-f', '--freq', type=float, default=defaults['freq'],
+    ap.add_argument('-f', '--freq', type=float, default=None,
                     help='US frequency (kHz)')
-    ap.add_argument('-A', '--amps', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('-A', '--amp', type=float, default=None,
+                    help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('--log', action='store_true', default=False,
+                    help='Log color scale')
+    ap.add_argument('-c', '--cmap', type=str, default=None,
+                    help='Colormap name')
+    ap.add_argument('--ncol', type=int, default=1,
+                    help='Number of columns in figure')
 
     # Parse arguments
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
     neuron_str = args['neuron']
-    diam = args['diam'] * 1e-9  # m
-    Fdrive = args['freq'] * 1e3  # Hz
-    amps = np.array(args.get('amps', defaults['amps'])) * 1e3  # Pa
+    a = args['diam'] * 1e-9 if 'diam' in args else None  # m
+    Fdrive = args['freq'] * 1e3 if 'freq' in args else None  # Hz
+    Adrive = args['amp'] * 1e3 if 'amp' in args else None  # Pa
+
+    zscale = 'log' if args['log'] else 'lin'
+    cmap = args.get('cmap', None)
+    ncol = args['ncol']
 
     # Plot effective variables
     if neuron_str not in getNeuronsDict():
         logger.error('Unknown neuron type: "%s"', neuron_str)
         return
     neuron = getNeuronsDict()[neuron_str]()
-    plotEffectiveVariables(neuron, diam, Fdrive, amps=amps)
+    plotEffectiveVariables(neuron, a=a, Fdrive=Fdrive, Adrive=Adrive,
+                           zscale=zscale, cmap=cmap, ncolmax=ncol)
     plt.show()
 
 

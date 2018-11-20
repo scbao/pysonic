@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-02 13:28:20
+# @Last Modified time: 2018-11-20 19:23:52
 
 import os
 import logging
@@ -33,7 +33,7 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     Qthr = neuron.Cm0 * Vthr * 1e-3  # C/m2
 
     # Get lookups
-    amps, Qref, lookups2D = getLookups2D(neuron.name, a, Fdrive)
+    amps, Qref, lookups2D, _ = getLookups2D(neuron.name, a=a, Fdrive=Fdrive)
     amps *= 1e-3
     lookups1D = {key: interp1d(Qref, y2D, axis=1)(Qthr) for key, y2D in lookups2D.items()}
 
@@ -183,7 +183,7 @@ def plotdQvsDC(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
     Qthr = neuron.Cm0 * Vthr * 1e-3  # C/m2
 
     # Get lookups
-    amps, Qref, lookups2D = getLookups2D(neuron.name, a, Fdrive)
+    amps, Qref, lookups2D, _ = getLookups2D(neuron.name, a=a, Fdrive=Fdrive)
     amps *= 1e-3
     lookups1D = {key: interp1d(Qref, y2D, axis=1)(Qthr) for key, y2D in lookups2D.items()}
 

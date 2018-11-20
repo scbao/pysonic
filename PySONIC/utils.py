@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-28 15:26:03
+# @Last Modified time: 2018-11-20 19:29:38
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -78,8 +78,8 @@ rgxp_mech = re.compile('(MECH)_(.*).pkl')
 def figtitle(meta):
     ''' Return appropriate title based on simulation metadata. '''
     if 'Cm0' in meta:
-        return '{:.0f}nm BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa'.format(
-            meta['a'] * 1e9, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3)
+        return '{:.0f}nm BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa, {:.1f}nC/cm2'.format(
+            meta['a'] * 1e9, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3, meta['Qm'] * 1e5)
     else:
         if meta['DC'] < 1:
             wavetype = 'PW'
@@ -341,15 +341,18 @@ def getNeuronLookupsFile(mechname):
         '{}_lookups.pkl'.format(mechname))
 
 
-def getLookups2D(mechname, a, Fdrive):
+def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
     ''' Retrieve appropriate 2D lookup tables and reference vectors
-        for a given membrane mechanism, sonophore diameter and US frequency.
+        for a given membrane mechanism, projected at a specific combination
+        of sonophore diameter, US frequency and or acoustic pressure amplitude.
 
         :param mechname: name of membrane density mechanism
         :param a: sonophore diameter (m)
         :param Fdrive: US frequency (Hz)
-        :return: 3-tuple with 1D numpy arrays of reference acoustic amplitudes and charge densities,
-            and a dictionary of 2D lookup numpy arrays
+        :param Adrive: Acoustic peak pressure ampplitude (Hz)
+        :return: 4-tuple with 1D numpy arrays of reference input vectors (charge density and
+            one other variable), a dictionary of associated 2D lookup numpy arrays, and
+            a dictionnary with information about the other variable.
     '''
 
     # Check lookup file existence
@@ -368,17 +371,46 @@ def getLookups2D(mechname, a, Fdrive):
     Aref = lookups4D.pop('A')
     Qref = lookups4D.pop('Q')
 
-    # Check that sonophore diameter and US frequency are within lookup range
-    a = isWithin('diameter', a, (aref.min(), aref.max()))
-    Fdrive = isWithin('frequency', Fdrive, (Fref.min(), Fref.max()))
+    # Check that inputs are within lookup range
+    if a is not None:
+        a = isWithin('diameter', a, (aref.min(), aref.max()))
+    if Fdrive is not None:
+        Fdrive = isWithin('frequency', Fdrive, (Fref.min(), Fref.max()))
+    if Adrive is not None:
+        Adrive = isWithin('amplitude', Adrive, (Aref.min(), Aref.max()))
 
-    # Interpolate 4D lookups at sonophore diameter and then at US frequency
-    logger.debug('Interpolating lookups at (a = {}m, f = {}Hz)'.format(
-        *si_format([a, Fdrive], space=' ')))
-    lookups3D = {key: interp1d(aref, y4D, axis=0)(a) for key, y4D in lookups4D.items()}
-    lookups2D = {key: interp1d(Fref, y3D, axis=0)(Fdrive) for key, y3D in lookups3D.items()}
+    # Determine projection dimensions based on inputs
+    var_a = {'name': 'a', 'label': 'sonophore diameter', 'val': a, 'unit': 'm', 'factor': 1e9,
+             'ref': aref, 'axis': 0}
+    var_Fdrive = {'name': 'f', 'label': 'frequency', 'val': Fdrive, 'unit': 'Hz', 'factor': 1e-3,
+                  'ref': Fref, 'axis': 1}
+    var_Adrive = {'name': 'A', 'label': 'amplitude', 'val': Adrive, 'unit': 'Pa', 'factor': 1e-3,
+                  'ref': Aref, 'axis': 2}
+    if Adrive is None:
+        var1 = var_a
+        var2 = var_Fdrive
+        var3 = var_Adrive
+    elif Fdrive is None:
+        var1 = var_a
+        var2 = var_Adrive
+        var3 = var_Fdrive
+    elif a is None:
+        var1 = var_Fdrive
+        var2 = var_Adrive
+        var3 = var_a
 
-    return Aref, Qref, lookups2D
+    # Perform 2D projection in appropriate dimensions
+    logger.debug('Interpolating lookups at (%s = %s%s, %s = %s%s)',
+                 var1['name'], si_format(var1['val'], space=' '), var1['unit'],
+                 var2['name'], si_format(var2['val'], space=' '), var2['unit'])
+    lookups3D = {key: interp1d(var1['ref'], y4D, axis=var1['axis'])(var1['val'])
+                 for key, y4D in lookups4D.items()}
+    if var2['axis'] > var1['axis']:
+        var2['axis'] -= 1
+    lookups2D = {key: interp1d(var2['ref'], y3D, axis=var2['axis'])(var2['val'])
+                 for key, y3D in lookups3D.items()}
+
+    return var3['ref'], Qref, lookups2D, var3
 
 
 def isWithin(name, val, bounds, rel_tol=1e-9):

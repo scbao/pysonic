@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-19 20:55:13
+# @Last Modified time: 2018-11-20 19:24:30
 
 import os
 import time
@@ -233,7 +233,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
 
         # Load appropriate 2D lookups
-        Aref, Qref, lookups2D = getLookups2D(self.neuron.name, self.a, Fdrive)
+        Aref, Qref, lookups2D, _ = getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)
 
         # Check that acoustic amplitude is within lookup range
         Adrive = isWithin('amplitude', Adrive, (Aref.min(), Aref.max()))
@@ -742,7 +742,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
 
         # Get lookups projected at specific (a, Fdrive, Qthr) combination.
-        Aref, Qref, lookups2D = getLookups2D(self.neuron.name, self.a, Fdrive)
+        Aref, Qref, lookups2D, _ = getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)
         Qthr = self.neuron.Cm0 * Vthr * 1e-3  # C/m2
         lookups1D = {key: interp1d(Qref, y2D, axis=1)(Qthr) for key, y2D in lookups2D.items()}
 
