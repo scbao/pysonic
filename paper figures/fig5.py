@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-01 21:55:48
+# @Last Modified time: 2018-11-22 18:44:23
 
 
 import os
@@ -58,14 +58,14 @@ def fig5aright(neuron, a, Fdrive, amps, tstim, toffset, inputdir):
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'sonic'))
     full_fpaths = getSims(subdir, neuron, a, createAStimQueue(
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'full'))
+    data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
     metrics_files = {x: '{}_spikemetrics_vs_amplitude_{}.csv'.format(neuron, x)
                      for x in ['full', 'sonic']}
     metrics_fpaths = {key: os.path.join(inputdir, value) for key, value in metrics_files.items()}
     xlabel = 'Amplitude (kPa)'
-    full_metrics, sonic_metrics = getSpikingMetrics(
-        subdir, neuron, amps * 1e-3, xlabel, full_fpaths, sonic_fpaths, metrics_fpaths)
-    metrics_dict = {neuron: {'full': full_metrics, 'sonic': sonic_metrics}}
-    fig = plotSpikingMetrics(amps * 1e-3, xlabel, metrics_dict, logscale=True)
+    metrics = getSpikingMetrics(
+        subdir, neuron, amps * 1e-3, xlabel, data_fpaths, metrics_fpaths)
+    fig = plotSpikingMetrics(amps * 1e-3, xlabel, {neuron: metrics}, logscale=True)
     fig.canvas.set_window_title('fig5a right')
     return fig
 
@@ -108,14 +108,14 @@ def fig5bright(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir):
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
         full_fpaths += getSims(subdir, neuron, a, createAStimQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
+    data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
     metrics_files = {x: '{}_spikemetrics_vs_frequency_{}.csv'.format(neuron, x)
                      for x in ['full', 'sonic']}
     metrics_fpaths = {key: os.path.join(inputdir, value) for key, value in metrics_files.items()}
     xlabel = 'Frequency (kHz)'
-    full_metrics, sonic_metrics = getSpikingMetrics(
-        subdir, neuron, freqs * 1e-3, xlabel, full_fpaths, sonic_fpaths, metrics_fpaths)
-    metrics_dict = {neuron: {'full': full_metrics, 'sonic': sonic_metrics}}
-    fig = plotSpikingMetrics(freqs * 1e-3, xlabel, metrics_dict, logscale=True)
+    metrics = getSpikingMetrics(
+        subdir, neuron, freqs * 1e-3, xlabel, data_fpaths, metrics_fpaths)
+    fig = plotSpikingMetrics(freqs * 1e-3, xlabel, {neuron: metrics}, logscale=True)
     fig.canvas.set_window_title('fig5b right')
     return fig
 
@@ -167,9 +167,9 @@ def fig5cright(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir):
         metrics_fpaths = {key: os.path.join(inputdir, value) for key, value in metrics_files.items()}
         sonic_fpaths = sonic_fpaths[1:] + [sonic_fpaths[0]]
         full_fpaths = full_fpaths[1:] + [full_fpaths[0]]
-        full_metrics, sonic_metrics = getSpikingMetrics(
-            subdir, neuron, DCs * 1e2, xlabel, full_fpaths, sonic_fpaths, metrics_fpaths)
-        metrics_dict[neuron] = {'full': full_metrics, 'sonic': sonic_metrics}
+        data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
+        metrics_dict[neuron] = getSpikingMetrics(
+            subdir, neuron, DCs * 1e2, xlabel, data_fpaths, metrics_fpaths)
         colors_dict[neuron] = {'full': colors[2 * i], 'sonic': colors[2 * i + 1]}
     fig = plotSpikingMetrics(DCs * 1e2, xlabel, metrics_dict, spikeamp=False, colors=colors_dict)
     fig.canvas.set_window_title('fig5c right')
@@ -210,13 +210,13 @@ def fig5dright(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inputdir):
         [Fdrive], [Adrive], [tstim], [toffset], PRFs, [DC], 'sonic'))
     full_fpaths = getSims(subdir, neuron, a, createAStimQueue(
         [Fdrive], [Adrive], [tstim], [toffset], PRFs, [DC], 'full'))
+    data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
     metrics_files = {x: '{}_spikemetrics_vs_PRF_{}.csv'.format(neuron, x)
                      for x in ['full', 'sonic']}
     metrics_fpaths = {key: os.path.join(inputdir, value) for key, value in metrics_files.items()}
-    full_metrics, sonic_metrics = getSpikingMetrics(
-        subdir, neuron, PRFs, xlabel, full_fpaths, sonic_fpaths, metrics_fpaths)
-    metrics_dict = {neuron: {'full': full_metrics, 'sonic': sonic_metrics}}
-    fig = plotSpikingMetrics(PRFs, xlabel, metrics_dict, spikeamp=False, logscale=True)
+    metrics = getSpikingMetrics(
+        subdir, neuron, PRFs, xlabel, data_fpaths, metrics_fpaths)
+    fig = plotSpikingMetrics(PRFs, xlabel, {neuron: metrics}, spikeamp=False, logscale=True)
     fig.canvas.set_window_title('fig5d right')
     return fig
 

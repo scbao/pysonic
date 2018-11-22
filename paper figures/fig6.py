@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-02 00:37:54
+# @Last Modified time: 2018-11-22 19:09:36
 
 
 import os
@@ -44,12 +44,15 @@ def fig6a(neurons, a, Fdrive, CW_Athrs, tstim, toffset, inputdir, width=0.35, fs
             [Fdrive], [Athr - 5e3], [tstim], [toffset], [None], [1.], 'full'))
         full_fpaths[neuron]['thr + 20 kPa'] = getSims(subdir, neuron, a, createAStimQueue(
             [Fdrive], [Athr + 20e3], [tstim], [toffset], [None], [1.], 'full'))
+    data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
 
     # Extract computation rates (s comp / ms stimulus)
     comptimes_fpaths = {x: os.path.join(inputdir, 'comptimes_vs_regimes_{}.csv'.format(x))
                         for x in ['sonic', 'full']}
-    full_comptimes, sonic_comptimes = getCompTimesQual(
-        inputdir, neurons, regimes, full_fpaths, sonic_fpaths, comptimes_fpaths)
+    comptimes = getCompTimesQual(
+        inputdir, neurons, regimes, data_fpaths, comptimes_fpaths)
+    full_comptimes = comptimes['full']
+    sonic_comptimes = comptimes['sonic']
 
     full_comprates = tstim * 1e3 / full_comptimes  # ms simulation / s computation
     sonic_comprates = tstim * 1e3 / sonic_comptimes  # ms simulation / s computation
@@ -95,11 +98,12 @@ def fig6b(neuron, a, Fdrive, amps, tstim, toffset, inputdir, fs=8, lw=2, ps=4):
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'sonic'))
     full_fpaths = getSims(subdir, neuron, a, createAStimQueue(
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'full'))
+    data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
 
     # Extract computation rates (s comp / ms stimulus)
     comptimes_fpath = os.path.join(inputdir, '{}_comptimes_vs_amps.csv'.format(neuron))
     comptimes = getCompTimesQuant(
-        inputdir, neuron, amps * 1e-3, xlabel, full_fpaths, sonic_fpaths, comptimes_fpath)
+        inputdir, neuron, amps * 1e-3, xlabel, data_fpaths, comptimes_fpath)
     comprates = tstim * 1e3 / comptimes  # ms simulation / s computation
 
     # Plot comparative profiles of computation rate vs. amplitude
@@ -140,11 +144,12 @@ def fig6c(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir, fs=8, lw=2, ps=4
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
         full_fpaths += getSims(subdir, neuron, a, createAStimQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
+    data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
 
     # Extract computation rates (s comp / ms stimulus)
     comptimes_fpath = os.path.join(inputdir, '{}_comptimes_vs_freqs.csv'.format(neuron))
     comptimes = getCompTimesQuant(
-        inputdir, neuron, freqs * 1e-3, xlabel, full_fpaths, sonic_fpaths, comptimes_fpath)
+        inputdir, neuron, freqs * 1e-3, xlabel, data_fpaths, comptimes_fpath)
     comprates = tstim * 1e3 / comptimes  # ms simulation / s computation
 
     # Plot comparative profiles of computation rate vs. frequency
@@ -201,11 +206,12 @@ def fig6d(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir, fs=8, 
             [Fdrive], [Adrive], [tstim], [toffset], [PRF], DCs, 'full'))
         sonic_fpaths = sonic_fpaths[1:] + [sonic_fpaths[0]]
         full_fpaths = full_fpaths[1:] + [full_fpaths[0]]
+        data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
 
         # Extract computation rates (s comp / ms stimulus)
         comptimes_fpath = os.path.join(inputdir, '{}_comptimes_vs_DC.csv'.format(neuron))
         comptimes = getCompTimesQuant(
-            inputdir, neuron, DCs * 1e2, xlabel, full_fpaths, sonic_fpaths, comptimes_fpath)
+            inputdir, neuron, DCs * 1e2, xlabel, data_fpaths, comptimes_fpath)
         comprates = tstim * 1e3 / comptimes  # ms simulation / s computation
 
         # Plot

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:45:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-02 00:31:10
+# @Last Modified time: 2018-11-22 19:07:19
 
 import os
 import numpy as np
@@ -55,21 +55,18 @@ def getSims(outdir, neuron, a, queue):
     return fpaths
 
 
-def getSpikingMetrics(outdir, neuron, xvar, xkey, full_fpaths, sonic_fpaths, metrics_fpaths):
-    if os.path.isfile(metrics_fpaths['full']):
-        logger.info('loading spiking metrics from files: "%s" and "%s"',
-                    metrics_fpaths['full'], metrics_fpaths['sonic'])
-        full_metrics = pd.read_csv(metrics_fpaths['full'], sep=',')
-        sonic_metrics = pd.read_csv(metrics_fpaths['sonic'], sep=',')
-    else:
-        logger.warning('computing spiking metrics vs. %s for %s neuron', xkey, neuron)
-        full_metrics = computeSpikingMetrics(full_fpaths)
-        full_metrics[xkey] = pd.Series(xvar, index=full_metrics.index)
-        full_metrics.to_csv(metrics_fpaths['full'], sep=',', index=False)
-        sonic_metrics = computeSpikingMetrics(sonic_fpaths)
-        sonic_metrics[xkey] = pd.Series(xvar, index=sonic_metrics.index)
-        sonic_metrics.to_csv(metrics_fpaths['sonic'], sep=',', index=False)
-    return full_metrics, sonic_metrics
+def getSpikingMetrics(outdir, neuron, xvar, xkey, data_fpaths, metrics_fpaths):
+    metrics = {}
+    for stype in data_fpaths.keys():
+        if os.path.isfile(metrics_fpaths[stype]):
+            logger.info('loading spiking metrics from file: "%s"', metrics_fpaths[stype])
+            metrics[stype] = pd.read_csv(metrics_fpaths[stype], sep=',')
+        else:
+            logger.warning('computing % spiking metrics vs. %s for %s neuron', stype, xkey, neuron)
+            metrics[stype] = computeSpikingMetrics(data_fpaths[stype])
+            metrics[stype][xkey] = pd.Series(xvar, index=metrics[stype].index)
+            metrics[stype].to_csv(metrics_fpaths[stype], sep=',', index=False)
+    return metrics
 
 
 def extractCompTimes(filenames):
@@ -84,34 +81,33 @@ def extractCompTimes(filenames):
     return tcomps
 
 
-def getCompTimesQual(outdir, neurons, xvars, full_fpaths, sonic_fpaths, comptimes_fpaths):
-    if os.path.isfile(comptimes_fpaths['full']):
-        logger.info('reading computation times from files: "%s" and "%s"',
-                    comptimes_fpaths['full'], comptimes_fpaths['sonic'])
-        full_comptimes = pd.read_csv(comptimes_fpaths['full'], sep=',', index_col='neuron')
-        sonic_comptimes = pd.read_csv(comptimes_fpaths['sonic'], sep=',', index_col='neuron')
-    else:
-        full_comptimes = pd.DataFrame(index=neurons)
-        sonic_comptimes = pd.DataFrame(index=neurons)
-        for xvar in xvars:
-            for neuron in neurons:
-                logger.warning('extracting %s computation times for %s neuron', xvar, neuron)
-                full_comptimes.loc[neuron, xvar] = extractCompTimes(full_fpaths[neuron][xvar])
-                sonic_comptimes.loc[neuron, xvar] = extractCompTimes(sonic_fpaths[neuron][xvar])
-        full_comptimes.to_csv(comptimes_fpaths['full'], sep=',', index_label='neuron')
-        sonic_comptimes.to_csv(comptimes_fpaths['sonic'], sep=',', index_label='neuron')
-    return full_comptimes, sonic_comptimes
+def getCompTimesQual(outdir, neurons, xvars, data_fpaths, comptimes_fpaths):
+    comptimes = {}
+    for stype in data_fpaths.keys():
+        if os.path.isfile(comptimes_fpaths[stype]):
+            logger.info('reading computation times from file: "%s"', comptimes_fpaths[stype])
+            comptimes[stype] = pd.read_csv(comptimes_fpaths[stype], sep=',', index_col='neuron')
+        else:
+            comptimes[stype] = pd.DataFrame(index=neurons)
+            for xvar in xvars:
+                for neuron in neurons:
+                    logger.warning('extracting %s computation times vs %s for %s neuron',
+                                   stype, xvar, neuron)
+                    comptimes[stype].loc[neuron, xvar] = extractCompTimes(
+                        data_fpaths[stype][neuron][xvar])
+            comptimes[stype].to_csv(comptimes_fpaths[stype], sep=',', index_label='neuron')
+    return comptimes
 
 
-def getCompTimesQuant(outdir, neuron, xvars, xkey, full_fpaths, sonic_fpaths, comptimes_fpath):
+def getCompTimesQuant(outdir, neuron, xvars, xkey, data_fpaths, comptimes_fpath):
     if os.path.isfile(comptimes_fpath):
         logger.info('reading computation times from file: "%s"', comptimes_fpath)
         comptimes = pd.read_csv(comptimes_fpath, sep=',', index_col=xkey)
     else:
         logger.warning('extracting computation times for %s neuron', neuron)
         comptimes = pd.DataFrame(index=xvars)
-        for i, xvar in enumerate(xvars):
-            comptimes.loc[xvar, 'full'] = extractCompTimes([full_fpaths[i]])
-            comptimes.loc[xvar, 'sonic'] = extractCompTimes([sonic_fpaths[i]])
+        for stype in data_fpaths.keys():
+            for i, xvar in enumerate(xvars):
+                comptimes.loc[xvar, stype] = extractCompTimes([data_fpaths[stype][i]])
         comptimes.to_csv(comptimes_fpath, sep=',', index_label=xkey)
     return comptimes
