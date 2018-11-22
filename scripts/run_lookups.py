@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:14:11
+# @Last Modified time: 2018-11-22 17:56:29
 
 ''' Create lookup table for specific neuron. '''
 
@@ -23,20 +23,20 @@ from PySONIC.core import NeuronalBilayerSonophore
 # Default parameters
 defaults = dict(
     neuron='RS',
-    diams=np.array([16.0, 32.0, 64.0]),  # nm
-    freqs=np.array([20., 100., 500., 1e3, 2e3, 3e3, 4e3]),  # kHz
-    amps=np.insert(np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0),  # kPa
-    charges=None
+    radius=np.array([16.0, 32.0, 64.0]),  # nm
+    freq=np.array([20., 100., 500., 1e3, 2e3, 3e3, 4e3]),  # kHz
+    amp=np.insert(np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0),  # kPa
+    charge=None
 )
 
 
 def computeAStimLookups(neuron, aref, fref, Aref, Qref, phi=np.pi, mpi=False, loglevel=logging.INFO):
     ''' Run simulations of the mechanical system for a multiple combinations of
-        imposed US frequencies, acoustic amplitudes and charge densities, compute
-        effective coefficients and store them in a dictionary of 3D arrays.
+        imposed sonophore raduis, US frequencies, acoustic amplitudes and charge densities,
+        compute effective coefficients and store them in a dictionary of 3D arrays.
 
         :param neuron: neuron object
-        :param aref: array of sonophore diameters (m)
+        :param aref: array of sonophore radii (m)
         :param fref: array of acoustic drive frequencies (Hz)
         :param Aref: array of acoustic drive amplitudes (Pa)
         :param Qref: array of membrane charge densities (C/m2)
@@ -46,14 +46,14 @@ def computeAStimLookups(neuron, aref, fref, Aref, Qref, phi=np.pi, mpi=False, lo
     '''
 
     # Check validity of input parameters
-    for key, values in {'diameters': aref, 'frequencies': fref, 'amplitudes': Aref}.items():
+    for key, values in {'radii': aref, 'frequencies': fref, 'amplitudes': Aref}.items():
         if not (isinstance(values, list) or isinstance(values, np.ndarray)):
             raise TypeError('Invalid {} (must be provided as list or numpy array)'.format(key))
         if not all(isinstance(x, float) for x in values):
             raise TypeError('Invalid {} (must all be float typed)'.format(key))
         if len(values) == 0:
             raise ValueError('Empty {} array'.format(key))
-        if key in ('diameters', 'frequencies') and min(values) <= 0:
+        if key in ('radii', 'frequencies') and min(values) <= 0:
             raise ValueError('Invalid {} (must all be strictly positive)'.format(key))
         if key is 'amplitudes' and min(values) < 0:
             raise ValueError('Invalid {} (must all be positive or null)'.format(key))
@@ -100,10 +100,10 @@ def main():
     # Stimulation parameters
     ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
                     help='Neuron name (string)')
-    ap.add_argument('-a', '--diams', nargs='+', type=float, help='Sonophore diameter (nm)')
-    ap.add_argument('-f', '--freqs', nargs='+', type=float, help='US frequency (kHz)')
-    ap.add_argument('-A', '--amps', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
-    ap.add_argument('-Q', '--charges', nargs='+', type=float, help='Mmebrane charge density (nC/cm2)')
+    ap.add_argument('-a', '--radius', nargs='+', type=float, help='Sonophore radius (nm)')
+    ap.add_argument('-f', '--freq', nargs='+', type=float, help='US frequency (kHz)')
+    ap.add_argument('-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('-Q', '--charge', nargs='+', type=float, help='Mmebrane charge density (nC/cm2)')
 
     # Parse arguments
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
@@ -111,9 +111,9 @@ def main():
     logger.setLevel(loglevel)
     mpi = args['mpi']
     neuron_str = args['neuron']
-    diams = np.array(args.get('diams', defaults['diams'])) * 1e-9  # m
-    freqs = np.array(args.get('freqs', defaults['freqs'])) * 1e3  # Hz
-    amps = np.array(args.get('amps', defaults['amps'])) * 1e3  # Pa
+    radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
+    freqs = np.array(args.get('freq', defaults['freq'])) * 1e3  # Hz
+    amps = np.array(args.get('amp', defaults['amp'])) * 1e3  # Pa
 
     # Check neuron name validity
     if neuron_str not in getNeuronsDict():
@@ -121,13 +121,13 @@ def main():
         return
     neuron = getNeuronsDict()[neuron_str]()
 
-    if 'charges' in args:
-        charges = np.array(args['charges']) * 1e-5  # C/m2
+    if 'charge' in args:
+        charges = np.array(args['charge']) * 1e-5  # C/m2
     else:
         charges = np.arange(neuron.Qbounds[0], neuron.Qbounds[1] + 1e-5, 1e-5)  # C/m2
 
     if args['test']:
-        diams = np.array([diams.min(), diams.max()])
+        radii = np.array([radii.min(), radii.max()])
         freqs = np.array([freqs.min(), freqs.max()])
         amps = np.array([amps.min(), amps.max()])
         charges = np.array([charges.min(), 0., charges.max()])
@@ -143,7 +143,7 @@ def main():
             return
 
     # compute lookups
-    lookup_dict = computeAStimLookups(neuron, diams, freqs, amps, charges, mpi=mpi, loglevel=loglevel)
+    lookup_dict = computeAStimLookups(neuron, radii, freqs, amps, charges, mpi=mpi, loglevel=loglevel)
 
     # Save dictionary in lookup file
     logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_path)

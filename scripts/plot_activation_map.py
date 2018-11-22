@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:11:11
+# @Last Modified time: 2018-11-21 14:48:18
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -17,7 +17,7 @@ from PySONIC.plt import plotActivationMap
 # Default parameters
 defaults = dict(
     neuron='RS',
-    diam=32,  # nm
+    radius=32,  # nm
     freq=500,  # kHz
     duration=1000,  # ms
     PRF=100,  # Hz
@@ -45,8 +45,8 @@ def main():
     # Stimulation parameters
     ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
                     help='Neuron name (string)')
-    ap.add_argument('-a', '--diam', type=float, default=defaults['diam'],
-                    help='Sonophore diameter (nm)')
+    ap.add_argument('-a', '--radius', type=float, default=defaults['radius'],
+                    help='Sonophore radius (nm)')
     ap.add_argument('-f', '--freq', type=float, default=defaults['freq'],
                     help='US frequency (kHz)')
     ap.add_argument('-d', '--duration', type=float, default=defaults['duration'],
@@ -81,7 +81,7 @@ def main():
 
     # Parameters
     neuron = args['neuron']
-    a = args['diam'] * 1e-9  # m
+    a = args['radius'] * 1e-9  # m
     Fdrive = args['freq'] * 1e3  # Hz
     tstim = args['duration'] * 1e-3  # s
     PRF = args['PRF']  # Hz

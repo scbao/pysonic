@@ -4,7 +4,7 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-20 14:25:29
+# @Last Modified time: 2018-11-21 14:48:49
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
@@ -20,7 +20,7 @@ from PySONIC.neurons import getNeuronsDict
 # Default parameters
 defaults = dict(
     neuron='RS',
-    diam=32.0,
+    radius=32.0,
     freq=500.0,
     amps=np.logspace(np.log10(1), np.log10(600), 10),  # kPa
 )
@@ -32,8 +32,8 @@ def main():
     # Stimulation parameters
     ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
                     help='Neuron name (string)')
-    ap.add_argument('-a', '--diam', type=float, default=None,
-                    help='Sonophore diameter (nm)')
+    ap.add_argument('-a', '--radius', type=float, default=None,
+                    help='Sonophore radius (nm)')
     ap.add_argument('-f', '--freq', type=float, default=None,
                     help='US frequency (kHz)')
     ap.add_argument('-A', '--amp', type=float, default=None,
@@ -48,7 +48,7 @@ def main():
     # Parse arguments
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
     neuron_str = args['neuron']
-    a = args['diam'] * 1e-9 if 'diam' in args else None  # m
+    a = args['radius'] * 1e-9 if 'radius' in args else None  # m
     Fdrive = args['freq'] * 1e3 if 'freq' in args else None  # Hz
     Adrive = args['amp'] * 1e3 if 'amp' in args else None  # Pa
 

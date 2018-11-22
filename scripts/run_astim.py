@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-01 12:03:09
+# @Last Modified time: 2018-11-22 17:50:43
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -23,13 +23,13 @@ from PySONIC.plt import plotBatch
 # Default parameters
 defaults = dict(
     neuron='RS',
-    diams=[32.0],  # nm
-    freqs=[500.0],  # kHz
-    amps=[100.0],  # kPa
-    durations=[100.0],  # ms
-    PRFs=[100.0],  # Hz
-    DCs=[100.0],  # %
-    offsets=[50.],  # ms
+    radius=[32.0],  # nm
+    freq=[500.0],  # kHz
+    amp=[100.0],  # kPa
+    duration=[100.0],  # ms
+    PRF=[100.0],  # Hz
+    DC=[100.0],  # %
+    offset=[50.],  # ms
     method='sonic'
 )
 
@@ -82,11 +82,11 @@ def main():
     # Stimulation parameters
     ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
                     help='Neuron name (string)')
-    ap.add_argument('-a', '--diams', nargs='+', type=float, help='Sonophore diameter (nm)')
-    ap.add_argument('-f', '--freqs', nargs='+', type=float, help='US frequency (kHz)')
-    ap.add_argument('-A', '--amps', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
-    ap.add_argument('-I', '--intensities', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
-    ap.add_argument('-d', '--durations', nargs='+', type=float, help='Stimulus duration (ms)')
+    ap.add_argument('-a', '--radius', nargs='+', type=float, help='Sonophore radius (nm)')
+    ap.add_argument('-f', '--freq', nargs='+', type=float, help='US frequency (kHz)')
+    ap.add_argument('-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('-I', '--intensity', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
+    ap.add_argument('-d', '--duration', nargs='+', type=float, help='Stimulus duration (ms)')
     ap.add_argument('--offset', nargs='+', type=float, help='Offset duration (ms)')
     ap.add_argument('--PRF', nargs='+', type=float, help='PRF (Hz)')
     ap.add_argument('--DC', nargs='+', type=float, help='Duty cycle (%%)')
@@ -101,23 +101,24 @@ def main():
     titrate = args['titrate']
     method = args['method']
     neuron_str = args['neuron']
-    diams = np.array(args.get('diams', defaults['diams'])) * 1e-9  # m
+    radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
 
-    if 'amps' in args:
-        amps = np.array(args['amps']) * 1e3  # Pa
-    elif 'intensities' in args:
-        amps = Intensity2Pressure(np.array(args['intensities']) * 1e4)  # Pa
+    if 'amp' in args:
+        amps = np.array(args['amp']) * 1e3  # Pa
+    elif 'intensity' in args:
+        amps = Intensity2Pressure(np.array(args['intensity']) * 1e4)  # Pa
     else:
-        amps = np.array(defaults['amps']) * 1e3  # Pa
+        amps = np.array(defaults['amp']) * 1e3  # Pa
 
     stim_params = dict(
-        freqs=np.array(args.get('freqs', defaults['freqs'])) * 1e3,  # Hz
+        freqs=np.array(args.get('freq', defaults['freq'])) * 1e3,  # Hz
         amps=amps,  # Pa
-        durations=np.array(args.get('durations', defaults['durations'])) * 1e-3,  # s
-        PRFs=np.array(args.get('PRF', defaults['PRFs'])),  # Hz
-        DCs=np.array(args.get('DC', defaults['DCs'])) * 1e-2,  # (-)
-        offsets=np.array(args.get('offsets', defaults['offsets'])) * 1e-3  # s
+        durations=np.array(args.get('duration', defaults['duration'])) * 1e-3,  # s
+        PRFs=np.array(args.get('PRF', defaults['PRF'])),  # Hz
+        DCs=np.array(args.get('DC', defaults['DC'])) * 1e-2,  # (-)
+        offsets=np.array(args.get('offset', defaults['offset'])) * 1e-3  # s
     )
+
     if titrate:
         stim_params['amps'] = [None]
 
@@ -127,13 +128,14 @@ def main():
         return
     neuron = getNeuronsDict()[neuron_str]()
     pkl_filepaths = []
-    for a in diams:
+    for a in radii:
         nbls = NeuronalBilayerSonophore(a, neuron)
         pkl_filepaths += runAStimBatch(outdir, nbls, stim_params, method, mpi=mpi)
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
     if plot:
+        print('plot')
         plotBatch(pkl_filepaths, vars_dict={'Q_m': ['Qm']})
         plt.show()
 

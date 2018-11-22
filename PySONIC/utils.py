@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-20 19:29:38
+# @Last Modified time: 2018-11-21 14:44:43
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -78,7 +78,7 @@ rgxp_mech = re.compile('(MECH)_(.*).pkl')
 def figtitle(meta):
     ''' Return appropriate title based on simulation metadata. '''
     if 'Cm0' in meta:
-        return '{:.0f}nm BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa, {:.1f}nC/cm2'.format(
+        return '{:.0f}nm radius BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa, {:.1f}nC/cm2'.format(
             meta['a'] * 1e9, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3, meta['Qm'] * 1e5)
     else:
         if meta['DC'] < 1:
@@ -344,10 +344,10 @@ def getNeuronLookupsFile(mechname):
 def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
     ''' Retrieve appropriate 2D lookup tables and reference vectors
         for a given membrane mechanism, projected at a specific combination
-        of sonophore diameter, US frequency and or acoustic pressure amplitude.
+        of sonophore radius, US frequency and or acoustic pressure amplitude.
 
         :param mechname: name of membrane density mechanism
-        :param a: sonophore diameter (m)
+        :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param Adrive: Acoustic peak pressure ampplitude (Hz)
         :return: 4-tuple with 1D numpy arrays of reference input vectors (charge density and
@@ -373,14 +373,14 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
 
     # Check that inputs are within lookup range
     if a is not None:
-        a = isWithin('diameter', a, (aref.min(), aref.max()))
+        a = isWithin('radius', a, (aref.min(), aref.max()))
     if Fdrive is not None:
         Fdrive = isWithin('frequency', Fdrive, (Fref.min(), Fref.max()))
     if Adrive is not None:
         Adrive = isWithin('amplitude', Adrive, (Aref.min(), Aref.max()))
 
     # Determine projection dimensions based on inputs
-    var_a = {'name': 'a', 'label': 'sonophore diameter', 'val': a, 'unit': 'm', 'factor': 1e9,
+    var_a = {'name': 'a', 'label': 'sonophore radius', 'val': a, 'unit': 'm', 'factor': 1e9,
              'ref': aref, 'axis': 0}
     var_Fdrive = {'name': 'f', 'label': 'frequency', 'val': Fdrive, 'unit': 'Hz', 'factor': 1e-3,
                   'ref': Fref, 'axis': 1}

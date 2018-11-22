@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-01 12:04:39
+# @Last Modified time: 2018-11-22 17:52:42
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -20,11 +20,11 @@ from PySONIC.plt import plotBatch
 # Default parameters
 defaults = dict(
     neuron='RS',
-    amps=[10.0],  # mA/m2
-    durations=[100.0],  # ms
-    PRFs=[100.0],  # Hz
-    DCs=[100.0],  # %
-    offsets=[50.],  # ms
+    amp=[10.0],  # mA/m2
+    duration=[100.0],  # ms
+    PRF=[100.0],  # Hz
+    DC=[100.0],  # %
+    offset=[50.],  # ms
     method='sonic'
 )
 
@@ -71,8 +71,8 @@ def main():
     # Stimulation parameters
     ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
                     help='Neuron name (string)')
-    ap.add_argument('-A', '--amps', nargs='+', type=float, help='Injected current density (mA/m2)')
-    ap.add_argument('-d', '--durations', nargs='+', type=float, help='Stimulus duration (ms)')
+    ap.add_argument('-A', '--amp', nargs='+', type=float, help='Injected current density (mA/m2)')
+    ap.add_argument('-d', '--duration', nargs='+', type=float, help='Stimulus duration (ms)')
     ap.add_argument('--offset', nargs='+', type=float, help='Offset duration (ms)')
     ap.add_argument('--PRF', nargs='+', type=float, help='PRF (Hz)')
     ap.add_argument('--DC', nargs='+', type=float, help='Duty cycle (%%)')
@@ -87,11 +87,11 @@ def main():
     titrate = args['titrate']
     neuron_str = args['neuron']
     stim_params = dict(
-        amps=np.array(args.get('amps', defaults['amps'])),  # mA/m2
-        durations=np.array(args.get('durations', defaults['durations'])) * 1e-3,  # s
-        PRFs=np.array(args.get('PRF', defaults['PRFs'])),  # Hz
-        DCs=np.array(args.get('DC', defaults['DCs'])) * 1e-2,  # (-)
-        offsets=np.array(args.get('offsets', defaults['offsets'])) * 1e-3  # s
+        amps=np.array(args.get('amp', defaults['amp'])),  # mA/m2
+        durations=np.array(args.get('duration', defaults['duration'])) * 1e-3,  # s
+        PRFs=np.array(args.get('PRF', defaults['PRF'])),  # Hz
+        DCs=np.array(args.get('DC', defaults['DC'])) * 1e-2,  # (-)
+        offsets=np.array(args.get('offset', defaults['offset'])) * 1e-3  # s
     )
     if titrate:
         stim_params['amps'] = [None]

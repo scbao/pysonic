@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-02 01:19:38
+# @Last Modified time: 2018-11-21 16:28:11
 
 import os
 import ntpath
@@ -20,12 +20,13 @@ from ..neurons import getNeuronsDict
 
 
 def getActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs):
-    ''' Compute the activation map of a neuron at a given frequency and PRF, by computing
-        the spiking metrics of simulation results over a 2D space (amplitude x duty cycle).
+    ''' Compute the activation map of a neuron with specific sonophore radius
+        at a given frequency and PRF, by computing the spiking metrics of simulation
+        results over a 2D space (amplitude x duty cycle).
 
         :param root: directory containing the input data files
         :param neuron: neuron name
-        :param a: sonophore diameter
+        :param a: sonophore radius
         :param Fdrive: US frequency (Hz)
         :param tstim: duration of US stimulation (s)
         :param PRF: pulse repetition frequency (Hz)
@@ -195,7 +196,7 @@ def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='lo
 
         :param root: directory containing the input data files
         :param neuron: neuron name
-        :param a: sonophore diameter
+        :param a: sonophore radius
         :param Fdrive: US frequency (Hz)
         :param tstim: duration of US stimulation (s)
         :param PRF: pulse repetition frequency (Hz)
@@ -282,4 +283,68 @@ def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='lo
                                   (xedges, yedges), tmax, Vbounds)
         )
 
+    return fig
+
+
+def plotAstimRheobaseAmps(neuron, radii, freqs, fs=12):
+    ''' Plot threshold excitation amplitudes (determined by quasi-steady approximation)
+        of a specific neuron as a function of duty cycle, for various combinations of
+        sonophore radius and US frequency.
+
+        :param neuron: neuron object
+        :param radii: list of sonophore radii (m)
+        :param freqs: list US frequencies (Hz)
+        :return: figure handle
+    '''
+    linestyles = ['-', '--', ':', '-.']
+    assert len(freqs) <= len(linestyles), 'too many frequencies'
+    fig, ax = plt.subplots()
+    ax.set_title('{} neuron: rheobase amplitude profiles'.format(neuron.name), fontsize=fs)
+    ax.set_xlabel('Duty cycle (%)', fontsize=fs)
+    ax.set_ylabel('Threshold amplitude (kPa)', fontsize=fs)
+    for item in ax.get_xticklabels() + ax.get_yticklabels():
+        item.set_fontsize(fs)
+    ax.set_yscale('log')
+    ax.set_xlim([0, 100])
+    ax.set_ylim([10, 600])
+    DCs = np.arange(1, 101) / 1e2
+    for i, a in enumerate(radii):
+        nbls = NeuronalBilayerSonophore(a, neuron)
+        for j, Fdrive in enumerate(freqs):
+            Athrs, Aref = nbls.findRheobaseAmps(DCs, Fdrive, neuron.VT)
+            color = 'C{}'.format(i)
+            lbl = '{:.0f} nm radius sonophore, {}Hz'.format(a * 1e9, si_format(Fdrive, 1, space=' '))
+            ax.plot(DCs * 1e2, Athrs * 1e-3, linestyles[j], c=color, label=lbl)
+            # inans = np.where(np.isnan(Athrs))[0]
+            # if len(inans) > 0:
+            #     i1 = inans[-1] + 1
+            # else:
+            #     i1 = 0
+
+            # i2 = i1 + 1
+            # m = (np.log10(Athrs[i2]) - np.log10(Athrs[i1])) / (DCs[i2] - DCs[i1])
+            # p = np.log10(Athrs[i1]) - m * DCs[i1]
+            # DClim = max(0, (np.log10(Aref.max()) - p) / m)
+            # ax.plot(np.array([DClim, DCs[i1]]) * 1e2,
+            #         np.array([Aref.max(), Athrs[i1]]) * 1e-3, '--', c=color)
+    ax.legend(fontsize=fs, frameon=False)
+    fig.tight_layout()
+    return fig
+
+
+def plotEstimRheobaseAmps(neurons, fs=15):
+    fig, ax = plt.subplots()
+    ax.set_title('Rheobase amplitudes', fontsize=fs)
+    ax.set_xlabel('Duty cycle (%)', fontsize=fs)
+    ax.set_ylabel('Threshold amplitude (mA/m2)', fontsize=fs)
+    for item in ax.get_xticklabels() + ax.get_yticklabels():
+        item.set_fontsize(fs)
+    ax.set_yscale('log')
+    ax.set_ylim([1e0, 1e3])
+    DCs = np.arange(1, 101) / 1e2
+    for neuron in neurons:
+        Athrs = neuron.findRheobaseAmps(DCs, neuron.VT)
+        ax.plot(DCs * 1e2, Athrs, label='{} neuron'.format(neuron.name))
+    ax.legend(fontsize=fs, frameon=False)
+    fig.tight_layout()
     return fig

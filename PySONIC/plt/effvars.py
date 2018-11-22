@@ -2,10 +2,10 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-20 19:26:26
+# @Last Modified time: 2018-11-21 14:47:35
 
 import numpy as np
-from scipy.interpolate import interp1d, interp2d
+from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib
@@ -30,7 +30,7 @@ def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
         per z-value is plotted, with a color code based on the z-variable value.
 
         :param neuron: channel mechanism object
-        :param a: sonophore diameter (m)
+        :param a: sonophore radius (m)
         :param Fdrive: acoustic drive frequency (Hz)
         :param Adrive: acoustic pressure amplitude (Pa)
         :param nlevels: number of levels for the z-variable
@@ -141,23 +141,8 @@ def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
         else:
             factor = 1 / np.power(10, np.floor(np.log10(ylim[1])))
             ylim = [np.floor(ylim[0] * factor) / factor, np.ceil(ylim[1] * factor) / factor]
-        dy = ylim[1] - ylim[0]
         ax.set_yticks(ylim)
         ax.set_ylim(ylim)
-        # ax.set_ylim([ylim[0] - 0.05 * dy, ylim[1] + 0.05 * dy])
-
-        # Annotate variable and unit
-        # xlim = ax.get_xlim()
-        # if np.argmax(y0) < np.argmin(y0):
-        #     xtext = xlim[0] + 0.6 * (xlim[1] - xlim[0])
-        # else:
-        #     xtext = xlim[0] + 0.01 * (xlim[1] - xlim[0])
-        # if key in ['Vm', 'ng']:
-        #     ytext = ylim[0] + 0.85 * dy
-        # else:
-        #     ytext = ylim[0] + 0.15 * dy
-        # ax.text(xtext, ytext, '$\\rm {}\ ({})$'.format(yvar['label'], yvar['unit']), fontsize=fs)
-
         ax.set_ylabel('$\\rm {}\ ({})$'.format(yvar['label'], yvar['unit']), fontsize=fs,
                       rotation=0, ha='right', va='center')
 

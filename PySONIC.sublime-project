@@ -32,7 +32,8 @@
 				".ipynb_checkpoints",
 				"_build",
 				"_static",
-				"_templates"
+				"_templates",
+				"__pycache__"
 			],
 			"path": "."
 		}

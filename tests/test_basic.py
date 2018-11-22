@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 15:28:05
+# @Last Modified time: 2018-11-21 14:53:06
 
 ''' Test the basic functionalities of the package. '''
 
@@ -105,12 +105,12 @@ def test_ASTIM_sonic(is_profiled=False):
         stats.sort_stats('cumulative')
         stats.print_stats()
     else:
-        # test error 1: sonophore diameter outside of lookup range
+        # test error 1: sonophore radius outside of lookup range
         try:
             nbls = NeuronalBilayerSonophore(100e-9, neuron)
             nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
         except ValueError as err:
-            logger.debug('Out of range diameter: OK')
+            logger.debug('Out of range radius: OK')
 
         # test error 2: frequency outside of lookups range
         try:

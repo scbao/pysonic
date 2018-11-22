@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:14:12
+# @Last Modified time: 2018-11-22 17:41:59
 
 import os
 import time
@@ -367,8 +367,9 @@ class PointNeuron(metaclass=abc.ABCMeta):
         daytime_str = time.strftime("%H:%M:%S")
 
         if Astim is not None:
-            logger.info('%s: simulation @ A = %sA/m2, t = %ss%s',
-                        self, si_format(Astim * 1e-3, 2, space=' '), si_format(tstim, 1, space=' '),
+            logger.info('%s: simulation @ A = %sA/m2, t = %ss (%ss offset)%s',
+                        self, si_format(Astim * 1e-3, 2, space=' '),
+                        *si_format([tstim, toffset], 1, space=' '),
                         (', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2, space=' '), DC * 1e2)
                          if DC < 1.0 else ''))
 

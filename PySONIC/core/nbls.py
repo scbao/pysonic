@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-20 19:24:30
+# @Last Modified time: 2018-11-22 17:40:34
 
 import os
 import time
@@ -28,10 +28,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     ''' This class inherits from the BilayerSonophore class and receives an PointNeuron instance
         at initialization, to define the electro-mechanical NICE model and its SONIC variant. '''
 
-    def __init__(self, diameter, neuron, Fdrive=None, embedding_depth=0.0):
+    def __init__(self, a, neuron, Fdrive=None, embedding_depth=0.0):
         ''' Constructor of the class.
 
-            :param diameter: in-plane diameter of the sonophore structure within the membrane (m)
+            :param a: in-plane radius of the sonophore structure within the membrane (m)
             :param neuron: neuron object
             :param Fdrive: frequency of acoustic perturbation (Hz)
             :param embedding_depth: depth of the embedding tissue around the membrane (m)
@@ -44,7 +44,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         self.neuron = neuron
 
         # Initialize BilayerSonophore parent object
-        BilayerSonophore.__init__(self, diameter, neuron.Cm0, neuron.Cm0 * neuron.Vm0 * 1e-3,
+        BilayerSonophore.__init__(self, a, neuron.Cm0, neuron.Cm0 * neuron.Vm0 * 1e-3,
                                   embedding_depth)
 
     def __repr__(self):
@@ -53,7 +53,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             self.neuron)
 
     def pprint(self):
-        return '{}m diameter NBLS - {} neuron'.format(
+        return '{}m radius NBLS - {} neuron'.format(
             si_format(self.a, precision=0, space=' '),
             self.neuron.name)
 
@@ -626,10 +626,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         daytime_str = time.strftime("%H:%M:%S")
 
         if Adrive is not None:
-            logger.info('%s: simulation @ f = %sHz, A = %sPa, t = %ss%s',
+            logger.info('%s: simulation @ f = %sHz, A = %sPa, t = %ss (%ss offset)%s',
                         self, si_format(Fdrive, 0, space=' '),
                         si_format(Adrive, 2, space=' '),
-                        si_format(tstim, 1, space=' '),
+                        *si_format([tstim, toffset], 1, space=' '),
                         (', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2, space=' '), DC * 1e2)
                          if DC < 1.0 else ''))
 
@@ -792,7 +792,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 logger.warning('No rheobase amplitudes within [%s - %sPa] below %.1f%% duty cycle',
                                *si_format((Aref.min(), Aref.max())), minDC * 1e2)
 
-        return rheboase_amps
+        return rheboase_amps, Aref
 
 
     def computeEffVars(self, Fdrive, Adrive, Qm, phi=np.pi):

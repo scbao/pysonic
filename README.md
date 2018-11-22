@@ -49,11 +49,11 @@ Use `run_estim.py` to simulate a point-neuron model upon electrical stimulation,
 
 ```$ python run_estim.py -n=RS -A=10 -d=30```
 
-Use `run_mech.py` to simulate mechanical model upon sonication (until periodic stabilization), e.g. for a 32 nm diameter sonophore sonicated at 500 kHz and 100 kPa:
+Use `run_mech.py` to simulate mechanical model upon sonication (until periodic stabilization), e.g. for a 32 nm radius sonophore sonicated at 500 kHz and 100 kPa:
 
 ```$ python run_mech.py -a=32 -f=500 -A=100```
 
-Use `run_astim.py` to simulate the full electro-mechanical model of a given neuron type upon sonication, e.g. for a 32 nm diameter sonophore within a *regular-spiking neuron* sonicated at 500 kHz and 100 kPa for 150 ms:
+Use `run_astim.py` to simulate the full electro-mechanical model of a given neuron type upon sonication, e.g. for a 32 nm radius sonophore within a *regular-spiking neuron* sonicated at 500 kHz and 100 kPa for 150 ms:
 
 ```$ python run_astim.py -n=RS -a=32 -f=500 -A=100 -d=150```
 

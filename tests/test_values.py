@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 15:28:07
+# @Last Modified time: 2018-11-21 14:53:14
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -136,7 +136,7 @@ def test_ASTIM():
 
     logger.info('Starting test: A-STIM titration')
 
-    # Sonophore diameter
+    # Sonophore radius
     a = 32e-9  # m
 
     # Stimulation parameters

@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 18:01:00
+# @Last Modified time: 2018-11-22 17:55:11
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -24,11 +24,11 @@ from PySONIC.plt import plotBatch
 defaults = dict(
     Cm0=CorticalRS().Cm0 * 1e2,  # uF/m2
     Qm0=CorticalRS().Vm0,  # nC/m2
-    diams=[32.0],  # nm
-    embeddings=[0.],  # um
-    freqs=[500.0],  # kHz
-    amps=[100.0],  # kPa
-    charges=[0.]  # nC/cm2
+    radius=[32.0],  # nm
+    embedding=[0.],  # um
+    freq=[500.0],  # kHz
+    amp=[100.0],  # kPa
+    charge=[0.]  # nC/cm2
 )
 
 
@@ -70,16 +70,16 @@ def main():
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
 
     # Stimulation parameters
-    ap.add_argument('-a', '--diams', nargs='+', type=float, help='Sonophore diameter (nm)')
+    ap.add_argument('-a', '--radius', nargs='+', type=float, help='Sonophore radius (nm)')
     ap.add_argument('--Cm0', type=float, default=defaults['Cm0'],
                     help='Resting membrane capacitance (uF/cm2)')
     ap.add_argument('--Qm0', type=float, default=defaults['Qm0'],
                     help='Resting membrane charge density (nC/cm2)')
-    ap.add_argument('-d', '--embeddings', nargs='+', type=float, help='Embedding depth (um)')
-    ap.add_argument('-f', '--freqs', nargs='+', type=float, help='US frequency (kHz)')
-    ap.add_argument('-A', '--amps', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
-    ap.add_argument('-I', '--intensities', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
-    ap.add_argument('-Q', '--charges', nargs='+', type=float, help='Membrane charge density (nC/cm2)')
+    ap.add_argument('-d', '--embedding', nargs='+', type=float, help='Embedding depth (um)')
+    ap.add_argument('-f', '--freq', nargs='+', type=float, help='US frequency (kHz)')
+    ap.add_argument('-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('-I', '--intensity', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
+    ap.add_argument('-Q', '--charge', nargs='+', type=float, help='Membrane charge density (nC/cm2)')
 
     # Parse arguments
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
@@ -90,23 +90,23 @@ def main():
     plot = args['plot']
     Cm0 = args['Cm0'] * 1e-2  # F/m2
     Qm0 = args['Qm0'] * 1e-5  # C/m2
-    diams = np.array(args.get('diams', defaults['diams'])) * 1e-9  # m
-    embeddings = np.array(args.get('embeddings', defaults['embeddings'])) * 1e-6  # m
-    if 'amps' in args:
-        amps = np.array(args['amps']) * 1e3  # Pa
-    elif 'intensities' in args:
-        amps = Intensity2Pressure(np.array(args['intensities']) * 1e4)  # Pa
+    radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
+    embeddings = np.array(args.get('embedding', defaults['embedding'])) * 1e-6  # m
+    if 'amp' in args:
+        amps = np.array(args['amp']) * 1e3  # Pa
+    elif 'intensity' in args:
+        amps = Intensity2Pressure(np.array(args['intensity']) * 1e4)  # Pa
     else:
-        amps = np.array(defaults['amps']) * 1e3  # Pa
+        amps = np.array(defaults['amp']) * 1e3  # Pa
     stim_params = dict(
-        freqs=np.array(args.get('freqs', defaults['freqs'])) * 1e3,  # Hz
+        freqs=np.array(args.get('freq', defaults['freq'])) * 1e3,  # Hz
         amps=amps,  # Pa
-        charges=np.array(args.get('charges', defaults['charges'])) * 1e-5  # C/m2
+        charges=np.array(args.get('charge', defaults['charge'])) * 1e-5  # C/m2
     )
 
     # Run MECH batch
     pkl_filepaths = []
-    for a in diams:
+    for a in radii:
         for d in embeddings:
             bls = BilayerSonophore(a, Cm0, Qm0, embedding_depth=d)
             pkl_filepaths += runMechBatch(outdir, bls, stim_params, mpi=mpi)

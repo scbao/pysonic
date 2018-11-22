@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-19 17:42:20
+# @Last Modified time: 2018-11-21 14:45:08
 
 from enum import Enum
 import time
@@ -75,7 +75,7 @@ class BilayerSonophore:
 
     def __init__(self, a, Cm0, Qm0, Fdrive=None, embedding_depth=0.0):
         ''' Constructor of the class.
-            :param a: in-plane diameter of the sonophore structure within the membrane (m)
+            :param a: in-plane radius of the sonophore structure within the membrane (m)
             :param Cm0: membrane resting capacitance (F/m2)
             :param Qm0: membrane resting charge density (C/m2)
             :param Fdrive: frequency of acoustic perturbation (Hz)
@@ -141,7 +141,7 @@ class BilayerSonophore:
                       precision=1, space=' '))
 
     def pprint(self):
-        return '{}m diameter BilayerSonophore'.format(
+        return '{}m radius BilayerSonophore'.format(
             si_format(self.a, precision=0, space=' '))
 
     def getLookupsPath(self):
