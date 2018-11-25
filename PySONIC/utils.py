@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-21 14:44:43
+# @Last Modified time: 2018-11-25 01:10:11
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -91,9 +91,9 @@ def figtitle(meta):
             return '{} neuron: {} E-STIM {:.2f}mA/m2, {:.0f}ms{}'.format(
                 meta['neuron'], wavetype, meta['Astim'], meta['tstim'] * 1e3, suffix)
         else:
-            return '{} neuron: {} A-STIM {:.0f}kHz {:.0f}kPa, {:.0f}ms{}'.format(
-                meta['neuron'], wavetype, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3,
-                meta['tstim'] * 1e3, suffix)
+            return '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.0f}kPa, {:.0f}ms{} - {} model'.format(
+                meta['neuron'], meta['a'] * 1e9, wavetype, meta['Fdrive'] * 1e-3,
+                meta['Adrive'] * 1e-3, meta['tstim'] * 1e3, suffix, meta['method'])
 
 
 timeunits = {

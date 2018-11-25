@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 17:56:29
+# @Last Modified time: 2018-11-25 01:09:04
 
 ''' Create lookup table for specific neuron. '''
 
@@ -58,6 +58,14 @@ def computeAStimLookups(neuron, aref, fref, Aref, Qref, phi=np.pi, mpi=False, lo
         if key is 'amplitudes' and min(values) < 0:
             raise ValueError('Invalid {} (must all be positive or null)'.format(key))
 
+    # populate inputs dictionary
+    inputs = dict(
+        a=aref,  # nm
+        f=fref,  # Hz
+        A=Aref,  # Pa
+        Q=Qref  # C/m2
+    )
+
     # create simulation queue
     na, nf, nA, nQ = len(aref), len(fref), len(Aref), len(Qref)
     queue = createQueue((fref, Aref, Qref))
@@ -70,23 +78,30 @@ def computeAStimLookups(neuron, aref, fref, Aref, Qref, phi=np.pi, mpi=False, lo
         outputs += runBatch(nbls, 'computeEffVars', queue, mpi=mpi, loglevel=loglevel)
     outputs = np.array(outputs).T
 
-    # populate lookups dictionary with input vectors
-    lookups = dict(
-        a=aref,  # nm
-        f=fref,  # Hz
-        A=Aref,  # Pa
-        Q=Qref  # C/m2
-    )
+    # Split comp times and lookups
+    tcomps = outputs[0]
+    outputs = outputs[1:]
+
+    # Reshape comp times into 4D array
+    tcomps = tcomps.reshape(na, nf, nA, nQ)
 
     # reshape outputs into 4D arrays and add them to lookups dictionary
     logger.info('Reshaping output into lookup tables')
 
     keys = ['V', 'ng'] + neuron.coeff_names
     assert len(keys) == len(outputs), 'Lookup keys not matching array size'
+    lookups = {}
     for key, output in zip(keys, outputs):
         lookups[key] = output.reshape(na, nf, nA, nQ)
 
-    return lookups
+    # Store inputs, lookup data and comp times in dictionary
+    df = {
+        'input': inputs,
+        'lookup': lookups,
+        'tcomp': tcomps
+    }
+
+    return df
 
 
 def main():
@@ -143,12 +158,13 @@ def main():
             return
 
     # compute lookups
-    lookup_dict = computeAStimLookups(neuron, radii, freqs, amps, charges, mpi=mpi, loglevel=loglevel)
+    df = computeAStimLookups(
+        neuron, radii, freqs, amps, charges, mpi=mpi, loglevel=loglevel)
 
     # Save dictionary in lookup file
     logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_path)
     with open(lookup_path, 'wb') as fh:
-        pickle.dump(lookup_dict, fh)
+        pickle.dump(df, fh)
 
 
 if __name__ == '__main__':

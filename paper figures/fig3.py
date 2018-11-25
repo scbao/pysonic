@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-20 19:23:52
+# @Last Modified time: 2018-11-22 19:24:40
 
 import os
 import logging
@@ -277,8 +277,8 @@ def plotRheobaseAmps(neurons, a, Fdrive, DCs_dense, DCs_sparse, fs=8, title=None
     for i, neuron in enumerate(neurons):
         neuron = getNeuronsDict()[neuron]()
         nbls = NeuronalBilayerSonophore(a, neuron)
-        Athrs_dense = nbls.findRheobaseAmps(DCs_dense, Fdrive, neuron.VT) * 1e-3  # kPa
-        Athrs_sparse = nbls.findRheobaseAmps(DCs_sparse, Fdrive, neuron.VT) * 1e-3  # kPa
+        Athrs_dense = nbls.findRheobaseAmps(DCs_dense, Fdrive, neuron.VT)[0] * 1e-3  # kPa
+        Athrs_sparse = nbls.findRheobaseAmps(DCs_sparse, Fdrive, neuron.VT)[0] * 1e-3  # kPa
         ax.plot(DCs_dense * 1e2, Athrs_dense, label='{} neuron'.format(neuron.name))
         for DC, Athr in zip(DCs_sparse, Athrs_sparse):
             ax.plot(DC * 1e2, Athr, 'o',

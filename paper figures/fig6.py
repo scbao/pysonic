@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 19:09:36
+# @Last Modified time: 2018-11-22 20:08:35
 
 
 import os
@@ -259,17 +259,17 @@ def main():
     # Get threshold amplitudes if needed
     if 'a' in figset or 'c' in figset:
         allneurons = ['RS', 'FS', 'LTS', 'RE', 'TC']
-        CW_Athrs = getCWtitrations(allneurons, a, [Fdrive], tstim, toffset,
-                                   os.path.join(inputdir, 'CW_Athrs.csv'))
+        CW_Athr_vs_Fdrive = getCWtitrations_vs_Fdrive(
+            allneurons, a, [Fdrive], tstim, toffset, os.path.join(inputdir, 'CW_Athrs_vs_freqs.csv'))
 
     # Generate figures
     figs = []
     if 'a' in figset:
-        figs.append(fig6a(allneurons, a, Fdrive, CW_Athrs, tstim, toffset, inputdir))
+        figs.append(fig6a(allneurons, a, Fdrive, CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
     if 'b' in figset:
         figs.append(fig6b('RS', a, Fdrive, amps, tstim, toffset, inputdir))
     if 'c' in figset:
-        figs.append(fig6c('RS', a, freqs, CW_Athrs, tstim, toffset, inputdir))
+        figs.append(fig6c('RS', a, freqs, CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
     if 'd' in figset:
         figs.append(fig6d(['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir))
 

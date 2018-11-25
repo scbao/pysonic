@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:45:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 19:07:19
+# @Last Modified time: 2018-11-22 20:07:52
 
 import os
 import numpy as np
@@ -15,7 +15,7 @@ from PySONIC.batches import runBatch
 from PySONIC.postpro import computeSpikingMetrics
 
 
-def getCWtitrations(neurons, a, freqs, tstim, toffset, fpath):
+def getCWtitrations_vs_Fdrive(neurons, a, freqs, tstim, toffset, fpath):
     fkey = 'Fdrive (kHz)'
     freqs = np.array(freqs)
     if os.path.isfile(fpath):
@@ -33,6 +33,28 @@ def getCWtitrations(neurons, a, freqs, tstim, toffset, fpath):
                 df.loc[Fdrive * 1e-3, neuron] = np.ceil(Athr * 1e-2) / 10
     df.sort_index(inplace=True)
     df.to_csv(fpath, sep=',', index_label=fkey)
+    return df
+
+
+def getCWtitrations_vs_radius(neurons, radii, Fdrive, tstim, toffset, fpath):
+    akey = 'radius (nm)'
+    radii = np.array(radii)
+    if os.path.isfile(fpath):
+        df = pd.read_csv(fpath, sep=',', index_col=akey)
+    else:
+        df = pd.DataFrame(index=radii * 1e9)
+    for neuron in neurons:
+        if neuron not in df:
+            neuronobj = getNeuronsDict()[neuron]()
+            for a in radii:
+                nbls = NeuronalBilayerSonophore(a, neuronobj)
+                logger.info(
+                    'Running CW titration for %s neuron @ %sHz (%.2f nm sonophore radius)',
+                    neuron, si_format(Fdrive), a * 1e9)
+                Athr = nbls.titrate(Fdrive, tstim, toffset)[0]  # Pa
+                df.loc[a * 1e9, neuron] = np.ceil(Athr * 1e-2) / 10
+    df.sort_index(inplace=True)
+    df.to_csv(fpath, sep=',', index_label=akey)
     return df
 
 

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 17:40:34
+# @Last Modified time: 2018-11-25 00:48:21
 
 import os
 import time
@@ -568,7 +568,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Determine amplitude interval
         if Arange is None:
-            Adrive = self.findRheobaseAmps(np.array([DC]), Fdrive, self.neuron.VT)[0]
+            Adrive = self.findRheobaseAmps(np.array([DC]), Fdrive, self.neuron.VT)[0][0]
             Arange = (
                 Adrive / TITRATION_ASTIM_RHEOBASE_LOG_CONF_INTERVAL,
                 min(Adrive * TITRATION_ASTIM_RHEOBASE_LOG_CONF_INTERVAL, 2 * TITRATION_ASTIM_A_MAX)
@@ -809,9 +809,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param phi: acoustic drive phase (rad)
         '''
 
-        logger.info(
-            '%s: lookups @ %sHz, %sPa, %.2f nC/cm2',
-            self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5)
+        # logger.info(
+        #     '%s: lookups @ %sHz, %sPa, %.2f nC/cm2',
+        #     self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5)
+
+        tstart = time.time()
 
         # Run simulation and retrieve deflection and gas content vectors from last cycle
         _, [Z, ng], _ = BilayerSonophore.simulate(self, Fdrive, Adrive, Qm, phi)
@@ -827,5 +829,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Take final cycle value for gas content
         ng_eff = ng[-1]  # mole
 
+        tcomp = time.time() - tstart
+
+        logger.info(
+            '%s: lookups @ %sHz, %sPa, %.2f nC/cm2: tcomp = %f s',
+            self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5, tcomp)
+
         # Return effective coefficients
-        return [Vm_eff, ng_eff, *rates_eff]
+        return [tcomp, Vm_eff, ng_eff, *rates_eff]

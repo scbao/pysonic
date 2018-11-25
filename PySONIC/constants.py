@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-28 12:08:20
+# @Last Modified time: 2018-11-22 19:26:20
 
 ''' Algorithmic constants used in the package. '''
 
@@ -40,7 +40,7 @@ SPIKE_MIN_VPROM = 20.0  # threshold prominence for spike detection on potential 
 SPIKE_MIN_DT = 1e-3  # minimal time interval for spike detection on charge signal (s)
 
 # Titrations
-TITRATION_ASTIM_RHEOBASE_LOG_CONF_INTERVAL = 1.5
+TITRATION_ASTIM_RHEOBASE_LOG_CONF_INTERVAL = 2
 TITRATION_T_OFFSET = 50e-3  # offset period for titration procedures (s)
 TITRATION_ASTIM_A_MAX = 6e5 - 1  # initial acoustic pressure upper bound for titration (Pa)
 TITRATION_ASTIM_DA_MAX = 1e3  # acoustic pressure search range threshold for titration (Pa)
