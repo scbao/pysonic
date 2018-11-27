@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 19:21:01
+# @Last Modified time: 2018-11-27 16:06:32
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -90,6 +90,7 @@ def main():
     ap.add_argument('--offset', nargs='+', type=float, help='Offset duration (ms)')
     ap.add_argument('--PRF', nargs='+', type=float, help='PRF (Hz)')
     ap.add_argument('--DC', nargs='+', type=float, help='Duty cycle (%%)')
+    ap.add_argument('--spanDC', default=False, action='store_true', help='Span DC from 1 to 100%')
 
     # Parse arguments
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
@@ -110,12 +111,17 @@ def main():
     else:
         amps = np.array(defaults['amp']) * 1e3  # Pa
 
+    if args['spanDC']:
+        DCs = np.arange(1, 101)  # %
+    else:
+        DCs = np.array(args.get('DC', defaults['DC']))  # %
+
     stim_params = dict(
         freqs=np.array(args.get('freq', defaults['freq'])) * 1e3,  # Hz
         amps=amps,  # Pa
         durations=np.array(args.get('duration', defaults['duration'])) * 1e-3,  # s
         PRFs=np.array(args.get('PRF', defaults['PRF'])),  # Hz
-        DCs=np.array(args.get('DC', defaults['DC'])) * 1e-2,  # (-)
+        DCs=DCs * 1e-2,  # (-)
         offsets=np.array(args.get('offset', defaults['offset'])) * 1e-3  # s
     )
 
