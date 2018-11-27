@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 20:15:03
+# @Last Modified time: 2018-11-26 00:11:01
 
 
 import os
@@ -153,14 +153,14 @@ def fig5cright(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdir):
     subdir = os.path.join(inputdir, neuron)
     sonic_fpaths, full_fpaths = [], []
     for a in radii:
-        Athr = CW_Athrs[neuron].loc[a * 1e9]  # kPa
+        Athr = CW_Athrs[neuron].loc[np.round(a * 1e9, 1)]  # kPa
         Adrive = (Athr + 20.) * 1e3  # Pa
         sonic_fpaths += getSims(subdir, neuron, a, createAStimQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
         full_fpaths += getSims(subdir, neuron, a, createAStimQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
     data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
-    metrics_files = {x: '{}_spikemetrics_vs_frequency_{}.csv'.format(neuron, x)
+    metrics_files = {x: '{}_spikemetrics_vs_radius_{}.csv'.format(neuron, x)
                      for x in ['full', 'sonic']}
     metrics_fpaths = {key: os.path.join(inputdir, value) for key, value in metrics_files.items()}
     xlabel = 'Sonophore radius (nm)'
@@ -326,10 +326,10 @@ def main():
     if 'c' in figset:
         figs.append(fig5cleft('RS', [radii.min(), radii.max()], Fdrive, CW_Athr_vs_radius,
                               tstim, toffset, inputdir))
-        figs.append(fig5cright('RS', radii, Fdrive, CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
+        figs.append(fig5cright('RS', radii, Fdrive, CW_Athr_vs_radius, tstim, toffset, inputdir))
     if 'd' in figset:
-        figs.append(figdcleft(['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DC, inputdir))
-        figs.append(figdcright(['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir))
+        figs.append(fig5dleft(['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DC, inputdir))
+        figs.append(fig5dright(['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir))
     if 'e' in figset:
         figs.append(fig5eleft('LTS', a, Fdrive, Adrive, tstim, toffset, PRFs_sparse, DC, inputdir))
         figs.append(fig5eright('LTS', a, Fdrive, Adrive, tstim, toffset, PRFs_dense, DC, inputdir))

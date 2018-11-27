@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-25 01:10:11
+# @Last Modified time: 2018-11-26 19:28:35
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -363,13 +363,15 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
     # Load lookups dictionary
     logger.debug('Loading lookup table')
     with open(lookup_path, 'rb') as fh:
-        lookups4D = pickle.load(fh)
+        df = pickle.load(fh)
+        inputs = df['input']
+        lookups4D = df['lookup']
 
     # Retrieve 1D inputs from lookups dictionary
-    aref = lookups4D.pop('a')
-    Fref = lookups4D.pop('f')
-    Aref = lookups4D.pop('A')
-    Qref = lookups4D.pop('Q')
+    aref = inputs['a']
+    Fref = inputs['f']
+    Aref = inputs['A']
+    Qref = inputs['Q']
 
     # Check that inputs are within lookup range
     if a is not None:
@@ -436,3 +438,20 @@ def isWithin(name, val, bounds, rel_tol=1e-9):
     else:
         raise ValueError('{} value ({}) out of [{}, {}] interval'.format(
             name, val, bounds[0], bounds[1]))
+
+
+
+def getLookupsCompTime(mechname):
+
+    # Check lookup file existence
+    lookup_path = getNeuronLookupsFile(mechname)
+    if not os.path.isfile(lookup_path):
+        raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
+
+    # Load lookups dictionary
+    logger.debug('Loading comp times')
+    with open(lookup_path, 'rb') as fh:
+        df = pickle.load(fh)
+        tcomps4D = df['tcomp']
+
+    return np.sum(tcomps4D)

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:45:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 20:07:52
+# @Last Modified time: 2018-11-26 20:29:27
 
 import os
 import numpy as np
@@ -84,7 +84,7 @@ def getSpikingMetrics(outdir, neuron, xvar, xkey, data_fpaths, metrics_fpaths):
             logger.info('loading spiking metrics from file: "%s"', metrics_fpaths[stype])
             metrics[stype] = pd.read_csv(metrics_fpaths[stype], sep=',')
         else:
-            logger.warning('computing % spiking metrics vs. %s for %s neuron', stype, xkey, neuron)
+            logger.warning('computing %s spiking metrics vs. %s for %s neuron', stype, xkey, neuron)
             metrics[stype] = computeSpikingMetrics(data_fpaths[stype])
             metrics[stype][xkey] = pd.Series(xvar, index=metrics[stype].index)
             metrics[stype].to_csv(metrics_fpaths[stype], sep=',', index=False)
@@ -101,24 +101,6 @@ def extractCompTimes(filenames):
             meta = frame['meta']
         tcomps[i] = meta['tcomp']
     return tcomps
-
-
-def getCompTimesQual(outdir, neurons, xvars, data_fpaths, comptimes_fpaths):
-    comptimes = {}
-    for stype in data_fpaths.keys():
-        if os.path.isfile(comptimes_fpaths[stype]):
-            logger.info('reading computation times from file: "%s"', comptimes_fpaths[stype])
-            comptimes[stype] = pd.read_csv(comptimes_fpaths[stype], sep=',', index_col='neuron')
-        else:
-            comptimes[stype] = pd.DataFrame(index=neurons)
-            for xvar in xvars:
-                for neuron in neurons:
-                    logger.warning('extracting %s computation times vs %s for %s neuron',
-                                   stype, xvar, neuron)
-                    comptimes[stype].loc[neuron, xvar] = extractCompTimes(
-                        data_fpaths[stype][neuron][xvar])
-            comptimes[stype].to_csv(comptimes_fpaths[stype], sep=',', index_label='neuron')
-    return comptimes
 
 
 def getCompTimesQuant(outdir, neuron, xvars, xkey, data_fpaths, comptimes_fpath):
