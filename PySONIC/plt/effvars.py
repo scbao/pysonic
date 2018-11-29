@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-21 14:47:35
+# @Last Modified time: 2018-11-28 10:35:35
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -40,6 +40,9 @@ def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
         :param ncolmax: max number of columns on the figure
         :return: handle to the created figure
     '''
+
+    if sum(x is None for x in [a, Fdrive, Adrive]) > 1:
+        raise ValueError('at least 2 parameters in (a, Fdrive, Adrive) must be provided ')
 
     if cmap is None:
         cmap = 'viridis'

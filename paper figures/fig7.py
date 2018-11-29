@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-02 13:50:12
+# @Last Modified time: 2018-11-29 15:54:08
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -36,31 +36,55 @@ def plot_traces(inputdir, neuron, a, Fdrive, Adrive, tstim, PRF, DC, tmax, Vboun
     return fig
 
 
-def fig7a(inputdir, neuron, a, tstim, amps, DCs, FRbounds, tmax, Vbounds):
+def fig7a(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds):
     prefix = 'fig7a'
     mapfigs = [
-        plot_actmap(inputdir, neuron, a, 500e3, tstim, amps, 1e1, DCs, FRbounds, prefix),
-        plot_actmap(inputdir, neuron, a, 500e3, tstim, amps, 1e2, DCs, FRbounds, prefix),
-        plot_actmap(inputdir, neuron, a, 500e3, tstim, amps, 1e3, DCs, FRbounds, prefix),
-        plot_actmap(inputdir, neuron, a, 4e6, tstim, amps, 1e2, DCs, FRbounds, prefix)
+        plot_actmap(inputdir, n, a, 500e3, tstim, amps, 1e1, DCs, FRbounds, prefix)
+        for n in ['RS', 'LTS']
     ]
+
     tracefigs = [
-        plot_traces(inputdir, neuron, a, 500e3, 41.0e3, tstim, 1e2, 1.0, tmax, Vbounds, prefix),
-        plot_traces(inputdir, neuron, a, 500e3, 62.7e3, tstim, 1e2, 0.29, tmax, Vbounds, prefix),
-        plot_traces(inputdir, neuron, a, 500e3, 452.4e3, tstim, 1e2, 0.51, tmax, Vbounds, prefix),
-        plot_traces(inputdir, neuron, a, 500e3, 452.4e3, tstim, 1e2, 0.56, tmax, Vbounds, prefix)
+        plot_traces(inputdir, 'RS', a, 500e3, 127.0e3, tstim, 1e1, 0.28, tmax, Vbounds, prefix),
+        plot_traces(inputdir, 'RS', a, 500e3, 168.4e3, tstim, 1e1, 0.37, tmax, Vbounds, prefix),
+        plot_traces(inputdir, 'LTS', a, 500e3, 47.3e3, tstim, 1e1, 0.08, tmax, Vbounds, prefix),
+        plot_traces(inputdir, 'LTS', a, 500e3, 146.2e3, tstim, 1e1, 0.30, tmax, Vbounds, prefix)
     ]
+
     return mapfigs + tracefigs
 
 
-def fig7b(inputdir, neuron, a, tstim, amps, DCs, FRbounds, tmax, Vbounds):
+def fig7b(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds):
     prefix = 'fig7b'
-    mapfig = plot_actmap(inputdir, neuron, a, 500e3, tstim, amps, 1e2, DCs, FRbounds, prefix)
-    tracefigs = [
-        plot_traces(inputdir, neuron, a, 500e3, 26.9e3, tstim, 1e2, 1.0, tmax, Vbounds, prefix),
-        plot_traces(inputdir, neuron, a, 500e3, 127.0e3, tstim, 1e2, 0.04, tmax, Vbounds, prefix)
+    mapfigs = [
+        plot_actmap(inputdir, n, a, 500e3, tstim, amps, 1e2, DCs, FRbounds, prefix)
+        for n in ['RS', 'LTS']
     ]
-    return [mapfig] + tracefigs
+
+    tracefigs = [
+        plot_traces(inputdir, 'RS', a, 500e3, 452.4e3, tstim, 1e2, 0.51, tmax, Vbounds, prefix),
+        plot_traces(inputdir, 'RS', a, 500e3, 452.4e3, tstim, 1e2, 0.56, tmax, Vbounds, prefix),
+        plot_traces(inputdir, 'LTS', a, 500e3, 193.9e3, tstim, 1e2, 0.13, tmax, Vbounds, prefix),
+        plot_traces(inputdir, 'LTS', a, 500e3, 257.2e3, tstim, 1e2, 0.43, tmax, Vbounds, prefix)
+    ]
+
+    return mapfigs + tracefigs
+
+
+def fig7c(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds):
+    prefix = 'fig7c'
+    mapfigs = [
+        plot_actmap(inputdir, n, a, 500e3, tstim, amps, 1e3, DCs, FRbounds, prefix)
+        for n in ['RS', 'LTS']
+    ]
+
+    tracefigs = [
+        plot_traces(inputdir, 'RS', a, 500e3, 110.2e3, tstim, 1e3, 0.40, tmax, Vbounds, prefix),
+        plot_traces(inputdir, 'RS', a, 500e3, 193.9e3, tstim, 1e3, 0.64, tmax, Vbounds, prefix),
+        plot_traces(inputdir, 'LTS', a, 500e3, 47.3e3, tstim, 1e3, 0.10, tmax, Vbounds, prefix),
+        plot_traces(inputdir, 'LTS', a, 500e3, 168.4e3, tstim, 1e3, 0.53, tmax, Vbounds, prefix)
+    ]
+
+    return mapfigs + tracefigs
 
 
 
@@ -96,11 +120,18 @@ def main():
     Vbounds = -150, 50  # mV
 
     # Generate figures
-    figs = []
-    if 'a' in figset:
-        figs += fig7a(inputdir, 'RS', a, tstim, amps, DCs, FRbounds, tmax, Vbounds)
-    if 'b' in figset:
-        figs += fig7b(inputdir, 'LTS', a, tstim, amps, DCs, FRbounds, tmax, Vbounds)
+    try:
+
+        figs = []
+        if 'a' in figset:
+            figs += fig7a(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds)
+        if 'b' in figset:
+            figs += fig7b(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds)
+        if 'c' in figset:
+            figs += fig7c(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds)
+    except Exception as e:
+        logger.error(e)
+        quit()
 
     if args.save:
         for fig in figs:

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-01 14:28:12
+# @Last Modified time: 2018-11-27 16:58:25
 
 ''' Utility functions used in simulations '''
 

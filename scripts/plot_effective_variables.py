@@ -4,10 +4,11 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-21 14:48:49
+# @Last Modified time: 2018-11-28 10:37:52
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
@@ -15,6 +16,10 @@ from argparse import ArgumentParser
 from PySONIC.plt import plotEffectiveVariables
 from PySONIC.utils import logger
 from PySONIC.neurons import getNeuronsDict
+
+
+# Set logging level
+logger.setLevel(logging.INFO)
 
 
 # Default parameters
@@ -44,6 +49,7 @@ def main():
                     help='Colormap name')
     ap.add_argument('--ncol', type=int, default=1,
                     help='Number of columns in figure')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
 
     # Parse arguments
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
@@ -56,13 +62,21 @@ def main():
     cmap = args.get('cmap', None)
     ncol = args['ncol']
 
+    loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
+    logger.setLevel(loglevel)
+
     # Plot effective variables
     if neuron_str not in getNeuronsDict():
         logger.error('Unknown neuron type: "%s"', neuron_str)
         return
     neuron = getNeuronsDict()[neuron_str]()
-    plotEffectiveVariables(neuron, a=a, Fdrive=Fdrive, Adrive=Adrive,
-                           zscale=zscale, cmap=cmap, ncolmax=ncol)
+    try:
+        plotEffectiveVariables(neuron, a=a, Fdrive=Fdrive, Adrive=Adrive,
+                               zscale=zscale, cmap=cmap, ncolmax=ncol)
+    except Exception as e:
+        logger.error(e)
+        quit()
+
     plt.show()
 
 

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 19:24:58
+# @Last Modified time: 2018-11-28 14:43:32
 
 import os
 import ntpath
@@ -69,7 +69,12 @@ def getActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs):
 
                 # Detect spikes on charge profile during stimulus
                 mpd = int(np.ceil(SPIKE_MIN_DT / dt))
-                ispikes, *_ = findPeaks(Qm[t <= tstim], SPIKE_MIN_QAMP, mpd, SPIKE_MIN_QPROM)
+                ispikes, *_ = findPeaks(
+                    Qm[t <= tstim],
+                    mph=SPIKE_MIN_QAMP,
+                    mpd=mpd,
+                    mpp=SPIKE_MIN_QPROM
+                )
 
                 # Compute firing metrics
                 if ispikes.size == 0:  # if no spike, assign -1
@@ -120,6 +125,7 @@ def onClick(event, root, neuron, a, Fdrive, tstim, PRF, amps, DCs, meshedges, tm
     # Plot Q-trace
     try:
         plotQVeff(filepath, tmax=tmax, ybounds=Vbounds)
+        plotFRspectrum(filepath)
         plt.show()
     except FileNotFoundError as err:
         logger.error(err)
@@ -171,7 +177,6 @@ def plotQVeff(filepath, tonset=10, tmax=None, ybounds=None, fs=8, lw=1):
         ax.spines[key].set_linewidth(2)
     ax.yaxis.set_tick_params(width=2)
     ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
-    print(-tonset, tmax)
     ax.set_xlim((-tonset, tmax))
     ax.set_xticks([])
     ax.set_xlabel('{}s'.format(si_format((tonset + tmax) * 1e-3, space=' ')), fontsize=fs)
@@ -189,8 +194,69 @@ def plotQVeff(filepath, tonset=10, tmax=None, ybounds=None, fs=8, lw=1):
     return fig
 
 
+def plotFRspectrum(filepath, FRbounds=None, fs=8, lw=1):
+    '''  Plot firing rate specturm.
+
+        :param filepath: full path to the data file
+        :param FRbounds: firing rate bounds (Hz)
+        :return: handle to the generated figure
+    '''
+    # Determine FR bounds
+    if FRbounds is None:
+        FRbounds = (1e0, 1e3)
+
+    # Check file existence
+    fname = ntpath.basename(filepath)
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError('Error: "{}" file does not exist'.format(fname))
+
+    # Load data
+    logger.debug('Loading data from "%s"', fname)
+    with open(filepath, 'rb') as fh:
+        frame = pickle.load(fh)
+        df = frame['data']
+        meta = frame['meta']
+    tstim = meta['tstim']
+    t = df['t'].values
+    Qm = df['Qm'].values
+    dt = t[1] - t[0]
+
+    # Detect spikes on charge profile during stimulus
+    mpd = int(np.ceil(SPIKE_MIN_DT / dt))
+    ispikes, *_ = findPeaks(
+        Qm[t <= tstim],
+        mph=SPIKE_MIN_QAMP,
+        mpd=mpd,
+        mpp=SPIKE_MIN_QPROM
+    )
+
+    # Compute FR spectrum
+    if ispikes.size <= MIN_NSPIKES_SPECTRUM:
+        raise ValueError('Number of spikes is to small to form spectrum')
+    FRs = 1 / np.diff(t[ispikes])
+    logbins = np.logspace(np.log10(FRbounds[0]), np.log10(FRbounds[1]), 30)
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=cm2inch(7, 3))
+    fig.canvas.set_window_title(fname)
+    for key in ['top', 'right']:
+        ax.spines[key].set_visible(False)
+    ax.set_xlim(FRbounds)
+    ax.set_xlabel('Firing rate (Hz)', fontsize=fs)
+    ax.set_ylabel('Density', fontsize=fs)
+    for item in ax.get_yticklabels():
+        item.set_fontsize(fs)
+
+    ax.hist(FRs, bins=logbins, density=True, color='k')
+    ax.set_xscale('log')
+
+    fig.tight_layout()
+
+    return fig
+
+
 def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='log', FRscale='log',
-                      FRbounds=None, title=None, fs=8, rheobase=True, connect=False,
+                      FRbounds=None, title=None, fs=8, rheobase=False, connect=False,
                       tmax=None, Vbounds=None):
     ''' Plot a neuron's activation map over the amplitude x duty cycle 2D space.
 
@@ -244,6 +310,7 @@ def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='lo
     ax.set_xlim(np.array([DCs.min(), DCs.max()]) * 1e2)
     for item in ax.get_xticklabels() + ax.get_yticklabels():
         item.set_fontsize(fs)
+
     xedges = computeMeshEdges(DCs)
     yedges = computeMeshEdges(amps, scale=Ascale)
     actmap[actmap == -1] = np.nan
@@ -315,18 +382,6 @@ def plotAstimRheobaseAmps(neuron, radii, freqs, fs=12):
             color = 'C{}'.format(i)
             lbl = '{:.0f} nm radius sonophore, {}Hz'.format(a * 1e9, si_format(Fdrive, 1, space=' '))
             ax.plot(DCs * 1e2, Athrs * 1e-3, linestyles[j], c=color, label=lbl)
-            # inans = np.where(np.isnan(Athrs))[0]
-            # if len(inans) > 0:
-            #     i1 = inans[-1] + 1
-            # else:
-            #     i1 = 0
-
-            # i2 = i1 + 1
-            # m = (np.log10(Athrs[i2]) - np.log10(Athrs[i1])) / (DCs[i2] - DCs[i1])
-            # p = np.log10(Athrs[i1]) - m * DCs[i1]
-            # DClim = max(0, (np.log10(Aref.max()) - p) / m)
-            # ax.plot(np.array([DClim, DCs[i1]]) * 1e2,
-            #         np.array([Aref.max(), Athrs[i1]]) * 1e-3, '--', c=color)
     ax.legend(fontsize=fs, frameon=False)
     fig.tight_layout()
     return fig
