@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:05:49
+# @Last Modified time: 2018-11-30 10:33:49
 
 import numpy as np
 from ..core import PointNeuron
@@ -224,14 +224,14 @@ class Cortical(PointNeuron):
         return GM * (Vm - self.VK)
 
 
-    def currL(self, Vm):
+    def currLeak(self, Vm):
         ''' Compute the non-specific leakage current per unit area.
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
 
-        return self.GL * (Vm - self.VL)
+        return self.GLeak * (Vm - self.VLeak)
 
 
     def currNet(self, Vm, states):
@@ -239,7 +239,7 @@ class Cortical(PointNeuron):
 
         m, h, n, p = states
         return (self.currNa(m, h, Vm) + self.currK(n, Vm) +
-                self.currM(p, Vm) + self.currL(Vm))  # mA/m2
+                self.currM(p, Vm) + self.currLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -317,8 +317,8 @@ class CorticalRS(Cortical):
     GNaMax = 560.0  # Max. conductance of Sodium current (S/m^2)
     GKMax = 60.0  # Max. conductance of delayed Potassium current (S/m^2)
     GMMax = 0.75  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
-    GL = 0.205  # Conductance of non-specific leakage current (S/m^2)
-    VL = -70.3  # Non-specific leakage Nernst potential (mV)
+    GLeak = 0.205  # Conductance of non-specific leakage current (S/m^2)
+    VLeak = -70.3  # Non-specific leakage Nernst potential (mV)
     VT = -56.2  # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
@@ -327,7 +327,7 @@ class CorticalRS(Cortical):
         'i_{Na}\ kin.': ['m', 'h'],
         'i_K\ kin.': ['n'],
         'i_M\ kin.': ['p'],
-        'I': ['iNa', 'iK', 'iM', 'iL', 'iNet']
+        'I': ['iNa', 'iK', 'iM', 'iLeak', 'iNet']
     }
 
 
@@ -359,8 +359,8 @@ class CorticalFS(Cortical):
     GNaMax = 580.0  # Max. conductance of Sodium current (S/m^2)
     GKMax = 39.0  # Max. conductance of delayed Potassium current (S/m^2)
     GMMax = 0.787  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
-    GL = 0.38  # Conductance of non-specific leakage current (S/m^2)
-    VL = -70.4  # Non-specific leakage Nernst potential (mV)
+    GLeak = 0.38  # Conductance of non-specific leakage current (S/m^2)
+    VLeak = -70.4  # Non-specific leakage Nernst potential (mV)
     VT = -57.9  # Spike threshold adjustment parameter (mV)
     TauMax = 0.502  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
@@ -369,7 +369,7 @@ class CorticalFS(Cortical):
         'i_{Na}\ kin.': ['m', 'h'],
         'i_K\ kin.': ['n'],
         'i_M\ kin.': ['p'],
-        'I': ['iNa', 'iK', 'iM', 'iL', 'iNet']
+        'I': ['iNa', 'iK', 'iM', 'iLeak', 'iNet']
     }
 
 
@@ -407,8 +407,8 @@ class CorticalLTS(Cortical):
     GKMax = 40.0  # Max. conductance of delayed Potassium current (S/m^2)
     GMMax = 0.28  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
     GTMax = 4.0  # Max. conductance of low-threshold Calcium current (S/m^2)
-    GL = 0.19  # Conductance of non-specific leakage current (S/m^2)
-    VL = -50.0  # Non-specific leakage Nernst potential (mV)
+    GLeak = 0.19  # Conductance of non-specific leakage current (S/m^2)
+    VLeak = -50.0  # Non-specific leakage Nernst potential (mV)
     VT = -50.0  # Spike threshold adjustment parameter (mV)
     TauMax = 4.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
     Vx = -7.0  # Voltage-dependence uniform shift factor at 36°C (mV)
@@ -419,7 +419,7 @@ class CorticalLTS(Cortical):
         'i_K\ kin.': ['n'],
         'i_M\ kin.': ['p'],
         'i_T\ kin.': ['s', 'u'],
-        'I': ['iNa', 'iK', 'iM', 'iT', 'iL', 'iNet']
+        'I': ['iNa', 'iK', 'iM', 'iT', 'iLeak', 'iNet']
     }
 
     def __init__(self):
@@ -528,7 +528,7 @@ class CorticalLTS(Cortical):
 
         m, h, n, p, s, u = states
         return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currM(p, Vm) +
-                self.currCa(s, u, Vm) + self.currL(Vm))  # mA/m2
+                self.currCa(s, u, Vm) + self.currLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -624,8 +624,8 @@ class CorticalIB(Cortical):
     GKMax = 50  # Max. conductance of delayed Potassium current (S/m^2)
     GMMax = 0.3  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
     GCaLMax = 1.0  # Max. conductance of L-type Calcium current (S/m^2)
-    GL = 0.1  # Conductance of non-specific leakage current (S/m^2)
-    VL = -70  # Non-specific leakage Nernst potential (mV)
+    GLeak = 0.1  # Conductance of non-specific leakage current (S/m^2)
+    VLeak = -70  # Non-specific leakage Nernst potential (mV)
     VT = -56.2  # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
@@ -635,7 +635,7 @@ class CorticalIB(Cortical):
         'i_K\ kin.': ['n'],
         'i_M\ kin.': ['p'],
         'i_{CaL}\ kin.': ['q', 'r', 'q2r'],
-        'I': ['iNa', 'iK', 'iM', 'iCaL', 'iL', 'iNet']
+        'I': ['iNa', 'iK', 'iM', 'iCaL', 'iLeak', 'iNet']
     }
 
     def __init__(self):
@@ -740,7 +740,7 @@ class CorticalIB(Cortical):
 
         m, h, n, p, q, r = states
         return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currM(p, Vm) +
-                self.currCaL(q, r, Vm) + self.currL(Vm))  # mA/m2
+                self.currCaL(q, r, Vm) + self.currLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):

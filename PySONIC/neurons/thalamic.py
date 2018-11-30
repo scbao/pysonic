@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:06:20
+# @Last Modified time: 2018-11-30 10:34:03
 
 import numpy as np
 from ..core import PointNeuron
@@ -214,14 +214,14 @@ class Thalamic(PointNeuron):
         return GT * (Vm - self.VCa)
 
 
-    def currL(self, Vm):
+    def currLeak(self, Vm):
         ''' Compute the non-specific leakage current per unit area.
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
 
-        return self.GL * (Vm - self.VL)
+        return self.GLeak * (Vm - self.VLeak)
 
 
     def currNet(self, Vm, states):
@@ -229,7 +229,7 @@ class Thalamic(PointNeuron):
 
         m, h, n, s, u = states
         return (self.currNa(m, h, Vm) + self.currK(n, Vm) +
-                self.currCa(s, u, Vm) + self.currL(Vm))  # mA/m2
+                self.currCa(s, u, Vm) + self.currLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -319,8 +319,8 @@ class ThalamicRE(Thalamic):
     GNaMax = 2000.0  # Max. conductance of Sodium current (S/m^2)
     GKMax = 200.0  # Max. conductance of Potassium current (S/m^2)
     GTMax = 30.0  # Max. conductance of low-threshold Calcium current (S/m^2)
-    GL = 0.5  # Conductance of non-specific leakage current (S/m^2)
-    VL = -90.0  # Non-specific leakage Nernst potential (mV)
+    GLeak = 0.5  # Conductance of non-specific leakage current (S/m^2)
+    VLeak = -90.0  # Non-specific leakage Nernst potential (mV)
     VT = -67.0  # Spike threshold adjustment parameter (mV)
 
     # Default plotting scheme
@@ -328,7 +328,7 @@ class ThalamicRE(Thalamic):
         'i_{Na}\ kin.': ['m', 'h', 'm3h'],
         'i_K\ kin.': ['n'],
         'i_{TS}\ kin.': ['s', 'u', 's2u'],
-        'I': ['iNa', 'iK', 'iTs', 'iL', 'iNet']
+        'I': ['iNa', 'iK', 'iTs', 'iLeak', 'iNet']
     }
 
     def __init__(self):
@@ -411,9 +411,9 @@ class ThalamoCortical(Thalamic):
     GTMax = 20.0  # Max. conductance of low-threshold Calcium current (S/m^2)
     GKL = 0.138  # Conductance of leakage Potassium current (S/m^2)
     GhMax = 0.175  # Max. conductance of mixed cationic current (S/m^2)
-    GL = 0.1  # Conductance of non-specific leakage current (S/m^2)
+    GLeak = 0.1  # Conductance of non-specific leakage current (S/m^2)
     Vh = -40.0  # Mixed cationic current reversal potential (mV)
-    VL = -70.0  # Non-specific leakage Nernst potential (mV)
+    VLeak = -70.0  # Non-specific leakage Nernst potential (mV)
     VT = -52.0  # Spike threshold adjustment parameter (mV)
     Vx = 0.0  # Voltage-dependence uniform shift factor at 36°C (mV)
 
@@ -433,7 +433,7 @@ class ThalamoCortical(Thalamic):
         'i_K\ kin.': ['n'],
         'i_{T}\ kin.': ['s', 'u'],
         'i_{H}\ kin.': ['O', 'OL', 'O + 2OL'],
-        'I': ['iNa', 'iK', 'iT', 'iH', 'iKL', 'iL', 'iNet']
+        'I': ['iNa', 'iK', 'iT', 'iH', 'iKL', 'iLeak', 'iNet']
     }
 
 
@@ -699,7 +699,7 @@ class ThalamoCortical(Thalamic):
 
         m, h, n, s, u, O, C, _, _ = states
         return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, u, Vm) +
-                self.currKL(Vm) + self.currH(O, C, Vm) + self.currL(Vm))  # mA/m2
+                self.currKL(Vm) + self.currH(O, C, Vm) + self.currLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):

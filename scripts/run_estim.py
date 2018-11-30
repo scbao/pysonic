@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 17:52:42
+# @Last Modified time: 2018-11-30 10:04:25
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -106,7 +106,7 @@ def main():
 
     # Plot resulting profiles
     if plot:
-        plotBatch(pkl_filepaths, vars_dict={'V_m': ['Vm']})
+        plotBatch(pkl_filepaths)
         plt.show()
 
 

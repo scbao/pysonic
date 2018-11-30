@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-28 14:06:06
+# @Last Modified time: 2018-11-30 10:34:22
 
 
 from functools import partialmethod
@@ -39,13 +39,13 @@ class LeechTouch(PointNeuron):
     VNa = 45.0  # Sodium Nernst potential (mV)
     VK = -62.0  # Potassium Nernst potential (mV)
     VCa = 60.0  # Calcium Nernst potential (mV)
-    VL = -48.0  # Non-specific leakage Nernst potential (mV)
+    VLeak = -48.0  # Non-specific leakage Nernst potential (mV)
     VPumpNa = -300.0  # Sodium pump current reversal potential (mV)
     GNaMax = 3500.0  # Max. conductance of Sodium current (S/m^2)
     GKMax = 900.0  # Max. conductance of Potassium current (S/m^2)
     GCaMax = 20.0  # Max. conductance of Calcium current (S/m^2)
     GKCaMax = 236.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
-    GL = 1.0  # Conductance of non-specific leakage current (S/m^2)
+    GLeak = 1.0  # Conductance of non-specific leakage current (S/m^2)
     GPumpNa = 20.0  # Max. conductance of Sodium pump current (S/m^2)
     taum = 0.1e-3  # Sodium activation time constant (s)
     taus = 0.6e-3  # Calcium activation time constant (s)
@@ -75,7 +75,7 @@ class LeechTouch(PointNeuron):
         'i_K\ kin.': ['n'],
         'i_{Ca}\ kin.': ['s'],
         'pools': ['C_Na_arb', 'C_Na_arb_activation', 'C_Ca_arb', 'C_Ca_arb_activation'],
-        'I': ['iNa', 'iK', 'iCa', 'iKCa', 'iPumpNa', 'iL', 'iNet']
+        'I': ['iNa', 'iK', 'iCa', 'iKCa', 'iPumpNa', 'iLeak', 'iNet']
     }
 
 
@@ -242,9 +242,9 @@ class LeechTouch(PointNeuron):
         return self.GPumpNa * A_Na * (Vm - self.VPumpNa)
 
 
-    def currL(self, Vm):
+    def currLeak(self, Vm):
         ''' Leakage current. '''
-        return self.GL * (Vm - self.VL)
+        return self.GLeak * (Vm - self.VLeak)
 
 
     def currNet(self, Vm, states):
@@ -252,7 +252,7 @@ class LeechTouch(PointNeuron):
 
         m, h, n, s, _, A_Na, _, A_Ca = states
         return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm) +
-                self.currL(Vm) + self.currPumpNa(A_Na, Vm) + self.currKCa(A_Ca, Vm))  # mA/m2
+                self.currLeak(Vm) + self.currPumpNa(A_Na, Vm) + self.currKCa(A_Ca, Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -593,14 +593,14 @@ class LeechMech(PointNeuron):
         return GKCa * (Vm - self.VK)
 
 
-    def currL(self, Vm):
+    def currLeak(self, Vm):
         ''' Compute the non-specific leakage current per unit area.
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
 
-        return self.GL * (Vm - self.VL)
+        return self.GLeak * (Vm - self.VLeak)
 
 
 class LeechPressure(LeechMech):
@@ -635,7 +635,7 @@ class LeechPressure(LeechMech):
     # VNa = 60  # Sodium Nernst potential, from MOD file on ModelDB (mV)
     # VCa = 125  # Calcium Nernst potential, from MOD file on ModelDB (mV)
     VK = -68.0  # Potassium Nernst potential (mV)
-    VL = -49.0  # Non-specific leakage Nernst potential (mV)
+    VLeak = -49.0  # Non-specific leakage Nernst potential (mV)
     INaPmax = 70.0  # Maximum pump rate of the NaK-ATPase (mA/m2)
     khalf_Na = 0.012  # Sodium concentration at which NaK-ATPase is at half its maximum rate (M)
     ksteep_Na = 1e-3  # Sensitivity of NaK-ATPase to varying Sodium concentrations (M)
@@ -644,7 +644,7 @@ class LeechPressure(LeechMech):
     GKMax = 60.0  # Max. conductance of Potassium current (S/m^2)
     GCaMax = 0.02  # Max. conductance of Calcium current (S/m^2)
     GKCaMax = 8.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
-    GL = 5.0  # Conductance of non-specific leakage current (S/m^2)
+    GLeak = 5.0  # Conductance of non-specific leakage current (S/m^2)
 
     diam = 50e-6  # Cell soma diameter (m)
     Z_Na = 1  # Sodium valence
@@ -658,7 +658,7 @@ class LeechPressure(LeechMech):
         'i_{Ca}\ kin.': ['s'],
         'i_{KCa}\ kin.': ['c'],
         'pools': ['C_Na', 'C_Ca'],
-        'I': ['iNa2', 'iK', 'iCa2', 'iKCa2', 'iPumpNa2', 'iPumpCa2', 'iL', 'iNet']
+        'I': ['iNa2', 'iK', 'iCa2', 'iKCa2', 'iPumpNa2', 'iPumpCa2', 'iLeak', 'iNet']
     }
 
 
@@ -725,7 +725,7 @@ class LeechPressure(LeechMech):
 
         m, h, n, s, c, C_Na_in, C_Ca_in = states
         return (self.currNa(m, h, Vm, C_Na_in) + self.currK(n, Vm) + self.currCa(s, Vm, C_Ca_in) +
-                self.currKCa(c, Vm) + self.currL(Vm) +
+                self.currKCa(c, Vm) + self.currLeak(Vm) +
                 (self.currPumpNa(C_Na_in) / 3.) + self.currPumpCa(C_Ca_in))  # mA/m2
 
 
@@ -838,14 +838,14 @@ class LeechRetzius(LeechMech):
     VNa = 50.0  # Sodium Nernst potential, from retztemp.ses file on ModelDB (mV)
     VCa = 125.0  # Calcium Nernst potential, from cachdend.mod file on ModelDB (mV)
     VK = -79.0  # Potassium Nernst potential, from retztemp.ses file on ModelDB (mV)
-    VL = -30.0  # Non-specific leakage Nernst potential, from leakdend.mod file on ModelDB (mV)
+    VLeak = -30.0  # Non-specific leakage Nernst potential, from leakdend.mod file on ModelDB (mV)
 
     GNaMax = 1250.0  # Max. conductance of Sodium current (S/m^2)
     GKMax = 10.0  # Max. conductance of Potassium current (S/m^2)
     GAMax = 100.0  # Max. conductance of transient Potassium current (S/m^2)
     GCaMax = 4.0  # Max. conductance of Calcium current (S/m^2)
     GKCaMax = 130.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
-    GL = 1.25  # Conductance of non-specific leakage current (S/m^2)
+    GLeak = 1.25  # Conductance of non-specific leakage current (S/m^2)
 
     Vhalf = -73.1  # mV
 
@@ -859,7 +859,7 @@ class LeechRetzius(LeechMech):
         'i_A\ kin.': ['a', 'b', 'ab'],
         'i_{Ca}\ kin.': ['s'],
         'i_{KCa}\ kin.': ['c'],
-        'I': ['iNa', 'iK', 'iCa', 'iKCa2', 'iA', 'iL', 'iNet']
+        'I': ['iNa', 'iK', 'iCa', 'iKCa2', 'iA', 'iLeak', 'iNet']
     }
 
 
@@ -985,7 +985,7 @@ class LeechRetzius(LeechMech):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, c, a, b = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm) + self.currL(Vm) +
+        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm) + self.currLeak(Vm) +
                 self.currKCa(c, Vm) + self.currA(a, b, Vm))  # mA/m2
 
 

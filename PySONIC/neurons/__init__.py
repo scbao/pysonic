@@ -4,7 +4,7 @@
 # @Date:   2017-06-06 13:36:00
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-25 14:54:59
+# @Last Modified time: 2018-11-29 20:41:39
 
 import inspect
 import sys
@@ -12,6 +12,7 @@ import sys
 from .cortical import CorticalRS, CorticalFS, CorticalLTS, CorticalIB
 from .thalamic import ThalamicRE, ThalamoCortical
 from .leech import LeechTouch, LeechPressure, LeechRetzius
+from .stn import OtsukaSTN
 
 
 def getNeuronsDict():

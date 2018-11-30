@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 17:41:59
+# @Last Modified time: 2018-11-29 21:03:25
 
 import os
 import time
@@ -163,7 +163,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :param Iinj: injected current (mA/m2)
             :return: vector of HH system derivatives at time t
         '''
-
         Vm, *states = y
         Iionic = self.currNet(Vm, states)  # mA/m2
         dVmdt = (- Iionic + Iinj) / self.Cm0  # mV/s

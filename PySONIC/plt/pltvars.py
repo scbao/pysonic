@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-05-25 22:01:35
+# @Last Modified time: 2018-11-30 10:32:06
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -155,6 +155,16 @@ pltvars = {
         'max': 1.1
     },
 
+    'n4': {
+        'desc': 'iK relative conductance',
+        'label': 'n^4',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1,
+        'alias': 'df["n"].values**4'
+    },
+
     'p': {
         'desc': 'iM activation gate opening',
         'label': 'p-gate',
@@ -192,9 +202,17 @@ pltvars = {
         'alias': 'df["s"].values**2 * df["u"].values'
     },
 
+    'p': {
+        'desc': 'iT activation gates opening',
+        'label': 'p-gate',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1
+    },
 
     'q': {
-        'desc': 'iCaL activation gates opening',
+        'desc': 'iT inactivation gates opening',
         'label': 'q-gate',
         'unit': None,
         'factor': 1,
@@ -202,8 +220,18 @@ pltvars = {
         'max': 1.1
     },
 
+    'p2q': {
+        'desc': 'iT relative conductance',
+        'label': 'p^2q',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1,
+        'alias': 'df["p"].values**2 * df["q"].values'
+    },
+
     'r': {
-        'desc': 'iCaL inactivation gates opening',
+        'desc': 'iCaK Ca2+-gated activation gates opening',
         'label': 'r-gate',
         'unit': None,
         'factor': 1,
@@ -211,27 +239,55 @@ pltvars = {
         'max': 1.1
     },
 
-    'q2r': {
-        'desc': 'iCaL relative conductance',
-        'label': 'q^2r',
+    'r2': {
+        'desc': 'iCaK relative conductance',
+        'label': 'r^2',
         'unit': None,
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["q"].values**2 * df["r"].values'
+        'alias': 'df["r"].values**2'
     },
 
-    'c': {
-        'desc': 'iKCa activation gates opening',
-        'label': 'c-gate',
-        'unit': None,
-        'factor': 1,
-        'min': -0.1,
-        'max': 1.1
-    },
+    # 'q': {
+    #     'desc': 'iCaL activation gates opening',
+    #     'label': 'q-gate',
+    #     'unit': None,
+    #     'factor': 1,
+    #     'min': -0.1,
+    #     'max': 1.1
+    # },
+
+    # 'r': {
+    #     'desc': 'iCaL inactivation gates opening',
+    #     'label': 'r-gate',
+    #     'unit': None,
+    #     'factor': 1,
+    #     'min': -0.1,
+    #     'max': 1.1
+    # },
+
+    # 'q2r': {
+    #     'desc': 'iCaL relative conductance',
+    #     'label': 'q^2r',
+    #     'unit': None,
+    #     'factor': 1,
+    #     'min': -0.1,
+    #     'max': 1.1,
+    #     'alias': 'df["q"].values**2 * df["r"].values'
+    # },
+
+    # 'c': {
+    #     'desc': 'iKCa activation gates opening',
+    #     'label': 'c-gate',
+    #     'unit': None,
+    #     'factor': 1,
+    #     'min': -0.1,
+    #     'max': 1.1
+    # },
 
     'a': {
-        'desc': 'iKA activation gates opening',
+        'desc': 'iA activation gates opening',
         'label': 'a-gate',
         'unit': None,
         'factor': 1,
@@ -240,7 +296,7 @@ pltvars = {
     },
 
     'b': {
-        'desc': 'iKA inactivation gates opening',
+        'desc': 'iA inactivation gates opening',
         'label': 'b-gate',
         'unit': None,
         'factor': 1,
@@ -248,14 +304,52 @@ pltvars = {
         'max': 1.1
     },
 
-    'ab': {
-        'desc': 'iKA relative conductance',
+    'a2b': {
+        'desc': 'iA relative conductance',
         'label': 'ab',
         'unit': None,
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["a"].values * df["b"].values'
+        'alias': 'df["a"].values**2 * df["b"].values'
+    },
+
+
+    'c': {
+        'desc': 'iL activation gates opening',
+        'label': 'c-gate',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1
+    },
+
+    'd1': {
+        'desc': 'iL inactivation gates opening',
+        'label': 'd1-gate',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1
+    },
+
+    'd2': {
+        'desc': 'iL Ca2+-gated inactivation gates opening',
+        'label': 'd2-gate',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1
+    },
+
+    'c2d1d2': {
+        'desc': 'iL relative conductance',
+        'label': 'c^2d_1d_2',
+        'unit': None,
+        'factor': 1,
+        'min': -0.1,
+        'max': 1.1,
+        'alias': 'df["c"].values**2 * df["d1"].values * df["d2"].values'
     },
 
     'O': {
@@ -346,20 +440,20 @@ pltvars = {
         'factor': 1
     },
 
-    'VL': {
-        'constant': 'neuron.VL',
+    'VLeak': {
+        'constant': 'neuron.VLeak',
         'desc': 'non-specific leakage current resting potential',
-        'label': 'V_L',
+        'label': 'V_{leak}',
         'unit': 'mV',
         'factor': 1e0
     },
 
-    'iL': {
+    'iLeak': {
         'desc': 'leakage current',
-        'label': 'I_L',
+        'label': 'I_{Leak}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.currL(df["Vm"].values)'
+        'alias': 'neuron.currLeak(df["Vm"].values)'
     },
 
     'iNa': {
@@ -408,6 +502,30 @@ pltvars = {
         'unit': 'A/m^2',
         'factor': 1e-3,
         'alias': 'neuron.currCa(df["s"].values, df["u"].values, df["Vm"].values)'
+    },
+
+    'iT2': {
+        'desc': 'low-threshold Calcium current',
+        'label': 'I_T',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currT(df["p"].values, df["q"].values, df["Vm"].values)'
+    },
+
+    'iL': {
+        'desc': 'high-threshold Calcium current',
+        'label': 'I_L',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currL(df["c"].values, df["d1"].values, df["d2"].values, df["Vm"].values)'
+    },
+
+    'iCaK': {
+        'desc': 'Calcium-activated Potassium current',
+        'label': 'I_{CaK}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currCaK(df["r"].values, df["Vm"].values)'
     },
 
     'iCaL': {
