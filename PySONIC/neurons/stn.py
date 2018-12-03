@@ -14,7 +14,11 @@ class OtsukaSTN(PointNeuron):
             - Outward, Calcium-dependent Potassium current (iCaK)
             - Non-specific leakage current (iLeak)
 
-        Reference:
+        References:
+        *Otsuka, T., Abe, T., Tsukagawa, T., and Song, W.-J. (2004). Conductance-Based Model
+        of the Voltage-Dependent Generation of a Plateau Potential in Subthalamic Neurons.
+        Journal of Neurophysiology 92, 255–264.*
+
         *Tarnaud, T., Joseph, W., Martens, L., and Tanghe, E. (2018). Computational Modeling
         of Ultrasonic Subthalamic Nucleus Stimulation. IEEE Trans Biomed Eng.*
     '''
@@ -508,10 +512,6 @@ class OtsukaSTN(PointNeuron):
         alphad1_avg = np.mean(self.ainf(Vm) / Td1)
         betad1_avg = np.mean(1 / Td1) - alphad1_avg
 
-        Td2 = self.tau_d2
-        alphad2_avg = np.mean(self.d2inf(Vm)) / Td2
-        betad2_avg = 1 / Td2 - alphad2_avg
-
         Tm = self.taum(Vm)
         alpham_avg = np.mean(self.minf(Vm) / Tm)
         betam_avg = np.mean(1 / Tm) - alpham_avg
@@ -532,23 +532,17 @@ class OtsukaSTN(PointNeuron):
         alphaq_avg = np.mean(self.qinf(Vm) / Tq)
         betaq_avg = np.mean(1 / Tq) - alphaq_avg
 
-        Tr = self.tau_r
-        alphar_avg = np.mean(self.rinf(Vm)) / Tr
-        betar_avg = 1 / Tr - alphar_avg
-
         # Return array of coefficients
         return np.array([
             alphaa_avg, betaa_avg,
             alphab_avg, betab_avg,
             alphac_avg, betac_avg,
             alphad1_avg, betad1_avg,
-            alphad2_avg, betad2_avg,
             alpham_avg, betam_avg,
             alphah_avg, betah_avg,
             alphan_avg, betan_avg,
             alphap_avg, betap_avg,
-            alphaq_avg, betaq_avg,
-            alphar_avg, betar_avg,
+            alphaq_avg, betaq_avg
         ])
 
 
@@ -564,16 +558,16 @@ class OtsukaSTN(PointNeuron):
         dbdt = rates[2] - (1 - b) - rates[3] * b
         dcdt = rates[4] - (1 - c) - rates[5] * c
         dd1dt = rates[6] - (1 - d1) - rates[7] * d1
-        dd2dt = rates[8] - (1 - d2) - rates[9] * d2
-        dmdt = rates[10] - (1 - m) - rates[11] * m
-        dhdt = rates[12] - (1 - h) - rates[13] * h
-        dndt = rates[14] - (1 - n) - rates[15] * n
-        dpdt = rates[16] - (1 - p) - rates[17] * p
-        dqdt = rates[18] - (1 - q) - rates[19] * q
-        drdt = rates[20] - (1 - r) - rates[21] * r
+        dd2dt = self.derD2(CCa_in, d2)
+        dmdt = rates[8] - (1 - m) - rates[9] * m
+        dhdt = rates[10] - (1 - h) - rates[11] * h
+        dndt = rates[12] - (1 - n) - rates[13] * n
+        dpdt = rates[14] - (1 - p) - rates[15] * p
+        dqdt = rates[16] - (1 - q) - rates[17] * q
+        drdt = self.derR(CCa_in, r)
 
         iT = self.currT(p, q, Vmeff)
-        iL = self.currL(self.c, d1, d2, Vmeff)
+        iL = self.currL(c, d1, d2, Vmeff)
         dCCaindt = self.derC_Ca(CCa_in, iT, iL)
 
         return [dadt, dbdt, dcdt, dd1dt, dd2dt, dmdt, dhdt, dndt, dpdt, dqdt, drdt, dCCaindt]
