@@ -1,7 +1,6 @@
 
 import numpy as np
 from ..core import PointNeuron
-from ..utils import si_format
 
 
 class OtsukaSTN(PointNeuron):
@@ -22,120 +21,132 @@ class OtsukaSTN(PointNeuron):
 
     name = 'STN'
 
-    # Generic biophysical parameters of STN cells
+    # Resting parameters
     Cm0 = 1e-2  # Cell membrane resting capacitance (F/m2)
     Vm0 = -58.0  # Resting membrane potential (mV)
+    CCa_in0 = 5e-9  # M (5 nM)
 
+    # Reversal potentials
     VNa = 60.0  # Sodium Nernst potential (mV)
     VK = -90.0  # Potassium Nernst potential (mV)
-    VLeak = -60.0  # Leakage reversal potential (mV)
-    GNaMax = 490.0  # Max. conductance of Sodium current (S/m^2)
-    GKMax = 570.0  # Max. conductance of delayed-rectifier Potassium current (S/m^2)
-    GAMax = 50.0  # Max. conductance of A-type Potassium current (S/m^2)
-    GTMax = 50.0  # Max. conductance of low-threshold Calcium current (S/m^2)
-    GLMax = 150.0  # Max. conductance of high-threshold Calcium current (S/m^2)
-    GCaKMax = 10.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
-    GLeak = 3.5  # Conductance of non-specific leakage current (S/m^2)
 
-    Faraday = 9.64853415e4  # Faraday constant for (Coulomb / mole)
+    # Physical constants
+    Faraday = 96485  # Faraday constant for (Coulomb / mole)
     Rg = 8.314  # Universal gas constant (Pa.m^3.mol^-1.K^-1)
     T = 306.15  # K (33°C)
 
-    nCa = 2  # Calcium ion valence
-    CCa_out = 2e3  # uM (2 mM)
+    # Calcium dynamics
+    zCa = 2  # Calcium ion valence
+    CCa_out = 2e-3  # M (2 mM)
     KCa = 2e3  # s-1
-    CCa_in0 = 5e-3  # uM
 
-    # Steady-state and time constants parameters
-    thetax_a = -45  # mV
-    thetax_b = -90  # mV
-    thetax_c = -30.6  # mV
-    thetax_d1 = -60  # mV
-    thetax_d2 = 0.1  # uM
+    # Leakage current
+    GLeak = 3.5  # Conductance of non-specific leakage current (S/m^2)
+    VLeak = -60.0  # Leakage reversal potential (mV)
+
+    # Fast Na current
+    GNaMax = 490.0  # Max. conductance of Sodium current (S/m^2)
     thetax_m = -40  # mV
     thetax_h = -45.5  # mV
-    thetax_n = -41  # mV
-    thetax_p = -56  # mV
-    thetax_q = -85  # mV
-    thetax_r = 0.17  # uM
-
-    kx_a = -14.7  # mV
-    kx_b = 7.5  # mV
-    kx_c = -5  # mV
-    kx_d1 = 7.5  # mV
-    kx_d2 = 0.02  # uM
     kx_m = -8  # mV
     kx_h = 6.4  # mV
-    kx_n = -14  # mV
-    kx_p = -6.7  # mV
-    kx_q = 5.8  # mV
-    kx_r = -0.08  # uM
-
-    tau0_a = 1 * 1e-3  # s
-    tau1_a = 1 * 1e-3  # s
-    tau0_b = 0 * 1e-3  # s
-    tau1_b = 200 * 1e-3  # s
-    tau0_c = 45 * 1e-3  # s
-    tau1_c = 10 * 1e-3  # s
-    tau0_d1 = 400 * 1e-3  # s
-    tau1_d1 = 500 * 1e-3  # s
-    tau_d2 = 130 * 1e-3  # s
     tau0_m = 0.2 * 1e-3  # s
     tau1_m = 3 * 1e-3  # s
     tau0_h = 0 * 1e-3  # s
     tau1_h = 24.5 * 1e-3  # s
+    thetaT_m = -53  # mV
+    thetaT1_h = -50  # mV
+    thetaT2_h = -50  # mV
+    sigmaT_m = -0.7  # mV
+    sigmaT1_h = -15  # mV
+    sigmaT2_h = 16  # mV
+
+    # Delayed rectifier K+ current
+    GKMax = 570.0  # Max. conductance of delayed-rectifier Potassium current (S/m^2)
+    thetax_n = -41  # mV
+    kx_n = -14  # mV
     tau0_n = 0 * 1e-3  # s
     tau1_n = 11 * 1e-3  # s
+    thetaT1_n = -40  # mV
+    thetaT2_n = -40  # mV
+    sigmaT1_n = -40  # mV
+    sigmaT2_n = 50  # mV
+
+    # T-type Ca2+ current
+    GTMax = 50.0  # Max. conductance of low-threshold Calcium current (S/m^2)
+    thetax_p = -56  # mV
+    thetax_q = -85  # mV
+    kx_p = -6.7  # mV
+    kx_q = 5.8  # mV
     tau0_p = 5 * 1e-3  # s
     tau1_p = 0.33 * 1e-3  # s
     tau0_q = 0 * 1e-3  # s
     tau1_q = 400 * 1e-3  # s
-    tau0_r = 2 * 1e-3  # s
-    tau_r = 2 * 1e-3  # s
-
-    thetaT_a = -40  # mV
-    thetaT1_b = -60  # mV
-    thetaT2_b = -40  # mV
-    thetaT1_c = -27  # mV
-    thetaT2_c = -50  # mV
-    thetaT1_d1 = -40  # mV
-    thetaT2_d1 = -20  # mV
-    thetaT_m = -53  # mV
-    thetaT1_h = -50  # mV
-    thetaT2_h = -50  # mV
-    thetaT1_n = -40  # mV
-    thetaT2_n = -40  # mV
     thetaT1_p = -27  # mV
     thetaT2_p = -102  # mV
     thetaT1_q = -50  # mV
     thetaT2_q = -50  # mV
-
-    sigmaT_a = -0.5  # mV
-    sigmaT1_b = -30  # mV
-    sigmaT2_b = -10  # mV
-    sigmaT1_c = -20  # mV
-    sigmaT2_c = 15  # mV
-    sigmaT1_d1 = -15  # mV
-    sigmaT2_d1 = 20  # mV
-    sigmaT_m = -0.7  # mV
-    sigmaT1_h = -15  # mV
-    sigmaT2_h = 16  # mV
-    sigmaT1_n = -40  # mV
-    sigmaT2_n = 50  # mV
     sigmaT1_p = -10  # mV
     sigmaT2_p = 15  # mV
     sigmaT1_q = -15  # mV
     sigmaT2_q = 16  # mV
 
+    # L-type Ca2+ current
+    GLMax = 150.0  # Max. conductance of high-threshold Calcium current (S/m^2)
+    thetax_c = -30.6  # mV
+    thetax_d1 = -60  # mV
+    thetax_d2 = 0.1 * 1e-6  # M
+    kx_c = -5  # mV
+    kx_d1 = 7.5  # mV
+    kx_d2 = 0.02 * 1e-6  # M
+    tau0_c = 45 * 1e-3  # s
+    tau1_c = 10 * 1e-3  # s
+    tau0_d1 = 400 * 1e-3  # s
+    tau1_d1 = 500 * 1e-3  # s
+    tau_d2 = 130 * 1e-3  # s
+    thetaT1_c = -27  # mV
+    thetaT2_c = -50  # mV
+    thetaT1_d1 = -40  # mV
+    thetaT2_d1 = -20  # mV
+    sigmaT1_c = -20  # mV
+    sigmaT2_c = 15  # mV
+    sigmaT1_d1 = -15  # mV
+    sigmaT2_d1 = 20  # mV
+
+    # A-type K+ current
+    GAMax = 50.0  # Max. conductance of A-type Potassium current (S/m^2)
+    thetax_a = -45  # mV
+    thetax_b = -90  # mV
+    kx_a = -14.7  # mV
+    kx_b = 7.5  # mV
+    tau0_a = 1 * 1e-3  # s
+    tau1_a = 1 * 1e-3  # s
+    tau0_b = 0 * 1e-3  # s
+    tau1_b = 200 * 1e-3  # s
+    thetaT_a = -40  # mV
+    thetaT1_b = -60  # mV
+    thetaT2_b = -40  # mV
+    sigmaT_a = -0.5  # mV
+    sigmaT1_b = -30  # mV
+    sigmaT2_b = -10  # mV
+
+    # Ca2+-activated K+ current
+    GCaKMax = 10.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
+    thetax_r = 0.17 * 1e-6  # M
+    kx_r = -0.08 * 1e-6  # M
+    tau_r = 2 * 1e-3  # s
+
+
     # Default plotting scheme
     pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h', 'm3h'],
-        'i_K\ kin.': ['n', 'n4'],
-        'i_A\ kin.': ['a', 'b', 'a2b'],
-        'i_T\ kin.': ['p', 'q', 'p2q'],
-        'i_L\ kin.': ['c', 'd1', 'd2', 'c2d1d2'],
-        'i_{CaK}\ kin.': ['r', 'r2'],
-        'I': ['iNa', 'iK', 'iA', 'iT2', 'iL', 'iCaK', 'iLeak', 'iNet']
+        'i_{Na}\ kin.': ['m', 'h'],
+        'i_K\ kin.': ['n'],
+        'i_A\ kin.': ['a', 'b'],
+        'i_T\ kin.': ['p', 'q'],
+        'i_L\ kin.': ['c', 'd1', 'd2'],
+        'Ca^{2+}_i': ['C_Ca'],
+        'i_{CaK}\ kin.': ['r'],
+        'I': ['iLeak', 'iNa', 'iK', 'iA', 'iT2', 'iL', 'iCaK', 'iNet']
     }
 
 
@@ -158,15 +169,18 @@ class OtsukaSTN(PointNeuron):
             'alphaq', 'betaq',
         ]
 
-        # Compute deff for Cai = 5 nM
-        self.VCa = self.nernst(self.CCa_out, self.CCa_in0)
-        iT = self.currT(self.pinf(self.Vm0), self.qinf(self.Vm0), self.Vm0)
-        iL = self.currL(self.cinf(self.Vm0), self.d1inf(self.Vm0), self.d2inf(self.CCa_in0), self.Vm0)
-        self.deff = -(iT + iL) / (self.nCa * self.Faraday * self.KCa * self.CCa_in0)  # m
-        print('deff = {}m'.format(si_format(self.deff, 2)))
+        # Compute Calcium reversal potential for Cai = 5 nM
+        self.VCa = self.nernst(self.CCa_out, self.CCa_in0)  # mV
 
-        # Compute conversion factor from electrical current (mA/m2) to Calcium concentration (uM)
-        self.i2CCa = 1 / (self.nCa * self.deff * self.Faraday)
+        # Compute deff for that reversal potential
+        iT = self.currT(
+            self.pinf(self.Vm0), self.qinf(self.Vm0), self.Vm0)  # mA/m2
+        iL = self.currL(
+            self.cinf(self.Vm0), self.d1inf(self.Vm0), self.d2inf(self.CCa_in0), self.Vm0)  # mA/m2
+        self.deff = -(iT + iL) / (self.zCa * self.Faraday * self.KCa * self.CCa_in0) * 1e-6  # m
+
+        # Compute conversion factor from electrical current (mA/m2) to Calcium concentration (M)
+        self.i2CCa = 1e-6 / (self.zCa * self.deff * self.Faraday)
 
         # Initial states
         self.states0 = self.steadyStates(self.Vm0)
@@ -176,7 +190,13 @@ class OtsukaSTN(PointNeuron):
 
 
     def nernst(self, xout, xin):
-        return self.Rg * self.T / (2 * self.Faraday) * np.log(xout / xin)
+        ''' Return ion specific reversal potential based on Nernst equation.
+
+            :param xout: extracellular ion concentration (M)
+            :param xin: intracellular ion concentration (M)
+            :return: reversal potential (mV)
+        '''
+        return self.Rg * self.T / (2 * self.Faraday) * np.log(xout / xin) * 1e3
 
 
     def _xinf(self, var, theta, k):
@@ -244,7 +264,7 @@ class OtsukaSTN(PointNeuron):
         return self._taux1(Vm, self.thetaT_m, self.sigmaT_m, self.tau0_m, self.tau1_m)
 
 
-    def _taux2(self, Vm, theta1, theta2, sigma1, sigma2, tau1, tau0):
+    def _taux2(self, Vm, theta1, theta2, sigma1, sigma2, tau0, tau1):
         ''' Generic function computing the voltage-dependent, activation/inactivation time constant
             of a particular ion channel at a given voltage (second variant).
 
@@ -324,10 +344,10 @@ class OtsukaSTN(PointNeuron):
         ''' Compute the evolution of the Calcium concentration in submembranal space.
 
             :param Vm: membrane potential (mV)
-            :param C_Ca: Calcium concentration in submembranal space (uM)
+            :param C_Ca: Calcium concentration in submembranal space (M)
             :param iT: inward, low-threshold Calcium current (mA/m2)
             :param iL: inward, high-threshold Calcium current (mA/m2)
-            :return: derivative of Calcium concentration in submembranal space w.r.t. time (uM/s)
+            :return: derivative of Calcium concentration in submembranal space w.r.t. time (M/s)
         '''
         return - self.i2CCa * (iT + iL) - C_Ca * self.KCa
 
@@ -410,6 +430,9 @@ class OtsukaSTN(PointNeuron):
         ''' Compute net membrane current per unit area. '''
 
         a, b, c, d1, d2, m, h, n, p, q, r, CCa_in = states
+
+        # update VCa based on intracellular Calcium concentration
+        self.VCa = self.nernst(self.CCa_out, CCa_in)
 
         return (
             self.currNa(m, h, Vm) +

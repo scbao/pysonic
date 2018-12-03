@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-27 16:06:32
+# @Last Modified time: 2018-12-03 17:42:58
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -73,7 +73,8 @@ def main():
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('-p', '--plot', default=False, action='store_true', help='Plot results')
+    ap.add_argument('-p', '--plotQm', default=False, action='store_true', help='Plot Qm')
+    ap.add_argument('--plotall', default=False, action='store_true', help='Plot all variables')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
     ap.add_argument('-t', '--titrate', default=False, action='store_true', help='Perform titration')
     ap.add_argument('-m', '--method', type=str, default=defaults['method'],
@@ -97,8 +98,8 @@ def main():
     loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
     outdir = args['outputdir'] if 'outputdir' in args else selectDirDialog()
+    plot = True if (args['plotQm'] or args['plotall']) else False
     mpi = args['mpi']
-    plot = args['plot']
     titrate = args['titrate']
     method = args['method']
     neuron_str = args['neuron']
@@ -141,8 +142,11 @@ def main():
 
     # Plot resulting profiles
     if plot:
-        print('plot')
-        plotBatch(pkl_filepaths, vars_dict={'Q_m': ['Qm']})
+        if args['plotQm']:
+            vars_dict = {'Q_m': ['Qm']}
+        elif args['plotall']:
+            vars_dict = None
+        plotBatch(pkl_filepaths, vars_dict=vars_dict)
         plt.show()
 
 

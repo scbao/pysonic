@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-30 10:04:25
+# @Last Modified time: 2018-11-30 10:46:34
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -64,7 +64,8 @@ def main():
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('-p', '--plot', default=False, action='store_true', help='Plot results')
+    ap.add_argument('-p', '--plotVm', default=False, action='store_true', help='Plot Vm')
+    ap.add_argument('--plotall', default=False, action='store_true', help='Plot all variables')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
     ap.add_argument('-t', '--titrate', default=False, action='store_true', help='Perform titration')
 
@@ -82,8 +83,7 @@ def main():
     loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
     outdir = args['outputdir'] if 'outputdir' in args else selectDirDialog()
-    mpi = args['mpi']
-    plot = args['plot']
+    plot = True if (args['plotVm'] or args['plotall']) else False
     titrate = args['titrate']
     neuron_str = args['neuron']
     stim_params = dict(
@@ -101,12 +101,16 @@ def main():
         logger.error('Unknown neuron type: "%s"', neuron_str)
         return
     neuron = getNeuronsDict()[neuron_str]()
-    pkl_filepaths = runEStimBatch(outdir, neuron, stim_params, mpi=mpi)
+    pkl_filepaths = runEStimBatch(outdir, neuron, stim_params, mpi=args['mpi'])
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
     if plot:
-        plotBatch(pkl_filepaths)
+        if args['plotVm']:
+            vars_dict = {'V_m': ['Vm']}
+        elif args['plotall']:
+            vars_dict = None
+        plotBatch(pkl_filepaths, vars_dict=vars_dict)
         plt.show()
 
 
