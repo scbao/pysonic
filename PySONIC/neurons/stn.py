@@ -554,16 +554,17 @@ class OtsukaSTN(PointNeuron):
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         a, b, c, d1, d2, m, h, n, p, q, r, CCa_in = states
-        dadt = rates[0] - (1 - a) - rates[1] * a
-        dbdt = rates[2] - (1 - b) - rates[3] * b
-        dcdt = rates[4] - (1 - c) - rates[5] * c
-        dd1dt = rates[6] - (1 - d1) - rates[7] * d1
+
+        dadt = rates[0] * (1 - a) - rates[1] * a
+        dbdt = rates[2] * (1 - b) - rates[3] * b
+        dcdt = rates[4] * (1 - c) - rates[5] * c
+        dd1dt = rates[6] * (1 - d1) - rates[7] * d1
         dd2dt = self.derD2(CCa_in, d2)
-        dmdt = rates[8] - (1 - m) - rates[9] * m
-        dhdt = rates[10] - (1 - h) - rates[11] * h
-        dndt = rates[12] - (1 - n) - rates[13] * n
-        dpdt = rates[14] - (1 - p) - rates[15] * p
-        dqdt = rates[16] - (1 - q) - rates[17] * q
+        dmdt = rates[8] * (1 - m) - rates[9] * m
+        dhdt = rates[10] * (1 - h) - rates[11] * h
+        dndt = rates[12] * (1 - n) - rates[13] * n
+        dpdt = rates[14] * (1 - p) - rates[15] * p
+        dqdt = rates[16] * (1 - q) - rates[17] * q
         drdt = self.derR(CCa_in, r)
 
         iT = self.currT(p, q, Vmeff)
