@@ -4,16 +4,16 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-06 15:59:06
+# @Last Modified time: 2018-12-09 10:07:56
 
-''' Plot phase plane diagram of specific simulation output variables. '''
+''' Plot firing rate temporal profile of specific simulation outputs. '''
 
 import logging
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 
 from PySONIC.utils import logger, OpenFilesDialog
-from PySONIC.plt import plotPhasePlane
+from PySONIC.plt import plotFRProfile
 
 # Set logging level
 logger.setLevel(logging.INFO)
@@ -30,27 +30,31 @@ def main():
                     help='Discard post-offset spikes')
     ap.add_argument('--nofirst', default=False, action='store_true',
                     help='Discard first spike')
-    ap.add_argument('--tbounds', type=float, nargs='+', default=None, help='Spike interval bounds')
-    ap.add_argument('-l', '--labels', type=str, nargs='+', default=None, help='Labels')
-    ap.add_argument('-p', '--pretty', default=False, action='store_true', help='Pretty axes')
+    ap.add_argument('--log', action='store_true', default=False,
+                    help='Log color scale')
+    ap.add_argument('-c', '--cmap', type=str, default=None,
+                    help='Colormap name')
+    ap.add_argument('--ref', type=str, default='A',
+                    help='Color code reference')
 
     # Parse arguments
-    args = ap.parse_args()
+    args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
 
-    if args.inputfiles is None:
-        filepaths, _ = OpenFilesDialog('pkl')
-        if not filepaths:
-            logger.error('No input file')
-            return
-    else:
-        filepaths = args.inputfiles
+    zscale = 'log' if args['log'] else 'lin'
+    cmap = args.get('cmap', None)
+    zref = args.get('ref', None)
 
-    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
+    filepaths = args['inputfiles'] if 'inputfiles' in args else OpenFilesDialog('pkl')[0]
+    if not filepaths:
+        logger.error('No input file')
+        return
+
+    loglevel = logging.DEBUG if args['verbose'] else logging.INFO
     logger.setLevel(loglevel)
 
     # Plot phase-plane diagram
-    plotPhasePlane(filepaths, args.var, no_offset=args.nooffset, no_first=args.nofirst,
-                   tbounds=args.tbounds, labels=args.labels, pretty=args.pretty)
+    plotFRProfile(filepaths, args['var'], no_offset=args['nooffset'], no_first=args['nofirst'],
+                  zref=zref, zscale=zscale, cmap=cmap)
     plt.show()
 
 

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-30 10:32:06
+# @Last Modified time: 2018-12-05 10:49:27
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -632,6 +632,62 @@ pltvars = {
         'factor': 1e0
     },
 
+    'alphaa': {
+        'desc': 'iA a-gate activation rate',
+        'label': '\\alpha_a',
+        'unit': 'ms^{-1}',
+        'factor': 1e-3
+    },
+
+    'betaa': {
+        'desc': 'iA a-gate inactivation rate',
+        'label': '\\beta_a',
+        'unit': 'ms^{-1}',
+        'factor': 1e-3
+    },
+
+    'alphab': {
+        'desc': 'iA b-gate activation rate',
+        'label': '\\alpha_b',
+        'unit': 'ms^{-1}',
+        'factor': 1e-3
+    },
+
+    'betab': {
+        'desc': 'iA b-gate inactivation rate',
+        'label': '\\beta_b',
+        'unit': 'ms^{-1}',
+        'factor': 1e-3
+    },
+
+    'alphac': {
+        'desc': 'iL c-gate activation rate',
+        'label': '\\alpha_c',
+        'unit': 'ms^{-1}',
+        'factor': 1e-3
+    },
+
+    'betac': {
+        'desc': 'iL c-gate inactivation rate',
+        'label': '\\beta_c',
+        'unit': 'ms^{-1}',
+        'factor': 1e-3
+    },
+
+    'alphad1': {
+        'desc': 'iL d1-gate activation rate',
+        'label': '\\alpha_d1',
+        'unit': 'ms^{-1}',
+        'factor': 1e-3
+    },
+
+    'betad1': {
+        'desc': 'iL d1-gate inactivation rate',
+        'label': '\\beta_d1',
+        'unit': 'ms^{-1}',
+        'factor': 1e-3
+    },
+
     'alpham': {
         'desc': 'iNa m-gate activation rate',
         'label': '\\alpha_m',
@@ -715,6 +771,21 @@ pltvars = {
         'unit': 'ms^{-1}',
         'factor': 1e-3
     },
+
+    'alphaq': {
+        'desc': 'iT q-gate activation rate',
+        'label': '\\alpha_q',
+        'unit': 'ms^{-1}',
+        'factor': 1e-3
+    },
+
+    'betaq': {
+        'desc': 'iT q-gate inactivation rate',
+        'label': '\\beta_q',
+        'unit': 'ms^{-1}',
+        'factor': 1e-3
+    },
+
 
     'alphao': {
         'desc': 'iH channels activation rate (between closed and open forms)',
