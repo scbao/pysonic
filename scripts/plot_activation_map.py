@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-21 14:48:18
+# @Last Modified time: 2018-12-14 18:14:29
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -37,8 +37,8 @@ def main():
     # Runtime options
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
     ap.add_argument('-i', '--inputdir', type=str, default=None, help='Input directory')
-    ap.add_argument('-r', '--rheobase', default=False, action='store_true',
-                    help='Show rheobase amplitudes')
+    ap.add_argument('-r', '--threshold', default=False, action='store_true',
+                    help='Show threshold amplitudes')
     ap.add_argument('-c', '--connect', default=False, action='store_true',
                     help='Show traces on click')
 
@@ -106,7 +106,7 @@ def main():
     plotActivationMap(
         inputdir, neuron, a, Fdrive, tstim, PRF, amps, DCs,
         Ascale=Ascale, FRscale=FRscale, FRbounds=FRbounds,
-        rheobase=args['rheobase'], connect=args['connect'],
+        thrs=args['threshold'], connect=args['connect'],
         tmax=tmax, Vbounds=Vbounds)
 
     plt.show()

@@ -58,7 +58,7 @@ def main():
     figs = []
     if 'a' in figset:
         fig = plotFRProfile(fpaths, 'Qm', no_offset=True, no_first=False,
-                            zref='A', zscale='lin', cmap='viridis')
+                            zref='A', zscale='lin', cmap='Oranges')
         fig.canvas.set_window_title('fig9a')
         figs.append(fig)
     if 'b' in figset:

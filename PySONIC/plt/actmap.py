@@ -2,12 +2,13 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-28 14:43:32
+# @Last Modified time: 2018-12-14 16:03:58
 
 import os
 import ntpath
 import pickle
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.ticker import FormatStrFormatter
@@ -256,7 +257,7 @@ def plotFRspectrum(filepath, FRbounds=None, fs=8, lw=1):
 
 
 def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='log', FRscale='log',
-                      FRbounds=None, title=None, fs=8, rheobase=False, connect=False,
+                      FRbounds=None, title=None, fs=8, thrs=True, connect=False,
                       tmax=None, Vbounds=None):
     ''' Plot a neuron's activation map over the amplitude x duty cycle 2D space.
 
@@ -320,17 +321,35 @@ def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='lo
     cmap.set_under('k')
     ax.pcolormesh(xedges * 1e2, yedges * 1e-3, actmap, cmap=cmap, norm=norm)
 
-    # Plot  rheobase amplitudes if specified
-    if rheobase:
-        logger.info('Computing rheobase amplitudes')
-        dDC = 0.01
-        DCs_dense = np.arange(dDC, 100 + dDC / 2, dDC) / 1e2
-        neuronobj = getNeuronsDict()[neuron]()
-        nbls = NeuronalBilayerSonophore(a, neuronobj)
-        Athrs = nbls.findRheobaseAmps(DCs_dense, Fdrive, neuronobj.VT)[0]
-        ax.plot(DCs_dense * 1e2, Athrs * 1e-3, '-', color='#F26522', linewidth=2,
-                label='threshold amplitudes')
-        ax.legend(loc='lower center', frameon=False, fontsize=8)
+    if thrs:
+        Athrs_fname = 'Athrs_{}_{:.0f}nm_{}Hz_PRF{}Hz_{}s.xlsx'.format(
+            neuron, a * 1e9, *si_format([Fdrive, PRF, tstim], 0, space=''))
+        fpath = os.path.join(root, Athrs_fname)
+        if os.path.isfile(fpath):
+            df = pd.read_excel(fpath, sheet_name='Data')
+            DCs = df['Duty factor'].values
+            Athrs = df['Adrive (kPa)'].values
+            iDCs = np.argsort(DCs)
+            DCs = DCs[iDCs]
+            Athrs = Athrs[iDCs]
+            ax.plot(DCs * 1e2, Athrs, '-', color='#F26522', linewidth=2,
+                    label='threshold amplitudes')
+            ax.legend(loc='lower center', frameon=False, fontsize=8)
+        else:
+            logger.warning('%s file not found -> cannot draw threshold curve', fpath)
+
+
+    # # Plot  rheobase amplitudes if specified
+    # if rheobase:
+    #     logger.info('Computing rheobase amplitudes')
+    #     dDC = 0.01
+    #     DCs_dense = np.arange(dDC, 100 + dDC / 2, dDC) / 1e2
+    #     neuronobj = getNeuronsDict()[neuron]()
+    #     nbls = NeuronalBilayerSonophore(a, neuronobj)
+    #     Athrs = nbls.findRheobaseAmps(DCs_dense, Fdrive, neuronobj.VT)[0]
+    #     ax.plot(DCs_dense * 1e2, Athrs * 1e-3, '-', color='#F26522', linewidth=2,
+    #             label='threshold amplitudes')
+    #     ax.legend(loc='lower center', frameon=False, fontsize=8)
 
     # Plot firing rate colorbar
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)

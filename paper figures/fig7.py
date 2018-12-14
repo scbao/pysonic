@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-29 15:54:08
+# @Last Modified time: 2018-12-14 15:59:36
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -20,7 +20,7 @@ def plot_actmap(inputdir, neuron, a, Fdrive, tstim, amps, PRF, DCs, FRbounds, pr
     mapcode = '{} {}Hz PRF{}Hz 1s'.format(neuron, *si_format([Fdrive, PRF, tstim], space=''))
     subdir = os.path.join(inputdir, mapcode)
     fig = plotActivationMap(
-        subdir, neuron, a, Fdrive, tstim, PRF, amps, DCs, FRbounds=FRbounds)
+        subdir, neuron, a, Fdrive, tstim, PRF, amps, DCs, FRbounds=FRbounds, thrs=True)
     fig.canvas.set_window_title('{} map {}'.format(prefix, mapcode))
     return fig
 
