@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-26 21:38:18
+# @Last Modified time: 2018-12-19 18:07:13
 
 
 import os
@@ -25,7 +25,7 @@ matplotlib.rcParams['font.family'] = 'arial'
 
 
 def fig6a(neuron, a, Fdrive, amps, tstim, toffset, inputdir, fs=8, lw=2, ps=4):
-    ''' Plot comparative bar chart of computation rates for different amplitudes. '''
+    ''' Comparative plot of computation rates for different acoustic amplitudes. '''
 
     # Get filepaths
     xlabel = 'Amplitude (kPa)'
@@ -41,6 +41,11 @@ def fig6a(neuron, a, Fdrive, amps, tstim, toffset, inputdir, fs=8, lw=2, ps=4):
     comptimes = getCompTimesQuant(
         inputdir, neuron, amps * 1e-3, xlabel, data_fpaths, comptimes_fpath)
     tcomp_lookup = getLookupsCompTime(neuron)
+
+    # Extract threshold excitation amplitude
+    CW_Athr_vs_Fdrive = getCWtitrations_vs_Fdrive(
+        ['RS'], a, [Fdrive], tstim, toffset, os.path.join(inputdir, 'CW_Athrs_vs_freqs.csv'))
+    Athr = CW_Athr_vs_Fdrive.loc[Fdrive * 1e-3, 'RS']
 
     # Plot comparative profiles of computation rate vs. amplitude
     fig, ax = plt.subplots(figsize=cm2inch(5.5, 5.8))
@@ -59,22 +64,21 @@ def fig6a(neuron, a, Fdrive, amps, tstim, toffset, inputdir, fs=8, lw=2, ps=4):
     ax.get_yaxis().set_tick_params(which='minor', size=0)
     ax.get_yaxis().set_tick_params(which='minor', width=0)
     ax.axhline(tcomp_lookup, color='k', linewidth=lw)
+    ax.axvline(Athr, linestyle='--', color='k', linewidth=1)
     colors = ['silver', 'dimgrey']
     for i, key in enumerate(comptimes):
         ax.plot(amps * 1e-3, comptimes[key], 'o--', color=colors[i],
                 linewidth=lw, label=key, markersize=ps)
-    ax.plot(amps * 1e-3, comptimes['sonic'] + tcomp_lookup, 'o--', color='k',
-            linewidth=lw, label=key, markersize=ps)
     for item in ax.get_yticklabels():
             item.set_fontsize(fs)
     for item in ax.get_xticklabels():
         item.set_fontsize(fs)
-    fig.canvas.set_window_title('fig6b')
+    fig.canvas.set_window_title('fig6a')
     return fig
 
 
 def fig6b(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir, fs=8, lw=2, ps=4):
-    ''' Plot comparative bar chart of computation rates for different US frequencies. '''
+    ''' Comparative plot of computation rates for different US frequencies. '''
 
     # Get filepaths
     xlabel = 'Frequency (kHz)'
@@ -120,12 +124,12 @@ def fig6b(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir, fs=8, lw=2, ps=4
             item.set_fontsize(fs)
     for item in ax.get_xticklabels():
         item.set_fontsize(fs)
-    fig.canvas.set_window_title('fig6c')
+    fig.canvas.set_window_title('fig6b')
     return fig
 
 
 def fig6c(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdir, fs=8, lw=2, ps=4):
-    ''' Plot comparative bar chart of computation rates for different sonophore radii. '''
+    ''' Comparative plot of computation rates for different sonophore radii. '''
 
     # Get filepaths
     xlabel = 'Sonophore radius (nm)'
@@ -176,6 +180,7 @@ def fig6c(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdir, fs=8, lw=2,
 
 
 def fig6d(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir, fs=8, lw=2, ps=4):
+    ''' Comparative plot of computation rates for different dity cycles and neuron types. '''
 
     xlabel = 'Duty cycle (%)'
     colors = list(plt.get_cmap('Paired').colors[:6])

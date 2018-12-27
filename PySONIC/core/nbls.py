@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-27 16:12:45
+# @Last Modified time: 2018-12-27 19:07:03
 
 import os
 import time
@@ -324,8 +324,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Compute membrane potential vector (in mV)
         Vm = np.zeros(states.size)
-        Vm[states == 0] = np.interp(y[0, states == 0], lookups_on['Q'], lookups_on['V'])  # mV
-        Vm[states == 1] = np.interp(y[0, states == 1], lookups_off['Q'], lookups_off['V'])  # mV
+        Vm[states == 1] = np.interp(y[0, states == 1], lookups_on['Q'], lookups_on['V'])  # mV
+        Vm[states == 0] = np.interp(y[0, states == 0], lookups_off['Q'], lookups_off['V'])  # mV
 
         # Add Zeff, ngeff and Vm to solution matrix
         y = np.vstack([Zeff, ngeff, y[0, :], Vm, y[1:, :]])

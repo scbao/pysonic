@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-17 18:01:31
+# @Last Modified time: 2018-12-27 18:57:43
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -19,7 +19,7 @@ from PySONIC.plt import plotComp, plotBatch
 logger.setLevel(logging.INFO)
 
 default_comp = 'Qm'
-defaults_batch = {'Q_m': ['Qm']}
+defaults_batch = {'Q_m': ['Qm'], 'V_m': ['Vm']}
 # defaults_batch = {'Pac': ['Pac'], 'Z': ['Z'], 'Cm': ['Cm'], 'Vm': ['Vm'], 'Qm': ['Qm']}
 
 
