@@ -2,11 +2,11 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-09 17:51:10
+# @Last Modified time: 2019-01-09 17:59:44
 
 import numpy as np
 from ..core import PointNeuron
-from ..utils import vtrap, ghkDrive, nernst
+from ..utils import vtrap, ghkDrive
 from ..constants import Celsius2Kelvin, Z_Na, Z_K
 
 

@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-09 17:52:15
+# @Last Modified time: 2019-01-09 18:02:08
 
 ''' Algorithmic constants used in the package. '''
 
@@ -19,7 +19,7 @@ Celsius2Kelvin = 273.15  # Celsius to Kelvin conversion constant
 # Fitting and pre-processing
 LJFIT_PM_MAX = 1e8  # intermolecular pressure at the deflection lower bound for LJ fitting (Pa)
 PNET_EQ_MAX = 1e-1  # error threshold for net pressure at computed equilibrium position (Pa)
-PMAVG_STD_ERR_MAX = 2000  # error threshold in nonlinear fit of molecular pressure (Pa)
+PMAVG_STD_ERR_MAX = 3000  # error threshold in nonlinear fit of molecular pressure (Pa)
 
 # Mechanical simulations
 Z_ERR_MAX = 1e-11  # periodic convergence threshold for deflection (m)
