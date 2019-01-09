@@ -1,6 +1,8 @@
 
 import numpy as np
 from ..core import PointNeuron
+from ..constants import FARADAY, Z_Ca
+from ..utils import nernst
 
 
 class OtsukaSTN(PointNeuron):
@@ -35,8 +37,6 @@ class OtsukaSTN(PointNeuron):
     VK = -90.0  # Potassium Nernst potential (mV)
 
     # Physical constants
-    Faraday = 96485  # Faraday constant for (Coulomb / mole)
-    Rg = 8.314  # Universal gas constant (Pa.m^3.mol^-1.K^-1)
     T = 306.15  # K (33°C)
 
     # Calcium dynamics
@@ -174,33 +174,23 @@ class OtsukaSTN(PointNeuron):
         ]
 
         # Compute Calcium reversal potential for Cai = 5 nM
-        self.VCa = self.nernst(self.CCa_out, self.CCa_in0)  # mV
+        self.VCa = nernst(Z_Ca, self.CCa_in0, self.CCa_out, self.T)  # mV
 
         # Compute deff for that reversal potential
         iT = self.currT(
             self.pinf(self.Vm0), self.qinf(self.Vm0), self.Vm0)  # mA/m2
         iL = self.currL(
             self.cinf(self.Vm0), self.d1inf(self.Vm0), self.d2inf(self.CCa_in0), self.Vm0)  # mA/m2
-        self.deff = -(iT + iL) / (self.zCa * self.Faraday * self.KCa * self.CCa_in0) * 1e-6  # m
+        self.deff = -(iT + iL) / (self.zCa * FARADAY * self.KCa * self.CCa_in0) * 1e-6  # m
 
         # Compute conversion factor from electrical current (mA/m2) to Calcium concentration (M)
-        self.i2CCa = 1e-6 / (self.zCa * self.deff * self.Faraday)
+        self.i2CCa = 1e-6 / (self.zCa * self.deff * FARADAY)
 
         # Initial states
         self.states0 = self.steadyStates(self.Vm0)
 
         # Charge interval bounds for lookup creation
         self.Qbounds = (np.round(self.Vm0 - 25.0) * 1e-5, 50.0e-5)
-
-
-    def nernst(self, xout, xin):
-        ''' Return ion specific reversal potential based on Nernst equation.
-
-            :param xout: extracellular ion concentration (M)
-            :param xin: intracellular ion concentration (M)
-            :return: reversal potential (mV)
-        '''
-        return self.Rg * self.T / (2 * self.Faraday) * np.log(xout / xin) * 1e3
 
 
     def _xinf(self, var, theta, k):
@@ -436,7 +426,7 @@ class OtsukaSTN(PointNeuron):
         a, b, c, d1, d2, m, h, n, p, q, r, CCa_in = states
 
         # update VCa based on intracellular Calcium concentration
-        self.VCa = self.nernst(self.CCa_out, CCa_in)
+        self.VCa = nernst(Z_Ca, CCa_in, self.CCa_out, self.T)  # mV
 
         return (
             self.currNa(m, h, Vm) +

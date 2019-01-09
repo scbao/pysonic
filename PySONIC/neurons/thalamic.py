@@ -4,10 +4,12 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-30 10:34:03
+# @Last Modified time: 2019-01-08 10:53:52
 
 import numpy as np
 from ..core import PointNeuron
+from ..constants import FARADAY, Z_Ca
+from ..utils import vtrap
 
 
 class Thalamic(PointNeuron):
@@ -55,7 +57,7 @@ class Thalamic(PointNeuron):
         '''
 
         Vdiff = Vm - self.VT
-        alpha = 0.32 * self.vtrap(13 - Vdiff, 4)  # ms-1
+        alpha = 0.32 * vtrap(13 - Vdiff, 4)  # ms-1
         return alpha * 1e3  # s-1
 
 
@@ -67,7 +69,7 @@ class Thalamic(PointNeuron):
         '''
 
         Vdiff = Vm - self.VT
-        beta = 0.28 * self.vtrap(Vdiff - 40, 5)  # ms-1
+        beta = 0.28 * vtrap(Vdiff - 40, 5)  # ms-1
         return beta * 1e3  # s-1
 
 
@@ -103,7 +105,7 @@ class Thalamic(PointNeuron):
         '''
 
         Vdiff = Vm - self.VT
-        alpha = 0.032 * self.vtrap(15 - Vdiff, 5)  # ms-1
+        alpha = 0.032 * vtrap(15 - Vdiff, 5)  # ms-1
         return alpha * 1e3  # s-1
 
 
@@ -420,7 +422,6 @@ class ThalamoCortical(Thalamic):
     tau_Ca_removal = 5e-3  # decay time constant for intracellular Ca2+ dissolution (s)
     CCa_min = 50e-9  # minimal intracellular Calcium concentration (M)
     deff = 100e-9  # effective depth beneath membrane for intracellular [Ca2+] calculation
-    F_Ca = 1.92988e5  # Faraday constant for bivalent ion (Coulomb / mole)
     nCa = 4  # number of Calcium binding sites on regulating factor
     k1 = 2.5e22  # intracellular Ca2+ regulation factor (M-4 s-1)
     k2 = 0.4  # intracellular Ca2+ regulation factor (s-1)
@@ -444,7 +445,7 @@ class ThalamoCortical(Thalamic):
         super().__init__()
 
         # Compute current to concentration conversion constant
-        self.iT_2_CCa = 1e-6 / (self.deff * self.F_Ca)
+        self.iT_2_CCa = 1e-6 / (self.deff * Z_Ca * FARADAY)
 
         # Define names of the channels state probabilities
         self.states_names += ['O', 'C', 'P0', 'C_Ca']

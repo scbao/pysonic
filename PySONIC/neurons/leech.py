@@ -4,13 +4,15 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-30 10:34:22
+# @Last Modified time: 2019-01-08 10:48:28
 
 
 from functools import partialmethod
 import numpy as np
 
 from ..core import PointNeuron
+from ..constants import FARADAY, Rg, Z_Na, Z_Ca
+from ..utils import nernst
 
 
 class LeechTouch(PointNeuron):
@@ -377,10 +379,7 @@ class LeechMech(PointNeuron):
 
     alphaC_sf = 1e-5  # Calcium activation rate constant scaling factor (M)
     betaC = 0.1e3  # beta rate for the open-probability of Ca2+-dependent Potassium channels (s-1)
-
     T = 293.15  # Room temperature (K)
-    Rg = 8.314  # Universal gas constant (J.mol^-1.K^-1)
-    Faraday = 9.6485e4  # Faraday constant (C/mol)
 
 
     def alpham(self, Vm):
@@ -551,7 +550,7 @@ class LeechMech(PointNeuron):
         '''
 
         GNa = self.GNaMax * m**4 * h
-        VNa = self.nernst(self.Z_Na, C_Na_in, self.C_Na_out)  # Sodium Nernst potential
+        VNa = nernst(Z_Na, C_Na_in, self.C_Na_out, self.T)  # mV
         return GNa * (Vm - VNa)
 
 
@@ -577,7 +576,7 @@ class LeechMech(PointNeuron):
         '''
 
         GCa = self.GCaMax * s
-        VCa = self.nernst(self.Z_Ca, C_Ca_in, self.C_Ca_out)  # Calcium Nernst potential
+        VCa = nernst(Z_Ca, C_Ca_in, self.C_Ca_out, self.T)  # mV
         return GCa * (Vm - VCa)
 
 
@@ -647,8 +646,6 @@ class LeechPressure(LeechMech):
     GLeak = 5.0  # Conductance of non-specific leakage current (S/m^2)
 
     diam = 50e-6  # Cell soma diameter (m)
-    Z_Na = 1  # Sodium valence
-    Z_Ca = 2  # Calcium valence
 
 
     # Default plotting scheme
@@ -669,8 +666,8 @@ class LeechPressure(LeechMech):
 
         # Conversion constant from membrane ionic currents into
         # change rate of intracellular ionic concentrations
-        self.K_Na = SV_ratio / (self.Z_Na * self.Faraday) * 1e-6  # Sodium (M/s)
-        self.K_Ca = SV_ratio / (self.Z_Ca * self.Faraday) * 1e-6  # Calcium (M/s)
+        self.K_Na = SV_ratio / (Z_Na * FARADAY) * 1e-6  # Sodium (M/s)
+        self.K_Ca = SV_ratio / (Z_Ca * FARADAY) * 1e-6  # Calcium (M/s)
 
         # Names and initial states of the channels state probabilities
         self.states_names = ['m', 'h', 'n', 's', 'c', 'C_Na', 'C_Ca']
@@ -685,19 +682,6 @@ class LeechPressure(LeechMech):
 
         # Charge interval bounds for lookup creation
         self.Qbounds = (np.round(self.Vm0 - 10.0) * 1e-5, 60.0e-5)
-
-
-    def nernst(self, z_ion, C_ion_in, C_ion_out):
-        ''' Return the Nernst potential of a specific ion given its intra and extracellular
-            concentrations.
-
-            :param z_ion: ion valence
-            :param C_ion_in: intracellular ion concentration (M)
-            :param C_ion_out: extracellular ion concentration (M)
-            :return: ion Nernst potential (mV)
-        '''
-
-        return (self.Rg * self.T) / (z_ion * self.Faraday) * np.log(C_ion_out / C_ion_in) * 1e3
 
 
     def currPumpNa(self, C_Na_in):
@@ -907,7 +891,7 @@ class LeechRetzius(LeechMech):
             :return: time constant (s)
         '''
 
-        x = -1.5 * (Vm - self.Vhalf) * 1e-3 * self.Faraday / (self.Rg * self.T)  # [-]
+        x = -1.5 * (Vm - self.Vhalf) * 1e-3 * FARADAY / (Rg * self.T)  # [-]
         alpha = np.exp(x)  # ms-1
         beta = np.exp(0.7 * x)  # ms-1
         return max(0.5, beta / (0.3 * (1 + alpha))) * 1e-3  # s
@@ -940,7 +924,7 @@ class LeechRetzius(LeechMech):
             :return: time constant (s)
         '''
 
-        x = 2 * (Vm - self.Vhalf) * 1e-3 * self.Faraday / (self.Rg * self.T)
+        x = 2 * (Vm - self.Vhalf) * 1e-3 * FARADAY / (Rg * self.T)
         alpha = np.exp(x)
         beta = np.exp(0.65 * x)
         return max(7.5, beta / (0.02 * (1 + alpha))) * 1e-3  # s

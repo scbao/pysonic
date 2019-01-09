@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-21 14:45:08
+# @Last Modified time: 2019-01-08 09:39:46
 
 from enum import Enum
 import time
@@ -51,7 +51,6 @@ class BilayerSonophore:
 
     # BIOMECHANICAL PARAMETERS
     T = 309.15  # Temperature (K)
-    Rg = 8.314  # Universal gas constant (Pa.m^3.mol^-1.K^-1)
     delta0 = 2.0e-9  # Thickness of the leaflet (m)
     Delta_ = 1.4e-9  # Initial gap between the two leaflets on a non-charged membrane at equil. (m)
     pDelta = 1.0e5  # Attraction/repulsion pressure coefficient (Pa)
@@ -452,7 +451,7 @@ class BilayerSonophore:
             :param V: inner volume of the bilayer sonophore structure (m^3)
             :return: internal gas pressure (Pa)
         '''
-        return ng * self.Rg * self.T / V
+        return ng * Rg * self.T / V
 
 
     def gasPa2mol(self, P, V):
@@ -463,7 +462,7 @@ class BilayerSonophore:
             :param V: inner volume of the bilayer sonophore structure (m^3)
             :return: internal gas molar content (mol)
         '''
-        return P * V / (self.Rg * self.T)
+        return P * V / (Rg * self.T)
 
 
     def PtotQS(self, Z, ng, Qm, Pac, Pm_comp_method):

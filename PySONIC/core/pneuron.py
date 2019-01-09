@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-29 21:03:25
+# @Last Modified time: 2019-01-09 17:51:31
 
 import os
 import time
@@ -149,10 +149,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
             rates[alpha_str] = alphax
             rates[beta_str] = betax
         return rates
-
-    def vtrap(self, x, y):
-        ''' Generic function used to compute rate constants. '''
-        return x / (np.exp(x / y) - 1)
 
     def Vderivatives(self, y, t, Iinj):
         ''' Compute the derivatives of a V-cast HH system for a

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-30 10:46:34
+# @Last Modified time: 2019-01-08 16:30:33
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 

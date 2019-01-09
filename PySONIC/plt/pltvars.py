@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-05 10:49:27
+# @Last Modified time: 2019-01-08 15:26:09
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -486,6 +486,14 @@ pltvars = {
         'unit': 'A/m^2',
         'factor': 1e-3,
         'alias': 'neuron.currM(df["p"].values, df["Vm"].values)'
+    },
+
+    'iP': {
+        'desc': 'non-specific delayed current',
+        'label': 'I_P',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.currP(df["p"].values, df["Vm"].values)'
     },
 
     'iA': {
