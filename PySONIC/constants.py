@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-09 18:02:08
+# @Last Modified time: 2019-01-10 12:27:22
 
 ''' Algorithmic constants used in the package. '''
 
@@ -25,7 +25,7 @@ PMAVG_STD_ERR_MAX = 3000  # error threshold in nonlinear fit of molecular pressu
 Z_ERR_MAX = 1e-11  # periodic convergence threshold for deflection (m)
 NG_ERR_MAX = 1e-24  # periodic convergence threshold for gas content (mol)
 NCYCLES_MAX = 10  # max number of acoustic cycles in mechanical simulations
-CHARGE_RANGE = (-120e-5, 70e-5)  # physiological charge range constraining the membrane (C/m2)
+CHARGE_RANGE = (-200e-5, 150e-5)  # physiological charge range constraining the membrane (C/m2)
 
 # E-STIM simulations
 DT_ESTIM = 1e-6

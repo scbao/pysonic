@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-09 17:59:44
+# @Last Modified time: 2019-01-10 12:26:48
 
 import numpy as np
 from ..core import PointNeuron
@@ -52,7 +52,6 @@ class FrankenhaeuserHuxley(PointNeuron):
 
     def __init__(self):
         ''' Constructor of the class '''
-
         self.q10 = 3**((self.celsius - 20) / 10)
         self.T = self.celsius + Celsius2Kelvin
 
@@ -65,7 +64,7 @@ class FrankenhaeuserHuxley(PointNeuron):
                             'alphap', 'betap']
 
         # Charge interval bounds for lookup creation
-        self.Qbounds = (np.round(self.Vm0 - 25.0) * 1e-5, 50.0e-5)
+        self.Qbounds = np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
 
 
     def alpham(self, Vm):
@@ -252,7 +251,6 @@ class FrankenhaeuserHuxley(PointNeuron):
 
     def steadyStates(self, Vm):
         ''' Concrete implementation of the abstract API method. '''
-
         # Solve the equation dx/dt = 0 at Vm for each x-state
         meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
         heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
@@ -263,7 +261,6 @@ class FrankenhaeuserHuxley(PointNeuron):
 
     def derStates(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
-
         m, h, n, p = states
         dmdt = self.derM(Vm, m)
         dhdt = self.derH(Vm, h)
@@ -291,10 +288,8 @@ class FrankenhaeuserHuxley(PointNeuron):
 
     def derStatesEff(self, Qm, states, interp_data):
         ''' Concrete implementation of the abstract API method. '''
-
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.coeff_names])
-
         m, h, n, p = states
         dmdt = rates[0] * (1 - m) - rates[1] * m
         dhdt = rates[2] * (1 - h) - rates[3] * h
