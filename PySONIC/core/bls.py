@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-08 09:39:46
+# @Last Modified time: 2019-01-10 14:29:29
 
 from enum import Enum
 import time
@@ -740,6 +740,7 @@ class BilayerSonophore:
 
         # return output variables
         return (t, y[1:, :], states)
+
 
     def runAndSave(self, outdir, Fdrive, Adrive, Qm):
         ''' Run a simulation of the mechanical system with specific stimulation parameters
