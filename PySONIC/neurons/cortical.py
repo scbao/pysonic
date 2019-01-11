@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-08 10:54:42
+# @Last Modified time: 2019-01-11 08:45:45
 
 import numpy as np
 from ..core import PointNeuron
@@ -45,8 +45,9 @@ class Cortical(PointNeuron):
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphap', 'betap']
 
+
         # Charge interval bounds for lookup creation
-        self.Qbounds = (np.round(self.Vm0 - 25.0) * 1e-5, 50.0e-5)
+        self.Qbounds = np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
 
 
     def alpham(self, Vm):

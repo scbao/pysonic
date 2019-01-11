@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-08 10:53:52
+# @Last Modified time: 2019-01-11 08:47:42
 
 import numpy as np
 from ..core import PointNeuron
@@ -46,7 +46,7 @@ class Thalamic(PointNeuron):
                             'alphas', 'betas', 'alphau', 'betau']
 
         # Charge interval bounds for lookup creation
-        self.Qbounds = (np.round(self.Vm0 - 25.0) * 1e-5, 50.0e-5)
+        self.Qbounds = np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
 
 
     def alpham(self, Vm):

@@ -190,7 +190,7 @@ class OtsukaSTN(PointNeuron):
         self.states0 = self.steadyStates(self.Vm0)
 
         # Charge interval bounds for lookup creation
-        self.Qbounds = (np.round(self.Vm0 - 25.0) * 1e-5, 50.0e-5)
+        self.Qbounds = np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
 
 
     def _xinf(self, var, theta, k):
