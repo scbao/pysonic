@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-27 19:07:03
+# @Last Modified time: 2019-01-23 15:59:31
 
 import os
 import time
@@ -790,7 +790,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return rheboase_amps, Aref
 
 
-    def computeEffVars(self, Fdrive, Adrive, Qm, phi=np.pi):
+    def computeEffVars(self, Fdrive, Adrive, Qm, fs=None, phi=np.pi):
         ''' Compute "effective" coefficients of the HH system for a specific
             combination of stimulus frequency, stimulus amplitude and charge density.
 
@@ -802,11 +802,15 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param Adrive: acoustic drive amplitude (Pa)
             :param Qm: imposed charge density (C/m2)
             :param phi: acoustic drive phase (rad)
+            :param fs: sonophore membrane coverage fraction
+            :return: list with computation time and effective variables
         '''
 
-        # logger.info(
-        #     '%s: lookups @ %sHz, %sPa, %.2f nC/cm2',
-        #     self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5)
+        if fs is None:
+            fs = 1.
+            logfs = False
+        else:
+            logfs = True
 
         tstart = time.time()
 
@@ -814,8 +818,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         _, [Z, ng], _ = BilayerSonophore.simulate(self, Fdrive, Adrive, Qm, phi)
         Z_last = Z[-NPC_FULL:]  # m
 
+        # Compute membrane capacitance profile (taking into account partial coverage)
+        Cm = fs * self.v_Capct(Z_last) + (1 - fs) * self.Cm0  # F/m2
+
         # Compute membrane potential vector
-        Vm = Qm / self.v_Capct(Z_last) * 1e3  # mV
+        Vm = Qm / Cm * 1e3  # mV
 
         # Compute average cycle value for membrane potential and rate constants
         Vm_eff = np.mean(Vm)  # mV
@@ -827,8 +834,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         tcomp = time.time() - tstart
 
         logger.info(
-            '%s: lookups @ %sHz, %sPa, %.2f nC/cm2: tcomp = %f s',
-            self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5, tcomp)
+            '%s: lookups @ %sHz, %sPa, %.2f nC/cm2%s: tcomp = %f s',
+            self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5,
+            ', fs = {:.0f}%'.format(fs * 1e2) if logfs is True else '', tcomp)
 
         # Return effective coefficients
         return [tcomp, Vm_eff, ng_eff, *rates_eff]
