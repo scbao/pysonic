@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-23 15:54:03
+# @Last Modified time: 2019-01-23 18:12:24
 
 ''' Create lookup table for specific neuron. '''
 
@@ -25,7 +25,7 @@ defaults = dict(
     neuron='RS',
     radius=32.0,  # nm
     freq=500,  # kHz
-    amp=50,  # kPa
+    amp=np.insert(np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0),  # kPa
 )
 
 
@@ -102,9 +102,8 @@ def main():
                     help='Sonophore radius (nm)')
     ap.add_argument('-f', '--freq', type=float, default=defaults['freq'],
                     help='US frequency (kHz)')
-    ap.add_argument('-A', '--amp', type=float, default=defaults['amp'],
+    ap.add_argument('-A', '--amp', nargs='+', type=float,
                     help='Acoustic pressure amplitude (kPa)')
-
 
     # Parse arguments
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
@@ -114,8 +113,8 @@ def main():
     neuron_str = args['neuron']
     a = args['radius'] * 1e-9  # m
     Fdrive = args['freq'] * 1e3  # Hz
-    amps = np.array([.0, args['amp']]) * 1e3  # Pa
-    fs = np.linspace(1, 99, 99) * 1e-2  # (-)
+    amps = np.array(args.get('amp', defaults['amp'])) * 1e3  # Pa
+    fs = np.linspace(0, 100, 101) * 1e-2  # (-)
 
     # Check neuron name validity
     if neuron_str not in getNeuronsDict():
@@ -126,16 +125,11 @@ def main():
 
     if args['test']:
         fs = np.array([fs.min(), fs.max()])
+        amps = np.array([amps.min(), amps.max()])
         charges = np.array([charges.min(), 0., charges.max()])
 
     # Check if lookup file already exists
-    lookup_path = getNeuronLookupsFile(neuron.name)
-    lookup_path = '{}_{:.0f}nm_{:.0f}kHz_{:.0f}kPa_fs.pkl'.format(
-        os.path.splitext(lookup_path)[0],
-        a * 1e9,
-        Fdrive * 1e-3,
-        amps[-1] * 1e-3
-    )
+    lookup_path = getNeuronLookupsFile(neuron.name, a=a, Fdrive=Fdrive, fs=True)
 
     if os.path.isfile(lookup_path):
         logger.warning('"%s" file already exists and will be overwritten. ' +

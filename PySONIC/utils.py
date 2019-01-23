@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-09 17:56:12
+# @Last Modified time: 2019-01-23 16:49:05
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -336,11 +336,21 @@ def getStimPulses(t, states):
     return npulses, tpulse_on, tpulse_off
 
 
-def getNeuronLookupsFile(mechname):
-    return os.path.join(
+def getNeuronLookupsFile(mechname, a=None, Fdrive=None, Adrive=None, fs=False):
+    fpath = os.path.join(
         os.path.split(__file__)[0],
         'neurons',
-        '{}_lookups.pkl'.format(mechname))
+        '{}_lookups'.format(mechname)
+    )
+    if a is not None:
+        fpath += '_{:.0f}nm'.format(a * 1e9)
+    if Fdrive is not None:
+        fpath += '_{:.0f}kHz'.format(Fdrive * 1e-3)
+    if Adrive is not None:
+        fpath += '_{:.0f}kPa'.format(Adrive * 1e-3)
+    if fs is True:
+        fpath += '_fs'
+    return '{}.pkl'.format(fpath)
 
 
 def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
@@ -415,6 +425,35 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
                  for key, y3D in lookups3D.items()}
 
     return var3['ref'], Qref, lookups2D, var3
+
+
+def getLookups2Dfs(mechname, a, Fdrive, Adrive, fs):
+
+    # Check lookup file existence
+    lookup_path = getNeuronLookupsFile(mechname, a=a, Fdrive=Fdrive, Adrive=Adrive, fs=True)
+    if not os.path.isfile(lookup_path):
+        raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
+
+    # Load lookups dictionary
+    logger.debug('Loading lookup table')
+    with open(lookup_path, 'rb') as fh:
+        df = pickle.load(fh)
+        inputs = df['input']
+        lookups3D = df['lookup']
+
+    # Retrieve 1D inputs from lookups dictionary
+    fsref = inputs['fs']
+    Aref = inputs['A']
+    Qref = inputs['Q']
+
+    # Check that fs is within lookup range
+    fs = isWithin('coverage', fs, (fsref.min(), fsref.max()))
+
+    # Perform projection at fs
+    logger.debug('Interpolating lookups at fs = %s%%', fs * 1e2)
+    lookups2D = {key: interp1d(fsref, y3D, axis=2)(fs) for key, y3D in lookups3D.items()}
+
+    return Aref, Qref, lookups2D
 
 
 def isWithin(name, val, bounds, rel_tol=1e-9):
