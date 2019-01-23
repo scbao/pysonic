@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-23 15:28:06
+# @Last Modified time: 2019-01-23 18:38:38
 
 ''' Create lookup table for specific neuron. '''
 
@@ -26,7 +26,6 @@ defaults = dict(
     radius=np.array([16.0, 32.0, 64.0]),  # nm
     freq=np.array([20., 100., 500., 1e3, 2e3, 3e3, 4e3]),  # kHz
     amp=np.insert(np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0),  # kPa
-    charge=None
 )
 
 

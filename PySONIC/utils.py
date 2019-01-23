@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-23 16:49:05
+# @Last Modified time: 2019-01-23 18:20:24
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -427,10 +427,10 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
     return var3['ref'], Qref, lookups2D, var3
 
 
-def getLookups2Dfs(mechname, a, Fdrive, Adrive, fs):
+def getLookups2Dfs(mechname, a, Fdrive, fs):
 
     # Check lookup file existence
-    lookup_path = getNeuronLookupsFile(mechname, a=a, Fdrive=Fdrive, Adrive=Adrive, fs=True)
+    lookup_path = getNeuronLookupsFile(mechname, a=a, Fdrive=Fdrive, fs=True)
     if not os.path.isfile(lookup_path):
         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 
