@@ -1,11 +1,29 @@
+# -*- coding: utf-8 -*-
+# @Author: Theo Lemaire
+# @Date:   2018-12-09 12:06:01
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2019-02-28 11:37:10
+
+''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
+
 import os
 import logging
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.utils import logger, selectDirDialog, ASTIM_filecode, Intensity2Pressure
 from PySONIC.plt import plotFRProfile, plotBatch
+
+
+# Plot parameters
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+matplotlib.rcParams['font.family'] = 'arial'
+
+# Figure basename
+figbase = os.path.splitext(__file__)[0]
 
 
 def main():
@@ -29,6 +47,8 @@ def main():
     if figset is 'all':
         figset = ['a', 'b']
 
+    logger.info('Generating panels {} of {}'.format(figset, figbase))
+
     # Parameters
     neuron = 'STN'
     a = 32e-9  # m
@@ -48,6 +68,9 @@ def main():
     todelete = [np.argwhere(intensities == x)[0][0] for x in [108, 115, 122, 127]]
     intensities = np.delete(intensities, todelete)
 
+    # Levels depicted with individual traces
+    subset_intensities = [105, 107, 123]  # W/m2
+
     # convert to amplitudes and get filepaths
     amplitudes = np.array([Intensity2Pressure(I) for I in intensities])  # Pa
     fnames = ['{}.pkl'.format(ASTIM_filecode(neuron, a, Fdrive, A, tstim, PRF, DC, 'sonic'))
@@ -59,19 +82,25 @@ def main():
     if 'a' in figset:
         fig = plotFRProfile(fpaths, 'Qm', no_offset=True, no_first=False,
                             zref='A', zscale='lin', cmap='Oranges')
-        fig.canvas.set_window_title('fig9a')
+        fig.canvas.set_window_title(figbase + 'a')
         figs.append(fig)
     if 'b' in figset:
-        # Levels depicted with individual traces
-        itraces = [np.argwhere(intensities == x)[0][0] for x in [105, 107, 123]]
-        figtraces = plotBatch([fpaths[i] for i in itraces], vars_dict={'Q_m': ['Qm']})
-        for i, fig in zip(itraces, figtraces):
-            fig.canvas.set_window_title('fig9b {:.2f} kPa'.format(amplitudes[i] * 1e-3))
+        isubset = [np.argwhere(intensities == x)[0][0] for x in subset_intensities]
+        subset_amplitudes = amplitudes[isubset]
+        titles = ['{:.2f} kPa ({:.0f} W/m2)'.format(A * 1e-3, I)
+                  for A, I in zip(subset_amplitudes, subset_intensities)]
+        print(titles)
+        figtraces = plotBatch([fpaths[i] for i in isubset], vars_dict={'Q_m': ['Qm']})
+        for fig, title in zip(figtraces, titles):
+            fig.axes[0].set_title(title)
+            fig.canvas.set_window_title(figbase + 'b {}'.format(title))
             figs.append(fig)
 
     if args.save:
         for fig in figs:
-            figname = '{}.pdf'.format(fig.canvas.get_window_title())
+            s = fig.canvas.get_window_title()
+            s = s.replace('(', '- ').replace('/', '_').replace(')', '')
+            figname = '{}.pdf'.format(s)
             fig.savefig(os.path.join(inputdir, figname), transparent=True)
     else:
         plt.show()

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-09 10:46:30
+# @Last Modified time: 2019-02-27 18:03:21
 
 
 import pickle
@@ -206,6 +206,7 @@ def plotSpikingMetrics(xvar, xlabel, metrics_dict, logscale=False, spikeamp=True
     for ax in axes[:-1]:
         ax.spines['bottom'].set_visible(False)
         ax.set_xticks([])
+        plt.setp(ax.get_xticklabels(minor=True), visible=False)
         ax.get_xaxis().set_tick_params(which='minor', size=0)
         ax.get_xaxis().set_tick_params(which='minor', width=0)
     axes[-1].set_xlabel(xlabel, fontsize=fs)

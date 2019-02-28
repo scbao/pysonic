@@ -2,26 +2,40 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-14 15:59:36
+# @Last Modified time: 2019-02-27 18:43:14
 
-''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
+''' Sub-panels of (duty-cycle x amplitude) US activation maps and related Q-V traces. '''
 
 import os
 import numpy as np
 import logging
+import matplotlib
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.utils import logger, selectDirDialog, si_format, ASTIM_filecode
 from PySONIC.plt import plotActivationMap, plotQVeff
 
+# Plot parameters
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+matplotlib.rcParams['font.family'] = 'arial'
 
-def plot_actmap(inputdir, neuron, a, Fdrive, tstim, amps, PRF, DCs, FRbounds, prefix):
+# Figure basename
+figbase = os.path.splitext(__file__)[0]
+
+
+def plot_actmap(inputdir, neuron, a, Fdrive, tstim, amps, PRF, DCs, FRbounds, insets, prefix):
     mapcode = '{} {}Hz PRF{}Hz 1s'.format(neuron, *si_format([Fdrive, PRF, tstim], space=''))
     subdir = os.path.join(inputdir, mapcode)
     fig = plotActivationMap(
         subdir, neuron, a, Fdrive, tstim, PRF, amps, DCs, FRbounds=FRbounds, thrs=True)
     fig.canvas.set_window_title('{} map {}'.format(prefix, mapcode))
+
+    ax = fig.axes[0]
+    DC_insets, A_insets = zip(*insets)
+    ax.scatter(DC_insets, A_insets, s=80, facecolors='none', edgecolors='k', linestyle='--')
+
     return fig
 
 
@@ -31,58 +45,25 @@ def plot_traces(inputdir, neuron, a, Fdrive, Adrive, tstim, PRF, DC, tmax, Vboun
     fname = '{}.pkl'.format(ASTIM_filecode(neuron, a, Fdrive, Adrive, tstim, PRF, DC, 'sonic'))
     fpath = os.path.join(subdir, fname)
     fig = plotQVeff(fpath, tmax=tmax, ybounds=Vbounds)
-    figcode = '{} VQ trace {:.1f}kPa {:.0f}%DC'.format(prefix, Adrive * 1e-3, DC * 1e2)
+    figcode = '{} VQ trace {} {:.1f}kPa {:.0f}%DC'.format(prefix, neuron, Adrive * 1e-3, DC * 1e2)
     fig.canvas.set_window_title(figcode)
     return fig
 
 
-def fig7a(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds):
-    prefix = 'fig7a'
+def panel(inputdir, neurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds, insets, prefix):
+
     mapfigs = [
-        plot_actmap(inputdir, n, a, 500e3, tstim, amps, 1e1, DCs, FRbounds, prefix)
-        for n in ['RS', 'LTS']
+        plot_actmap(inputdir, n, a, 500e3, tstim, amps, PRF, DCs, FRbounds, insets[n], prefix)
+        for n in neurons
     ]
 
-    tracefigs = [
-        plot_traces(inputdir, 'RS', a, 500e3, 127.0e3, tstim, 1e1, 0.28, tmax, Vbounds, prefix),
-        plot_traces(inputdir, 'RS', a, 500e3, 168.4e3, tstim, 1e1, 0.37, tmax, Vbounds, prefix),
-        plot_traces(inputdir, 'LTS', a, 500e3, 47.3e3, tstim, 1e1, 0.08, tmax, Vbounds, prefix),
-        plot_traces(inputdir, 'LTS', a, 500e3, 146.2e3, tstim, 1e1, 0.30, tmax, Vbounds, prefix)
-    ]
-
-    return mapfigs + tracefigs
-
-
-def fig7b(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds):
-    prefix = 'fig7b'
-    mapfigs = [
-        plot_actmap(inputdir, n, a, 500e3, tstim, amps, 1e2, DCs, FRbounds, prefix)
-        for n in ['RS', 'LTS']
-    ]
-
-    tracefigs = [
-        plot_traces(inputdir, 'RS', a, 500e3, 452.4e3, tstim, 1e2, 0.51, tmax, Vbounds, prefix),
-        plot_traces(inputdir, 'RS', a, 500e3, 452.4e3, tstim, 1e2, 0.56, tmax, Vbounds, prefix),
-        plot_traces(inputdir, 'LTS', a, 500e3, 193.9e3, tstim, 1e2, 0.13, tmax, Vbounds, prefix),
-        plot_traces(inputdir, 'LTS', a, 500e3, 257.2e3, tstim, 1e2, 0.43, tmax, Vbounds, prefix)
-    ]
-
-    return mapfigs + tracefigs
-
-
-def fig7c(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds):
-    prefix = 'fig7c'
-    mapfigs = [
-        plot_actmap(inputdir, n, a, 500e3, tstim, amps, 1e3, DCs, FRbounds, prefix)
-        for n in ['RS', 'LTS']
-    ]
-
-    tracefigs = [
-        plot_traces(inputdir, 'RS', a, 500e3, 110.2e3, tstim, 1e3, 0.40, tmax, Vbounds, prefix),
-        plot_traces(inputdir, 'RS', a, 500e3, 193.9e3, tstim, 1e3, 0.64, tmax, Vbounds, prefix),
-        plot_traces(inputdir, 'LTS', a, 500e3, 47.3e3, tstim, 1e3, 0.10, tmax, Vbounds, prefix),
-        plot_traces(inputdir, 'LTS', a, 500e3, 168.4e3, tstim, 1e3, 0.53, tmax, Vbounds, prefix)
-    ]
+    tracefigs = []
+    for n in neurons:
+        for inset in insets[n]:
+            DC = inset[0] * 1e-2
+            Adrive = inset[1] * 1e3
+            tracefigs.append(plot_traces(
+                inputdir, n, a, 500e3, Adrive, tstim, PRF, DC, tmax, Vbounds, prefix))
 
     return mapfigs + tracefigs
 
@@ -107,9 +88,12 @@ def main():
         return
     figset = args.figset
     if figset == 'all':
-        figset = ['a', 'b']
+        figset = ['a', 'b', 'c']
+
+    logger.info('Generating panel {} of {}'.format(figset, figbase))
 
     # Parameters
+    neurons = ['RS', 'LTS']
     a = 32e-9  # m
     tstim = 1.0  # s
     amps = np.logspace(np.log10(10), np.log10(600), num=30) * 1e3  # Pa
@@ -124,11 +108,30 @@ def main():
 
         figs = []
         if 'a' in figset:
-            figs += fig7a(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds)
+            PRF = 1e1
+            insets = {
+                'RS': [(28, 127.0), (37, 168.4)],
+                'LTS': [(8, 47.3), (30, 146.2)]
+            }
+            figs += panel(inputdir, neurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds,
+                          insets, figbase + 'a')
         if 'b' in figset:
-            figs += fig7b(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds)
+            PRF = 1e2
+            insets = {
+                'RS': [(51, 452.4), (56, 452.4)],
+                'LTS': [(13, 193.9), (43, 257.2)]
+            }
+            figs += panel(inputdir, neurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds,
+                          insets, figbase + 'b')
         if 'c' in figset:
-            figs += fig7c(inputdir, a, tstim, amps, DCs, FRbounds, tmax, Vbounds)
+            PRF = 1e3
+            insets = {
+                'RS': [(40, 110.2), (64, 193.9)],
+                'LTS': [(10, 47.3), (53, 168.4)]
+            }
+            figs += panel(inputdir, neurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds,
+                          insets, figbase + 'c')
+
     except Exception as e:
         logger.error(e)
         quit()

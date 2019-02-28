@@ -1,13 +1,29 @@
+# -*- coding: utf-8 -*-
+# @Author: Theo Lemaire
+# @Date:   2018-11-27 17:57:45
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2019-02-27 18:57:24
+
+''' Sub-panels of threshold curves for various sonophore radii and US frequencies. '''
+
 import os
 import logging
 import numpy as np
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.neurons import getNeuronsDict
 from PySONIC.utils import logger, si_format, selectDirDialog, cm2inch
+
+# Plot parameters
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+matplotlib.rcParams['font.family'] = 'arial'
+
+# Figure basename
+figbase = os.path.splitext(__file__)[0]
 
 
 def getThresholdAmplitudes(root, neuron, a, Fdrive, tstim, PRF):
@@ -30,13 +46,11 @@ def getThresholdAmplitudes(root, neuron, a, Fdrive, tstim, PRF):
     return DCs, Athrs
 
 
-def plotRheobasevsThresholdAmps(root, neuron, radii, freqs, PRF, tstim,
-                                fs=10, colors=None, figsize=None):
-    ''' Plot comparative threshold excitation amplitudes of a specific neuron determined by
-        (1) quasi-steady approximation and (2) titration procedures, as a function
-        of duty cycle, for various combinations of sonophore radius and US frequency.
+def plotThresholdAmps(root, neurons, radii, freqs, PRF, tstim, fs=10, colors=None, figsize=None):
+    ''' Plot threshold excitation amplitudes of several neurons determined by titration procedures,
+        as a function of duty cycle, for various combinations of sonophore radius and US frequency.
 
-        :param neuron: neuron name
+        :param neurons: list of neuron names
         :param radii: list of sonophore radii (m)
         :param freqs: list US frequencies (Hz)
         :param PRF: pulse repetition frequency used for titration procedures (Hz)
@@ -45,11 +59,9 @@ def plotRheobasevsThresholdAmps(root, neuron, radii, freqs, PRF, tstim,
     '''
     if figsize is None:
         figsize = cm2inch(8, 7)
-    neuron = getNeuronsDict()[neuron]()
     linestyles = ['--', ':', '-.']
     assert len(freqs) <= len(linestyles), 'too many frequencies'
     fig, ax = plt.subplots(figsize=figsize)
-    ax.set_title('{} neuron'.format(neuron.name), fontsize=fs)
     ax.set_xlabel('Duty cycle (%)', fontsize=fs)
     ax.set_ylabel('Amplitude (kPa)', fontsize=fs)
     for item in ax.get_xticklabels() + ax.get_yticklabels():
@@ -57,25 +69,22 @@ def plotRheobasevsThresholdAmps(root, neuron, radii, freqs, PRF, tstim,
     ax.set_yscale('log')
     ax.set_xlim([0, 100])
     ax.set_ylim([10, 600])
-    DCs = np.arange(1, 101) / 1e2
-    icolor = 0
-    for i, a in enumerate(radii):
-        nbls = NeuronalBilayerSonophore(a, neuron)
-        for j, Fdrive in enumerate(freqs):
-            Arheobases, Aref = nbls.findRheobaseAmps(DCs, Fdrive, neuron.VT)
-            if colors is None:
-                color = 'C{}'.format(icolor)
-            else:
-                color = colors[icolor]
-            lbl = 'rheobase {:.0f} nm radius sonophore, {}Hz'.format(
-                a * 1e9, si_format(Fdrive, 0, space=' '))
-            ax.plot(DCs * 1e2, Arheobases * 1e-3, '--', c=color, label=lbl)
-            DCs2, Athrs = getThresholdAmplitudes(root, neuron.name, a, Fdrive, tstim, PRF)
-            lbl = 'threshold {:.0f} nm radius sonophore, {}Hz, {}Hz PRF'.format(
-                a * 1e9, *si_format([Fdrive, PRF], 0, space=' '))
-            ax.plot(DCs2 * 1e2, Athrs, c=color, label=lbl)
-            icolor += 1
-    ax.legend(fontsize=fs, frameon=False)
+    linestyles = ['-', '--']
+    for neuron, ls in zip(neurons, linestyles):
+        neuron = getNeuronsDict()[neuron]()
+        icolor = 0
+        for i, a in enumerate(radii):
+            for j, Fdrive in enumerate(freqs):
+                if colors is None:
+                    color = 'C{}'.format(icolor)
+                else:
+                    color = colors[icolor]
+                DCs, Athrs = getThresholdAmplitudes(root, neuron.name, a, Fdrive, tstim, PRF)
+                lbl = '{} neuron, {:.0f} nm, {}Hz, {}Hz PRF'.format(
+                    neuron.name, a * 1e9, *si_format([Fdrive, PRF], 0, space=' '))
+                ax.plot(DCs * 1e2, Athrs, ls, c=color, label=lbl)
+                icolor += 1
+    ax.legend(fontsize=fs - 5, frameon=False)
     fig.tight_layout()
     return fig
 
@@ -99,9 +108,12 @@ def main():
         return
     figset = args.figset
     if figset == 'all':
-        figset = ['a', 'b', 'c']
+        figset = ['a', 'b']
+
+    logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
+    neurons = ['RS', 'LTS']
     radii = np.array([16, 32, 64]) * 1e-9  # m
     a = radii[1]
     freqs = np.array([20, 500, 4000]) * 1e3  # Hz
@@ -115,24 +127,14 @@ def main():
     # Generate figures
     figs = []
     if 'a' in figset:
-        fig = plotRheobasevsThresholdAmps(inputdir, 'RS', radii, [Fdrive], PRF, tstim,
-                                          fs=12, colors=colors[:3][::-1])
-        fig.canvas.set_window_title('fig8a')
+        fig = plotThresholdAmps(inputdir, neurons, radii, [Fdrive], PRF, tstim,
+                                fs=12, colors=colors[:3][::-1])
+        fig.canvas.set_window_title(figbase + 'a')
         figs.append(fig)
     if 'b' in figset:
-        fig = plotRheobasevsThresholdAmps(inputdir, 'RS', [a], freqs, PRF, tstim,
-                                          fs=12, colors=colors[8:11][::-1])
-        fig.canvas.set_window_title('fig8b')
-        figs.append(fig)
-    if 'c' in figset:
-        fig = plotRheobasevsThresholdAmps(inputdir, 'LTS', radii, [Fdrive], PRF, tstim,
-                                          fs=12, colors=colors[:3][::-1])
-        fig.canvas.set_window_title('fig8c')
-        figs.append(fig)
-    if 'd' in figset:
-        fig = plotRheobasevsThresholdAmps(inputdir, 'LTS', [a], freqs, PRF, tstim,
-                                          fs=12, colors=colors[8:11][::-1])
-        fig.canvas.set_window_title('fig8d')
+        fig = plotThresholdAmps(inputdir, neurons, [a], freqs, PRF, tstim,
+                                fs=12, colors=colors[8:11][::-1])
+        fig.canvas.set_window_title(figbase + 'b')
         figs.append(fig)
 
     if args.save:

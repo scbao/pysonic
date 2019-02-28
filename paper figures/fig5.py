@@ -2,7 +2,9 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-26 00:11:01
+# @Last Modified time: 2019-02-27 18:05:21
+
+''' Sub-panels of the NICE and SONIC accuracies comparative figure. '''
 
 
 import os
@@ -24,9 +26,11 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 matplotlib.rcParams['font.family'] = 'arial'
 
+# Figure basename
+figbase = os.path.splitext(__file__)[0]
 
 
-def fig5aleft(neuron, a, Fdrive, CW_Athrs, tstim, toffset, inputdir):
+def Qprofiles_vs_amp(neuron, a, Fdrive, CW_Athrs, tstim, toffset, inputdir):
     ''' Comparison of resulting charge profiles for CW stimuli at sub-threshold,
         threshold and supra-threshold amplitudes. '''
     Athr = CW_Athrs[neuron].loc[Fdrive * 1e-3]  # kPa
@@ -36,7 +40,7 @@ def fig5aleft(neuron, a, Fdrive, CW_Athrs, tstim, toffset, inputdir):
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'sonic'))
     full_fpaths = getSims(subdir, neuron, a, createAStimQueue(
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'full'))
-    regimes = ['threshold - 5 kPa', 'threshold', 'threshold + 20 kPa']
+    regimes = ['AT - 5 kPa', 'AT', 'AT + 20 kPa']
     fig = plotComp(
         sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []),
         'Qm',
@@ -48,11 +52,11 @@ def fig5aleft(neuron, a, Fdrive, CW_Athrs, tstim, toffset, inputdir):
     )
     fig.axes[0].get_xaxis().set_label_coords(0.5, -0.05)
     fig.subplots_adjust(bottom=0.2, right=0.95, top=0.95)
-    fig.canvas.set_window_title('fig5a left')
+    fig.canvas.set_window_title(figbase + 'a Qprofiles')
     return fig
 
 
-def fig5aright(neuron, a, Fdrive, amps, tstim, toffset, inputdir):
+def spikemetrics_vs_amp(neuron, a, Fdrive, amps, tstim, toffset, inputdir):
     ''' Comparison of spiking metrics for CW stimuli at various supra-threshold amplitudes. '''
     subdir = os.path.join(inputdir, neuron)
     sonic_fpaths = getSims(subdir, neuron, a, createAStimQueue(
@@ -67,11 +71,11 @@ def fig5aright(neuron, a, Fdrive, amps, tstim, toffset, inputdir):
     metrics = getSpikingMetrics(
         subdir, neuron, amps * 1e-3, xlabel, data_fpaths, metrics_fpaths)
     fig = plotSpikingMetrics(amps * 1e-3, xlabel, {neuron: metrics}, logscale=True)
-    fig.canvas.set_window_title('fig5a right')
+    fig.canvas.set_window_title(figbase + 'a spikemetrics')
     return fig
 
 
-def fig5bleft(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir):
+def Qprofiles_vs_freq(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir):
     ''' Comparison of resulting charge profiles for supra-threshold CW stimuli
         at low and high US frequencies. '''
     subdir = os.path.join(inputdir, neuron)
@@ -94,11 +98,11 @@ def fig5bleft(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir):
     )
     fig.axes[0].get_xaxis().set_label_coords(0.5, -0.05)
     fig.subplots_adjust(bottom=0.2, right=0.95, top=0.95)
-    fig.canvas.set_window_title('fig5b left')
+    fig.canvas.set_window_title(figbase + 'b Qprofiles')
     return fig
 
 
-def fig5bright(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir):
+def spikemetrics_vs_freq(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir):
     ''' Comparison of spiking metrics for supra-threshold CW stimuli at various US frequencies. '''
     subdir = os.path.join(inputdir, neuron)
     sonic_fpaths, full_fpaths = [], []
@@ -117,11 +121,11 @@ def fig5bright(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir):
     metrics = getSpikingMetrics(
         subdir, neuron, freqs * 1e-3, xlabel, data_fpaths, metrics_fpaths)
     fig = plotSpikingMetrics(freqs * 1e-3, xlabel, {neuron: metrics}, logscale=True)
-    fig.canvas.set_window_title('fig5b right')
+    fig.canvas.set_window_title(figbase + 'b spikemetrics')
     return fig
 
 
-def fig5cleft(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdir):
+def Qprofiles_vs_radius(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdir):
     ''' Comparison of resulting charge profiles for supra-threshold CW stimuli
         for small and large sonophore radii. '''
     subdir = os.path.join(inputdir, neuron)
@@ -133,21 +137,25 @@ def fig5cleft(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdir):
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
         full_fpaths += getSims(subdir, neuron, a, createAStimQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
+
+    tmp = plt.get_cmap('Paired').colors
+    colors = tmp[2:4] + tmp[10:12]
+
     fig = plotComp(
         sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []),
         'Qm',
         labels=sum([['', '{:.0f} nm'.format(a * 1e9)] for a in radii], []),
-        lines=['-', '--'] * len(radii), colors=plt.get_cmap('Paired').colors[6:10], fs=8,
+        lines=['-', '--'] * len(radii), colors=colors, fs=8,
         patches='one', xticks=[0, 250], yticks=[getNeuronsDict()[neuron].Vm0, 25],
         straightlegend=True, figsize=cm2inch(12.5, 5.8)
     )
     fig.axes[0].get_xaxis().set_label_coords(0.5, -0.05)
     fig.subplots_adjust(bottom=0.2, right=0.95, top=0.95)
-    fig.canvas.set_window_title('fig5c left')
+    fig.canvas.set_window_title(figbase + 'c Qprofiles')
     return fig
 
 
-def fig5cright(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdir):
+def spikemetrics_vs_radius(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdir):
     ''' Comparison of spiking metrics for supra-threshold CW stimuli
         with various sonophore diameters. '''
     subdir = os.path.join(inputdir, neuron)
@@ -167,11 +175,11 @@ def fig5cright(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdir):
     metrics = getSpikingMetrics(
         subdir, neuron, radii * 1e9, xlabel, data_fpaths, metrics_fpaths)
     fig = plotSpikingMetrics(radii * 1e9, xlabel, {neuron: metrics}, logscale=True)
-    fig.canvas.set_window_title('fig5c right')
+    fig.canvas.set_window_title(figbase + 'c spikemetrics')
     return fig
 
 
-def fig5dleft(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DC, inputdir):
+def Qprofiles_vs_DC(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DC, inputdir):
     ''' Comparison of resulting charge profiles for PW stimuli at 5% duty cycle
         for different neuron types. '''
     sonic_fpaths, full_fpaths = [], []
@@ -189,17 +197,15 @@ def fig5dleft(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DC, inputdir):
         labels=sum([['', '{}, {:.0f}% DC'.format(x, DC * 1e2)] for x in neurons], []),
         lines=['-', '--'] * len(neurons), colors=colors, fs=8, patches='one',
         xticks=[0, 250], yticks=[min(getNeuronsDict()[n].Vm0 for n in neurons), 50],
-        straightlegend=True, figsize=cm2inch(12.5, 5.8),
-        inset={'xcoords': [130, 210], 'ycoords': [-35, 45],
-               'xlims': [109.5, 121.0], 'ylims': [-60.0, 49.0]}
+        straightlegend=True, figsize=cm2inch(12.5, 5.8)
     )
     fig.axes[0].get_xaxis().set_label_coords(0.5, -0.05)
     fig.subplots_adjust(bottom=0.2, right=0.95, top=0.95)
-    fig.canvas.set_window_title('fig5d left')
+    fig.canvas.set_window_title(figbase + 'd Qprofiles')
     return fig
 
 
-def fig5dright(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir):
+def spikemetrics_vs_DC(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir):
     ''' Comparison of spiking metrics for PW stimuli at various duty cycle for
         different neuron types. '''
     metrics_dict = {}
@@ -223,11 +229,11 @@ def fig5dright(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir):
             subdir, neuron, DCs * 1e2, xlabel, data_fpaths, metrics_fpaths)
         colors_dict[neuron] = {'full': colors[2 * i], 'sonic': colors[2 * i + 1]}
     fig = plotSpikingMetrics(DCs * 1e2, xlabel, metrics_dict, spikeamp=False, colors=colors_dict)
-    fig.canvas.set_window_title('fig5d right')
+    fig.canvas.set_window_title(figbase + 'd spikemetrics')
     return fig
 
 
-def fig5eleft(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inputdir):
+def Qprofiles_vs_PRF(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inputdir):
     ''' Comparison of resulting charge profiles for PW stimuli at 5% duty cycle
         with different pulse repetition frequencies. '''
     subdir = os.path.join(inputdir, neuron)
@@ -248,11 +254,11 @@ def fig5eleft(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inputdir):
     )
     fig.axes[0].get_xaxis().set_label_coords(0.5, -0.05)
     fig.subplots_adjust(bottom=0.2, right=0.95, top=0.95)
-    fig.canvas.set_window_title('fig5e left')
+    fig.canvas.set_window_title(figbase + 'e Qprofiles')
     return fig
 
 
-def fig5eright(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inputdir):
+def spikemetrics_vs_PRF(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inputdir):
     ''' Comparison of spiking metrics for PW stimuli at 5% duty cycle
         with different pulse repetition frequencies. '''
     xlabel = 'PRF (Hz)'
@@ -268,7 +274,7 @@ def fig5eright(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inputdir):
     metrics = getSpikingMetrics(
         subdir, neuron, PRFs, xlabel, data_fpaths, metrics_fpaths)
     fig = plotSpikingMetrics(PRFs, xlabel, {neuron: metrics}, spikeamp=False, logscale=True)
-    fig.canvas.set_window_title('fig5e right')
+    fig.canvas.set_window_title(figbase + 'e spikemetrics')
     return fig
 
 
@@ -278,7 +284,7 @@ def main():
     # Runtime options
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
     ap.add_argument('-i', '--inputdir', type=str, help='Input directory')
-    ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='a')
+    ap.add_argument('-f', '--figset', type=str, help='Figure set', default='a')
     ap.add_argument('-s', '--save', default=False, action='store_true',
                     help='Save output figures as pdf')
 
@@ -290,6 +296,8 @@ def main():
         logger.error('No input directory chosen')
         return
     figset = args.figset
+
+    logger.info('Generating panel {} of {}'.format(figset, figbase))
 
     # Parameters
     radii = np.array([16, 22.6, 32, 45.3, 64]) * 1e-9  # m
@@ -316,23 +324,28 @@ def main():
 
     # Generate figures
     figs = []
-    if 'a' in figset:
-        figs.append(fig5aleft('RS', a, Fdrive, CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
-        figs.append(fig5aright('RS', a, Fdrive, amps, tstim, toffset, inputdir))
-    if 'b' in figset:
-        figs.append(fig5bleft('RS', a, [freqs.min(), freqs.max()], CW_Athr_vs_Fdrive, tstim, toffset,
-                              inputdir))
-        figs.append(fig5bright('RS', a, freqs, CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
-    if 'c' in figset:
-        figs.append(fig5cleft('RS', [radii.min(), radii.max()], Fdrive, CW_Athr_vs_radius,
-                              tstim, toffset, inputdir))
-        figs.append(fig5cright('RS', radii, Fdrive, CW_Athr_vs_radius, tstim, toffset, inputdir))
-    if 'd' in figset:
-        figs.append(fig5dleft(['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DC, inputdir))
-        figs.append(fig5dright(['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir))
-    if 'e' in figset:
-        figs.append(fig5eleft('LTS', a, Fdrive, Adrive, tstim, toffset, PRFs_sparse, DC, inputdir))
-        figs.append(fig5eright('LTS', a, Fdrive, Adrive, tstim, toffset, PRFs_dense, DC, inputdir))
+    if figset == 'a':
+        figs.append(Qprofiles_vs_amp('RS', a, Fdrive, CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
+        figs.append(spikemetrics_vs_amp('RS', a, Fdrive, amps, tstim, toffset, inputdir))
+    if figset == 'b':
+        figs.append(Qprofiles_vs_freq(
+            'RS', a, [freqs.min(), freqs.max()], CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
+        figs.append(spikemetrics_vs_freq('RS', a, freqs, CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
+    if figset == 'c':
+        figs.append(Qprofiles_vs_radius(
+            'RS', [radii.min(), radii.max()], Fdrive, CW_Athr_vs_radius, tstim, toffset, inputdir))
+        figs.append(spikemetrics_vs_radius(
+            'RS', radii, Fdrive, CW_Athr_vs_radius, tstim, toffset, inputdir))
+    if figset == 'd':
+        figs.append(Qprofiles_vs_DC(
+            ['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DC, inputdir))
+        figs.append(spikemetrics_vs_DC(
+            ['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir))
+    if figset == 'e':
+        figs.append(Qprofiles_vs_PRF(
+            'LTS', a, Fdrive, Adrive, tstim, toffset, PRFs_sparse, DC, inputdir))
+        figs.append(spikemetrics_vs_PRF(
+            'LTS', a, Fdrive, Adrive, tstim, toffset, PRFs_dense, DC, inputdir))
 
     if args.save:
         for fig in figs:
