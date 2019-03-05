@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-25 14:26:08
+# @Last Modified time: 2019-03-05 08:01:07
 
 import sys
 import pickle
@@ -114,7 +114,7 @@ def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
         # Determine variables to plot if not provided
         if not vars_dict:
             if sim_type == 'ASTIM':
-                vars_dict = {'Z': ['Z'], 'Q_m': ['Qm']}
+                vars_dict = {'Q_m': ['Qm']}
             elif sim_type == 'ESTIM':
                 vars_dict = {'V_m': ['Vm']}
             elif sim_type == 'MECH':

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-28 10:35:35
+# @Last Modified time: 2019-03-05 10:41:44
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -11,7 +11,7 @@ import matplotlib.cm as cm
 import matplotlib
 
 from PySONIC.plt import pltvars
-from PySONIC.utils import logger, si_prefixes, isWithin, getLookups2D
+from PySONIC.utils import logger, si_prefixes, isWithin, getLookups2D, getLookupsOff
 
 
 def setGrid(n, ncolmax=3):
@@ -41,29 +41,24 @@ def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
         :return: handle to the created figure
     '''
 
-    if sum(x is None for x in [a, Fdrive, Adrive]) > 1:
-        raise ValueError('at least 2 parameters in (a, Fdrive, Adrive) must be provided ')
+    if sum(isinstance(x, float) for x in [a, Fdrive, Adrive]) < 2:
+        raise ValueError('at least 2 parameters in (a, Fdrive, Adrive) must be fixed')
 
     if cmap is None:
         cmap = 'viridis'
 
-    # Get 2D lookups at specific (a, Fdrive) combination
+    # Get reference US-OFF lookups (1D)
+    _, lookupsoff = getLookupsOff(neuron.name)
+
+    # Get 2D lookups at specific combination
     zref, Qref, lookups2D, zvar = getLookups2D(neuron.name, a=a, Fdrive=Fdrive, Adrive=Adrive)
-    lookups2D.pop('ng')
-    lookups2D['Cm'] = Qref / lookups2D['V'] * 1e5  # uF/cm2
+    _, lookupsoff = getLookupsOff(neuron.name)
+    for lookups in [lookups2D, lookupsoff]:
+        lookups.pop('ng')
+        lookups['Cm'] = Qref / lookups['V'] * 1e5  # uF/cm2
 
     zref *= zvar['factor']
     prefix = {value: key for key, value in si_prefixes.items()}[1 / zvar['factor']]
-
-    # Get reference US-OFF lookups
-    if Adrive is None:  # Adrive is the z-dimension
-        lookupsoff = {key: interp1d(zref, y2D, axis=0)(0) for key, y2D in lookups2D.items()}
-        lookups2D = {key: y2d[1:, :] for key, y2d in lookups2D.items()}
-        zref = zref[1:]
-    else:  # Adrive is not the z-dimension
-        _, _, lookups2Doff, _ = getLookups2D(neuron.name, a=a, Fdrive=Fdrive, Adrive=0)
-        lookups2Doff.pop('ng')
-        lookupsoff = {key: y2D[0, :] for key, y2D in lookups2Doff.items()}
 
     # Optional: interpolate along z dimension if nlevels specified
     if zscale is 'log':
@@ -76,10 +71,9 @@ def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
     lookups2D = {key: interp1d(zref, y2D, axis=0)(znew) for key, y2D in lookups2D.items()}
     zref = znew
 
-    lookups2D['Vm'] = lookups2D.pop('V')  # mV
-    lookupsoff['Vm'] = lookupsoff.pop('V')  # mV
-    lookups2D['Cm'] = Qref / lookups2D['Vm'] * 1e3  # uF/cm2
-    lookupsoff['Cm'] = Qref / lookupsoff['Vm'] * 1e3  # uF/cm2
+    for lookups in [lookups2D, lookupsoff]:
+        lookups['Vm'] = lookups.pop('V')  # mV
+        lookups['Cm'] = Qref / lookups['Vm'] * 1e3  # uF/cm2
     keys = ['Cm', 'Vm'] + list(lookups2D.keys())[:-2]
 
     #  Define color code

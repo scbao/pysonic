@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-08 15:26:09
+# @Last Modified time: 2019-03-04 20:22:07
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -14,7 +14,7 @@ pltvars = {
         'label': 'time',
         'unit': 'ms',
         'factor': 1e3,
-        'onset': 3e-3
+        'onset': 1e-3
     },
 
     't_us': {

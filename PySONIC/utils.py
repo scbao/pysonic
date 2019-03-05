@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-02-28 11:39:50
+# @Last Modified time: 2019-03-05 10:38:49
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -353,15 +353,10 @@ def getNeuronLookupsFile(mechname, a=None, Fdrive=None, Adrive=None, fs=False):
     return '{}.pkl'.format(fpath)
 
 
-def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
-    ''' Retrieve appropriate 2D lookup tables and reference vectors
-        for a given membrane mechanism, projected at a specific combination
-        of sonophore radius, US frequency and or acoustic pressure amplitude.
+def getLookups4D(mechname):
+    ''' Retrieve 4D lookup tables and reference vectors for a given membrane mechanism.
 
         :param mechname: name of membrane density mechanism
-        :param a: sonophore radius (m)
-        :param Fdrive: US frequency (Hz)
-        :param Adrive: Acoustic peak pressure ampplitude (Hz)
         :return: 4-tuple with 1D numpy arrays of reference input vectors (charge density and
             one other variable), a dictionary of associated 2D lookup numpy arrays, and
             a dictionnary with information about the other variable.
@@ -385,6 +380,45 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
     Aref = inputs['A']
     Qref = inputs['Q']
 
+    return aref, Fref, Aref, Qref, lookups4D
+
+
+def getLookupsOff(mechname):
+    ''' Retrieve appropriate US-OFF lookup tables and reference vectors
+        for a given membrane mechanism.
+
+        :param mechname: name of membrane density mechanism
+        :return: 2-tuple with 1D numpy array of reference charge density
+            and dictionary of associated 1D lookup numpy arrays.
+    '''
+
+    # Get 4D lookups and input vectors
+    aref, Fref, Aref, Qref, lookups4D = getLookups4D(mechname)
+
+    # Perform 2D projection in appropriate dimensions
+    logger.debug('Interpolating lookups at A = 0')
+    lookups_off = {key: y4D[0, 0, 0, :] for key, y4D in lookups4D.items()}
+
+    return Qref, lookups_off
+
+
+def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
+    ''' Retrieve appropriate 2D lookup tables and reference vectors
+        for a given membrane mechanism, projected at a specific combination
+        of sonophore radius, US frequency and/or acoustic pressure amplitude.
+
+        :param mechname: name of membrane density mechanism
+        :param a: sonophore radius (m)
+        :param Fdrive: US frequency (Hz)
+        :param Adrive: Acoustic peak pressure ampplitude (Hz)
+        :return: 4-tuple with 1D numpy arrays of reference input vectors (charge density and
+            one other variable), a dictionary of associated 2D lookup numpy arrays, and
+            a dictionnary with information about the other variable.
+    '''
+
+    # Get 4D lookups and input vectors
+    aref, Fref, Aref, Qref, lookups4D = getLookups4D(mechname)
+
     # Check that inputs are within lookup range
     if a is not None:
         a = isWithin('radius', a, (aref.min(), aref.max()))
@@ -400,15 +434,15 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
                   'ref': Fref, 'axis': 1}
     var_Adrive = {'name': 'A', 'label': 'amplitude', 'val': Adrive, 'unit': 'Pa', 'factor': 1e-3,
                   'ref': Aref, 'axis': 2}
-    if Adrive is None:
+    if not isinstance(Adrive, float):
         var1 = var_a
         var2 = var_Fdrive
         var3 = var_Adrive
-    elif Fdrive is None:
+    elif not isinstance(Fdrive, float):
         var1 = var_a
         var2 = var_Adrive
         var3 = var_Fdrive
-    elif a is None:
+    elif not isinstance(a, float):
         var1 = var_Fdrive
         var2 = var_Adrive
         var3 = var_a
@@ -423,6 +457,15 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
         var2['axis'] -= 1
     lookups2D = {key: interp1d(var2['ref'], y3D, axis=var2['axis'])(var2['val'])
                  for key, y3D in lookups3D.items()}
+
+    if var3['val'] is not None:
+        logger.debug('Interpolating lookups at %d new %s values between %s%s and %s%s',
+                     len(var3['val']), var3['name'],
+                     si_format(min(var3['val']), space=' '), var3['unit'],
+                     si_format(max(var3['val']), space=' '), var3['unit'])
+        lookups2D = {key: interp1d(var3['ref'], y2D, axis=0)(var3['val'])
+                     for key, y2D in lookups2D.items()}
+        var3['ref'] = np.array(var3['val'])
 
     return var3['ref'], Qref, lookups2D, var3
 
@@ -468,6 +511,8 @@ def isWithin(name, val, bounds, rel_tol=1e-9):
         :param bounds: interval bounds (float tuple)
         :return: original or corrected value
     '''
+    if isinstance(val, list) or isinstance(val, np.ndarray) or isinstance(val, tuple):
+        return [isWithin(name, v, bounds, rel_tol) for v in val]
     if val >= bounds[0] and val <= bounds[1]:
         return val
     elif val < bounds[0] and math.isclose(val, bounds[0], rel_tol=rel_tol):

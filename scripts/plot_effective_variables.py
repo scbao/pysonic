@@ -4,7 +4,7 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-05 10:41:26
+# @Last Modified time: 2019-03-05 11:00:33
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
@@ -14,28 +14,18 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.plt import plotEffectiveVariables
-from PySONIC.utils import logger
+from PySONIC.utils import logger, Intensity2Pressure
 from PySONIC.neurons import getNeuronsDict
-
 
 # Set logging level
 logger.setLevel(logging.INFO)
-
-
-# Default parameters
-defaults = dict(
-    neuron='RS',
-    radius=32.0,
-    freq=500.0,
-    amps=np.logspace(np.log10(1), np.log10(600), 10),  # kPa
-)
 
 
 def main():
     ap = ArgumentParser()
 
     # Stimulation parameters
-    ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
+    ap.add_argument('-n', '--neuron', type=str, default='RS',
                     help='Neuron name (string)')
     ap.add_argument('-a', '--radius', type=float, default=None,
                     help='Sonophore radius (nm)')
@@ -58,6 +48,15 @@ def main():
     Fdrive = args['freq'] * 1e3 if 'freq' in args else None  # Hz
     Adrive = args['amp'] * 1e3 if 'amp' in args else None  # Pa
 
+    # Range of intensities
+    if neuron_str == 'STN':
+        intensities = np.hstack((
+            np.arange(10, 101, 10),
+            np.arange(101, 131, 1),
+            np.array([140])
+        ))  # W/m2
+        Adrive = np.array([Intensity2Pressure(I) for I in intensities])  # Pa
+
     zscale = 'log' if args['log'] else 'lin'
     cmap = args.get('cmap', None)
     ncol = args['ncol']
@@ -70,13 +69,8 @@ def main():
         logger.error('Unknown neuron type: "%s"', neuron_str)
         return
     neuron = getNeuronsDict()[neuron_str]()
-    try:
-        plotEffectiveVariables(neuron, a=a, Fdrive=Fdrive, Adrive=Adrive,
-                               zscale=zscale, cmap=cmap, ncolmax=ncol)
-    except ValueError as e:
-        logger.error(e)
-        quit()
-
+    plotEffectiveVariables(neuron, a=a, Fdrive=Fdrive, Adrive=Adrive,
+                           zscale=zscale, cmap=cmap, ncolmax=ncol)
     plt.show()
 
 
