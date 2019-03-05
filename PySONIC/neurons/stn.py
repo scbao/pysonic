@@ -177,9 +177,9 @@ class OtsukaSTN(PointNeuron):
         self.VCa = nernst(Z_Ca, self.CCa_in0, self.CCa_out, self.T)  # mV
 
         # Compute deff for that reversal potential
-        iT = self.currT(
+        iT = self.iT(
             self.pinf(self.Vm0), self.qinf(self.Vm0), self.Vm0)  # mA/m2
-        iL = self.currL(
+        iL = self.iL(
             self.cinf(self.Vm0), self.d1inf(self.Vm0), self.d2inf(self.CCa_in0), self.Vm0)  # mA/m2
         self.deff = -(iT + iL) / (self.zCa * FARADAY * self.KCa * self.CCa_in0) * 1e-6  # m
 
@@ -346,7 +346,7 @@ class OtsukaSTN(PointNeuron):
         return - self.i2CCa * (iT + iL) - C_Ca * self.KCa
 
 
-    def currNa(self, m, h, Vm):
+    def iNa(self, m, h, Vm):
         ''' Compute the inward Sodium current per unit area.
 
             :param m: open-probability of m-gate
@@ -357,7 +357,7 @@ class OtsukaSTN(PointNeuron):
         return self.GNaMax * m**3 * h * (Vm - self.VNa)
 
 
-    def currK(self, n, Vm):
+    def iK(self, n, Vm):
         ''' Compute the outward delayed-rectifier Potassium current per unit area.
 
             :param n: open-probability of n-gate
@@ -367,7 +367,7 @@ class OtsukaSTN(PointNeuron):
         return self.GKMax * n**4 * (Vm - self.VK)
 
 
-    def currA(self, a, b, Vm):
+    def iA(self, a, b, Vm):
         ''' Compute the outward A-type Potassium current per unit area.
 
             :param a: open-probability of a-gate
@@ -378,7 +378,7 @@ class OtsukaSTN(PointNeuron):
         return self.GAMax * a**2 * b * (Vm - self.VK)
 
 
-    def currT(self, p, q, Vm):
+    def iT(self, p, q, Vm):
         ''' Compute the inward low-threshold Calcium current per unit area.
 
             :param p: open-probability of p-gate
@@ -389,7 +389,7 @@ class OtsukaSTN(PointNeuron):
         return self.GTMax * p**2 * q * (Vm - self.VCa)
 
 
-    def currL(self, c, d1, d2, Vm):
+    def iL(self, c, d1, d2, Vm):
         ''' Compute the inward high-threshold Calcium current per unit area.
 
             :param c: open-probability of c-gate
@@ -401,7 +401,7 @@ class OtsukaSTN(PointNeuron):
         return self.GLMax * c**2 * d1 * d2 * (Vm - self.VCa)
 
 
-    def currCaK(self, r, Vm):
+    def iCaK(self, r, Vm):
         ''' Compute the outward, Calcium activated Potassium current per unit area.
 
             :param r: open-probability of r-gate
@@ -411,7 +411,7 @@ class OtsukaSTN(PointNeuron):
         return self.GCaKMax * r**2 * (Vm - self.VK)
 
 
-    def currLeak(self, Vm):
+    def iLeak(self, Vm):
         ''' Compute the non-specific leakage current per unit area.
 
             :param Vm: membrane potential (mV)
@@ -420,7 +420,7 @@ class OtsukaSTN(PointNeuron):
         return self.GLeak * (Vm - self.VLeak)
 
 
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Compute net membrane current per unit area. '''
 
         a, b, c, d1, d2, m, h, n, p, q, r, CCa_in = states
@@ -429,13 +429,13 @@ class OtsukaSTN(PointNeuron):
         self.VCa = nernst(Z_Ca, CCa_in, self.CCa_out, self.T)  # mV
 
         return (
-            self.currNa(m, h, Vm) +
-            self.currK(n, Vm) +
-            self.currA(a, b, Vm) +
-            self.currT(p, q, Vm) +
-            self.currL(c, d1, d2, Vm) +
-            self.currCaK(r, Vm) +
-            self.currLeak(Vm)
+            self.iNa(m, h, Vm) +
+            self.iK(n, Vm) +
+            self.iA(a, b, Vm) +
+            self.iT(p, q, Vm) +
+            self.iL(c, d1, d2, Vm) +
+            self.iCaK(r, Vm) +
+            self.iLeak(Vm)
         )  # mA/m2
 
 
@@ -475,8 +475,8 @@ class OtsukaSTN(PointNeuron):
         dqdt = self.derQ(Vm, q)
         drdt = self.derR(CCa_in, r)
 
-        iT = self.currT(p, q, Vm)
-        iL = self.currL(c, d1, d2, Vm)
+        iT = self.iT(p, q, Vm)
+        iL = self.iL(c, d1, d2, Vm)
         dCCaindt = self.derC_Ca(CCa_in, iT, iL)
 
         return [dadt, dbdt, dcdt, dd1dt, dd2dt, dmdt, dhdt, dndt, dpdt, dqdt, drdt, dCCaindt]
@@ -557,8 +557,8 @@ class OtsukaSTN(PointNeuron):
         dqdt = rates[16] * (1 - q) - rates[17] * q
         drdt = self.derR(CCa_in, r)
 
-        iT = self.currT(p, q, Vmeff)
-        iL = self.currL(c, d1, d2, Vmeff)
+        iT = self.iT(p, q, Vmeff)
+        iL = self.iL(c, d1, d2, Vmeff)
         dCCaindt = self.derC_Ca(CCa_in, iT, iL)
 
         return [dadt, dbdt, dcdt, dd1dt, dd2dt, dmdt, dhdt, dndt, dpdt, dqdt, drdt, dCCaindt]

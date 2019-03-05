@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-11 08:45:45
+# @Last Modified time: 2019-03-05 11:54:34
 
 import numpy as np
 from ..core import PointNeuron
@@ -189,7 +189,7 @@ class Cortical(PointNeuron):
         return (self.pinf(Vm) - p) / self.taup(Vm)
 
 
-    def currNa(self, m, h, Vm):
+    def iNa(self, m, h, Vm):
         ''' Compute the inward Sodium current per unit area.
 
             :param m: open-probability of Sodium channels
@@ -202,7 +202,7 @@ class Cortical(PointNeuron):
         return GNa * (Vm - self.VNa)
 
 
-    def currK(self, n, Vm):
+    def iK(self, n, Vm):
         ''' Compute the outward, delayed-rectifier Potassium current per unit area.
 
             :param n: open-probability of delayed-rectifier Potassium channels
@@ -214,7 +214,7 @@ class Cortical(PointNeuron):
         return GK * (Vm - self.VK)
 
 
-    def currM(self, p, Vm):
+    def iM(self, p, Vm):
         ''' Compute the outward, slow non-inactivating Potassium current per unit area.
 
             :param p: open-probability of the slow non-inactivating Potassium channels
@@ -226,7 +226,7 @@ class Cortical(PointNeuron):
         return GM * (Vm - self.VK)
 
 
-    def currLeak(self, Vm):
+    def iLeak(self, Vm):
         ''' Compute the non-specific leakage current per unit area.
 
             :param Vm: membrane potential (mV)
@@ -236,12 +236,12 @@ class Cortical(PointNeuron):
         return self.GLeak * (Vm - self.VLeak)
 
 
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, p = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) +
-                self.currM(p, Vm) + self.currLeak(Vm))  # mA/m2
+        return (self.iNa(m, h, Vm) + self.iK(n, Vm) +
+                self.iM(p, Vm) + self.iLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -512,7 +512,7 @@ class CorticalLTS(Cortical):
         return (self.uinf(Vm) - u) / self.tauu(Vm)
 
 
-    def currCa(self, s, u, Vm):
+    def iCa(self, s, u, Vm):
         ''' Compute the inward, low-threshold Calcium current per unit area.
 
             :param s: open-probability of the S-type activation gate of Calcium channels
@@ -525,12 +525,12 @@ class CorticalLTS(Cortical):
         return GT * (Vm - self.VCa)
 
 
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, p, s, u = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currM(p, Vm) +
-                self.currCa(s, u, Vm) + self.currLeak(Vm))  # mA/m2
+        return (self.iNa(m, h, Vm) + self.iK(n, Vm) + self.iM(p, Vm) +
+                self.iCa(s, u, Vm) + self.iLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -724,7 +724,7 @@ class CorticalIB(Cortical):
         return self.alphar(Vm) * (1 - r) - self.betar(Vm) * r
 
 
-    def currCaL(self, q, r, Vm):
+    def iCaL(self, q, r, Vm):
         ''' Compute the inward L-type Calcium current per unit area.
 
             :param q: open-probability of Q gate (prob)
@@ -737,12 +737,12 @@ class CorticalIB(Cortical):
         return GCaL * (Vm - self.VCa)
 
 
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, p, q, r = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currM(p, Vm) +
-                self.currCaL(q, r, Vm) + self.currLeak(Vm))  # mA/m2
+        return (self.iNa(m, h, Vm) + self.iK(n, Vm) + self.iM(p, Vm) +
+                self.iCaL(q, r, Vm) + self.iLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):

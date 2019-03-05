@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-02-27 17:00:47
+# @Last Modified time: 2019-03-05 11:58:23
 
 ''' Subpanels of the QSS approximation figure. '''
 
@@ -66,25 +66,25 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
             qsstates_pulse[j, :] = np.ones(amps.size) * neuron.steadyStates(Vthr)[j]
 
     # Compute quasi-steady ON and OFF currents
-    iLeak_on = neuron.currLeak(Vm_on)
-    iLeak_off = np.ones(amps.size) * neuron.currLeak(Vm_off)
+    iLeak_on = neuron.iLeak(Vm_on)
+    iLeak_off = np.ones(amps.size) * neuron.iLeak(Vm_off)
     m = qsstates_pulse[0, :]
     h = qsstates_pulse[1, :]
-    iNa_on = neuron.currNa(m, h, Vm_on)
-    iNa_off = neuron.currNa(m, h, Vm_off)
+    iNa_on = neuron.iNa(m, h, Vm_on)
+    iNa_off = neuron.iNa(m, h, Vm_off)
     n = qsstates_pulse[2, :]
-    iK_on = neuron.currK(n, Vm_on)
-    iK_off = neuron.currK(n, Vm_off)
+    iK_on = neuron.iK(n, Vm_on)
+    iK_off = neuron.iK(n, Vm_off)
     p = qsstates_pulse[3, :]
-    iM_on = neuron.currM(p, Vm_on)
-    iM_off = neuron.currM(p, Vm_off)
+    iM_on = neuron.iM(p, Vm_on)
+    iM_off = neuron.iM(p, Vm_off)
     if neuron.name == 'LTS':
         s = qsstates_pulse[4, :]
         u = qsstates_pulse[5, :]
-        iCa_on = neuron.currCa(s, u, Vm_on)
-        iCa_off = neuron.currCa(s, u, Vm_off)
-    iNet_on = neuron.currNet(Vm_on, qsstates_pulse)
-    iNet_off = neuron.currNet(Vm_off, qsstates_pulse)
+        iCa_on = neuron.iCa(s, u, Vm_on)
+        iCa_off = neuron.iCa(s, u, Vm_off)
+    iNet_on = neuron.iNet(Vm_on, qsstates_pulse)
+    iNet_off = neuron.iNet(Vm_off, qsstates_pulse)
 
     # Compute quasi-steady ON, OFF and net charge variations, and threshold amplitude
     dQ_on = -iNet_on * DC / PRF
@@ -219,8 +219,8 @@ def plotdQvsDC(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
                 qsstates_pulse[j, :] = np.ones(amps.size) * neuron.steadyStates(Vthr)[j]
 
         # Compute the pulse average net current along the amplitude space
-        iNet_on = neuron.currNet(Vm_on, qsstates_pulse)
-        iNet_off = neuron.currNet(Vthr, qsstates_pulse)
+        iNet_on = neuron.iNet(Vm_on, qsstates_pulse)
+        iNet_off = neuron.iNet(Vthr, qsstates_pulse)
         iNet_avg = iNet_on * DC + iNet_off * (1 - DC)
         dQnet[i, :] = -iNet_avg / PRF
 

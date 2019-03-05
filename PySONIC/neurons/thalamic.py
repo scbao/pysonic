@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-11 08:47:42
+# @Last Modified time: 2019-03-05 11:57:05
 
 import numpy as np
 from ..core import PointNeuron
@@ -178,7 +178,7 @@ class Thalamic(PointNeuron):
         return (self.uinf(Vm) - u) / self.tauu(Vm)
 
 
-    def currNa(self, m, h, Vm):
+    def iNa(self, m, h, Vm):
         ''' Compute the inward Sodium current per unit area.
 
             :param m: open-probability of Sodium channels
@@ -191,7 +191,7 @@ class Thalamic(PointNeuron):
         return GNa * (Vm - self.VNa)
 
 
-    def currK(self, n, Vm):
+    def iK(self, n, Vm):
         ''' Compute the outward delayed-rectifier Potassium current per unit area.
 
             :param n: open-probability of delayed-rectifier Potassium channels
@@ -203,7 +203,7 @@ class Thalamic(PointNeuron):
         return GK * (Vm - self.VK)
 
 
-    def currCa(self, s, u, Vm):
+    def iCa(self, s, u, Vm):
         ''' Compute the inward Calcium current per unit area.
 
             :param s: open-probability of the S-type activation gate of Calcium channels
@@ -216,7 +216,7 @@ class Thalamic(PointNeuron):
         return GT * (Vm - self.VCa)
 
 
-    def currLeak(self, Vm):
+    def iLeak(self, Vm):
         ''' Compute the non-specific leakage current per unit area.
 
             :param Vm: membrane potential (mV)
@@ -226,12 +226,12 @@ class Thalamic(PointNeuron):
         return self.GLeak * (Vm - self.VLeak)
 
 
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, u = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) +
-                self.currCa(s, u, Vm) + self.currLeak(Vm))  # mA/m2
+        return (self.iNa(m, h, Vm) + self.iK(n, Vm) +
+                self.iCa(s, u, Vm) + self.iLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -672,7 +672,7 @@ class ThalamoCortical(Thalamic):
         return (self.CCa_min - C_Ca) / self.tau_Ca_removal - self.iT_2_CCa * ICa
 
 
-    def currKL(self, Vm):
+    def iKL(self, Vm):
         ''' Compute the voltage-dependent leak Potassium current per unit area.
 
             :param Vm: membrane potential (mV)
@@ -682,7 +682,7 @@ class ThalamoCortical(Thalamic):
         return self.GKL * (Vm - self.VK)
 
 
-    def currH(self, O, C, Vm):
+    def iH(self, O, C, Vm):
         ''' Compute the outward mixed cationic current per unit area.
 
             :param O: proportion of the channels in open form
@@ -695,12 +695,12 @@ class ThalamoCortical(Thalamic):
         return self.GhMax * (O + 2 * OL) * (Vm - self.Vh)
 
 
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, u, O, C, _, _ = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, u, Vm) +
-                self.currKL(Vm) + self.currH(O, C, Vm) + self.currLeak(Vm))  # mA/m2
+        return (self.iNa(m, h, Vm) + self.iK(n, Vm) + self.iCa(s, u, Vm) +
+                self.iKL(Vm) + self.iH(O, C, Vm) + self.iLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -712,7 +712,7 @@ class ThalamoCortical(Thalamic):
         # Compute steady-state Calcium current
         seq = NaKCa_eqstates[3]
         ueq = NaKCa_eqstates[4]
-        iTeq = self.currCa(seq, ueq, Vm)
+        iTeq = self.iCa(seq, ueq, Vm)
 
         # Compute steady-state variables for the kinetics system of Ih
         CCa_eq = self.CCa_min - self.tau_Ca_removal * self.iT_2_CCa * iTeq
@@ -738,7 +738,7 @@ class ThalamoCortical(Thalamic):
         dO_dt = self.derO(C, O, P0, Vm)
         dC_dt = self.derC(C, O, Vm)
         dP0_dt = self.derP0(P0, C_Ca)
-        ICa = self.currCa(s, u, Vm)
+        ICa = self.iCa(s, u, Vm)
         dCCa_dt = self.derC_Ca(C_Ca, ICa)
 
         return NaKCa_derstates + [dO_dt, dC_dt, dP0_dt, dCCa_dt]
@@ -780,7 +780,7 @@ class ThalamoCortical(Thalamic):
         dC_dt = rates[11] * O - rates[10] * C
         dO_dt = - dC_dt - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
         dP0_dt = self.derP0(P0, C_Ca)
-        ICa_eff = self.currCa(s, u, Vmeff)
+        ICa_eff = self.iCa(s, u, Vmeff)
         dCCa_dt = self.derC_Ca(C_Ca, ICa_eff)
 
         # Merge derivatives and return

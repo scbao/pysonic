@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-11 08:47:04
+# @Last Modified time: 2019-03-05 11:56:27
 
 
 from functools import partialmethod
@@ -219,42 +219,42 @@ class LeechTouch(PointNeuron):
 
     # ------------------ Currents -------------------
 
-    def currNa(self, m, h, Vm):
+    def iNa(self, m, h, Vm):
         ''' Sodium inward current. '''
         return self.GNaMax * m**3 * h * (Vm - self.VNa)
 
 
-    def currK(self, n, Vm):
+    def iK(self, n, Vm):
         ''' Potassium outward current. '''
         return self.GKMax * n**2 * (Vm - self.VK)
 
 
-    def currCa(self, s, Vm):
+    def iCa(self, s, Vm):
         ''' Calcium inward current. '''
         return self.GCaMax * s * (Vm - self.VCa)
 
 
-    def currKCa(self, A_Ca, Vm):
+    def iKCa(self, A_Ca, Vm):
         ''' Calcium-activated Potassium outward current. '''
         return self.GKCaMax * A_Ca * (Vm - self.VK)
 
 
-    def currPumpNa(self, A_Na, Vm):
+    def iPumpNa(self, A_Na, Vm):
         ''' Outward current mimicking the activity of the NaK-ATPase pump. '''
         return self.GPumpNa * A_Na * (Vm - self.VPumpNa)
 
 
-    def currLeak(self, Vm):
+    def iLeak(self, Vm):
         ''' Leakage current. '''
         return self.GLeak * (Vm - self.VLeak)
 
 
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, _, A_Na, _, A_Ca = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm) +
-                self.currLeak(Vm) + self.currPumpNa(A_Na, Vm) + self.currKCa(A_Ca, Vm))  # mA/m2
+        return (self.iNa(m, h, Vm) + self.iK(n, Vm) + self.iCa(s, Vm) +
+                self.iLeak(Vm) + self.iPumpNa(A_Na, Vm) + self.iKCa(A_Ca, Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -267,12 +267,12 @@ class LeechTouch(PointNeuron):
         seq = self.sinf(Vm)
 
         # PumpNa pool concentration and activation steady-state
-        INa_eq = self.currNa(meq, heq, Vm)
+        INa_eq = self.iNa(meq, heq, Vm)
         CNa_eq = self.K_Na * (-INa_eq)
         ANa_eq = CNa_eq
 
         # KCa current pool concentration and activation steady-state
-        ICa_eq = self.currCa(seq, Vm)
+        ICa_eq = self.iCa(seq, Vm)
         CCa_eq = self.K_Ca * (-ICa_eq)
         ACa_eq = CCa_eq
 
@@ -292,12 +292,12 @@ class LeechTouch(PointNeuron):
         dsdt = self.derS(Vm, s)
 
         # PumpNa current pool concentration and activation state
-        I_Na = self.currNa(m, h, Vm)
+        I_Na = self.iNa(m, h, Vm)
         dCNa_dt = self.derC_Na(C_Na, I_Na)
         dANa_dt = self.derA_Na(A_Na, C_Na)
 
         # KCa current pool concentration and activation state
-        I_Ca = self.currCa(s, Vm)
+        I_Ca = self.iCa(s, Vm)
         dCCa_dt = self.derC_Ca(C_Ca, I_Ca)
         dACa_dt = self.derA_Ca(A_Ca, C_Ca)
 
@@ -351,12 +351,12 @@ class LeechTouch(PointNeuron):
         dsdt = rates[6] * (1 - s) - rates[7] * s
 
         # PumpNa current pool concentration and activation state
-        I_Na = self.currNa(m, h, Vmeff)
+        I_Na = self.iNa(m, h, Vmeff)
         dCNa_dt = self.derC_Na(C_Na, I_Na)
         dANa_dt = self.derA_Na(A_Na, C_Na)
 
         # KCa current pool concentration and activation state
-        I_Ca_eff = self.currCa(s, Vmeff)
+        I_Ca_eff = self.iCa(s, Vmeff)
         dCCa_dt = self.derC_Ca(C_Ca, I_Ca_eff)
         dACa_dt = self.derA_Ca(A_Ca, C_Ca)
 
@@ -539,7 +539,7 @@ class LeechMech(PointNeuron):
         return self.alphaC(C_Ca_in) * (1 - c) - self.betaC * c
 
 
-    def currNa(self, m, h, Vm, C_Na_in):
+    def iNa(self, m, h, Vm, C_Na_in):
         ''' Compute the inward Sodium current per unit area.
 
             :param m: open-probability of Sodium channels
@@ -554,7 +554,7 @@ class LeechMech(PointNeuron):
         return GNa * (Vm - VNa)
 
 
-    def currK(self, n, Vm):
+    def iK(self, n, Vm):
         ''' Compute the outward, delayed-rectifier Potassium current per unit area.
 
             :param n: open-probability of delayed-rectifier Potassium channels
@@ -566,7 +566,7 @@ class LeechMech(PointNeuron):
         return GK * (Vm - self.VK)
 
 
-    def currCa(self, s, Vm, C_Ca_in):
+    def iCa(self, s, Vm, C_Ca_in):
         ''' Compute the inward Calcium current per unit area.
 
             :param s: open-probability of Calcium channels
@@ -580,7 +580,7 @@ class LeechMech(PointNeuron):
         return GCa * (Vm - VCa)
 
 
-    def currKCa(self, c, Vm):
+    def iKCa(self, c, Vm):
         ''' Compute the outward Calcium-dependent Potassium current per unit area.
 
             :param c: open-probability of Calcium-dependent Potassium channels
@@ -592,7 +592,7 @@ class LeechMech(PointNeuron):
         return GKCa * (Vm - self.VK)
 
 
-    def currLeak(self, Vm):
+    def iLeak(self, Vm):
         ''' Compute the non-specific leakage current per unit area.
 
             :param Vm: membrane potential (mV)
@@ -684,7 +684,7 @@ class LeechPressure(LeechMech):
         self.Qbounds = np.array([np.round(self.Vm0 - 10.0), 60.0]) * self.Cm0 * 1e-3  # C/m2
 
 
-    def currPumpNa(self, C_Na_in):
+    def iPumpNa(self, C_Na_in):
         ''' Outward current mimicking the activity of the NaK-ATPase pump.
 
             :param C_Na_in: intracellular Sodium concentration (M)
@@ -694,7 +694,7 @@ class LeechPressure(LeechMech):
         return self.INaPmax / (1 + np.exp((self.khalf_Na - C_Na_in) / self.ksteep_Na))
 
 
-    def currPumpCa(self, C_Ca_in):
+    def iPumpCa(self, C_Ca_in):
         ''' Outward current representing the activity of a Calcium pump.
 
             :param C_Ca_in: intracellular Calcium concentration (M)
@@ -704,13 +704,13 @@ class LeechPressure(LeechMech):
         return self.iCaS * (C_Ca_in - self.C_Ca_in0) / 1.5
 
 
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, c, C_Na_in, C_Ca_in = states
-        return (self.currNa(m, h, Vm, C_Na_in) + self.currK(n, Vm) + self.currCa(s, Vm, C_Ca_in) +
-                self.currKCa(c, Vm) + self.currLeak(Vm) +
-                (self.currPumpNa(C_Na_in) / 3.) + self.currPumpCa(C_Ca_in))  # mA/m2
+        return (self.iNa(m, h, Vm, C_Na_in) + self.iK(n, Vm) + self.iCa(s, Vm, C_Ca_in) +
+                self.iKCa(c, Vm) + self.iLeak(Vm) +
+                (self.iPumpNa(C_Na_in) / 3.) + self.iPumpCa(C_Ca_in))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -744,8 +744,8 @@ class LeechPressure(LeechMech):
         dcdt = self.derC(c, C_Ca_in)
 
         # Intracellular concentrations
-        dCNa_dt = - (self.currNa(m, h, Vm, C_Na_in) + self.currPumpNa(C_Na_in)) * self.K_Na  # M/s
-        dCCa_dt = -(self.currCa(s, Vm, C_Ca_in) + self.currPumpCa(C_Ca_in)) * self.K_Ca  # M/s
+        dCNa_dt = - (self.iNa(m, h, Vm, C_Na_in) + self.iPumpNa(C_Na_in)) * self.K_Na  # M/s
+        dCCa_dt = -(self.iCa(s, Vm, C_Ca_in) + self.iPumpCa(C_Ca_in)) * self.K_Ca  # M/s
 
         # Pack derivatives and return
         return [dmdt, dhdt, dndt, dsdt, dcdt, dCNa_dt, dCCa_dt]
@@ -789,8 +789,8 @@ class LeechPressure(LeechMech):
         dcdt = self.derC(c, C_Ca_in)
 
         # Intracellular concentrations
-        dCNa_dt = - (self.currNa(m, h, Vmeff, C_Na_in) + self.currPumpNa(C_Na_in)) * self.K_Na  # M/s
-        dCCa_dt = -(self.currCa(s, Vmeff, C_Ca_in) + self.currPumpCa(C_Ca_in)) * self.K_Ca  # M/s
+        dCNa_dt = - (self.iNa(m, h, Vmeff, C_Na_in) + self.iPumpNa(C_Na_in)) * self.K_Na  # M/s
+        dCCa_dt = -(self.iCa(s, Vmeff, C_Ca_in) + self.iPumpCa(C_Ca_in)) * self.K_Ca  # M/s
 
         # Pack derivatives and return
         return [dmdt, dhdt, dndt, dsdt, dcdt, dCNa_dt, dCCa_dt]
@@ -954,7 +954,7 @@ class LeechRetzius(LeechMech):
         return (self.binf(Vm) - b) / self.taub(Vm)
 
 
-    def currA(self, a, b, Vm):
+    def iA(self, a, b, Vm):
         ''' Compute the outward, transient Potassium current per unit area.
 
             :param a: open-probability of transient Potassium channels
@@ -967,12 +967,12 @@ class LeechRetzius(LeechMech):
         return GK * (Vm - self.VK)
 
 
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, c, a, b = states
-        return (self.currNa(m, h, Vm) + self.currK(n, Vm) + self.currCa(s, Vm) + self.currLeak(Vm) +
-                self.currKCa(c, Vm) + self.currA(a, b, Vm))  # mA/m2
+        return (self.iNa(m, h, Vm) + self.iK(n, Vm) + self.iCa(s, Vm) + self.iLeak(Vm) +
+                self.iKCa(c, Vm) + self.iA(a, b, Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):

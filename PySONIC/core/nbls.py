@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-23 15:59:31
+# @Last Modified time: 2019-03-05 11:53:45
 
 import os
 import time
@@ -90,7 +90,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Compute charge and channel states variation
         Vm = np.interp(Qm, interp_data['Q'], interp_data['V'])  # mV
-        dQmdt = - self.neuron.currNet(Vm, states) * 1e-3
+        dQmdt = - self.neuron.iNet(Vm, states) * 1e-3
         dstates = self.neuron.derStatesEff(Qm, states, interp_data)
 
         # Return derivatives vector
@@ -767,11 +767,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
             # Compute the pulse average net (or leakage) current along the amplitude space
             if curr == 'net':
-                iNet_on = self.neuron.currNet(Vm_on, sstates_pulse)
-                iNet_off = self.neuron.currNet(Vthr, sstates_pulse)
+                iNet_on = self.neuron.iNet(Vm_on, sstates_pulse)
+                iNet_off = self.neuron.iNet(Vthr, sstates_pulse)
             elif curr == 'leak':
-                iNet_on = self.neuron.currL(Vm_on)
-                iNet_off = self.neuron.currL(Vthr)
+                iNet_on = self.neuron.iLeak(Vm_on)
+                iNet_off = self.neuron.iLeak(Vthr)
             iNet_avg = iNet_on * DC + iNet_off * (1 - DC)
 
             # Find the threshold amplitude that cancels the pulse average net current

@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-09 17:51:31
+# @Last Modified time: 2019-03-05 11:52:13
 
 import os
 import time
@@ -36,7 +36,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
               to be used in effective simulations.
 
         The mandatory methods are:
-            - **currNet**: compute the net ionic current density (in mA/m2) across the membrane,
+            - **iNet**: compute the net ionic current density (in mA/m2) across the membrane,
               given a specific membrane potential (in mV) and channel states.
             - **steadyStates**: compute the channels steady-state values for a specific membrane
               potential value (in mV).
@@ -73,7 +73,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         return 'Should never reach here'
 
     @abc.abstractmethod
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Compute the net ionic current per unit area.
 
             :param Vm: membrane potential (mV)
@@ -160,7 +160,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :return: vector of HH system derivatives at time t
         '''
         Vm, *states = y
-        Iionic = self.currNet(Vm, states)  # mA/m2
+        Iionic = self.iNet(Vm, states)  # mA/m2
         dVmdt = (- Iionic + Iinj) / self.Cm0  # mV/s
         dstates = self.derStates(Vm, states)
         return [dVmdt, *dstates]
@@ -179,7 +179,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
         Qm, *states = y
         Vm = Qm / Cm * 1e3  # mV
-        dQm = - self.currNet(Vm, states) * 1e-3  # A/m2
+        dQm = - self.iNet(Vm, states) * 1e-3  # A/m2
         dstates = self.derStates(Vm, states)
         return [dQm, *dstates]
 
@@ -462,9 +462,9 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
         # Compute the pulse average net (or leakage) current along the amplitude space
         if curr == 'net':
-            iNet = self.currNet(Vthr, self.steadyStates(Vthr))
+            iNet = self.iNet(Vthr, self.steadyStates(Vthr))
         elif curr == 'leak':
-            iNet = self.currL(Vthr)
+            iNet = self.iLeak(Vthr)
 
         # Compute rheobase amplitudes
         return iNet / np.array(DCs)

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-10 12:26:48
+# @Last Modified time: 2019-03-05 11:55:04
 
 import numpy as np
 from ..core import PointNeuron
@@ -195,7 +195,7 @@ class FrankenhaeuserHuxley(PointNeuron):
         return self.alphap(Vm) * (1 - p) - self.betap(Vm) * p
 
 
-    def currNa(self, m, h, Vm):
+    def iNa(self, m, h, Vm):
         ''' Compute the inward Sodium current per unit area.
 
             :param m: open-probability of Sodium channels
@@ -207,7 +207,7 @@ class FrankenhaeuserHuxley(PointNeuron):
         return self.pNabar * m**2 * h * iNa_drive  # mA/m2
 
 
-    def currK(self, n, Vm):
+    def iK(self, n, Vm):
         ''' Compute the outward, delayed-rectifier Potassium current per unit area.
 
             :param n: open-probability of delayed-rectifier Potassium channels
@@ -218,7 +218,7 @@ class FrankenhaeuserHuxley(PointNeuron):
         return self.pKbar * n**2 * iK_drive  # mA/m2
 
 
-    def currP(self, p, Vm):
+    def iP(self, p, Vm):
         ''' Compute the non-specific delayed current per unit area.
 
             :param p: open-probability of the non-specific delayed current channels
@@ -229,7 +229,7 @@ class FrankenhaeuserHuxley(PointNeuron):
         return self.pPbar * p**2 * iP_drive  # mA/m2
 
 
-    def currLeak(self, Vm):
+    def iLeak(self, Vm):
         ''' Compute the non-specific leakage current per unit area.
 
             :param Vm: membrane potential (mV)
@@ -238,14 +238,14 @@ class FrankenhaeuserHuxley(PointNeuron):
         return self.GLeak * (Vm - self.VLeak)
 
 
-    def currNet(self, Vm, states):
+    def iNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
         m, h, n, p = states
         return (
-            self.currNa(m, h, Vm) +
-            self.currK(n, Vm) +
-            self.currP(p, Vm) +
-            self.currLeak(Vm)
+            self.iNa(m, h, Vm) +
+            self.iK(n, Vm) +
+            self.iP(p, Vm) +
+            self.iLeak(Vm)
         )  # mA/m2
 
 
