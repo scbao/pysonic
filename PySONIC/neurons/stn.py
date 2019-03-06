@@ -9,11 +9,11 @@ class OtsukaSTN(PointNeuron):
     ''' Class defining the Otsuka model of sub-thalamic nucleus neuron
         with 5 different current types:
             - Inward Sodium current (iNa)
-            - Outward, delayed-rectifer Potassium current (iK)
+            - Outward, delayed-rectifer Potassium current (iKd)
             - Inward, A-type Potassium current (iA)
-            - Inward, low-threshold Calcium current (iT)
-            - Inward, high-threshold Calcium current (iL)
-            - Outward, Calcium-dependent Potassium current (iCaK)
+            - Inward, low-threshold Calcium current (iCaT)
+            - Inward, high-threshold Calcium current (iCaL)
+            - Outward, Calcium-dependent Potassium current (iKCa)
             - Non-specific leakage current (iLeak)
 
         References:
@@ -40,7 +40,6 @@ class OtsukaSTN(PointNeuron):
     T = 306.15  # K (33°C)
 
     # Calcium dynamics
-    zCa = 2  # Calcium ion valence
     CCa_out = 2e-3  # M (2 mM)
     KCa = 2e3  # s-1
 
@@ -135,22 +134,21 @@ class OtsukaSTN(PointNeuron):
     sigmaT2_b = -10  # mV
 
     # Ca2+-activated K+ current
-    GCaKMax = 10.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
+    GKCaMax = 10.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
     thetax_r = 0.17 * 1e-6  # M
     kx_r = -0.08 * 1e-6  # M
     tau_r = 2 * 1e-3  # s
 
-
     # Default plotting scheme
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
-        'i_K\ kin.': ['n'],
+        'i_{Kd}\ kin.': ['n'],
         'i_A\ kin.': ['a', 'b'],
-        'i_T\ kin.': ['p', 'q'],
-        'i_L\ kin.': ['c', 'd1', 'd2'],
+        'i_{CaT}\ kin.': ['p', 'q'],
+        'i_{CaL}\ kin.': ['c', 'd1', 'd2'],
         'Ca^{2+}_i': ['C_Ca'],
-        'i_{CaK}\ kin.': ['r'],
-        'I': ['iLeak', 'iNa', 'iK', 'iA', 'iT2', 'iL', 'iCaK', 'iNet']
+        'i_{KCa}\ kin.': ['r'],
+        'I': ['iLeak', 'iNa', 'iKd', 'iA', 'iCaT2', 'iCaL2', 'iKCa', 'iNet']
     }
 
 
@@ -177,14 +175,14 @@ class OtsukaSTN(PointNeuron):
         self.VCa = nernst(Z_Ca, self.CCa_in0, self.CCa_out, self.T)  # mV
 
         # Compute deff for that reversal potential
-        iT = self.iT(
+        iCaT = self.iCaT(
             self.pinf(self.Vm0), self.qinf(self.Vm0), self.Vm0)  # mA/m2
-        iL = self.iL(
+        iCaL = self.iCaL(
             self.cinf(self.Vm0), self.d1inf(self.Vm0), self.d2inf(self.CCa_in0), self.Vm0)  # mA/m2
-        self.deff = -(iT + iL) / (self.zCa * FARADAY * self.KCa * self.CCa_in0) * 1e-6  # m
+        self.deff = -(iCaT + iCaL) / (Z_Ca * FARADAY * self.KCa * self.CCa_in0) * 1e-6  # m
 
         # Compute conversion factor from electrical current (mA/m2) to Calcium concentration (M)
-        self.i2CCa = 1e-6 / (self.zCa * self.deff * FARADAY)
+        self.i2CCa = 1e-6 / (Z_Ca * self.deff * FARADAY)
 
         # Initial states
         self.states0 = self.steadyStates(self.Vm0)
@@ -334,16 +332,16 @@ class OtsukaSTN(PointNeuron):
         return (self.rinf(Cai) - r) / self.tau_r
 
 
-    def derC_Ca(self, C_Ca, iT, iL):
+    def derC_Ca(self, C_Ca, iCaT, iCaL):
         ''' Compute the evolution of the Calcium concentration in submembranal space.
 
             :param Vm: membrane potential (mV)
             :param C_Ca: Calcium concentration in submembranal space (M)
-            :param iT: inward, low-threshold Calcium current (mA/m2)
-            :param iL: inward, high-threshold Calcium current (mA/m2)
+            :param iCaT: inward, low-threshold Calcium current (mA/m2)
+            :param iCaL: inward, high-threshold Calcium current (mA/m2)
             :return: derivative of Calcium concentration in submembranal space w.r.t. time (M/s)
         '''
-        return - self.i2CCa * (iT + iL) - C_Ca * self.KCa
+        return - self.i2CCa * (iCaT + iCaL) - C_Ca * self.KCa
 
 
     def iNa(self, m, h, Vm):
@@ -357,7 +355,7 @@ class OtsukaSTN(PointNeuron):
         return self.GNaMax * m**3 * h * (Vm - self.VNa)
 
 
-    def iK(self, n, Vm):
+    def iKd(self, n, Vm):
         ''' Compute the outward delayed-rectifier Potassium current per unit area.
 
             :param n: open-probability of n-gate
@@ -378,7 +376,7 @@ class OtsukaSTN(PointNeuron):
         return self.GAMax * a**2 * b * (Vm - self.VK)
 
 
-    def iT(self, p, q, Vm):
+    def iCaT(self, p, q, Vm):
         ''' Compute the inward low-threshold Calcium current per unit area.
 
             :param p: open-probability of p-gate
@@ -389,7 +387,7 @@ class OtsukaSTN(PointNeuron):
         return self.GTMax * p**2 * q * (Vm - self.VCa)
 
 
-    def iL(self, c, d1, d2, Vm):
+    def iCaL(self, c, d1, d2, Vm):
         ''' Compute the inward high-threshold Calcium current per unit area.
 
             :param c: open-probability of c-gate
@@ -401,14 +399,14 @@ class OtsukaSTN(PointNeuron):
         return self.GLMax * c**2 * d1 * d2 * (Vm - self.VCa)
 
 
-    def iCaK(self, r, Vm):
+    def iKCa(self, r, Vm):
         ''' Compute the outward, Calcium activated Potassium current per unit area.
 
             :param r: open-probability of r-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GCaKMax * r**2 * (Vm - self.VK)
+        return self.GKCaMax * r**2 * (Vm - self.VK)
 
 
     def iLeak(self, Vm):
@@ -430,11 +428,11 @@ class OtsukaSTN(PointNeuron):
 
         return (
             self.iNa(m, h, Vm) +
-            self.iK(n, Vm) +
+            self.iKd(n, Vm) +
             self.iA(a, b, Vm) +
-            self.iT(p, q, Vm) +
-            self.iL(c, d1, d2, Vm) +
-            self.iCaK(r, Vm) +
+            self.iCaT(p, q, Vm) +
+            self.iCaL(c, d1, d2, Vm) +
+            self.iKCa(r, Vm) +
             self.iLeak(Vm)
         )  # mA/m2
 
@@ -475,9 +473,9 @@ class OtsukaSTN(PointNeuron):
         dqdt = self.derQ(Vm, q)
         drdt = self.derR(CCa_in, r)
 
-        iT = self.iT(p, q, Vm)
-        iL = self.iL(c, d1, d2, Vm)
-        dCCaindt = self.derC_Ca(CCa_in, iT, iL)
+        iCaT = self.iCaT(p, q, Vm)
+        iCaL = self.iCaL(c, d1, d2, Vm)
+        dCCaindt = self.derC_Ca(CCa_in, iCaT, iCaL)
 
         return [dadt, dbdt, dcdt, dd1dt, dd2dt, dmdt, dhdt, dndt, dpdt, dqdt, drdt, dCCaindt]
 
@@ -557,8 +555,8 @@ class OtsukaSTN(PointNeuron):
         dqdt = rates[16] * (1 - q) - rates[17] * q
         drdt = self.derR(CCa_in, r)
 
-        iT = self.iT(p, q, Vmeff)
-        iL = self.iL(c, d1, d2, Vmeff)
-        dCCaindt = self.derC_Ca(CCa_in, iT, iL)
+        iCaT = self.iCaT(p, q, Vmeff)
+        iCaL = self.iCaL(c, d1, d2, Vmeff)
+        dCCaindt = self.derC_Ca(CCa_in, iCaT, iCaL)
 
         return [dadt, dbdt, dcdt, dd1dt, dd2dt, dmdt, dhdt, dndt, dpdt, dqdt, drdt, dCCaindt]

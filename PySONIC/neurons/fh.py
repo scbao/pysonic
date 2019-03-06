@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 11:55:04
+# @Last Modified time: 2019-03-06 17:38:04
 
 import numpy as np
 from ..core import PointNeuron
@@ -44,9 +44,9 @@ class FrankenhaeuserHuxley(PointNeuron):
     # Default plotting scheme
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
-        'i_K\ kin.': ['n'],
+        'i_{Kd}\ kin.': ['n'],
         'i_P\ kin.': ['p'],
-        'I': ['iNa', 'iK', 'iP', 'iLeak', 'iNet']
+        'I': ['iNa', 'iKd', 'iP', 'iLeak', 'iNet']
     }
 
 
@@ -207,15 +207,15 @@ class FrankenhaeuserHuxley(PointNeuron):
         return self.pNabar * m**2 * h * iNa_drive  # mA/m2
 
 
-    def iK(self, n, Vm):
+    def iKd(self, n, Vm):
         ''' Compute the outward, delayed-rectifier Potassium current per unit area.
 
             :param n: open-probability of delayed-rectifier Potassium channels
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        iK_drive = ghkDrive(Vm, Z_K, self.ki, self.ko, self.T)  # mC/m3
-        return self.pKbar * n**2 * iK_drive  # mA/m2
+        iKd_drive = ghkDrive(Vm, Z_K, self.ki, self.ko, self.T)  # mC/m3
+        return self.pKbar * n**2 * iKd_drive  # mA/m2
 
 
     def iP(self, p, Vm):
@@ -243,7 +243,7 @@ class FrankenhaeuserHuxley(PointNeuron):
         m, h, n, p = states
         return (
             self.iNa(m, h, Vm) +
-            self.iK(n, Vm) +
+            self.iKd(n, Vm) +
             self.iP(p, Vm) +
             self.iLeak(Vm)
         )  # mA/m2

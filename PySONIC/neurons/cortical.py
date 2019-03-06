@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 11:54:34
+# @Last Modified time: 2019-03-06 11:02:05
 
 import numpy as np
 from ..core import PointNeuron
@@ -202,7 +202,7 @@ class Cortical(PointNeuron):
         return GNa * (Vm - self.VNa)
 
 
-    def iK(self, n, Vm):
+    def iKd(self, n, Vm):
         ''' Compute the outward, delayed-rectifier Potassium current per unit area.
 
             :param n: open-probability of delayed-rectifier Potassium channels
@@ -240,7 +240,7 @@ class Cortical(PointNeuron):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, p = states
-        return (self.iNa(m, h, Vm) + self.iK(n, Vm) +
+        return (self.iNa(m, h, Vm) + self.iKd(n, Vm) +
                 self.iM(p, Vm) + self.iLeak(Vm))  # mA/m2
 
 
@@ -327,9 +327,9 @@ class CorticalRS(Cortical):
     # Default plotting scheme
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
-        'i_K\ kin.': ['n'],
+        'i_{Kd}\ kin.': ['n'],
         'i_M\ kin.': ['p'],
-        'I': ['iNa', 'iK', 'iM', 'iLeak', 'iNet']
+        'I': ['iNa', 'iKd', 'iM', 'iLeak', 'iNet']
     }
 
 
@@ -369,9 +369,9 @@ class CorticalFS(Cortical):
     # Default plotting scheme
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
-        'i_K\ kin.': ['n'],
+        'i_{Kd}\ kin.': ['n'],
         'i_M\ kin.': ['p'],
-        'I': ['iNa', 'iK', 'iM', 'iLeak', 'iNet']
+        'I': ['iNa', 'iKd', 'iM', 'iLeak', 'iNet']
     }
 
 
@@ -418,10 +418,10 @@ class CorticalLTS(Cortical):
     # Default plotting scheme
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
-        'i_K\ kin.': ['n'],
+        'i_{Kd}\ kin.': ['n'],
         'i_M\ kin.': ['p'],
-        'i_T\ kin.': ['s', 'u'],
-        'I': ['iNa', 'iK', 'iM', 'iT', 'iLeak', 'iNet']
+        'i_{CaT}\ kin.': ['s', 'u'],
+        'I': ['iNa', 'iKd', 'iM', 'iCaT', 'iLeak', 'iNet']
     }
 
     def __init__(self):
@@ -512,8 +512,8 @@ class CorticalLTS(Cortical):
         return (self.uinf(Vm) - u) / self.tauu(Vm)
 
 
-    def iCa(self, s, u, Vm):
-        ''' Compute the inward, low-threshold Calcium current per unit area.
+    def iCaT(self, s, u, Vm):
+        ''' Compute the inward, low-threshold (T-type) Calcium current per unit area.
 
             :param s: open-probability of the S-type activation gate of Calcium channels
             :param u: open-probability of the U-type inactivation gate of Calcium channels
@@ -529,8 +529,8 @@ class CorticalLTS(Cortical):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, p, s, u = states
-        return (self.iNa(m, h, Vm) + self.iK(n, Vm) + self.iM(p, Vm) +
-                self.iCa(s, u, Vm) + self.iLeak(Vm))  # mA/m2
+        return (self.iNa(m, h, Vm) + self.iKd(n, Vm) + self.iM(p, Vm) +
+                self.iCaT(s, u, Vm) + self.iLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -634,10 +634,10 @@ class CorticalIB(Cortical):
     # Default plotting scheme
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
-        'i_K\ kin.': ['n'],
+        'i_{Kd}\ kin.': ['n'],
         'i_M\ kin.': ['p'],
         'i_{CaL}\ kin.': ['q', 'r', 'q2r'],
-        'I': ['iNa', 'iK', 'iM', 'iCaL', 'iLeak', 'iNet']
+        'I': ['iNa', 'iKd', 'iM', 'iCaL', 'iLeak', 'iNet']
     }
 
     def __init__(self):
@@ -741,7 +741,7 @@ class CorticalIB(Cortical):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, p, q, r = states
-        return (self.iNa(m, h, Vm) + self.iK(n, Vm) + self.iM(p, Vm) +
+        return (self.iNa(m, h, Vm) + self.iKd(n, Vm) + self.iM(p, Vm) +
                 self.iCaL(q, r, Vm) + self.iLeak(Vm))  # mA/m2
 
 

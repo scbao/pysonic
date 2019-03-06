@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 11:58:23
+# @Last Modified time: 2019-03-06 17:37:28
 
 ''' Subpanels of the QSS approximation figure. '''
 
@@ -73,8 +73,8 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     iNa_on = neuron.iNa(m, h, Vm_on)
     iNa_off = neuron.iNa(m, h, Vm_off)
     n = qsstates_pulse[2, :]
-    iK_on = neuron.iK(n, Vm_on)
-    iK_off = neuron.iK(n, Vm_off)
+    iKd_on = neuron.iKd(n, Vm_on)
+    iKd_off = neuron.iKd(n, Vm_off)
     p = qsstates_pulse[3, :]
     iM_on = neuron.iM(p, Vm_on)
     iM_off = neuron.iM(p, Vm_off)
@@ -146,8 +146,8 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     ax.plot(amps, iLeak_off, '--', color='C0')
     ax.plot(amps, iNa_on, '-', color='C1', label='$I_{Na}$')
     ax.plot(amps, iNa_off, '--', color='C1')
-    ax.plot(amps, iK_on, '-', color='C2', label='$I_{K}$')
-    ax.plot(amps, iK_off, '--', color='C2')
+    ax.plot(amps, iKd_on, '-', color='C2', label='$I_{K}$')
+    ax.plot(amps, iKd_off, '--', color='C2')
     ax.plot(amps, iM_on, '-', color='C3', label='$I_{M}$')
     ax.plot(amps, iM_off, '--', color='C3')
     if neuron.name == 'LTS':

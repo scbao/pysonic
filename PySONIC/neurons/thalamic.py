@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 11:57:05
+# @Last Modified time: 2019-03-06 16:22:56
 
 import numpy as np
 from ..core import PointNeuron
@@ -191,7 +191,7 @@ class Thalamic(PointNeuron):
         return GNa * (Vm - self.VNa)
 
 
-    def iK(self, n, Vm):
+    def iKd(self, n, Vm):
         ''' Compute the outward delayed-rectifier Potassium current per unit area.
 
             :param n: open-probability of delayed-rectifier Potassium channels
@@ -203,8 +203,8 @@ class Thalamic(PointNeuron):
         return GK * (Vm - self.VK)
 
 
-    def iCa(self, s, u, Vm):
-        ''' Compute the inward Calcium current per unit area.
+    def iCaT(self, s, u, Vm):
+        ''' Compute the inward (Ts-type) Calcium current per unit area.
 
             :param s: open-probability of the S-type activation gate of Calcium channels
             :param u: open-probability of the U-type inactivation gate of Calcium channels
@@ -230,8 +230,8 @@ class Thalamic(PointNeuron):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, u = states
-        return (self.iNa(m, h, Vm) + self.iK(n, Vm) +
-                self.iCa(s, u, Vm) + self.iLeak(Vm))  # mA/m2
+        return (self.iNa(m, h, Vm) + self.iKd(n, Vm) +
+                self.iCaT(s, u, Vm) + self.iLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -328,9 +328,9 @@ class ThalamicRE(Thalamic):
     # Default plotting scheme
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h', 'm3h'],
-        'i_K\ kin.': ['n'],
+        'i_{Kd}\ kin.': ['n'],
         'i_{TS}\ kin.': ['s', 'u', 's2u'],
-        'I': ['iNa', 'iK', 'iTs', 'iLeak', 'iNet']
+        'I': ['iNa', 'iKd', 'iTs', 'iLeak', 'iNet']
     }
 
     def __init__(self):
@@ -431,10 +431,10 @@ class ThalamoCortical(Thalamic):
     # Default plotting scheme
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
-        'i_K\ kin.': ['n'],
+        'i_{Kd}\ kin.': ['n'],
         'i_{T}\ kin.': ['s', 'u'],
         'i_{H}\ kin.': ['O', 'OL', 'O + 2OL'],
-        'I': ['iNa', 'iK', 'iT', 'iH', 'iKL', 'iLeak', 'iNet']
+        'I': ['iNa', 'iKd', 'iT', 'iH', 'iKLeak', 'iLeak', 'iNet']
     }
 
 
@@ -658,7 +658,7 @@ class ThalamoCortical(Thalamic):
     def derC_Ca(self, C_Ca, ICa):
         ''' Compute the evolution of the Calcium concentration in submembranal space.
 
-            Model of Ca2+ buffering and contribution from iCa derived from:
+            Model of Ca2+ buffering and contribution from iCaT derived from:
             *McCormick, D.A., and Huguenard, J.R. (1992). A model of the electrophysiological
             properties of thalamocortical relay neurons. J. Neurophysiol. 68, 1384–1400.*
 
@@ -672,7 +672,7 @@ class ThalamoCortical(Thalamic):
         return (self.CCa_min - C_Ca) / self.tau_Ca_removal - self.iT_2_CCa * ICa
 
 
-    def iKL(self, Vm):
+    def iKLeak(self, Vm):
         ''' Compute the voltage-dependent leak Potassium current per unit area.
 
             :param Vm: membrane potential (mV)
@@ -699,8 +699,8 @@ class ThalamoCortical(Thalamic):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, u, O, C, _, _ = states
-        return (self.iNa(m, h, Vm) + self.iK(n, Vm) + self.iCa(s, u, Vm) +
-                self.iKL(Vm) + self.iH(O, C, Vm) + self.iLeak(Vm))  # mA/m2
+        return (self.iNa(m, h, Vm) + self.iKd(n, Vm) + self.iCaT(s, u, Vm) +
+                self.iKLeak(Vm) + self.iH(O, C, Vm) + self.iLeak(Vm))  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -712,7 +712,7 @@ class ThalamoCortical(Thalamic):
         # Compute steady-state Calcium current
         seq = NaKCa_eqstates[3]
         ueq = NaKCa_eqstates[4]
-        iTeq = self.iCa(seq, ueq, Vm)
+        iTeq = self.iCaT(seq, ueq, Vm)
 
         # Compute steady-state variables for the kinetics system of Ih
         CCa_eq = self.CCa_min - self.tau_Ca_removal * self.iT_2_CCa * iTeq
@@ -738,7 +738,7 @@ class ThalamoCortical(Thalamic):
         dO_dt = self.derO(C, O, P0, Vm)
         dC_dt = self.derC(C, O, Vm)
         dP0_dt = self.derP0(P0, C_Ca)
-        ICa = self.iCa(s, u, Vm)
+        ICa = self.iCaT(s, u, Vm)
         dCCa_dt = self.derC_Ca(C_Ca, ICa)
 
         return NaKCa_derstates + [dO_dt, dC_dt, dP0_dt, dCCa_dt]
@@ -780,7 +780,7 @@ class ThalamoCortical(Thalamic):
         dC_dt = rates[11] * O - rates[10] * C
         dO_dt = - dC_dt - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
         dP0_dt = self.derP0(P0, C_Ca)
-        ICa_eff = self.iCa(s, u, Vmeff)
+        ICa_eff = self.iCaT(s, u, Vmeff)
         dCCa_dt = self.derC_Ca(C_Ca, ICa_eff)
 
         # Merge derivatives and return

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 11:58:51
+# @Last Modified time: 2019-03-06 17:51:11
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -96,6 +96,14 @@ pltvars = {
         'label': 'V_m',
         'unit': 'mV',
         'factor': 1,
+    },
+
+    'Veff': {
+        'key': 'V',
+        'desc': 'effective membrane potential',
+        'label': 'V_{m, eff}',
+        'unit': 'mV',
+        'factor': 1e0
     },
 
     'm': {
@@ -472,12 +480,12 @@ pltvars = {
         'alias': 'neuron.iNa(df["m"].values, df["h"].values, df["Vm"].values, df["C_Na"].values)'
     },
 
-    'iK': {
+    'iKd': {
         'desc': 'delayed-rectifier Potassium current',
         'label': 'I_K',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.iK(df["n"].values, df["Vm"].values)'
+        'alias': 'neuron.iKd(df["n"].values, df["Vm"].values)'
     },
 
     'iM': {
@@ -504,28 +512,36 @@ pltvars = {
         'alias': 'neuron.iA(df["a"].values, df["b"].values, df["Vm"].values)'
     },
 
-    'iT': {
-        'desc': 'low-threshold Calcium current',
-        'label': 'I_T',
+    'iCaT': {
+        'desc': 'low-threshold (T-type) Calcium current',
+        'label': 'I_{CaT}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.iCa(df["s"].values, df["u"].values, df["Vm"].values)'
+        'alias': 'neuron.iCaT(df["s"].values, df["u"].values, df["Vm"].values)'
     },
 
-    'iT2': {
-        'desc': 'low-threshold Calcium current',
-        'label': 'I_T',
+    'iCaT2': {
+        'desc': 'low-threshold (T-type) Calcium current',
+        'label': 'I_{CaT}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.iT(df["p"].values, df["q"].values, df["Vm"].values)'
+        'alias': 'neuron.iCaT(df["p"].values, df["q"].values, df["Vm"].values)'
     },
 
-    'iL': {
-        'desc': 'high-threshold Calcium current',
-        'label': 'I_L',
+    'iCaL': {
+        'desc': 'high-threshold (L-type) Calcium current',
+        'label': 'I_{CaL}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.iL(df["c"].values, df["d1"].values, df["d2"].values, df["Vm"].values)'
+        'alias': 'neuron.iCaL(df["q"].values, df["r"].values, df["Vm"].values)'
+    },
+
+    'iCaL2': {
+        'desc': 'high-threshold (L-type) Calcium current',
+        'label': 'I_{CaL}',
+        'unit': 'A/m^2',
+        'factor': 1e-3,
+        'alias': 'neuron.iCaL(df["c"].values, df["d1"].values, df["d2"].values, df["Vm"].values)'
     },
 
     'iCaK': {
@@ -534,22 +550,6 @@ pltvars = {
         'unit': 'A/m^2',
         'factor': 1e-3,
         'alias': 'neuron.iCaK(df["r"].values, df["Vm"].values)'
-    },
-
-    'iCaL': {
-        'desc': 'L-type Calcium current',
-        'label': 'I_{CaL}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iCaL(df["q"].values, df["r"].values, df["Vm"].values)'
-    },
-
-    'iTs': {
-        'desc': 'low-threshold Calcium current',
-        'label': 'I_{TS}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iCa(df["s"].values, df["u"].values, df["Vm"].values)'
     },
 
     'iCa': {
@@ -576,12 +576,12 @@ pltvars = {
         'alias': 'neuron.iH(df["O"].values, df["C"].values, df["Vm"].values)'
     },
 
-    'iKL': {
+    'iKLeak': {
         'desc': 'leakage Potassium current',
-        'label': 'I_{KL}',
+        'label': 'I_{KLeak}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.iKL(df["Vm"].values)'
+        'alias': 'neuron.iKLeak(df["Vm"].values)'
     },
 
     'iKCa': {
@@ -630,14 +630,6 @@ pltvars = {
         'unit': 'A/m^2',
         'factor': 1e-3,
         'alias': 'neuron.iNet(df["Vm"].values, neuron_states)'
-    },
-
-    'Veff': {
-        'key': 'V',
-        'desc': 'effective membrane potential',
-        'label': 'V_{m, eff}',
-        'unit': 'mV',
-        'factor': 1e0
     },
 
     'alphaa': {
