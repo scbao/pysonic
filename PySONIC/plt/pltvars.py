@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-06 17:51:11
+# @Last Modified time: 2019-03-07 14:50:31
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -589,7 +589,7 @@ pltvars = {
         'label': 'I_{KCa}',
         'unit': 'A/m^2',
         'factor': 1e-3,
-        'alias': 'neuron.iKCa(df["A_Ca"].values, df["Vm"].values)'
+        'alias': 'neuron.iKCa(df["r"].values, df["Vm"].values)'
     },
 
     'iKCa2': {

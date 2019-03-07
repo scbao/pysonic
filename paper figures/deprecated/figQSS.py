@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-06 17:37:28
+# @Last Modified time: 2019-03-07 11:57:55
 
 ''' Subpanels of the QSS approximation figure. '''
 
@@ -81,8 +81,8 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     if neuron.name == 'LTS':
         s = qsstates_pulse[4, :]
         u = qsstates_pulse[5, :]
-        iCa_on = neuron.iCa(s, u, Vm_on)
-        iCa_off = neuron.iCa(s, u, Vm_off)
+        iCaT_on = neuron.iCaT(s, u, Vm_on)
+        iCaT_off = neuron.iCaT(s, u, Vm_off)
     iNet_on = neuron.iNet(Vm_on, qsstates_pulse)
     iNet_off = neuron.iNet(Vm_off, qsstates_pulse)
 
@@ -151,8 +151,8 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     ax.plot(amps, iM_on, '-', color='C3', label='$I_{M}$')
     ax.plot(amps, iM_off, '--', color='C3')
     if neuron.name == 'LTS':
-        ax.plot(amps, iCa_on, color='C5', label='$I_{Ca}$')
-        ax.plot(amps, iCa_off, '--', color='C5')
+        ax.plot(amps, iCaT_on, color='C5', label='$I_{CaT}$')
+        ax.plot(amps, iCaT_off, '--', color='C5')
     ax.plot(amps, iNet_on, '-', color='k', label='$I_{Net}$')
     ax.plot(amps, iNet_off, '--', color='k')
 

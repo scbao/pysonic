@@ -131,7 +131,7 @@ class OtsukaSTN(PointNeuron):
     thetaT2_b = -40  # mV
     sigmaT_a = -0.5  # mV
     sigmaT1_b = -30  # mV
-    sigmaT2_b = -10  # mV
+    sigmaT2_b = 10  # mV
 
     # Ca2+-activated K+ current
     GKCaMax = 10.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
