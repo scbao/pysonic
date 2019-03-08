@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 10:38:49
+# @Last Modified time: 2019-03-08 16:09:12
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -80,7 +80,7 @@ rgxp_mech = re.compile('(MECH)_(.*).pkl')
 def figtitle(meta):
     ''' Return appropriate title based on simulation metadata. '''
     if 'Cm0' in meta:
-        return '{:.0f}nm radius BLS structure: MECH-STIM {:.0f}kHz, {:.0f}kPa, {:.1f}nC/cm2'.format(
+        return '{:.0f}nm radius BLS structure: MECH-STIM {:.0f}kHz, {:.2f}kPa, {:.1f}nC/cm2'.format(
             meta['a'] * 1e9, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3, meta['Qm'] * 1e5)
     else:
         if meta['DC'] < 1:
@@ -93,7 +93,7 @@ def figtitle(meta):
             return '{} neuron: {} E-STIM {:.2f}mA/m2, {:.0f}ms{}'.format(
                 meta['neuron'], wavetype, meta['Astim'], meta['tstim'] * 1e3, suffix)
         else:
-            return '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.0f}kPa, {:.0f}ms{} - {} model'.format(
+            return '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.2f}kPa, {:.0f}ms{} - {} model'.format(
                 meta['neuron'], meta['a'] * 1e9, wavetype, meta['Fdrive'] * 1e-3,
                 meta['Adrive'] * 1e-3, meta['tstim'] * 1e3, suffix, meta['method'])
 

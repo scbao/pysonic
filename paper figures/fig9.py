@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-02-28 11:37:10
+# @Last Modified time: 2019-03-08 16:15:52
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -69,7 +69,7 @@ def main():
     intensities = np.delete(intensities, todelete)
 
     # Levels depicted with individual traces
-    subset_intensities = [105, 107, 123]  # W/m2
+    subset_intensities = [112, 114, 123]  # W/m2
 
     # convert to amplitudes and get filepaths
     amplitudes = np.array([Intensity2Pressure(I) for I in intensities])  # Pa
