@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-27 19:04:00
+# @Last Modified time: 2019-03-08 14:53:38
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -88,6 +88,8 @@ def main():
     ap.add_argument('-f', '--freq', nargs='+', type=float, help='US frequency (kHz)')
     ap.add_argument('-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
     ap.add_argument('-I', '--intensity', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
+    ap.add_argument('--spanI', default=False, action='store_true',
+                    help='Span acoustic intensities from 10 to 140 W/m2')
     ap.add_argument('-d', '--duration', nargs='+', type=float, help='Stimulus duration (ms)')
     ap.add_argument('--offset', nargs='+', type=float, help='Offset duration (ms)')
     ap.add_argument('--PRF', nargs='+', type=float, help='PRF (Hz)')
@@ -106,7 +108,14 @@ def main():
     neuron_str = args['neuron']
     radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
 
-    if 'amp' in args:
+    if args['spanI']:
+        Isppa = np.hstack((
+            np.arange(10, 101, 10),
+            np.arange(101, 131, 1),
+            np.array([140])
+        ))  # W/m2
+        amps = Intensity2Pressure(Isppa)  # Pa
+    elif 'amp' in args:
         amps = np.array(args['amp']) * 1e3  # Pa
     elif 'intensity' in args:
         amps = Intensity2Pressure(np.array(args['intensity']) * 1e4)  # Pa
