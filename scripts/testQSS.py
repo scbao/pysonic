@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-08 14:33:42
+# @Last Modified time: 2019-03-09 21:52:25
 
 
 import numpy as np
@@ -54,10 +54,11 @@ def plotQSSdetails(neuron, a, Fdrive, Adrive, fs=12):
     Qref, Vm, qsstates = getQSSvars(neuron, a, Fdrive, Adrive)
 
     # Compute QSS currents
-    iNet = neuron.iNet(Vm, qsstates)
+    currents = neuron.currents(Vm, qsstates)
+    iNet = sum(currents.values())
 
     # Create figure
-    fig, axes = plt.subplots(3, 1, figsize=(6, 7))
+    fig, axes = plt.subplots(3, 1, figsize=(7, 9))
     axes[-1].set_xlabel('Charge Density (nC/cm2)', fontsize=fs)
     for ax in axes:
         for skey in ['top', 'right']:
@@ -80,13 +81,15 @@ def plotQSSdetails(neuron, a, Fdrive, Adrive, fs=12):
     ax.set_ylabel('$X_\infty$', fontsize=fs)
     ax.set_yticks([0, 0.5, 1])
     ax.set_ylim([-0.05, 1.05])
-    for label, qsstate in zip(neuron.states_names, qsstates):
+    for label, qsstate in zip(neuron.states_names[:-1], qsstates[:-1]):
         ax.plot(Qref * 1e5, qsstate, label=label)
 
     # Subplot 3: currents
     ax = axes[2]
     ax.set_ylabel('QSS currents (A/m2)', fontsize=fs)
-    ax.plot(Qref * 1e5, iNet * 1e-3, '-', color='k', label='$I_{Net}$')
+    for k, I in currents.items():
+        ax.plot(Qref * 1e5, I * 1e-3, label=k)
+    ax.plot(Qref * 1e5, iNet * 1e-3, color='k', label='iNet')
     ax.axhline(0, color='k', linewidth=0.5)
 
     fig.tight_layout()
@@ -129,7 +132,6 @@ def plotIQSSvsAmp(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='lin'):
         Qref, Vm, qsstates = getQSSvars(neuron, a, Fdrive, Adrive)
         ax.plot(Qref * 1e5, neuron.iNet(Vm, qsstates) * 1e-3, label=lbl, c=c)
 
-    # ax.legend(loc='center right', fontsize=fs, frameon=False, bbox_to_anchor=(1.3, 0.5))
     fig.tight_layout()
 
     # Plot colorbar
@@ -146,11 +148,12 @@ def plotIQSSvsAmp(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='lin'):
 neuron = getNeuronsDict()['STN']()
 a = 32e-9  # m
 Fdrive = 500e3  # Hz
-amps = np.linspace(10, 60, 20) * 1e3  # Pa
+Amin = 10e3  # Pa
+Amax = 60e3  # Pa
 
-# for Adrive in amps:
-#     plotQSSdetails(neuron, a, Fdrive, Adrive)
+for Adrive in np.linspace(Amin, Amax, 5):
+    plotQSSdetails(neuron, a, Fdrive, Adrive)
 
-plotIQSSvsAmp(neuron, a, Fdrive, amps)
+plotIQSSvsAmp(neuron, a, Fdrive, np.linspace(Amin, Amax, 20))
 
 plt.show()

@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-06 11:02:05
+# @Last Modified time: 2019-03-09 21:44:26
 
 import numpy as np
 from ..core import PointNeuron
@@ -244,6 +244,16 @@ class Cortical(PointNeuron):
                 self.iM(p, Vm) + self.iLeak(Vm))  # mA/m2
 
 
+    def currents(self, Vm, states):
+        m, h, n, p = states
+        return {
+            'iNa': self.iNa(m, h, Vm),
+            'iKd': self.iKd(n, Vm),
+            'iM': self.iM(p, Vm),
+            'iLeak': self.iLeak(Vm)
+        }  # mA/m2
+
+
     def steadyStates(self, Vm):
         ''' Concrete implementation of the abstract API method. '''
 
@@ -440,7 +450,6 @@ class CorticalLTS(Cortical):
         self.coeff_names += ['alphas', 'betas', 'alphau', 'betau']
 
 
-
     def sinf(self, Vm):
         ''' Compute the asymptotic value of the open-probability of the S-type,
             activation gate of Calcium channels.
@@ -527,10 +536,15 @@ class CorticalLTS(Cortical):
 
     def iNet(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
-
         m, h, n, p, s, u = states
-        return (self.iNa(m, h, Vm) + self.iKd(n, Vm) + self.iM(p, Vm) +
-                self.iCaT(s, u, Vm) + self.iLeak(Vm))  # mA/m2
+        return super().iNet(Vm, [m, h, n, p]) + self.iCaT(s, u, Vm)  # mA/m2
+
+
+    def currents(self, Vm, states):
+        m, h, n, p, s, u = states
+        currents = super().currents(Vm, [m, h, n, p])
+        currents['iCaT'] = self.iCaT(s, u, Vm)  # mA/m2
+        return currents
 
 
     def steadyStates(self, Vm):

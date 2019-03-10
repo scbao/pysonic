@@ -437,6 +437,25 @@ class OtsukaSTN(PointNeuron):
         )  # mA/m2
 
 
+    def currents(self, Vm, states):
+        ''' Compute all membrane currents per unit area. '''
+
+        a, b, c, d1, d2, m, h, n, p, q, r, CCa_in = states
+
+        # update VCa based on intracellular Calcium concentration
+        self.VCa = nernst(Z_Ca, CCa_in, self.CCa_out, self.T)  # mV
+
+        return {
+            'iNa': self.iNa(m, h, Vm),
+            'iKd': self.iKd(n, Vm),
+            'iA': self.iA(a, b, Vm),
+            'iCaT': self.iCaT(p, q, Vm),
+            'iCaL': self.iCaL(c, d1, d2, Vm),
+            'iKCa': self.iKCa(r, Vm),
+            'iLeak': self.iLeak(Vm)
+        }  # mA/m2
+
+
     def steadyStates(self, Vm):
         ''' Concrete implementation of the abstract API method. '''
 
