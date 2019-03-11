@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 20:29:47
+# @Last Modified time: 2019-03-11 21:48:12
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -131,28 +131,48 @@ def plotInetQSS_vs_Qm(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='li
     return fig
 
 
-def getEqChargesFromSims(inputdir, neuron, a, Fdrive, amps, tstim, PRF=100, DC=1.0):
+def getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim, PRF=100, DC=1.0):
 
-    # get filenames
+    # Get filenames
     fnames = ['{}.pkl'.format(ASTIM_filecode(neuron.name, a, Fdrive, A, tstim, PRF, DC, 'sonic'))
               for A in amps]
 
-    # For each file, get last charge value before stimulus offset
-    Qlast = np.empty(amps.size)
+    # Initialize output arrays
+    tstab = np.empty(amps.size)
+    Qstab = np.empty(amps.size)
+
+    # For each file
     for i, fn in enumerate(fnames):
+
+        # Extract charge temporal profile during stimulus
         fp = os.path.join(inputdir, 'STN', fn)
         logger.info('loading data from file "{}"'.format(fn))
         with open(fp, 'rb') as fh:
             frame = pickle.load(fh)
         df = frame['data']
-        meta = frame['meta']
-        toffset = meta['toffset']
         t = df['t'].values
         Qm = df['Qm'].values
-        Qlast[i] = Qm[t < toffset][-1]
-        logger.info('last charge value before offset: Qm = %.2f nC/cm2', Qlast[i] * 1e5)
+        Qm = Qm[t < tstim]
+        t = t[t < tstim]
+        dt = np.diff(t)
 
-    return Qlast
+        # If charge signal is stable during last 100 ms of stimulus
+        if np.ptp(Qm[-int(100e-3 // dt[0]):]) < 5e-5:
+
+            # Compute instant of stabilization by iNet thresholding
+            iNet_abs = np.abs(np.diff(Qm)) / dt
+            Qstab[i] = Qm[-1]
+            tstab[i] = t[np.where(iNet_abs > 1e-3)[0][-1] + 2]
+            logger.info('Qm stabilization around %.2f nC/cm2 from t = %.0f ms onward',
+                        Qstab[i] * 1e5, tstab[i] * 1e3)
+
+        # Otherwise, populate arrays with NaN
+        else:
+            Qstab[i] = np.nan
+            tstab[i] = np.nan
+            logger.info('No Qm stabilization')
+
+    return Qstab, tstab
 
 
 def getEqChargesFromQSS(neuron, a, Fdrive, amps, Qthr=None):
@@ -178,11 +198,11 @@ def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
 
     # Get charge value that cancels out net current in QSS approx. and sim
     Qeq_QSS = getEqChargesFromQSS(neuron, a, Fdrive, amps, Qthr=-20e-5)
-    Qeq_sim = getEqChargesFromSims(inputdir, neuron, a, Fdrive, amps, tstim)
+    Qeq_sim, _ = getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim)
 
     # Plot Qm balancing net current as function of amplitude
     fig, ax = plt.subplots(figsize=(6, 4))
-    figname = '{} neuron - balance charge vs. amplitude'.format(neuron.name)
+    figname = '{} neuron - equilibrium charge vs. amplitude'.format(neuron.name)
     ax.set_title(figname)
     ax.set_xlabel('Amplitude (kPa)', fontsize=fs)
     ax.set_ylabel('$\\rm Q_{thr}\ (nC/cm^2)$', fontsize=fs)
@@ -196,7 +216,7 @@ def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
     fig.tight_layout()
 
     fig.canvas.set_window_title(
-        '{}_Qthr_QSS_vs_sim'.format(neuron.name))
+        '{}_Qthr_vs_amp'.format(neuron.name))
 
 
 def main():
