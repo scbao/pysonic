@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-08 16:15:52
+# @Last Modified time: 2019-03-11 13:46:52
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -13,7 +13,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from PySONIC.utils import logger, selectDirDialog, ASTIM_filecode, Intensity2Pressure
+from PySONIC.utils import logger, selectDirDialog, ASTIM_filecode, getLowIntensitiesSTN, Intensity2Pressure
 from PySONIC.plt import plotFRProfile, plotBatch
 
 
@@ -58,15 +58,7 @@ def main():
     DC = 1.
 
     # Range of intensities
-    intensities = np.hstack((
-        np.arange(10, 101, 10),
-        np.arange(101, 131, 1),
-        np.array([140])
-    ))  # W/m2
-
-    # remove levels corresponding to overwritten files (similar Adrive decimals)
-    todelete = [np.argwhere(intensities == x)[0][0] for x in [108, 115, 122, 127]]
-    intensities = np.delete(intensities, todelete)
+    intensities = getLowIntensitiesSTN()  # W/m2
 
     # Levels depicted with individual traces
     subset_intensities = [112, 114, 123]  # W/m2

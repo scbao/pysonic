@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-08 14:53:38
+# @Last Modified time: 2019-03-11 13:49:41
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
-from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
+from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure, getLowIntensitiesSTN
 from PySONIC.neurons import getNeuronsDict
 from PySONIC.batches import createAStimQueue, runBatch
 from PySONIC.plt import plotBatch
@@ -109,12 +109,7 @@ def main():
     radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
 
     if args['spanI']:
-        Isppa = np.hstack((
-            np.arange(10, 101, 10),
-            np.arange(101, 131, 1),
-            np.array([140])
-        ))  # W/m2
-        amps = Intensity2Pressure(Isppa)  # Pa
+        amps = Intensity2Pressure(getLowIntensitiesSTN())  # Pa
     elif 'amp' in args:
         amps = np.array(args['amp']) * 1e3  # Pa
     elif 'intensity' in args:

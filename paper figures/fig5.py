@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-02-27 18:05:21
+# @Last Modified time: 2019-03-11 11:33:46
 
 ''' Sub-panels of the NICE and SONIC accuracies comparative figure. '''
 

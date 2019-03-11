@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-08 16:16:57
+# @Last Modified time: 2019-03-11 11:31:34
 
 
 import pickle
@@ -189,11 +189,11 @@ def plotSpikingMetrics(xvar, xlabel, metrics_dict, logscale=False, spikeamp=True
     cdefault = {'full': 'silver', 'sonic': 'k'}
 
     # Create figure
-    naxes = 3 if spikeamp else 2
-    fig, axes = plt.subplots(naxes, 1, figsize=figsize)
-    axes[0].set_ylabel('Latency\n (ms)', fontsize=fs, rotation=0, ha='right', va='center')
-    axes[1].set_ylabel('Firing\n rate (Hz)', fontsize=fs, rotation=0, ha='right', va='center')
-    if naxes == 3:
+    fig, axes = plt.subplots(3, 1, figsize=figsize)
+    ibase = 0 if spikeamp else 1
+    axes[ibase].set_ylabel('Latency\n (ms)', fontsize=fs, rotation=0, ha='right', va='center')
+    axes[ibase + 1].set_ylabel('Firing\n rate (Hz)', fontsize=fs, rotation=0, ha='right', va='center')
+    if spikeamp:
         axes[2].set_ylabel('Spike amp.\n ($\\rm nC/cm^2$)', fontsize=fs, rotation=0, ha='right',
                            va='center')
     for ax in axes:
@@ -223,7 +223,7 @@ def plotSpikingMetrics(xvar, xlabel, metrics_dict, logscale=False, spikeamp=True
 
         # Latency
         rf = 10
-        ax = axes[0]
+        ax = axes[ibase]
         ax.plot(xvar, full_metrics['latencies (ms)'].values, ls['full'], color=c['full'],
                 linewidth=lw, markersize=ps)
         ax.plot(xvar, sonic_metrics['latencies (ms)'].values, ls['sonic'], color=c['sonic'],
@@ -231,7 +231,7 @@ def plotSpikingMetrics(xvar, xlabel, metrics_dict, logscale=False, spikeamp=True
 
         # Firing rate
         rf = 10
-        ax = axes[1]
+        ax = axes[ibase + 1]
         ax.errorbar(xvar, full_metrics['mean firing rates (Hz)'].values,
                     yerr=full_metrics['std firing rates (Hz)'].values,
                     fmt=ls['full'], color=c['full'], linewidth=lw, markersize=ps)

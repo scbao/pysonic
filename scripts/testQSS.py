@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-09 21:52:25
+# @Last Modified time: 2019-03-11 13:50:10
 
 
 import numpy as np
@@ -10,8 +10,9 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import matplotlib
 
-from PySONIC.utils import getLookups2D
+from PySONIC.utils import getLookups2D, Intensity2Pressure, getLowIntensitiesSTN
 from PySONIC.neurons import getNeuronsDict
+from PySONIC.core import NeuronalBilayerSonophore
 
 
 # Plot parameters
@@ -100,7 +101,7 @@ def plotQSSdetails(neuron, a, Fdrive, Adrive, fs=12):
     return fig
 
 
-def plotIQSSvsAmp(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='lin'):
+def plotInetQSSvsAmp(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='lin'):
 
     #  Define color code
     mymap = plt.get_cmap(cmap)
@@ -114,35 +115,77 @@ def plotIQSSvsAmp(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='lin'):
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.set_xlabel('$Q_m$ (nC/cm2)', fontsize=fs)
-    ax.set_ylabel('$I_{net, QSS}$ (A/m2)', fontsize=fs)
+    ax.set_xlabel('$\\rm Q_m\ (nC/cm^2)$', fontsize=fs)
+    ax.set_ylabel('$\\rm I_{net, QSS}\ (A/m^2)$', fontsize=fs)
     for skey in ['top', 'right']:
         ax.spines[skey].set_visible(False)
     for item in ax.get_xticklabels() + ax.get_yticklabels():
         item.set_fontsize(fs)
-    for item in ax.get_xticklabels(minor=True):
-        item.set_visible(False)
     figname = '{} neuron - QSS current imbalance vs. amplitude'.format(neuron.name)
     ax.set_title(figname, fontsize=fs)
     ax.axhline(0, color='k', linewidth=0.5)
 
-    for Adrive in amps:
+    # Plot iNet profiles for each US amplitude (with specific color code)
+    for i, Adrive in enumerate(amps):
         lbl = '{:.2f} kPa'.format(Adrive * 1e-3)
         c = sm.to_rgba(Adrive * 1e-3)
         Qref, Vm, qsstates = getQSSvars(neuron, a, Fdrive, Adrive)
-        ax.plot(Qref * 1e5, neuron.iNet(Vm, qsstates) * 1e-3, label=lbl, c=c)
+        iNet = neuron.iNet(Vm, qsstates)
+        ax.plot(Qref * 1e5, iNet * 1e-3, label=lbl, c=c)
 
     fig.tight_layout()
 
-    # Plot colorbar
-    fig.subplots_adjust(bottom=0.1, top=0.9, right=0.80, hspace=0.5)
-    cbarax = fig.add_axes([0.85, 0.1, 0.03, 0.80])
+    # Plot US amplitude colorbar
+    fig.subplots_adjust(bottom=0.15, top=0.9, right=0.80, hspace=0.5)
+    cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.75])
     fig.colorbar(sm, cax=cbarax)
     cbarax.set_ylabel('Amplitude (kPa)', fontsize=fs)
     for item in cbarax.get_yticklabels():
         item.set_fontsize(fs)
 
+    fig.canvas.set_window_title(
+        '{}_iNet_QSS_vs_amp'.format(neuron.name))
+
     return fig
+
+
+def getLastQm(neuron, a, Fdrive, amps, tstim=150e-3):
+    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    Qlast = np.empty(amps.size)
+    for i, Adrive in enumerate(amps):
+        Qm = nbls.runSONIC(Fdrive, Adrive, tstim, 0, 1e2, 1.)[2]
+        Qlast[i] = Qm[-1]
+    return Qlast
+
+
+def getEqChargesQSS(neuron, a, Fdrive, amps):
+    Qthr_QSS = np.empty(amps.size)
+    for i, Adrive in enumerate(amps):
+        Qref, Vm, qsstates = getQSSvars(neuron, a, Fdrive, Adrive)
+        iNet = neuron.iNet(Vm, qsstates)
+        Qthr_QSS[i] = np.interp(0, iNet, Qref, left=0., right=np.nan)
+    return Qthr_QSS
+
+
+def compareQSSvsSim(neuron, a, Fdrive, amps, fs=12):
+
+    # Plot Qm balancing net current as function of amplitude
+    fig, ax = plt.subplots(figsize=(6, 4))
+    figname = '{} neuron - balance charge vs. amplitude'.format(neuron.name)
+    ax.set_title(figname)
+    ax.set_xlabel('Amplitude (kPa)', fontsize=fs)
+    ax.set_ylabel('$\\rm Q_{thr}\ (nC/cm^2)$', fontsize=fs)
+    for skey in ['top', 'right']:
+        ax.spines[skey].set_visible(False)
+    for item in ax.get_xticklabels() + ax.get_yticklabels():
+        item.set_fontsize(fs)
+    ax.plot(amps * 1e-3, getEqChargesQSS(neuron, a, Fdrive, amps) * 1e5, label='QSS')
+    # ax.plot(amps * 1e-3, getLastQm(neuron, a, Fdrive, amps) * 1e5, label='sim')
+    ax.legend(frameon=False, fontsize=fs)
+    fig.tight_layout()
+
+    fig.canvas.set_window_title(
+        '{}_Qthr_QSS_vs_sim'.format(neuron.name))
 
 
 neuron = getNeuronsDict()['STN']()
@@ -151,9 +194,11 @@ Fdrive = 500e3  # Hz
 Amin = 10e3  # Pa
 Amax = 60e3  # Pa
 
-for Adrive in np.linspace(Amin, Amax, 5):
-    plotQSSdetails(neuron, a, Fdrive, Adrive)
+# for Adrive in np.linspace(Amin, Amax, 5):
+#     plotQSSdetails(neuron, a, Fdrive, Adrive)
 
-plotIQSSvsAmp(neuron, a, Fdrive, np.linspace(Amin, Amax, 20))
+plotInetQSSvsAmp(neuron, a, Fdrive, np.linspace(Amin, Amax, 20))
+
+compareQSSvsSim(neuron, a, Fdrive, np.linspace(Amin, Amax, 20))
 
 plt.show()

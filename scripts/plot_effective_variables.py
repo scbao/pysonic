@@ -4,7 +4,7 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 11:00:33
+# @Last Modified time: 2019-03-11 13:48:33
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.plt import plotEffectiveVariables
-from PySONIC.utils import logger, Intensity2Pressure
+from PySONIC.utils import logger, Intensity2Pressure, getLowIntensitiesSTN
 from PySONIC.neurons import getNeuronsDict
 
 # Set logging level
@@ -50,12 +50,8 @@ def main():
 
     # Range of intensities
     if neuron_str == 'STN':
-        intensities = np.hstack((
-            np.arange(10, 101, 10),
-            np.arange(101, 131, 1),
-            np.array([140])
-        ))  # W/m2
-        Adrive = np.array([Intensity2Pressure(I) for I in intensities])  # Pa
+        intensities = getLowIntensitiesSTN()  # W/m2
+        Adrive = Intensity2Pressure(intensities)  # Pa
 
     zscale = 'log' if args['log'] else 'lin'
     cmap = args.get('cmap', None)

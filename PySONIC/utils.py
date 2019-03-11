@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-08 16:09:12
+# @Last Modified time: 2019-03-11 13:45:33
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -62,7 +62,7 @@ def ESTIM_filecode(neuron, Astim, tstim, PRF, DC):
 
 
 def ASTIM_filecode(neuron, a, Fdrive, Adrive, tstim, PRF, DC, method):
-    return 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.0f}ms_{}{}'.format(
+    return 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.2f}kPa_{:.0f}ms_{}{}'.format(
         neuron, 'CW' if DC == 1 else 'PW', a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
         'PRF{:.2f}Hz_DC{:.2f}%_'.format(PRF, DC * 1e2) if DC < 1. else '', method)
 
@@ -580,3 +580,15 @@ def ghkDrive(Vm, Z_ion, Cion_in, Cion_out, T):
     eCin = Cion_in * efun(-x)  # M
     eCout = Cion_out * efun(x)  # M
     return FARADAY * (eCin - eCout) * 1e6  # mC/m3
+
+
+def getLowIntensitiesSTN():
+    ''' Return an array of acoustic intensities (W/m2) used to study the STN neuron in
+        Tarnaud, T., Joseph, W., Martens, L., and Tanghe, E. (2018). Computational Modeling
+        of Ultrasonic Subthalamic Nucleus Stimulation. IEEE Trans Biomed Eng.
+    '''
+    return np.hstack((
+        np.arange(10, 101, 10),
+        np.arange(101, 131, 1),
+        np.array([140])
+    ))  # W/m2
