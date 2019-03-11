@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 13:46:52
+# @Last Modified time: 2019-03-11 14:31:22
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -64,7 +64,7 @@ def main():
     subset_intensities = [112, 114, 123]  # W/m2
 
     # convert to amplitudes and get filepaths
-    amplitudes = np.array([Intensity2Pressure(I) for I in intensities])  # Pa
+    amplitudes = Intensity2Pressure(intensities)  # Pa
     fnames = ['{}.pkl'.format(ASTIM_filecode(neuron, a, Fdrive, A, tstim, PRF, DC, 'sonic'))
               for A in amplitudes]
     fpaths = [os.path.join(inputdir, 'STN', fn) for fn in fnames]

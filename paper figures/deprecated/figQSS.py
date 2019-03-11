@@ -2,21 +2,20 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-07 11:57:55
+# @Last Modified time: 2019-03-11 19:11:29
 
 ''' Subpanels of the QSS approximation figure. '''
 
 import os
 import logging
 import numpy as np
-from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.cm as cm
 from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
-from PySONIC.utils import logger, getLookups2D, selectDirDialog
+from PySONIC.utils import logger, selectDirDialog
 from PySONIC.neurons import getNeuronsDict
 
 
@@ -29,7 +28,7 @@ matplotlib.rcParams['font.family'] = 'arial'
 figbase = os.path.splitext(__file__)[0]
 
 
-def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', '.-'], title=None):
+def plotQSSvars_vs_Adrive(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', '.-'], title=None):
 
     neuron = getNeuronsDict()[neuron]()
 
@@ -37,60 +36,25 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     Vthr = neuron.VT  # mV
     Qthr = neuron.Cm0 * Vthr * 1e-3  # C/m2
 
-    # Get lookups
-    amps, Qref, lookups2D, _ = getLookups2D(neuron.name, a=a, Fdrive=Fdrive)
-    amps *= 1e-3
-    lookups1D = {key: interp1d(Qref, y2D, axis=1)(Qthr) for key, y2D in lookups2D.items()}
+    # Get QSS variables for each amplitude at threshold charge
+    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    Aref, _, Vmeff, QS_states = nbls.getQSSvars(Fdrive, charges=Qthr, DCs=DC)
 
-    # Remove unnecessary items ot get ON rates and effective potential at threshold charge
-    rates_on = lookups1D
-    rates_on.pop('ng')
-    Vm_on = rates_on.pop('V')
-    Vm_off = Qthr / neuron.Cm0 * 1e3
+    # Compute US-ON and US-OFF ionic currents
+    currents_on = neuron.currents(Vmeff, QS_states)
+    currents_off = neuron.currents(neuron.VT, QS_states)
+    iNet_on = sum(currents_on.values())
+    iNet_off = sum(currents_off.values())
 
-    # Compute neuron OFF rates at current charge value
-    rates_off = neuron.getRates(Vm_off)
-
-    # Compute pulse-average quasi-steady states
-    qsstates_pulse = np.empty((len(neuron.states_names), amps.size))
-    for j, x in enumerate(neuron.states_names):
-        # If channel state, compute pulse-average steady-state values
-        if x in neuron.getGates():
-            x = x.lower()
-            alpha_str, beta_str = ['{}{}'.format(s, x) for s in ['alpha', 'beta']]
-            alphax_pulse = rates_on[alpha_str] * DC + rates_off[alpha_str] * (1 - DC)
-            betax_pulse = rates_on[beta_str] * DC + rates_off[beta_str] * (1 - DC)
-            qsstates_pulse[j, :] = alphax_pulse / (alphax_pulse + betax_pulse)
-        # Otherwise assume the state has reached a steady-state value for Vthr
-        else:
-            qsstates_pulse[j, :] = np.ones(amps.size) * neuron.steadyStates(Vthr)[j]
-
-    # Compute quasi-steady ON and OFF currents
-    iLeak_on = neuron.iLeak(Vm_on)
-    iLeak_off = np.ones(amps.size) * neuron.iLeak(Vm_off)
-    m = qsstates_pulse[0, :]
-    h = qsstates_pulse[1, :]
-    iNa_on = neuron.iNa(m, h, Vm_on)
-    iNa_off = neuron.iNa(m, h, Vm_off)
-    n = qsstates_pulse[2, :]
-    iKd_on = neuron.iKd(n, Vm_on)
-    iKd_off = neuron.iKd(n, Vm_off)
-    p = qsstates_pulse[3, :]
-    iM_on = neuron.iM(p, Vm_on)
-    iM_off = neuron.iM(p, Vm_off)
-    if neuron.name == 'LTS':
-        s = qsstates_pulse[4, :]
-        u = qsstates_pulse[5, :]
-        iCaT_on = neuron.iCaT(s, u, Vm_on)
-        iCaT_off = neuron.iCaT(s, u, Vm_off)
-    iNet_on = neuron.iNet(Vm_on, qsstates_pulse)
-    iNet_off = neuron.iNet(Vm_off, qsstates_pulse)
+    # Retrieve list of ionic currents names, with iLeak first
+    ckeys = list(currents_on.keys())
+    ckeys.insert(0, ckeys.pop(ckeys.index('iLeak')))
 
     # Compute quasi-steady ON, OFF and net charge variations, and threshold amplitude
     dQ_on = -iNet_on * DC / PRF
     dQ_off = -iNet_off * (1 - DC) / PRF
     dQ_net = dQ_on + dQ_off
-    Athr = np.interp(0, dQ_net, amps, left=0., right=np.nan)
+    Athr = np.interp(0, dQ_net, Aref, left=0., right=np.nan)
 
     # Create figure
     fig, axes = plt.subplots(4, 1, figsize=(4, 6))
@@ -116,8 +80,8 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     ax.set_ylim(Vbounds)
     ax.set_yticks([Vbounds[0], neuron.Vm0, Vbounds[1]])
     ax.set_yticklabels(['{:.0f}'.format(Vbounds[0]), '$V_{m0}$', '{:.0f}'.format(Vbounds[1])])
-    ax.plot(amps, Vm_on, color='C0', label='ON')
-    ax.plot(amps, Vm_off * np.ones(amps.size), '--', color='C0', label='OFF')
+    ax.plot(Aref * 1e-3, Vmeff, '--', color='C0', label='ON')
+    ax.plot(Aref * 1e-3, neuron.VT * np.ones(Aref.size), ':', color='C0', label='OFF')
     ax.axhline(neuron.Vm0, linewidth=0.5, color='k')
 
     # Subplot 2: quasi-steady states
@@ -131,30 +95,26 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     xcut = ax.get_xlim()[0]
     for ycut in [0.54, 0.56]:
         ax.plot([xcut / f, xcut * f], [ycut - d, ycut + d], color='k', clip_on=False)
-    for label, qsstate in zip(neuron.states_names, qsstates_pulse):
+    for label, QS_state in zip(neuron.states_names, QS_states):
         if label == 'h':
-            qsstate -= 0.4
-        ax.plot(amps, qsstate, label=label)
+            QS_state -= 0.4
+        ax.plot(Aref * 1e-3, QS_state, label=label)
 
     # Subplot 3: currents
     ax = axes[2]
-    ax.set_ylabel('QS Currents (mA/m2)', fontsize=fs)
+    ax.set_ylabel('QSS Currents (mA/m2)', fontsize=fs)
     Ibounds = (-10, 10)
     ax.set_ylim(Ibounds)
     ax.set_yticks([Ibounds[0], 0.0, Ibounds[1]])
-    ax.plot(amps, iLeak_on, color='C0', label='$I_{Leak}$')
-    ax.plot(amps, iLeak_off, '--', color='C0')
-    ax.plot(amps, iNa_on, '-', color='C1', label='$I_{Na}$')
-    ax.plot(amps, iNa_off, '--', color='C1')
-    ax.plot(amps, iKd_on, '-', color='C2', label='$I_{K}$')
-    ax.plot(amps, iKd_off, '--', color='C2')
-    ax.plot(amps, iM_on, '-', color='C3', label='$I_{M}$')
-    ax.plot(amps, iM_off, '--', color='C3')
-    if neuron.name == 'LTS':
-        ax.plot(amps, iCaT_on, color='C5', label='$I_{CaT}$')
-        ax.plot(amps, iCaT_off, '--', color='C5')
-    ax.plot(amps, iNet_on, '-', color='k', label='$I_{Net}$')
-    ax.plot(amps, iNet_off, '--', color='k')
+    for i, key in enumerate(ckeys):
+        c = 'C{}'.format(i)
+        if isinstance(currents_off[key], float):
+            currents_off[key] = np.ones(Aref.size) * currents_off[key]
+        ax.plot(Aref * 1e-3, currents_on[key], '--', label=key, c=c)
+        ax.plot(Aref * 1e-3, currents_off[key], ':', c=c)
+    ax.plot(Aref * 1e-3, iNet_on, '--', color='k', label='iNet')
+    ax.plot(Aref * 1e-3, iNet_off, ':', color='k')
+    ax.axhline(0, color='k', linewidth=0.5)
 
     # Subplot 4: charge variations and activation threshold
     ax = axes[3]
@@ -162,11 +122,11 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     dQbounds = (-0.06, 0.1)
     ax.set_ylim(dQbounds)
     ax.set_yticks([dQbounds[0], 0.0, dQbounds[1]])
-    ax.plot(amps, dQ_on, color='C0', label='ON')
-    ax.plot(amps, dQ_off, '--', color='C0', label='OFF')
-    ax.plot(amps, dQ_net, '-.', color='C0', label='Net')
-    ax.plot([Athr] * 2, [ax.get_ylim()[0], 0], linestyle='--', color='k')
-    ax.plot([Athr], [0], 'o', c='k')
+    ax.plot(Aref * 1e-3, dQ_on, '--', color='C0', label='ON')
+    ax.plot(Aref * 1e-3, dQ_off, ':', color='C0', label='OFF')
+    ax.plot(Aref * 1e-3, dQ_net, color='C0', label='Net')
+    ax.plot([Athr * 1e-3] * 2, [ax.get_ylim()[0], 0], linestyle='--', color='k')
+    ax.plot([Athr * 1e-3], [0], 'o', c='k')
     ax.axhline(0, color='k', linewidth=0.5)
 
     fig.tight_layout()
@@ -179,7 +139,7 @@ def plotQuasiSteadySystem(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     return fig
 
 
-def plotdQvsDC(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
+def plotQSSdQ_vs_Adrive(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
 
     neuron = getNeuronsDict()[neuron]()
 
@@ -187,45 +147,23 @@ def plotdQvsDC(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
     Vthr = neuron.VT  # mV
     Qthr = neuron.Cm0 * Vthr * 1e-3  # C/m2
 
-    # Get lookups
-    amps, Qref, lookups2D, _ = getLookups2D(neuron.name, a=a, Fdrive=Fdrive)
-    amps *= 1e-3
-    lookups1D = {key: interp1d(Qref, y2D, axis=1)(Qthr) for key, y2D in lookups2D.items()}
+    # Get QSS variables for each amplitude and DC at threshold charge
+    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    Aref, _, Vmeff, QS_states = nbls.getQSSvars(Fdrive, charges=Qthr, DCs=DCs)
 
-    # Remove unnecessary items ot get ON rates and effective potential at threshold charge
-    rates_on = lookups1D
-    rates_on.pop('ng')
-    Vm_on = rates_on.pop('V')
-
-    rates_off = neuron.getRates(Vthr)
-
-    # For each duty cycle, compute net charge variation at Qthr along the amplitude range,
-    # and identify rheobase amplitude
-    Athr = np.empty_like(DCs)
-    dQnet = np.empty((DCs.size, amps.size))
+    dQnet = np.empty((DCs.size, Aref.size))
+    Athr = np.empty(DCs.size)
     for i, DC in enumerate(DCs):
-        # Compute pulse-average quasi-steady states
-        qsstates_pulse = np.empty((len(neuron.states_names), amps.size))
-        for j, x in enumerate(neuron.states_names):
-            # If channel state, compute pulse-average steady-state values
-            if x in neuron.getGates():
-                x = x.lower()
-                alpha_str, beta_str = ['{}{}'.format(s, x) for s in ['alpha', 'beta']]
-                alphax_pulse = rates_on[alpha_str] * DC + rates_off[alpha_str] * (1 - DC)
-                betax_pulse = rates_on[beta_str] * DC + rates_off[beta_str] * (1 - DC)
-                qsstates_pulse[j, :] = alphax_pulse / (alphax_pulse + betax_pulse)
-            # Otherwise assume the state has reached a steady-state value for Vthr
-            else:
-                qsstates_pulse[j, :] = np.ones(amps.size) * neuron.steadyStates(Vthr)[j]
+        # Compute US-ON and US-OFF net membrane current from QSS variables
+        iNet_on = neuron.iNet(Vmeff, QS_states[:, :, i])
+        iNet_off = neuron.iNet(Vthr, QS_states[:, :, i])
 
         # Compute the pulse average net current along the amplitude space
-        iNet_on = neuron.iNet(Vm_on, qsstates_pulse)
-        iNet_off = neuron.iNet(Vthr, qsstates_pulse)
         iNet_avg = iNet_on * DC + iNet_off * (1 - DC)
         dQnet[i, :] = -iNet_avg / PRF
 
-        # Compute threshold amplitude
-        Athr[i] = np.interp(0, dQnet[i, :], amps, left=0., right=np.nan)
+        # Find the threshold amplitude that cancels the pulse average net current
+        Athr[i] = np.interp(0, -iNet_avg, Aref, left=0., right=np.nan)
 
     # Create figure
     fig, ax = plt.subplots(figsize=(4, 2))
@@ -250,9 +188,9 @@ def plotdQvsDC(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
     sm = cm.ScalarMappable(norm=norm, cmap='viridis')
     sm._A = []
     for i, DC in enumerate(DCs):
-        ax.plot(amps, dQnet[i, :], c=sm.to_rgba(DC), label='{:.0f}% DC'.format(DC * 1e2))
-        ax.plot([Athr[i]] * 2, [ax.get_ylim()[0], 0], linestyle='--', c=sm.to_rgba(DC))
-        ax.plot([Athr[i]], [0], 'o', c=sm.to_rgba(DC))
+        ax.plot(Aref * 1e-3, dQnet[i, :], c=sm.to_rgba(DC), label='{:.0f}% DC'.format(DC * 1e2))
+        ax.plot([Athr[i] * 1e-3] * 2, [ax.get_ylim()[0], 0], linestyle='--', c=sm.to_rgba(DC))
+        ax.plot([Athr[i] * 1e-3], [0], 'o', c=sm.to_rgba(DC))
 
     fig.tight_layout()
     fig.subplots_adjust(right=0.8)
@@ -264,7 +202,8 @@ def plotdQvsDC(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
     return fig
 
 
-def plotRheobaseAmps(neurons, a, Fdrive, DCs_dense, DCs_sparse, fs=8, title=None):
+def plotQSSAthr_vs_DC(neurons, a, Fdrive, DCs_dense, DCs_sparse, fs=8, title=None):
+
     fig, ax = plt.subplots(figsize=(3, 3))
     ax.set_title('Rheobase amplitudes', fontsize=fs)
     ax.set_xlabel('Duty cycle (%)', fontsize=fs)
@@ -327,17 +266,17 @@ def main():
     figs = []
     if 'a' in figset:
         figs += [
-            plotQuasiSteadySystem('RS', a, Fdrive, PRF, DC, title=figbase + 'a RS'),
-            plotQuasiSteadySystem('LTS', a, Fdrive, PRF, DC, title=figbase + 'a LTS')
+            plotQSSvars_vs_Adrive('RS', a, Fdrive, PRF, DC, title=figbase + 'a RS'),
+            plotQSSvars_vs_Adrive('LTS', a, Fdrive, PRF, DC, title=figbase + 'a LTS')
         ]
     if 'b' in figset:
         figs += [
-            plotdQvsDC('RS', a, Fdrive, PRF, DCs_sparse, title=figbase + 'b RS'),
-            plotdQvsDC('LTS', a, Fdrive, PRF, DCs_sparse, title=figbase + 'b LTS')
+            plotQSSdQ_vs_Adrive('RS', a, Fdrive, PRF, DCs_sparse, title=figbase + 'b RS'),
+            plotQSSdQ_vs_Adrive('LTS', a, Fdrive, PRF, DCs_sparse, title=figbase + 'b LTS')
         ]
     if 'c' in figset:
-        figs.append(plotRheobaseAmps(['RS', 'LTS'], a, Fdrive, DCs_dense, DCs_sparse,
-                                     title=figbase + 'c'))
+        figs.append(plotQSSAthr_vs_DC(['RS', 'LTS'], a, Fdrive, DCs_dense, DCs_sparse,
+                                      title=figbase + 'c'))
 
     if args.save:
         outdir = selectDirDialog() if args.outdir is None else args.outdir

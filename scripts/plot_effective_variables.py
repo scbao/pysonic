@@ -4,12 +4,11 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 13:48:33
+# @Last Modified time: 2019-03-11 14:35:27
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
 import logging
-import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 

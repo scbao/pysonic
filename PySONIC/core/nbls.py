@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 11:53:45
+# @Last Modified time: 2019-03-11 20:21:41
 
 import os
 import time
@@ -726,7 +726,90 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return outpath
 
 
-    def findRheobaseAmps(self, DCs, Fdrive, Vthr, curr='net'):
+    def getQSSvars(self, Fdrive, amps=None, charges=None, DCs=1.0):
+        ''' Compute the quasi-steady state values of the neuron's gating variables
+            for a combination of US amplitudes, charge densities and duty cycles,
+            at a specific US frequency.
+
+            :param Fdrive: US frequency (Hz)
+            :param amps: US amplitudes (Pa)
+            :param charges: membrane charge densities (C/m2)
+            :param DCs: duty cycle value(s)
+            :return: 3-tuple with reference values of US amplitude and charge density
+            as well as bilinearly interpolated QSS gating variables
+        '''
+
+        # Get lookups for specific (a, f, A) combination
+        Aref, Qref, lookups2D, _ = getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)
+
+        # Derive inputs from lookups reference if not provided
+        if amps is None:
+            amps = Aref
+        if charges is None:
+            charges = Qref
+
+        # Transform inputs into arrays if single value provided
+        if isinstance(amps, float):
+            amps = np.array([amps])
+        if isinstance(charges, float):
+            charges = np.array([charges])
+        if isinstance(DCs, float):
+            DCs = np.array([DCs])
+
+        # Initialize output arrays
+        Vmeff = np.empty((amps.size, charges.size))
+        QS_states = np.empty((len(self.neuron.states_names), amps.size, charges.size, DCs.size))
+
+        # Interpolate Vmeff from lookups at each (US amplitude, membrane charge) combination
+        Vmeff = interp1d(Qref, lookups2D['V'], axis=1)(charges)
+        Vmeff = interp1d(Aref, Vmeff, axis=0)(amps)
+
+        # For each neuron state
+        for i, x in enumerate(self.neuron.states_names):
+            # If channel state, compute DC-averaged QSS values from interpolated rate constants
+            # at each (US amplitude, membrane charge) combination
+            if x in self.neuron.getGates():
+
+                # Get lookup tables of specific rate constants
+                x = x.lower()
+                alpha_str, beta_str = ['{}{}'.format(s, x) for s in ['alpha', 'beta']]
+                rates2D = [lookups2D[key] for key in [alpha_str, beta_str]]
+
+                # Re-interpolate at input charges
+                rates2D = [interp1d(Qref, y2D, axis=1)(charges) for y2D in rates2D]
+
+                # Interpolate US-OFF rate constants
+                rates_off = [interp1d(Aref, y2D, axis=0)(0.0) for y2D in rates2D]
+
+                # For each amplitude
+                for j, Adrive in enumerate(amps):
+                    # Interpolate US-ON rate constants
+                    rates_on = [interp1d(Aref, y2D, axis=0)(Adrive) for y2D in rates2D]
+
+                    # Compute DC-averaged rate constants
+                    alphax = rates_on[0] * DCs + rates_off[0] * (1 - DCs)
+                    betax = rates_on[1] * DCs + rates_off[1] * (1 - DCs)
+
+                    # Compute QSS gating variable with appropriate dimensions
+                    xinf = np.atleast_2d(alphax / (alphax + betax))
+                    if xinf.shape != (charges.size, DCs.size):
+                        xinf = xinf.T
+                    QS_states[i, j, :, :] = xinf
+
+            # Otherwise, compute QSS values from neuron's voltage-dependent steady-state
+            # (i.e., only along charge dimension)
+            else:
+                xQSS_vs_Q = np.array([self.neuron.steadyStates(Q / self.neuron.Cm0 * 1e3)[i]
+                                      for Q in charges])
+                xQSS_vs_Q_3D = np.tile(xQSS_vs_Q, (amps.size, DCs.size, 1))
+                xQSS_vs_Q_3D = np.einsum('ikj->ijk', xQSS_vs_Q_3D)
+                QS_states[i, :, :, :] = xQSS_vs_Q_3D
+
+        # Return reference inputs and output arrays
+        return amps, charges, np.squeeze(Vmeff), np.squeeze(QS_states)
+
+
+    def findRheobaseAmps(self, DCs, Fdrive, Vthr):
         ''' Find the rheobase amplitudes (i.e. threshold acoustic amplitudes of infinite duration
             that would result in excitation) of a specific neuron for various stimulation duty cycles.
 
@@ -736,50 +819,27 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: rheobase amplitudes vector (Pa)
         '''
 
-        # Get lookups projected at specific (a, Fdrive, Qthr) combination.
-        Aref, Qref, lookups2D, _ = getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)
+        # Get threshold charge from neuron's spike threshold parameter
         Qthr = self.neuron.Cm0 * Vthr * 1e-3  # C/m2
-        lookups1D = {key: interp1d(Qref, y2D, axis=1)(Qthr) for key, y2D in lookups2D.items()}
 
-        # Remove unnecessary items ot get ON rates and effective potential at threshold charge
-        rates_on = lookups1D
-        rates_on.pop('ng')
-        Vm_on = rates_on.pop('V')
+        # Get QSS variables for each amplitude at threshold charge
+        Aref, _, Vmeff, QS_states = self.getQSSvars(Fdrive, charges=Qthr, DCs=DCs)
 
-        # Compute neuron OFF rates at threshold potential
-        rates_off = self.neuron.getRates(Vthr)
-
-        # Compute rheobase amplitudes
-        rheboase_amps = np.empty(DCs.size)
+        Athr = np.empty(DCs.size)
         for i, DC in enumerate(DCs):
-            sstates_pulse = np.empty((len(self.neuron.states_names), Aref.size))
-            for j, x in enumerate(self.neuron.states_names):
-                # If channel state, compute pulse-average steady-state values
-                if x in self.neuron.getGates():
-                    x = x.lower()
-                    alpha_str, beta_str = ['{}{}'.format(s, x) for s in ['alpha', 'beta']]
-                    alphax_pulse = rates_on[alpha_str] * DC + rates_off[alpha_str] * (1 - DC)
-                    betax_pulse = rates_on[beta_str] * DC + rates_off[beta_str] * (1 - DC)
-                    sstates_pulse[j, :] = alphax_pulse / (alphax_pulse + betax_pulse)
-                # Otherwise assume the state has reached a steady-state value for Vthr
-                else:
-                    sstates_pulse[j, :] = np.ones(Aref.size) * self.neuron.steadyStates(Vthr)[j]
+            # Compute US-ON and US-OFF net membrane current from QSS variables
+            iNet_on = self.neuron.iNet(Vmeff, QS_states[:, :, i])
+            iNet_off = self.neuron.iNet(Vthr, QS_states[:, :, i])
 
-            # Compute the pulse average net (or leakage) current along the amplitude space
-            if curr == 'net':
-                iNet_on = self.neuron.iNet(Vm_on, sstates_pulse)
-                iNet_off = self.neuron.iNet(Vthr, sstates_pulse)
-            elif curr == 'leak':
-                iNet_on = self.neuron.iLeak(Vm_on)
-                iNet_off = self.neuron.iLeak(Vthr)
+            # Compute the pulse average net current along the amplitude space
             iNet_avg = iNet_on * DC + iNet_off * (1 - DC)
 
             # Find the threshold amplitude that cancels the pulse average net current
-            rheboase_amps[i] = np.interp(0, -iNet_avg, Aref, left=0., right=np.nan)
+            Athr[i] = np.interp(0, -iNet_avg, Aref, left=0., right=np.nan)
 
-        inan = np.where(np.isnan(rheboase_amps))[0]
+        inan = np.where(np.isnan(Athr))[0]
         if inan.size > 0:
-            if inan.size == rheboase_amps.size:
+            if inan.size == Athr.size:
                 logger.error('No rheobase amplitudes within [%s - %sPa] for the provided duty cycles',
                              *si_format((Aref.min(), Aref.max())))
             else:
@@ -787,7 +847,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 logger.warning('No rheobase amplitudes within [%s - %sPa] below %.1f%% duty cycle',
                                *si_format((Aref.min(), Aref.max())), minDC * 1e2)
 
-        return rheboase_amps, Aref
+        return Athr, Aref
 
 
     def computeEffVars(self, Fdrive, Adrive, Qm, fs=None, phi=np.pi):
