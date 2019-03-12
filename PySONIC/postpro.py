@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-10-25 22:47:00
+# @Last Modified time: 2019-03-11 23:49:29
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -12,6 +12,48 @@ import pandas as pd
 
 from .constants import *
 from .utils import logger
+
+
+def detectCrossings(x, thr=0.0, edge='both'):
+    '''
+        Detect crossings of a threshold value in a 1D signal.
+
+        :param x: 1D array_like data.
+        :param edge: 'rising', 'falling', or 'both'
+        :return: 1D array with the indices preceding the crossings
+    '''
+    ine, ire, ife = np.array([[], [], []], dtype=int)
+    x_padright = np.hstack((x, x[-1]))
+    x_padleft = np.hstack((x[0], x))
+    if not edge:
+        ine = np.where((x_padright < thr) & (x_padleft > thr))[0]
+    else:
+        if edge.lower() in ['rising', 'both']:
+            ire = np.where((x_padright <= thr) & (x_padleft > thr))[0]
+        if edge.lower() in ['falling', 'both']:
+            ife = np.where((x_padright < thr) & (x_padleft >= thr))[0]
+    ind = np.unique(np.hstack((ine, ire, ife))) - 1
+    return ind
+
+
+def getStableFixedPoints(x, dx):
+    ''' Find stable fixed points in a 1D plane phase profile.
+
+        :param x: variable (1D array)
+        :param dx: derivative (1D array)
+        :return: array of stable fixed points values (or None if none is found).
+    '''
+
+    stable_fps = []
+    i_stable_fp = detectCrossings(dx, edge='falling')
+    if i_stable_fp.size > 0:
+        for i in i_stable_fp:
+            a = (dx[i + 1] - dx[i]) / (x[i + 1] - x[i])
+            b = dx[i] - a * x[i]
+            stable_fps.append(-b / a)
+        return np.array(stable_fps)
+    else:
+        return None
 
 
 def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising', kpsh=False, valley=False, ax=None):

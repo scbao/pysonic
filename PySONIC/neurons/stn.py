@@ -1,5 +1,6 @@
 
 import numpy as np
+from scipy.optimize import brentq
 from ..core import PointNeuron
 from ..constants import FARADAY, Z_Ca
 from ..utils import nernst
@@ -344,6 +345,35 @@ class OtsukaSTN(PointNeuron):
         return - self.i2CCa * (iCaT + iCaL) - C_Ca * self.KCa
 
 
+    def get_dCCa(self, C_Ca, Vm):
+        ''' Return the time derivative of intracellular Calcium concentration given
+            its current value at a specific membrane potential.
+
+            :param C_Ca: Calcium concentration in submembranal space (M)
+            :param Vm: membrane potential (mV)
+            :return: time derivative of Calcium concentration in submembranal space (M/s)
+        '''
+        self.VCa = nernst(Z_Ca, C_Ca, self.CCa_out, self.T)  # mV
+        iCaT = self.iCaT(self.pinf(Vm), self.qinf(Vm), Vm)
+        iCaL = self.iCaL(self.cinf(Vm), self.d1inf(Vm), self.d2inf(C_Ca), Vm)
+        return self.derC_Ca(C_Ca, iCaT, iCaL)
+
+
+    def findCaeq(self, Vm):
+        ''' Find the equilibrium intracellular Calcium concentration for a
+            specific membrane potential.
+
+            :param Vm: membrane potential (mV)
+            :return: equilibrium Calcium concentration in submembranal space (M)
+        '''
+        Ca_eq = brentq(
+            lambda x: self.get_dCCa(x, Vm),
+            self.CCa_in0 * 1e-4, self.CCa_in0 * 1e3,
+            xtol=1e-16
+        )
+        return Ca_eq
+
+
     def iNa(self, m, h, Vm):
         ''' Compute the inward Sodium current per unit area.
 
@@ -470,10 +500,11 @@ class OtsukaSTN(PointNeuron):
         peq = self.pinf(Vm)
         qeq = self.qinf(Vm)
 
-        d2eq = self.d2inf(self.CCa_in0)
-        req = self.rinf(self.CCa_in0)
+        C_Ca_eq = self.findCaeq(Vm)
+        d2eq = self.d2inf(C_Ca_eq)
+        req = self.rinf(C_Ca_eq)
 
-        return np.array([aeq, beq, ceq, d1eq, d2eq, meq, heq, neq, peq, qeq, req, self.CCa_in0])
+        return np.array([aeq, beq, ceq, d1eq, d2eq, meq, heq, neq, peq, qeq, req, C_Ca_eq])
 
 
     def derStates(self, Vm, states):
