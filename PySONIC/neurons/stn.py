@@ -500,6 +500,7 @@ class OtsukaSTN(PointNeuron):
         peq = self.pinf(Vm)
         qeq = self.qinf(Vm)
 
+        # C_Ca_eq = self.CCa_in0
         C_Ca_eq = self.findCaeq(Vm)
         d2eq = self.d2inf(C_Ca_eq)
         req = self.rinf(C_Ca_eq)
@@ -547,7 +548,7 @@ class OtsukaSTN(PointNeuron):
         betac_avg = np.mean(1 / Tc) - alphac_avg
 
         Td1 = self.taud1(Vm)
-        alphad1_avg = np.mean(self.ainf(Vm) / Td1)
+        alphad1_avg = np.mean(self.d1inf(Vm) / Td1)
         betad1_avg = np.mean(1 / Td1) - alphad1_avg
 
         Tm = self.taum(Vm)

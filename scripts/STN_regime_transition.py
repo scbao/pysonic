@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-12 01:24:26
+# @Last Modified time: 2019-03-12 09:33:08
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -50,21 +50,24 @@ def getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim, PRF
               for A in amps]
 
     # Initialize output arrays
-    tstab = np.empty(amps.size)
-    Qstab = np.empty(amps.size)
+    t_stab = np.empty(amps.size)
+    Q_stab = np.empty(amps.size)
+    Ca_stab = np.empty(amps.size)
 
     # For each file
     for i, fn in enumerate(fnames):
 
         # Extract charge temporal profile during stimulus
-        fp = os.path.join(inputdir, 'STN', fn)
+        fp = os.path.join(inputdir, fn)
         # logger.info('loading data from file "{}"'.format(fn))
         with open(fp, 'rb') as fh:
             frame = pickle.load(fh)
         df = frame['data']
         t = df['t'].values
         Qm = df['Qm'].values
+        Ca = df['C_Ca'].values
         Qm = Qm[t < tstim]
+        Ca = Ca[t < tstim]
         t = t[t < tstim]
         dt = np.diff(t)
 
@@ -73,18 +76,23 @@ def getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim, PRF
 
             # Compute instant of stabilization by iNet thresholding
             iNet_abs = np.abs(np.diff(Qm)) / dt
-            Qstab[i] = Qm[-1]
-            tstab[i] = t[np.where(iNet_abs > 1e-3)[0][-1] + 2]
-            logger.info('A = %.2f kPa: Qm stabilization around %.2f nC/cm2 from t = %.0f ms onward',
-                        amps[i] * 1e-3, Qstab[i] * 1e5, tstab[i] * 1e3)
+            t_stab[i] = t[np.where(iNet_abs > 1e-3)[0][-1] + 2]
+
+            # Get steady-state charge and Calcium concentration values
+            Q_stab[i] = Qm[-1]
+            Ca_stab[i] = Ca[-1]
+
+            logger.debug('A = %.2f kPa: Qm stabilization around %.2f nC/cm2 from t = %.0f ms onward',
+                         amps[i] * 1e-3, Q_stab[i] * 1e5, t_stab[i] * 1e3)
 
         # Otherwise, populate arrays with NaN
         else:
-            Qstab[i] = np.nan
-            tstab[i] = np.nan
-            logger.info('A = %.2f kPa: no Qm stabilization', amps[i] * 1e-3)
+            t_stab[i] = np.nan
+            Q_stab[i] = np.nan
+            Ca_stab[i] = np.nan
+            logger.debug('A = %.2f kPa: no Qm stabilization', amps[i] * 1e-3)
 
-    return Qstab, tstab
+    return t_stab, Q_stab, Ca_stab
 
 
 def plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive, fs=12):
@@ -117,12 +125,13 @@ def plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive, fs=12):
     ax.axhline(neuron.Vm0, linewidth=0.5, color='k')
 
     # Subplot 2: quasi-steady states
+    colors = plt.get_cmap('tab10').colors + plt.get_cmap('Dark2').colors
     ax = axes[1]
     ax.set_ylabel('$X_\infty$', fontsize=fs)
     ax.set_yticks([0, 0.5, 1])
     ax.set_ylim([-0.05, 1.05])
-    for label, qsstate in zip(neuron.states_names, QS_states):
-        ax.plot(Qref * 1e5, qsstate, label=label)
+    for i, label in enumerate(neuron.states_names):
+        ax.plot(Qref * 1e5, QS_states[i], label=label, c=colors[i])
 
     # Subplot 3: currents
     ax = axes[2]
@@ -203,7 +212,7 @@ def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
     # Get charge value that cancels out net current in QSS approx. and sim
     Qeq_QSS = getStableQmQSS(neuron, a, Fdrive, amps)
 
-    Qeq_sim, _ = getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim)
+    _, Qeq_sim, _ = getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim)
 
     # Plot Qm balancing net current as function of amplitude
     fig, ax = plt.subplots(figsize=(6, 4))
@@ -225,8 +234,7 @@ def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
             else:
                 lbl = None
             ax.plot(np.ones(Qstab.size) * Adrive * 1e-3, Qstab * 1e5, '.', c='C0', label=lbl)
-    # ax.plot(amps * 1e-3, Qeq_QSS * 1e5, label='QSS approximation')
-    ax.plot(amps * 1e-3, Qeq_sim * 1e5, c='C1',
+    ax.plot(amps * 1e-3, Qeq_sim * 1e5, '.', c='C1',
             label='end of {:.2f} s stimulus (simulation)'.format(tstim))
     ax.legend(frameon=False, fontsize=fs)
     fig.tight_layout()
@@ -241,6 +249,7 @@ def main():
     ap = ArgumentParser()
 
     # Stimulation parameters
+    ap.add_argument('-n', '--neuron', type=str, default='STN', help='Neuron type')
     ap.add_argument('-i', '--inputdir', type=str, default=None, help='Input directory')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
     ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
@@ -257,7 +266,7 @@ def main():
     if figset == 'all':
         figset = ['a', 'b', 'c']
 
-    neuron = getNeuronsDict()['STN']()
+    neuron = getNeuronsDict()[args.neuron]()
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
     intensities = getLowIntensitiesSTN()  # W/m2
@@ -266,7 +275,7 @@ def main():
 
     figs = []
     if 'a' in figset:
-        for Adrive in [amps[0], amps[-1]]:
+        for Adrive in [amps[0], amps[amps.size // 2], amps[-1]]:
             figs.append(plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive))
     if 'b' in figset:
         figs.append(plotInetQSS_vs_Qm(neuron, a, Fdrive, amps))
