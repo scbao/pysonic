@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:08:46
+# @Last Modified time: 2019-03-13 15:41:33
 
 import numpy as np
 from ..core import PointNeuron
@@ -44,9 +44,6 @@ class Thalamic(PointNeuron):
         # Names of the different coefficients to be averaged in a lookup table.
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphas', 'betas', 'alphau', 'betau']
-
-        # Charge interval bounds for lookup creation
-        self.Qbounds = np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
 
 
     def alpham(self, Vm):
@@ -421,8 +418,8 @@ class ThalamoCortical(Thalamic):
     VT = -52.0  # Spike threshold adjustment parameter (mV)
     Vx = 0.0  # Voltage-dependence uniform shift factor at 36°C (mV)
 
-    tau_Ca_removal = 5e-3  # decay time constant for intracellular Ca2+ dissolution (s)
-    CCa_min = 50e-9  # minimal intracellular Calcium concentration (M)
+    taur_Cai = 5e-3  # decay time constant for intracellular Ca2+ dissolution (s)
+    Cai_min = 50e-9  # minimal intracellular Calcium concentration (M)
     deff = 100e-9  # effective depth beneath membrane for intracellular [Ca2+] calculation
     nCa = 4  # number of Calcium binding sites on regulating factor
     k1 = 2.5e22  # intracellular Ca2+ regulation factor (M-4 s-1)
@@ -446,10 +443,10 @@ class ThalamoCortical(Thalamic):
         super().__init__()
 
         # Compute current to concentration conversion constant
-        self.iT_2_CCa = 1e-6 / (self.deff * Z_Ca * FARADAY)
+        self.i2Cai = 1e-6 / (self.deff * Z_Ca * FARADAY)
 
         # Define names of the channels state probabilities
-        self.states_names += ['O', 'C', 'P0', 'C_Ca']
+        self.states_names += ['O', 'C', 'P0', 'Cai']
 
         # Define the names of the different coefficients to be averaged in a lookup table.
         self.coeff_names += ['alphao', 'betao']
@@ -638,7 +635,7 @@ class ThalamoCortical(Thalamic):
         return - self.derC(C, O, Vm) - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
 
 
-    def derP0(self, P0, C_Ca):
+    def derP0(self, P0, Cai):
         ''' Compute the evolution of the proportion of Ih channels regulating factor
             in unbound state.
 
@@ -649,28 +646,28 @@ class ThalamoCortical(Thalamic):
 
             :param Vm: membrane potential (mV)
             :param P0: proportion of Ih channels regulating factor in unbound state (-)
-            :param C_Ca: Calcium concentration in effective submembranal space (M)
+            :param Cai: Calcium concentration in effective submembranal space (M)
             :return: derivative of proportion w.r.t. time (s-1)
         '''
 
-        return self.k2 * (1 - P0) - self.k1 * P0 * C_Ca**self.nCa
+        return self.k2 * (1 - P0) - self.k1 * P0 * Cai**self.nCa
 
 
-    def derC_Ca(self, C_Ca, ICa):
+    def derCai(self, Cai, s, u, Vm):
         ''' Compute the evolution of the Calcium concentration in submembranal space.
 
             Model of Ca2+ buffering and contribution from iCaT derived from:
             *McCormick, D.A., and Huguenard, J.R. (1992). A model of the electrophysiological
             properties of thalamocortical relay neurons. J. Neurophysiol. 68, 1384–1400.*
 
-
+            :param Cai: Calcium concentration in submembranal space (M)
+            :param s: open-probability of s-gate
+            :param u: open-probability of u-gate
             :param Vm: membrane potential (mV)
-            :param C_Ca: Calcium concentration in submembranal space (M)
-            :param ICa: inward Calcium current filling up the submembranal space with Ca2+ (mA/m2)
-            :return: derivative of Calcium concentration in submembranal space w.r.t. time (s-1)
+            :return: time derivative of Calcium concentration in submembranal space (M/s)
         '''
 
-        return (self.CCa_min - C_Ca) / self.tau_Ca_removal - self.iT_2_CCa * ICa
+        return (self.Cai_min - Cai) / self.taur_Cai - self.i2Cai * self.iCaT(s, u, Vm)
 
 
     def iKLeak(self, Vm):
@@ -714,16 +711,16 @@ class ThalamoCortical(Thalamic):
         # Compute steady-state Calcium current
         seq = NaKCa_eqstates[3]
         ueq = NaKCa_eqstates[4]
-        iTeq = self.iCaT(seq, ueq, Vm)
+        iCaTeq = self.iCaT(seq, ueq, Vm)
 
         # Compute steady-state variables for the kinetics system of Ih
-        CCa_eq = self.CCa_min - self.tau_Ca_removal * self.iT_2_CCa * iTeq
-        P0_eq = self.k2 / (self.k2 + self.k1 * CCa_eq**self.nCa)
+        Cai_eq = self.Cai_min - self.taur_Cai * self.i2Cai * iCaTeq
+        P0_eq = self.k2 / (self.k2 + self.k1 * Cai_eq**self.nCa)
         BA = self.betao(Vm) / self.alphao(Vm)
         O_eq = self.k4 / (self.k3 * (1 - P0_eq) + self.k4 * (1 + BA))
         C_eq = BA * O_eq
 
-        kin_eqstates = np.array([O_eq, C_eq, P0_eq, CCa_eq])
+        kin_eqstates = np.array([O_eq, C_eq, P0_eq, Cai_eq])
 
         # Merge all steady-states and return
         return np.concatenate((NaKCa_eqstates, kin_eqstates))
@@ -732,18 +729,17 @@ class ThalamoCortical(Thalamic):
     def derStates(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
-        m, h, n, s, u, O, C, P0, C_Ca = states
+        m, h, n, s, u, O, C, P0, Cai = states
 
         NaKCa_states = [m, h, n, s, u]
         NaKCa_derstates = super().derStates(Vm, NaKCa_states)
 
-        dO_dt = self.derO(C, O, P0, Vm)
-        dC_dt = self.derC(C, O, Vm)
-        dP0_dt = self.derP0(P0, C_Ca)
-        ICa = self.iCaT(s, u, Vm)
-        dCCa_dt = self.derC_Ca(C_Ca, ICa)
+        dOdt = self.derO(C, O, P0, Vm)
+        dCdt = self.derC(C, O, Vm)
+        dP0dt = self.derP0(P0, Cai)
+        dCaidt = self.derCai(Cai, s, u, Vm)
 
-        return NaKCa_derstates + [dO_dt, dC_dt, dP0_dt, dCCa_dt]
+        return NaKCa_derstates + [dOdt, dCdt, dP0dt, dCaidt]
 
 
     def getEffRates(self, Vm):
@@ -769,9 +765,9 @@ class ThalamoCortical(Thalamic):
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         # Unpack states
-        m, h, n, s, u, O, C, P0, C_Ca = states
+        m, h, n, s, u, O, C, P0, Cai = states
 
-        # INa, IK, ICa effective states derivatives
+        # INa, IK, iCaT effective states derivatives
         dmdt = rates[0] * (1 - m) - rates[1] * m
         dhdt = rates[2] * (1 - h) - rates[3] * h
         dndt = rates[4] * (1 - n) - rates[5] * n
@@ -779,11 +775,10 @@ class ThalamoCortical(Thalamic):
         dudt = rates[8] * (1 - u) - rates[9] * u
 
         # Ih effective states derivatives
-        dC_dt = rates[11] * O - rates[10] * C
-        dO_dt = - dC_dt - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
-        dP0_dt = self.derP0(P0, C_Ca)
-        ICa_eff = self.iCaT(s, u, Vmeff)
-        dCCa_dt = self.derC_Ca(C_Ca, ICa_eff)
+        dCdt = rates[11] * O - rates[10] * C
+        dOdt = - dCdt - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
+        dP0dt = self.derP0(P0, Cai)
+        dCaidt = self.derCai(Cai, s, u, Vmeff)
 
         # Merge derivatives and return
-        return [dmdt, dhdt, dndt, dsdt, dudt, dO_dt, dC_dt, dP0_dt, dCCa_dt]
+        return [dmdt, dhdt, dndt, dsdt, dudt, dOdt, dCdt, dP0dt, dCaidt]

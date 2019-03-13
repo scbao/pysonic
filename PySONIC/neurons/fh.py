@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 14:36:34
+# @Last Modified time: 2019-03-13 15:40:33
 
 import numpy as np
 from ..core import PointNeuron
@@ -61,9 +61,6 @@ class FrankenhaeuserHuxley(PointNeuron):
         # Names of the different coefficients to be averaged in a lookup table.
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphap', 'betap']
-
-        # Charge interval bounds for lookup creation
-        self.Qbounds = np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
 
 
     def alpham(self, Vm):

@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-23 18:12:24
+# @Last Modified time: 2019-03-13 15:42:29
 
 ''' Create lookup table for specific neuron. '''
 
@@ -121,7 +121,7 @@ def main():
         logger.error('Unknown neuron type: "%s"', neuron_str)
         return
     neuron = getNeuronsDict()[neuron_str]()
-    charges = np.arange(neuron.Qbounds[0], neuron.Qbounds[1] + 1e-5, 1e-5)  # C/m2
+    charges = np.arange(neuron.Qbounds()[0], neuron.Qbounds()[1] + 1e-5, 1e-5)  # C/m2
 
     if args['test']:
         fs = np.array([fs.min(), fs.max()])

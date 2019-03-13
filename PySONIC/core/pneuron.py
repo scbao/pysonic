@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 14:50:53
+# @Last Modified time: 2019-03-13 15:40:06
 
 import os
 import time
@@ -159,6 +159,12 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :param interp_data: dictionary of 1D vectors of "effective" coefficients
              over the charge domain, for specific frequency and amplitude values.
         '''
+
+
+    def Qbounds(self):
+        ''' Determine bounds of membrane charge physiological range for a given neuron. '''
+        return np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
+
 
     def getGates(self):
         ''' Retrieve the names of the neuron's states that match an ion channel gating. '''

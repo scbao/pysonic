@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:10:25
+# @Last Modified time: 2019-03-13 15:41:16
 
 
 from functools import partialmethod
@@ -96,9 +96,6 @@ class LeechTouch(PointNeuron):
 
         # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
-
-        # Charge interval bounds for lookup creation
-        self.Qbounds = np.array([np.round(self.Vm0 - 10.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
 
 
     # ----------------- Generic -----------------
@@ -717,9 +714,6 @@ class LeechPressure(LeechMech):
         # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
 
-        # Charge interval bounds for lookup creation
-        self.Qbounds = np.array([np.round(self.Vm0 - 10.0), 60.0]) * self.Cm0 * 1e-3  # C/m2
-
 
     def iPumpNa(self, C_Na_in):
         ''' NaK-ATPase pump current
@@ -903,8 +897,6 @@ class LeechRetzius(LeechMech):
 
         # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
-
-        self.Qbounds = np.array([np.round(self.Vm0 - 10.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
 
 
     def ainf(self, Vm):

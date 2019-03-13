@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 14:31:51
+# @Last Modified time: 2019-03-13 15:41:26
 
 
 import numpy as np
@@ -177,20 +177,25 @@ class OtsukaSTN(PointNeuron):
             'alphaq', 'betaq',
         ]
 
-        # Compute deff for that reversal potential
-        iCaT = self.iCaT(self.pinf(self.Vm0), self.qinf(self.Vm0), self.Vm0, self.Cai0)  # mA/m2
-        iCaL = self.iCaL(self.cinf(self.Vm0), self.d1inf(self.Vm0), self.d2inf(self.Cai0),
-                         self.Vm0, self.Cai0)  # mA/m2
-        self.deff = -(iCaT + iCaL) / (Z_Ca * FARADAY * self.KCa * self.Cai0) * 1e-6  # m
+        # Compute deff for neuron's resting potential and equilibrium Calcium concentration
+        self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
 
         # Compute conversion factor from electrical current (mA/m2) to Calcium concentration (M/s)
-        self.i2CCa = 1e-6 / (Z_Ca * self.deff * FARADAY)
+        self.i2Cai = 1e-6 / (Z_Ca * self.deff * FARADAY)
 
         # Initial states
         self.states0 = self.steadyStates(self.Vm0)
 
-        # Charge interval bounds for lookup creation
-        self.Qbounds = np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
+
+    def getEffectiveDepth(self, Cai, Vm):
+        ''' Compute effective depth that matches a given membrane potential
+            and intracellular Calcium concentration.
+
+            :return: effective depth (m)
+        '''
+        iCaT = self.iCaT(self.pinf(Vm), self.qinf(Vm), Vm, Cai)  # mA/m2
+        iCaL = self.iCaL(self.cinf(Vm), self.d1inf(Vm), self.d2inf(Cai), Vm, Cai)  # mA/m2
+        return -(iCaT + iCaL) / (Z_Ca * FARADAY * self.KCa * Cai) * 1e-6  # m
 
 
     def _xinf(self, var, theta, k):
@@ -348,7 +353,7 @@ class OtsukaSTN(PointNeuron):
         '''
         iCaT = self.iCaT(p, q, Vm, Cai)
         iCaL = self.iCaL(c, d1, d2, Vm, Cai)
-        return - self.i2CCa * (iCaT + iCaL) - Cai * self.KCa
+        return - self.i2Cai * (iCaT + iCaL) - Cai * self.KCa
 
 
     def derCaiSteadyState(self, Cai, Vm):
