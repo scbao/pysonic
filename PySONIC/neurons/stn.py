@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:41:26
+# @Last Modified time: 2019-03-13 15:50:18
 
 
 import numpy as np
@@ -47,7 +47,8 @@ class OtsukaSTN(PointNeuron):
     T = 306.15  # K (33°C)
 
     # Calcium dynamics
-    CCa_out = 2e-3  # M (2 mM)
+    Cao = 2e-3  # M (2 mM)
+    taur_Cai = 1 / 2e3  # decay time constant for intracellular Ca2+ dissolution (s)
     KCa = 2e3  # s-1
 
     # Leakage current
@@ -195,7 +196,7 @@ class OtsukaSTN(PointNeuron):
         '''
         iCaT = self.iCaT(self.pinf(Vm), self.qinf(Vm), Vm, Cai)  # mA/m2
         iCaL = self.iCaL(self.cinf(Vm), self.d1inf(Vm), self.d2inf(Cai), Vm, Cai)  # mA/m2
-        return -(iCaT + iCaL) / (Z_Ca * FARADAY * self.KCa * Cai) * 1e-6  # m
+        return -(iCaT + iCaL) / (Z_Ca * FARADAY * Cai / self.taur_Cai) * 1e-6  # m
 
 
     def _xinf(self, var, theta, k):
@@ -353,7 +354,7 @@ class OtsukaSTN(PointNeuron):
         '''
         iCaT = self.iCaT(p, q, Vm, Cai)
         iCaL = self.iCaL(c, d1, d2, Vm, Cai)
-        return - self.i2Cai * (iCaT + iCaL) - Cai * self.KCa
+        return - self.i2Cai * (iCaT + iCaL) - Cai / self.taur_Cai
 
 
     def derCaiSteadyState(self, Cai, Vm):
@@ -423,7 +424,7 @@ class OtsukaSTN(PointNeuron):
             :param Cai: submembrane Calcium concentration (M)
             :return: current per unit area (mA/m2)
         '''
-        return self.GTMax * p**2 * q * (Vm - nernst(Z_Ca, Cai, self.CCa_out, self.T))
+        return self.GTMax * p**2 * q * (Vm - nernst(Z_Ca, Cai, self.Cao, self.T))
 
 
     def iCaL(self, c, d1, d2, Vm, Cai):
@@ -436,7 +437,7 @@ class OtsukaSTN(PointNeuron):
             :param Cai: submembrane Calcium concentration (M)
             :return: current per unit area (mA/m2)
         '''
-        return self.GLMax * c**2 * d1 * d2 * (Vm - nernst(Z_Ca, Cai, self.CCa_out, self.T))
+        return self.GLMax * c**2 * d1 * d2 * (Vm - nernst(Z_Ca, Cai, self.Cao, self.T))
 
 
     def iKCa(self, r, Vm):
