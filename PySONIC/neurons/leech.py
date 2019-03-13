@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 14:37:53
+# @Last Modified time: 2019-03-13 15:10:25
 
 
 from functools import partialmethod
@@ -73,7 +73,7 @@ class LeechTouch(PointNeuron):
 
     # Default plotting scheme
     pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h', 'm3h'],
+        'i_{Na}\ kin.': ['m', 'h'],
         'i_K\ kin.': ['n'],
         'i_{Ca}\ kin.': ['s'],
         'pools': ['C_Na_arb', 'C_Na_arb_activation', 'C_Ca_arb', 'C_Ca_arb_activation']
@@ -688,7 +688,7 @@ class LeechPressure(LeechMech):
 
     # Default plotting scheme
     pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h', 'm4h'],
+        'i_{Na}\ kin.': ['m', 'h'],
         'i_K\ kin.': ['n'],
         'i_{Ca}\ kin.': ['s'],
         'i_{KCa}\ kin.': ['c'],
@@ -881,9 +881,9 @@ class LeechRetzius(LeechMech):
 
     # Default plotting scheme
     pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h', 'm4h'],
+        'i_{Na}\ kin.': ['m', 'h'],
         'i_K\ kin.': ['n'],
-        'i_A\ kin.': ['a', 'b', 'ab'],
+        'i_A\ kin.': ['a', 'b'],
         'i_{Ca}\ kin.': ['s'],
         'i_{KCa}\ kin.': ['c']
     }

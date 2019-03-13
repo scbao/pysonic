@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 14:54:34
+# @Last Modified time: 2019-03-13 15:12:45
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -41,10 +41,6 @@ pltvars = {
         'factor': 1e22,
         'min': 1.0,
         'max': 15.0
-        # 'unit': 'ymol',
-        # 'factor': 1e24,
-        # 'min': 100.0,
-        # 'max': 1500.0
     },
 
     'Pac': {
@@ -102,7 +98,7 @@ pltvars = {
         'desc': 'effective membrane potential',
         'label': 'V_{m, eff}',
         'unit': 'mV',
-        'factor': 1e0
+        'factor': 1
     },
 
     'm': {
@@ -123,36 +119,6 @@ pltvars = {
         'max': 1.1
     },
 
-    'm2h': {
-        'desc': 'iNa relative conductance',
-        'label': 'm^2h',
-        'unit': None,
-        'factor': 1,
-        'min': -0.1,
-        'max': 1.1,
-        'alias': 'df["m"]**2 * df["h"]'
-    },
-
-    'm3h': {
-        'desc': 'iNa relative conductance',
-        'label': 'm^3h',
-        'unit': None,
-        'factor': 1,
-        'min': -0.1,
-        'max': 1.1,
-        'alias': 'df["m"]**3 * df["h"]'
-    },
-
-    'm4h': {
-        'desc': 'iNa relative conductance',
-        'label': 'm^4h',
-        'unit': None,
-        'factor': 1,
-        'min': -0.1,
-        'max': 1.1,
-        'alias': 'df["m"]**4 * df["h"]'
-    },
-
     'n': {
         'desc': 'iK activation gate opening',
         'label': 'n-gate',
@@ -160,16 +126,6 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1
-    },
-
-    'n4': {
-        'desc': 'iK relative conductance',
-        'label': 'n^4',
-        'unit': None,
-        'factor': 1,
-        'min': -0.1,
-        'max': 1.1,
-        'alias': 'df["n"]**4'
     },
 
     'p': {
@@ -199,16 +155,6 @@ pltvars = {
         'max': 1.1
     },
 
-    's2u': {
-        'desc': 'iT relative conductance',
-        'label': 's^2u',
-        'unit': None,
-        'factor': 1,
-        'min': -0.1,
-        'max': 1.1,
-        'alias': 'df["s"]**2 * df["u"]'
-    },
-
     'p': {
         'desc': 'iT activation gates opening',
         'label': 'p-gate',
@@ -225,16 +171,6 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1
-    },
-
-    'p2q': {
-        'desc': 'iT relative conductance',
-        'label': 'p^2q',
-        'unit': None,
-        'factor': 1,
-        'min': -0.1,
-        'max': 1.1,
-        'alias': 'df["p"]**2 * df["q"]'
     },
 
     'r': {
@@ -311,16 +247,6 @@ pltvars = {
         'max': 1.1
     },
 
-    'a2b': {
-        'desc': 'iA relative conductance',
-        'label': 'ab',
-        'unit': None,
-        'factor': 1,
-        'min': -0.1,
-        'max': 1.1,
-        'alias': 'df["a"]**2 * df["b"]'
-    },
-
 
     'c': {
         'desc': 'iL activation gates opening',
@@ -349,16 +275,6 @@ pltvars = {
         'max': 1.1
     },
 
-    'c2d1d2': {
-        'desc': 'iL relative conductance',
-        'label': 'c^2d_1d_2',
-        'unit': None,
-        'factor': 1,
-        'min': -0.1,
-        'max': 1.1,
-        'alias': 'df["c"]**2 * df["d1"] * df["d2"]'
-    },
-
     'O': {
         'desc': 'iH activation gate opening',
         'label': 'O',
@@ -378,15 +294,6 @@ pltvars = {
         'alias': '1 - df["O"] - df["C"]'
     },
 
-    'O + 2OL': {
-        'desc': 'iH activation gate relative conductance',
-        'label': 'O\ +\ 2O_L',
-        'unit': None,
-        'factor': 1,
-        'min': -0.1,
-        'max': 2.1,
-        'alias': 'df["O"] + 2 * (1 - df["O"] - df["C"])'
-    },
 
     'P0': {
         'desc': 'iH regulating factor activation',

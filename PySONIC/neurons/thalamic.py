@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 14:36:20
+# @Last Modified time: 2019-03-13 15:08:46
 
 import numpy as np
 from ..core import PointNeuron
@@ -330,9 +330,9 @@ class ThalamicRE(Thalamic):
 
     # Default plotting scheme
     pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h', 'm3h'],
+        'i_{Na}\ kin.': ['m', 'h'],
         'i_{Kd}\ kin.': ['n'],
-        'i_{TS}\ kin.': ['s', 'u', 's2u']
+        'i_{TS}\ kin.': ['s', 'u']
     }
 
     def __init__(self):
@@ -435,7 +435,7 @@ class ThalamoCortical(Thalamic):
         'i_{Na}\ kin.': ['m', 'h'],
         'i_{Kd}\ kin.': ['n'],
         'i_{T}\ kin.': ['s', 'u'],
-        'i_{H}\ kin.': ['O', 'OL', 'O + 2OL']
+        'i_{H}\ kin.': ['O', 'OL']
     }
 
 

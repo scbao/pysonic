@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 14:35:33
+# @Last Modified time: 2019-03-13 15:07:59
 
 import numpy as np
 from ..core import PointNeuron
@@ -539,9 +539,7 @@ class CorticalLTS(Cortical):
         NaK_eqstates = super().steadyStates(Vm)
 
         # Compute Calcium channel gates steady-states
-        seq = self.sinf(Vm)
-        ueq = self.uinf(Vm)
-        Ca_eqstates = np.array([seq, ueq])
+        Ca_eqstates = np.array([self.sinf(Vm), self.uinf(Vm)])
 
         # Merge all steady-states and return
         return np.concatenate((NaK_eqstates, Ca_eqstates))
@@ -635,7 +633,7 @@ class CorticalIB(Cortical):
         'i_{Na}\ kin.': ['m', 'h'],
         'i_{Kd}\ kin.': ['n'],
         'i_M\ kin.': ['p'],
-        'i_{CaL}\ kin.': ['q', 'r', 'q2r']
+        'i_{CaL}\ kin.': ['q', 'r']
     }
 
     def __init__(self):
