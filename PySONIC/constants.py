@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-08 16:04:54
+# @Last Modified time: 2019-03-13 15:53:59
 
 ''' Algorithmic constants used in the package. '''
 
@@ -14,7 +14,7 @@ Rg = 8.31342  # Universal gas constant (Pa.m^3.mol^-1.K^-1 or J.mol^-1.K^-1)
 Z_Ca = 2  # Calcium valence
 Z_Na = 1  # Sodium valence
 Z_K = 1  # Potassium valence
-Celsius2Kelvin = 273.15  # Celsius to Kelvin conversion constant
+CELSIUS_2_KELVIN = 273.15  # Celsius to Kelvin conversion constant
 
 # Fitting and pre-processing
 LJFIT_PM_MAX = 1e8  # intermolecular pressure at the deflection lower bound for LJ fitting (Pa)

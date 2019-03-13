@@ -2,12 +2,12 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:40:33
+# @Last Modified time: 2019-03-13 15:53:56
 
 import numpy as np
 from ..core import PointNeuron
 from ..utils import vtrap, ghkDrive
-from ..constants import Celsius2Kelvin, Z_Na, Z_K
+from ..constants import CELSIUS_2_KELVIN, Z_Na, Z_K
 
 
 class FrankenhaeuserHuxley(PointNeuron):
@@ -52,7 +52,7 @@ class FrankenhaeuserHuxley(PointNeuron):
     def __init__(self):
         ''' Constructor of the class '''
         self.q10 = 3**((self.celsius - 20) / 10)
-        self.T = self.celsius + Celsius2Kelvin
+        self.T = self.celsius + CELSIUS_2_KELVIN
 
         # Names and initial states of the channels state probabilities
         self.states_names = ['m', 'h', 'n', 'p']

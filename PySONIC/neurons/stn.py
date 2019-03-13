@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:50:18
+# @Last Modified time: 2019-03-13 16:04:31
 
 
 import numpy as np
@@ -182,7 +182,7 @@ class OtsukaSTN(PointNeuron):
         self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
 
         # Compute conversion factor from electrical current (mA/m2) to Calcium concentration (M/s)
-        self.i2Cai = 1e-6 / (Z_Ca * self.deff * FARADAY)
+        self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
 
         # Initial states
         self.states0 = self.steadyStates(self.Vm0)
@@ -354,7 +354,7 @@ class OtsukaSTN(PointNeuron):
         '''
         iCaT = self.iCaT(p, q, Vm, Cai)
         iCaL = self.iCaL(c, d1, d2, Vm, Cai)
-        return - self.i2Cai * (iCaT + iCaL) - Cai / self.taur_Cai
+        return - self.iCa_to_Cai_rate * (iCaT + iCaL) - Cai / self.taur_Cai
 
 
     def derCaiSteadyState(self, Cai, Vm):

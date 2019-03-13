@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:40:06
+# @Last Modified time: 2019-03-13 16:02:19
 
 import os
 import time
@@ -90,6 +90,16 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :return: current per unit area (mA/m2)
         '''
         return sum(self.currents(Vm, states).values())
+
+    def currentToConcentrationRate(self, z_ion, depth):
+        ''' Compute the conversion factor from a specific ionic current (in mA/m2)
+            into a variation rate of submembrane ion concentration (in M/s).
+
+            :param: z_ion: ion valence
+            :param depth: submembrane depth (m)
+            :return: time derivative of submembrane ion concentration (M/s)
+        '''
+        return 1e-6 / (z_ion * depth * FARADAY)
 
 
     def getCurrentsPltVars(self):

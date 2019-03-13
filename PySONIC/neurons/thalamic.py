@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:41:33
+# @Last Modified time: 2019-03-13 16:06:17
 
 import numpy as np
 from ..core import PointNeuron
@@ -443,7 +443,7 @@ class ThalamoCortical(Thalamic):
         super().__init__()
 
         # Compute current to concentration conversion constant
-        self.i2Cai = 1e-6 / (self.deff * Z_Ca * FARADAY)
+        self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
 
         # Define names of the channels state probabilities
         self.states_names += ['O', 'C', 'P0', 'Cai']
@@ -667,7 +667,7 @@ class ThalamoCortical(Thalamic):
             :return: time derivative of Calcium concentration in submembranal space (M/s)
         '''
 
-        return (self.Cai_min - Cai) / self.taur_Cai - self.i2Cai * self.iCaT(s, u, Vm)
+        return (self.Cai_min - Cai) / self.taur_Cai - self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)
 
 
     def iKLeak(self, Vm):
@@ -714,7 +714,7 @@ class ThalamoCortical(Thalamic):
         iCaTeq = self.iCaT(seq, ueq, Vm)
 
         # Compute steady-state variables for the kinetics system of Ih
-        Cai_eq = self.Cai_min - self.taur_Cai * self.i2Cai * iCaTeq
+        Cai_eq = self.Cai_min - self.taur_Cai * self.iCa_to_Cai_rate * iCaTeq
         P0_eq = self.k2 / (self.k2 + self.k1 * Cai_eq**self.nCa)
         BA = self.betao(Vm) / self.alphao(Vm)
         O_eq = self.k4 / (self.k3 * (1 - P0_eq) + self.k4 * (1 + BA))
