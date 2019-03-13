@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 10:14:26
+# @Last Modified time: 2019-03-13 14:37:53
 
 
 from functools import partialmethod
@@ -76,8 +76,7 @@ class LeechTouch(PointNeuron):
         'i_{Na}\ kin.': ['m', 'h', 'm3h'],
         'i_K\ kin.': ['n'],
         'i_{Ca}\ kin.': ['s'],
-        'pools': ['C_Na_arb', 'C_Na_arb_activation', 'C_Ca_arb', 'C_Ca_arb_activation'],
-        'I': ['iNa', 'iK', 'iCa', 'iKCa', 'iPumpNa', 'iLeak', 'iNet']
+        'pools': ['C_Na_arb', 'C_Na_arb_activation', 'C_Ca_arb', 'C_Ca_arb_activation']
     }
 
 
@@ -220,32 +219,65 @@ class LeechTouch(PointNeuron):
     # ------------------ Currents -------------------
 
     def iNa(self, m, h, Vm):
-        ''' Sodium inward current. '''
+        ''' Sodium current
+
+            :param m: open-probability of m-gate
+            :param h: open-probability of h-gate
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
         return self.GNaMax * m**3 * h * (Vm - self.VNa)
 
 
     def iK(self, n, Vm):
-        ''' Potassium outward current. '''
+        ''' Delayed-rectifier Potassium current
+
+            :param n: open-probability of n-gate
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
         return self.GKMax * n**2 * (Vm - self.VK)
 
 
     def iCa(self, s, Vm):
+        ''' Calcium current
+
+            :param s: open-probability of s-gate
+            :param u: open-probability of u-gate
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
+
         ''' Calcium inward current. '''
         return self.GCaMax * s * (Vm - self.VCa)
 
 
     def iKCa(self, A_Ca, Vm):
-        ''' Calcium-activated Potassium outward current. '''
+        ''' Calcium-activated Potassium current
+
+            :param A_Ca: Calcium pool-dependent gate opening
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
         return self.GKCaMax * A_Ca * (Vm - self.VK)
 
 
     def iPumpNa(self, A_Na, Vm):
-        ''' Outward current mimicking the activity of the NaK-ATPase pump. '''
+        ''' NaK-ATPase pump current
+
+            :param A_Na: Sodium pool-dependent gate opening.
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
         return self.GPumpNa * A_Na * (Vm - self.VPumpNa)
 
 
     def iLeak(self, Vm):
-        ''' Leakage current. '''
+        ''' Non-specific leakage current
+
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
         return self.GLeak * (Vm - self.VLeak)
 
 
@@ -546,10 +578,10 @@ class LeechMech(PointNeuron):
 
 
     def iNa(self, m, h, Vm, C_Na_in):
-        ''' Compute the inward Sodium current per unit area.
+        ''' Sodium current
 
-            :param m: open-probability of Sodium channels
-            :param h: inactivation-probability of Sodium channels
+            :param m: open-probability of m-gate
+            :param h: open-probability of Sodium channels
             :param Vm: membrane potential (mV)
             :param C_Na_in: intracellular Sodium concentration (M)
             :return: current per unit area (mA/m2)
@@ -561,9 +593,9 @@ class LeechMech(PointNeuron):
 
 
     def iK(self, n, Vm):
-        ''' Compute the outward, delayed-rectifier Potassium current per unit area.
+        ''' Delayed-rectifier Potassium current
 
-            :param n: open-probability of delayed-rectifier Potassium channels
+            :param n: open-probability of n-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -573,9 +605,9 @@ class LeechMech(PointNeuron):
 
 
     def iCa(self, s, Vm, C_Ca_in):
-        ''' Compute the inward Calcium current per unit area.
+        ''' Calcium current
 
-            :param s: open-probability of Calcium channels
+            :param s: open-probability of s-gate
             :param Vm: membrane potential (mV)
             :param C_Ca_in: intracellular Calcium concentration (M)
             :return: current per unit area (mA/m2)
@@ -587,9 +619,9 @@ class LeechMech(PointNeuron):
 
 
     def iKCa(self, c, Vm):
-        ''' Compute the outward Calcium-dependent Potassium current per unit area.
+        ''' Calcium-activated Potassium current
 
-            :param c: open-probability of Calcium-dependent Potassium channels
+            :param c: open-probability of c-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -599,7 +631,7 @@ class LeechMech(PointNeuron):
 
 
     def iLeak(self, Vm):
-        ''' Compute the non-specific leakage current per unit area.
+        ''' Non-specific leakage current
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
@@ -660,8 +692,7 @@ class LeechPressure(LeechMech):
         'i_K\ kin.': ['n'],
         'i_{Ca}\ kin.': ['s'],
         'i_{KCa}\ kin.': ['c'],
-        'pools': ['C_Na', 'C_Ca'],
-        'I': ['iNa2', 'iK', 'iCa2', 'iKCa2', 'iPumpNa2', 'iPumpCa2', 'iLeak', 'iNet']
+        'pools': ['C_Na', 'C_Ca']
     }
 
 
@@ -691,7 +722,7 @@ class LeechPressure(LeechMech):
 
 
     def iPumpNa(self, C_Na_in):
-        ''' Outward current mimicking the activity of the NaK-ATPase pump.
+        ''' NaK-ATPase pump current
 
             :param C_Na_in: intracellular Sodium concentration (M)
             :return: current per unit area (mA/m2)
@@ -701,7 +732,7 @@ class LeechPressure(LeechMech):
 
 
     def iPumpCa(self, C_Ca_in):
-        ''' Outward current representing the activity of a Calcium pump.
+        ''' Calcium pump current
 
             :param C_Ca_in: intracellular Calcium concentration (M)
             :return: current per unit area (mA/m2)
@@ -854,8 +885,7 @@ class LeechRetzius(LeechMech):
         'i_K\ kin.': ['n'],
         'i_A\ kin.': ['a', 'b', 'ab'],
         'i_{Ca}\ kin.': ['s'],
-        'i_{KCa}\ kin.': ['c'],
-        'I': ['iNa', 'iK', 'iCa', 'iKCa2', 'iA', 'iLeak', 'iNet']
+        'i_{KCa}\ kin.': ['c']
     }
 
 
@@ -967,10 +997,10 @@ class LeechRetzius(LeechMech):
 
 
     def iA(self, a, b, Vm):
-        ''' Compute the outward, transient Potassium current per unit area.
+        ''' Transient Potassium current
 
-            :param a: open-probability of transient Potassium channels
-            :param b: inactivation-probability of transient Potassium channels
+            :param a: open-probability of a-gate
+            :param b: open-probability of b-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''

@@ -4,12 +4,13 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 09:42:39
+# @Last Modified time: 2019-03-13 14:50:53
 
 import os
 import time
 import pickle
 import abc
+import inspect
 import numpy as np
 from scipy.integrate import odeint
 import pandas as pd
@@ -82,13 +83,44 @@ class PointNeuron(metaclass=abc.ABCMeta):
         '''
 
     def iNet(self, Vm, states):
-        ''' Compute the net ionic current per unit area.
+        ''' Net membrane current
 
             :param Vm: membrane potential (mV)
             :states: state probabilities of the ion channels
             :return: current per unit area (mA/m2)
         '''
         return sum(self.currents(Vm, states).values())
+
+
+    def getCurrentsPltVars(self):
+        ''' Return a dictionary of implemented currents with their description. '''
+
+        # Get list of all current names
+        cnames = list(self.currents(np.nan, [np.nan] * len(self.states_names)).keys())
+
+        # Generate a dictionary of 1 plot varibale from each ionic current
+        cpltvars = {}
+        for cname in cnames:
+            cfunc = getattr(self, cname)
+            cargs = inspect.getargspec(cfunc)[0][1:]
+            cpltvars[cname] = dict(
+                desc=inspect.getdoc(cfunc).splitlines()[0],
+                label='I_{{{}}}'.format(cname[1:]),
+                unit='A/m^2',
+                factor=1e-3,
+                alias='neuron.{}({})'.format(cname, ', '.join(['df["{}"]'.format(a) for a in cargs]))
+            )
+
+        # add plot variable for net membrane current
+        cpltvars['iNet'] = dict(
+            desc=inspect.getdoc(getattr(self, 'iNet')).splitlines()[0],
+            label='I_{net}',
+            unit='A/m^2',
+            factor=1e-3,
+            alias='neuron.iNet(df["Vm"], neuron_states)'
+        )
+        return cpltvars
+
 
     @abc.abstractmethod
     def steadyStates(self, Vm):

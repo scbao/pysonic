@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-07 14:50:31
+# @Last Modified time: 2019-03-13 14:54:34
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
@@ -60,7 +60,7 @@ pltvars = {
         'label': 'P_M',
         'unit': 'kPa',
         'factor': 1e-3,
-        'alias': 'bls.PMavgpred(df["Z"].values)'
+        'alias': 'bls.PMavgpred(df["Z"])'
     },
 
     'Telastic': {
@@ -68,13 +68,12 @@ pltvars = {
         'label': 'T_E',
         'unit': 'mN/m',
         'factor': 1e3,
-        'alias': 'bls.TEleaflet(df["Z"].values)'
+        'alias': 'bls.TEleaflet(df["Z"])'
     },
 
     'Qm': {
         'desc': 'charge density',
-        # 'label': 'Q_m',
-        'label': 'charge',
+        'label': 'Q_m',
         'unit': 'nC/cm^2',
         'factor': 1e5,
         'min': -100,
@@ -88,7 +87,7 @@ pltvars = {
         'factor': 1e2,
         'min': 0.0,
         'max': 1.5,
-        'alias': 'bls.v_Capct(df["Z"].values)'
+        'alias': 'bls.v_Capct(df["Z"])'
     },
 
     'Vm': {
@@ -131,7 +130,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["m"].values**2 * df["h"].values'
+        'alias': 'df["m"]**2 * df["h"]'
     },
 
     'm3h': {
@@ -141,7 +140,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["m"].values**3 * df["h"].values'
+        'alias': 'df["m"]**3 * df["h"]'
     },
 
     'm4h': {
@@ -151,7 +150,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["m"].values**4 * df["h"].values'
+        'alias': 'df["m"]**4 * df["h"]'
     },
 
     'n': {
@@ -170,7 +169,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["n"].values**4'
+        'alias': 'df["n"]**4'
     },
 
     'p': {
@@ -207,7 +206,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["s"].values**2 * df["u"].values'
+        'alias': 'df["s"]**2 * df["u"]'
     },
 
     'p': {
@@ -235,11 +234,11 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["p"].values**2 * df["q"].values'
+        'alias': 'df["p"]**2 * df["q"]'
     },
 
     'r': {
-        'desc': 'iCaK Ca2+-gated activation gates opening',
+        'desc': 'iKCa Ca2+-gated activation gates opening',
         'label': 'r-gate',
         'unit': None,
         'factor': 1,
@@ -248,13 +247,13 @@ pltvars = {
     },
 
     'r2': {
-        'desc': 'iCaK relative conductance',
+        'desc': 'iKCa relative conductance',
         'label': 'r^2',
         'unit': None,
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["r"].values**2'
+        'alias': 'df["r"]**2'
     },
 
     # 'q': {
@@ -282,7 +281,7 @@ pltvars = {
     #     'factor': 1,
     #     'min': -0.1,
     #     'max': 1.1,
-    #     'alias': 'df["q"].values**2 * df["r"].values'
+    #     'alias': 'df["q"]**2 * df["r"]'
     # },
 
     # 'c': {
@@ -319,7 +318,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["a"].values**2 * df["b"].values'
+        'alias': 'df["a"]**2 * df["b"]'
     },
 
 
@@ -357,7 +356,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': 'df["c"].values**2 * df["d1"].values * df["d2"].values'
+        'alias': 'df["c"]**2 * df["d1"] * df["d2"]'
     },
 
     'O': {
@@ -376,7 +375,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 1.1,
-        'alias': '1 - df["O"].values - df["C"].values'
+        'alias': '1 - df["O"] - df["C"]'
     },
 
     'O + 2OL': {
@@ -386,7 +385,7 @@ pltvars = {
         'factor': 1,
         'min': -0.1,
         'max': 2.1,
-        'alias': 'df["O"].values + 2 * (1 - df["O"].values - df["C"].values)'
+        'alias': 'df["O"] + 2 * (1 - df["O"] - df["C"])'
     },
 
     'P0': {
@@ -398,13 +397,11 @@ pltvars = {
         'max': 1.1
     },
 
-    'C_Ca': {
+    'Cai': {
         'desc': 'sumbmembrane Ca2+ concentration',
         'label': '[Ca^{2+}]_i',
         'unit': 'uM',
         'factor': 1e6
-        # 'min': 0,
-        # 'max': 150.0
     },
 
     'C_Na': {
@@ -412,8 +409,6 @@ pltvars = {
         'label': '[Na^+]_i',
         'unit': 'uM',
         'factor': 1e6
-        # 'min': 0,
-        # 'max': 150.0
     },
 
     'C_Na_arb': {
@@ -454,182 +449,6 @@ pltvars = {
         'label': 'V_{leak}',
         'unit': 'mV',
         'factor': 1e0
-    },
-
-    'iLeak': {
-        'desc': 'leakage current',
-        'label': 'I_{Leak}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iLeak(df["Vm"].values)'
-    },
-
-    'iNa': {
-        'desc': 'Sodium current',
-        'label': 'I_{Na}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iNa(df["m"].values, df["h"].values, df["Vm"].values)'
-    },
-
-    'iNa2': {
-        'desc': 'Sodium current',
-        'label': 'I_{Na}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iNa(df["m"].values, df["h"].values, df["Vm"].values, df["C_Na"].values)'
-    },
-
-    'iKd': {
-        'desc': 'delayed-rectifier Potassium current',
-        'label': 'I_K',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iKd(df["n"].values, df["Vm"].values)'
-    },
-
-    'iM': {
-        'desc': 'slow non-inactivating Potassium current',
-        'label': 'I_M',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iM(df["p"].values, df["Vm"].values)'
-    },
-
-    'iP': {
-        'desc': 'non-specific delayed current',
-        'label': 'I_P',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iP(df["p"].values, df["Vm"].values)'
-    },
-
-    'iA': {
-        'desc': 'transient Potassium current',
-        'label': 'I_A',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iA(df["a"].values, df["b"].values, df["Vm"].values)'
-    },
-
-    'iCaT': {
-        'desc': 'low-threshold (T-type) Calcium current',
-        'label': 'I_{CaT}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iCaT(df["s"].values, df["u"].values, df["Vm"].values)'
-    },
-
-    'iCaT2': {
-        'desc': 'low-threshold (T-type) Calcium current',
-        'label': 'I_{CaT}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iCaT(df["p"].values, df["q"].values, df["Vm"].values)'
-    },
-
-    'iCaL': {
-        'desc': 'high-threshold (L-type) Calcium current',
-        'label': 'I_{CaL}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iCaL(df["q"].values, df["r"].values, df["Vm"].values)'
-    },
-
-    'iCaL2': {
-        'desc': 'high-threshold (L-type) Calcium current',
-        'label': 'I_{CaL}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iCaL(df["c"].values, df["d1"].values, df["d2"].values, df["Vm"].values)'
-    },
-
-    'iCaK': {
-        'desc': 'Calcium-activated Potassium current',
-        'label': 'I_{CaK}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iCaK(df["r"].values, df["Vm"].values)'
-    },
-
-    'iCa': {
-        'desc': 'leech Calcium current',
-        'label': 'I_{Ca}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iCa(df["s"].values, df["Vm"].values)'
-    },
-
-    'iCa2': {
-        'desc': 'leech Calcium current',
-        'label': 'I_{Ca}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iCa(df["s"].values, df["Vm"].values, df["C_Ca"].values)'
-    },
-
-    'iH': {
-        'desc': 'hyperpolarization-activated cationic current',
-        'label': 'I_h',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iH(df["O"].values, df["C"].values, df["Vm"].values)'
-    },
-
-    'iKLeak': {
-        'desc': 'leakage Potassium current',
-        'label': 'I_{KLeak}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iKLeak(df["Vm"].values)'
-    },
-
-    'iKCa': {
-        'desc': 'Calcium-activated Potassium current',
-        'label': 'I_{KCa}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iKCa(df["r"].values, df["Vm"].values)'
-    },
-
-    'iKCa2': {
-        'desc': 'Calcium-activated Potassium current',
-        'label': 'I_{KCa}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iKCa(df["c"].values, df["Vm"].values)'
-    },
-
-    'iPumpNa': {
-        'desc': 'Outward current mimicking the activity of the NaK-ATPase pump',
-        'label': 'I_{PumpNa}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iPumpNa(df["A_Na"].values, df["Vm"].values)'
-    },
-
-    'iPumpNa2': {
-        'desc': 'Outward current mimicking the activity of the NaK-ATPase pump',
-        'label': 'I_{PumpNa}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iPumpNa(df["C_Na"].values)'
-    },
-
-    'iPumpCa2': {
-        'desc': 'Outward current describing the removal of Ca2+ from the intracellular space',
-        'label': 'I_{PumpCa}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iPumpCa(df["C_Ca"].values)'
-    },
-
-    'iNet': {
-        'desc': 'net current',
-        'label': 'I_{net}',
-        'unit': 'A/m^2',
-        'factor': 1e-3,
-        'alias': 'neuron.iNet(df["Vm"].values, neuron_states)'
     },
 
     'alphaa': {

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 09:52:14
+# @Last Modified time: 2019-03-13 14:36:34
 
 import numpy as np
 from ..core import PointNeuron
@@ -45,8 +45,7 @@ class FrankenhaeuserHuxley(PointNeuron):
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
         'i_{Kd}\ kin.': ['n'],
-        'i_P\ kin.': ['p'],
-        'I': ['iNa', 'iKd', 'iP', 'iLeak', 'iNet']
+        'i_P\ kin.': ['p']
     }
 
 
@@ -196,10 +195,10 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def iNa(self, m, h, Vm):
-        ''' Compute the inward Sodium current per unit area.
+        ''' Sodium current
 
-            :param m: open-probability of Sodium channels
-            :param h: inactivation-probability of Sodium channels
+            :param m: open-probability of m-gate
+            :param h: open-probability of h-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -208,9 +207,9 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def iKd(self, n, Vm):
-        ''' Compute the outward, delayed-rectifier Potassium current per unit area.
+        ''' Delayed-rectifier Potassium current
 
-            :param n: open-probability of delayed-rectifier Potassium channels
+            :param n: open-probability of n-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -219,9 +218,9 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def iP(self, p, Vm):
-        ''' Compute the non-specific delayed current per unit area.
+        ''' Non-specific delayed current
 
-            :param p: open-probability of the non-specific delayed current channels
+            :param p: open-probability of p-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -230,7 +229,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def iLeak(self, Vm):
-        ''' Compute the non-specific leakage current per unit area.
+        ''' Non-specific leakage current
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)

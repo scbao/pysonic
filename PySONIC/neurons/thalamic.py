@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 09:50:29
+# @Last Modified time: 2019-03-13 14:36:20
 
 import numpy as np
 from ..core import PointNeuron
@@ -179,10 +179,10 @@ class Thalamic(PointNeuron):
 
 
     def iNa(self, m, h, Vm):
-        ''' Compute the inward Sodium current per unit area.
+        ''' Sodium current
 
-            :param m: open-probability of Sodium channels
-            :param h: inactivation-probability of Sodium channels
+            :param m: open-probability of m-gate
+            :param h: open-probability of h-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -192,9 +192,9 @@ class Thalamic(PointNeuron):
 
 
     def iKd(self, n, Vm):
-        ''' Compute the outward delayed-rectifier Potassium current per unit area.
+        ''' Delayed-rectifier Potassium current
 
-            :param n: open-probability of delayed-rectifier Potassium channels
+            :param n: open-probability of n-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -204,10 +204,10 @@ class Thalamic(PointNeuron):
 
 
     def iCaT(self, s, u, Vm):
-        ''' Compute the inward (Ts-type) Calcium current per unit area.
+        ''' Low-threshold (Ts-type) Calcium current
 
-            :param s: open-probability of the S-type activation gate of Calcium channels
-            :param u: open-probability of the U-type inactivation gate of Calcium channels
+            :param s: open-probability of s-gate
+            :param u: open-probability of u-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -217,7 +217,7 @@ class Thalamic(PointNeuron):
 
 
     def iLeak(self, Vm):
-        ''' Compute the non-specific leakage current per unit area.
+        ''' Non-specific leakage current
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
@@ -332,8 +332,7 @@ class ThalamicRE(Thalamic):
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h', 'm3h'],
         'i_{Kd}\ kin.': ['n'],
-        'i_{TS}\ kin.': ['s', 'u', 's2u'],
-        'I': ['iNa', 'iKd', 'iTs', 'iLeak', 'iNet']
+        'i_{TS}\ kin.': ['s', 'u', 's2u']
     }
 
     def __init__(self):
@@ -436,8 +435,7 @@ class ThalamoCortical(Thalamic):
         'i_{Na}\ kin.': ['m', 'h'],
         'i_{Kd}\ kin.': ['n'],
         'i_{T}\ kin.': ['s', 'u'],
-        'i_{H}\ kin.': ['O', 'OL', 'O + 2OL'],
-        'I': ['iNa', 'iKd', 'iT', 'iH', 'iKLeak', 'iLeak', 'iNet']
+        'i_{H}\ kin.': ['O', 'OL', 'O + 2OL']
     }
 
 
@@ -676,7 +674,7 @@ class ThalamoCortical(Thalamic):
 
 
     def iKLeak(self, Vm):
-        ''' Compute the voltage-dependent leak Potassium current per unit area.
+        ''' Potassium leakage current
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
@@ -686,15 +684,15 @@ class ThalamoCortical(Thalamic):
 
 
     def iH(self, O, C, Vm):
-        ''' Compute the outward mixed cationic current per unit area.
+        ''' Outward mixed cationic current
 
             :param O: proportion of the channels in open form
-            :param OL: proportion of the channels in locked-open form
+            :param C: proportion of the channels in closed form
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
 
-        OL = 1 - O - C
+        OL = 1 - O - C  # proportion of channels in locked-open form
         return self.GhMax * (O + 2 * OL) * (Vm - self.Vh)
 
 

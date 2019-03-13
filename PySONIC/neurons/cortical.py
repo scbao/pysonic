@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 09:47:46
+# @Last Modified time: 2019-03-13 14:35:33
 
 import numpy as np
 from ..core import PointNeuron
@@ -190,10 +190,10 @@ class Cortical(PointNeuron):
 
 
     def iNa(self, m, h, Vm):
-        ''' Compute the inward Sodium current per unit area.
+        ''' Sodium current
 
-            :param m: open-probability of Sodium channels
-            :param h: inactivation-probability of Sodium channels
+            :param m: open-probability of m-gate
+            :param h: open-probability of h-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -203,9 +203,9 @@ class Cortical(PointNeuron):
 
 
     def iKd(self, n, Vm):
-        ''' Compute the outward, delayed-rectifier Potassium current per unit area.
+        ''' Delayed-rectifier Potassium current
 
-            :param n: open-probability of delayed-rectifier Potassium channels
+            :param n: open-probability of n-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -215,9 +215,9 @@ class Cortical(PointNeuron):
 
 
     def iM(self, p, Vm):
-        ''' Compute the outward, slow non-inactivating Potassium current per unit area.
+        ''' Slow non-inactivating Potassium current
 
-            :param p: open-probability of the slow non-inactivating Potassium channels
+            :param p: open-probability of p-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -227,7 +227,7 @@ class Cortical(PointNeuron):
 
 
     def iLeak(self, Vm):
-        ''' Compute the non-specific leakage current per unit area.
+        ''' Non-specific leakage current
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
@@ -331,8 +331,7 @@ class CorticalRS(Cortical):
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
         'i_{Kd}\ kin.': ['n'],
-        'i_M\ kin.': ['p'],
-        'I': ['iNa', 'iKd', 'iM', 'iLeak', 'iNet']
+        'i_M\ kin.': ['p']
     }
 
 
@@ -373,8 +372,7 @@ class CorticalFS(Cortical):
     pltvars_scheme = {
         'i_{Na}\ kin.': ['m', 'h'],
         'i_{Kd}\ kin.': ['n'],
-        'i_M\ kin.': ['p'],
-        'I': ['iNa', 'iKd', 'iM', 'iLeak', 'iNet']
+        'i_M\ kin.': ['p']
     }
 
 
@@ -423,8 +421,7 @@ class CorticalLTS(Cortical):
         'i_{Na}\ kin.': ['m', 'h'],
         'i_{Kd}\ kin.': ['n'],
         'i_M\ kin.': ['p'],
-        'i_{CaT}\ kin.': ['s', 'u'],
-        'I': ['iNa', 'iKd', 'iM', 'iCaT', 'iLeak', 'iNet']
+        'i_{CaT}\ kin.': ['s', 'u']
     }
 
     def __init__(self):
@@ -515,10 +512,10 @@ class CorticalLTS(Cortical):
 
 
     def iCaT(self, s, u, Vm):
-        ''' Compute the inward, low-threshold (T-type) Calcium current per unit area.
+        ''' Low-threshold (T-type) Calcium current
 
-            :param s: open-probability of the S-type activation gate of Calcium channels
-            :param u: open-probability of the U-type inactivation gate of Calcium channels
+            :param s: open-probability of s-gate
+            :param u: open-probability of u-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
@@ -638,8 +635,7 @@ class CorticalIB(Cortical):
         'i_{Na}\ kin.': ['m', 'h'],
         'i_{Kd}\ kin.': ['n'],
         'i_M\ kin.': ['p'],
-        'i_{CaL}\ kin.': ['q', 'r', 'q2r'],
-        'I': ['iNa', 'iKd', 'iM', 'iCaL', 'iLeak', 'iNet']
+        'i_{CaL}\ kin.': ['q', 'r', 'q2r']
     }
 
     def __init__(self):
@@ -727,10 +723,10 @@ class CorticalIB(Cortical):
 
 
     def iCaL(self, q, r, Vm):
-        ''' Compute the inward L-type Calcium current per unit area.
+        ''' High-threshold (L-type) Calcium current
 
-            :param q: open-probability of Q gate (prob)
-            :param r: open-probability of R gate (prob)
+            :param q: open-probability of q-gate
+            :param r: open-probability of r-gate
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''

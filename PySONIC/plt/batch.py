@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 13:59:51
+# @Last Modified time: 2019-03-13 14:54:06
 
 import sys
 import pickle
@@ -121,6 +121,8 @@ def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
                 vars_dict = {'P_{AC}': ['Pac'], 'Z': ['Z'], 'n_g': ['ng']}
             if sim_type in ['ASTIM', 'ESTIM'] and hasattr(neuron, 'pltvars_scheme'):
                 vars_dict.update(neuron.pltvars_scheme)
+                pltvars.update(neuron.getCurrentsPltVars())
+                vars_dict['I'] = list(neuron.getCurrentsPltVars().keys())
         labels = list(vars_dict.keys())
         naxes = len(vars_dict)
 
@@ -183,7 +185,7 @@ def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
                         # var = np.insert(var, 0, var[0])
 
                 # Plot variable
-                if 'constant' in pltvar or pltvar['desc'] in ['net current']:
+                if 'constant' in pltvar or pltvar['label'] in ['I_{net}']:
                     ax.plot(t * t_plt['factor'], var * pltvar['factor'], '--', c='black', lw=lw,
                             label='${}$'.format(pltvar['label']))
                 else:
@@ -198,7 +200,7 @@ def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
                     ax.axvspan(tpatch_on[j] * t_plt['factor'], tpatch_off[j] * t_plt['factor'],
                                edgecolor='none', facecolor='#8A8A8A', alpha=0.2)
             # Legend
-            if nvars > 1:
+            if nvars > 1 or 'gate' in ax_pltvars[0]['desc']:
                 ax.legend(fontsize=fs, loc=7, ncol=nvars // 4 + 1)
 
 

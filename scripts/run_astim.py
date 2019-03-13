@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 13:49:41
+# @Last Modified time: 2019-03-13 11:03:01
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -153,7 +153,7 @@ def main():
             vars_dict = {'V_m': ['Vm']}
         elif args['plotall']:
             vars_dict = None
-        plotBatch(pkl_filepaths, vars_dict=vars_dict)
+        plotBatch(pkl_filepaths, vars_dict=vars_dict, fs=10)
         plt.show()
 
 
