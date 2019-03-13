@@ -173,16 +173,15 @@ class OtsukaSTN(PointNeuron):
         ]
 
         # Compute Calcium reversal potential for Cai = 5 nM
-        self.VCa = nernst(Z_Ca, self.CCa_in0, self.CCa_out, self.T)  # mV
+        ECa0 = nernst(Z_Ca, self.CCa_in0, self.CCa_out, self.T)  # mV
 
         # Compute deff for that reversal potential
-        iCaT = self.iCaT(
-            self.pinf(self.Vm0), self.qinf(self.Vm0), self.Vm0)  # mA/m2
-        iCaL = self.iCaL(
-            self.cinf(self.Vm0), self.d1inf(self.Vm0), self.d2inf(self.CCa_in0), self.Vm0)  # mA/m2
+        iCaT = self.iCaT(self.pinf(self.Vm0), self.qinf(self.Vm0), self.Vm0, ECa0)  # mA/m2
+        iCaL = self.iCaL(self.cinf(self.Vm0), self.d1inf(self.Vm0), self.d2inf(self.CCa_in0),
+                         self.Vm0, ECa0)  # mA/m2
         self.deff = -(iCaT + iCaL) / (Z_Ca * FARADAY * self.KCa * self.CCa_in0) * 1e-6  # m
 
-        # Compute conversion factor from electrical current (mA/m2) to Calcium concentration (M)
+        # Compute conversion factor from electrical current (mA/m2) to Calcium concentration (M/s)
         self.i2CCa = 1e-6 / (Z_Ca * self.deff * FARADAY)
 
         # Initial states
@@ -353,9 +352,9 @@ class OtsukaSTN(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: time derivative of Calcium concentration in submembranal space (M/s)
         '''
-        self.VCa = nernst(Z_Ca, C_Ca, self.CCa_out, self.T)  # mV
-        iCaT = self.iCaT(self.pinf(Vm), self.qinf(Vm), Vm)
-        iCaL = self.iCaL(self.cinf(Vm), self.d1inf(Vm), self.d2inf(C_Ca), Vm)
+        ECa = nernst(Z_Ca, C_Ca, self.CCa_out, self.T)  # mV
+        iCaT = self.iCaT(self.pinf(Vm), self.qinf(Vm), Vm, ECa)
+        iCaL = self.iCaL(self.cinf(Vm), self.d1inf(Vm), self.d2inf(C_Ca), Vm, ECa)
         return self.derC_Ca(C_Ca, iCaT, iCaL)
 
 
@@ -406,27 +405,29 @@ class OtsukaSTN(PointNeuron):
         return self.GAMax * a**2 * b * (Vm - self.VK)
 
 
-    def iCaT(self, p, q, Vm):
+    def iCaT(self, p, q, Vm, ECa):
         ''' Compute the inward low-threshold Calcium current per unit area.
 
             :param p: open-probability of p-gate
             :param q: open-probability of q-gate
             :param Vm: membrane potential (mV)
+            :param ECa: Calcium Nernst potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GTMax * p**2 * q * (Vm - self.VCa)
+        return self.GTMax * p**2 * q * (Vm - ECa)
 
 
-    def iCaL(self, c, d1, d2, Vm):
+    def iCaL(self, c, d1, d2, Vm, ECa):
         ''' Compute the inward high-threshold Calcium current per unit area.
 
             :param c: open-probability of c-gate
             :param d1: open-probability of d1-gate
             :param d2: open-probability of d2-gate
             :param Vm: membrane potential (mV)
+            :param ECa: Calcium Nernst potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GLMax * c**2 * d1 * d2 * (Vm - self.VCa)
+        return self.GLMax * c**2 * d1 * d2 * (Vm - ECa)
 
 
     def iKCa(self, r, Vm):
@@ -448,39 +449,20 @@ class OtsukaSTN(PointNeuron):
         return self.GLeak * (Vm - self.VLeak)
 
 
-    def iNet(self, Vm, states):
-        ''' Compute net membrane current per unit area. '''
-
-        a, b, c, d1, d2, m, h, n, p, q, r, CCa_in = states
-
-        # update VCa based on intracellular Calcium concentration
-        self.VCa = nernst(Z_Ca, CCa_in, self.CCa_out, self.T)  # mV
-
-        return (
-            self.iNa(m, h, Vm) +
-            self.iKd(n, Vm) +
-            self.iA(a, b, Vm) +
-            self.iCaT(p, q, Vm) +
-            self.iCaL(c, d1, d2, Vm) +
-            self.iKCa(r, Vm) +
-            self.iLeak(Vm)
-        )  # mA/m2
-
-
     def currents(self, Vm, states):
-        ''' Compute all membrane currents per unit area. '''
+        ''' Concrete implementation of the abstract API method. '''
 
         a, b, c, d1, d2, m, h, n, p, q, r, CCa_in = states
 
-        # update VCa based on intracellular Calcium concentration
-        self.VCa = nernst(Z_Ca, CCa_in, self.CCa_out, self.T)  # mV
+        # Compute ECa based on intracellular Calcium concentration
+        ECa = nernst(Z_Ca, CCa_in, self.CCa_out, self.T)  # mV
 
         return {
             'iNa': self.iNa(m, h, Vm),
             'iKd': self.iKd(n, Vm),
             'iA': self.iA(a, b, Vm),
-            'iCaT': self.iCaT(p, q, Vm),
-            'iCaL': self.iCaL(c, d1, d2, Vm),
+            'iCaT': self.iCaT(p, q, Vm, ECa),
+            'iCaL': self.iCaL(c, d1, d2, Vm, ECa),
             'iKCa': self.iKCa(r, Vm),
             'iLeak': self.iLeak(Vm)
         }  # mA/m2
@@ -524,8 +506,9 @@ class OtsukaSTN(PointNeuron):
         dqdt = self.derQ(Vm, q)
         drdt = self.derR(CCa_in, r)
 
-        iCaT = self.iCaT(p, q, Vm)
-        iCaL = self.iCaL(c, d1, d2, Vm)
+        ECa = nernst(Z_Ca, CCa_in, self.CCa_out, self.T)  # mV
+        iCaT = self.iCaT(p, q, Vm, ECa)
+        iCaL = self.iCaL(c, d1, d2, Vm, ECa)
         dCCaindt = self.derC_Ca(CCa_in, iCaT, iCaL)
 
         return [dadt, dbdt, dcdt, dd1dt, dd2dt, dmdt, dhdt, dndt, dpdt, dqdt, drdt, dCCaindt]
@@ -606,8 +589,9 @@ class OtsukaSTN(PointNeuron):
         dqdt = rates[16] * (1 - q) - rates[17] * q
         drdt = self.derR(CCa_in, r)
 
-        iCaT = self.iCaT(p, q, Vmeff)
-        iCaL = self.iCaL(c, d1, d2, Vmeff)
+        ECa = nernst(Z_Ca, CCa_in, self.CCa_out, self.T)  # mV
+        iCaT = self.iCaT(p, q, Vmeff, ECa)
+        iCaL = self.iCaL(c, d1, d2, Vmeff, ECa)
         dCCaindt = self.derC_Ca(CCa_in, iCaT, iCaL)
 
         return [dadt, dbdt, dcdt, dd1dt, dd2dt, dmdt, dhdt, dndt, dpdt, dqdt, drdt, dCCaindt]

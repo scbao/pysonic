@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 11:52:13
+# @Last Modified time: 2019-03-13 09:42:39
 
 import os
 import time
@@ -73,6 +73,14 @@ class PointNeuron(metaclass=abc.ABCMeta):
         return 'Should never reach here'
 
     @abc.abstractmethod
+    def currents(self, Vm, states):
+        ''' Compute all ionic currents per unit area.
+
+            :param Vm: membrane potential (mV)
+            :states: state probabilities of the ion channels
+            :return: dictionary of ionic currents per unit area (mA/m2)
+        '''
+
     def iNet(self, Vm, states):
         ''' Compute the net ionic current per unit area.
 
@@ -80,6 +88,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :states: state probabilities of the ion channels
             :return: current per unit area (mA/m2)
         '''
+        return sum(self.currents(Vm, states).values())
 
     @abc.abstractmethod
     def steadyStates(self, Vm):

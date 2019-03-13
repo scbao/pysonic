@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-06 17:38:04
+# @Last Modified time: 2019-03-13 09:52:14
 
 import numpy as np
 from ..core import PointNeuron
@@ -238,15 +238,15 @@ class FrankenhaeuserHuxley(PointNeuron):
         return self.GLeak * (Vm - self.VLeak)
 
 
-    def iNet(self, Vm, states):
+    def currents(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
         m, h, n, p = states
-        return (
-            self.iNa(m, h, Vm) +
-            self.iKd(n, Vm) +
-            self.iP(p, Vm) +
-            self.iLeak(Vm)
-        )  # mA/m2
+        return {
+            'iNa': self.iNa(m, h, Vm),
+            'iKd': self.iKd(n, Vm),
+            'iP': self.iP(p, Vm),
+            'iLeak': self.iLeak(Vm)
+        }  # mA/m2
 
 
     def steadyStates(self, Vm):

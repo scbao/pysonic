@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-09 21:49:52
+# @Last Modified time: 2019-03-13 09:50:29
 
 import numpy as np
 from ..core import PointNeuron
@@ -226,15 +226,8 @@ class Thalamic(PointNeuron):
         return self.GLeak * (Vm - self.VLeak)
 
 
-    def iNet(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
-
-        m, h, n, s, u = states
-        return (self.iNa(m, h, Vm) + self.iKd(n, Vm) +
-                self.iCaT(s, u, Vm) + self.iLeak(Vm))  # mA/m2
-
-
     def currents(self, Vm, states):
+        ''' Concrete implementation of the abstract API method. '''
         m, h, n, s, u = states
         return {
             'iNa': self.iNa(m, h, Vm),
@@ -705,14 +698,8 @@ class ThalamoCortical(Thalamic):
         return self.GhMax * (O + 2 * OL) * (Vm - self.Vh)
 
 
-    def iNet(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
-
-        m, h, n, s, u, O, C, _, _ = states
-        return super().iNet(Vm, [m, h, n, s, u]) + self.iKLeak(Vm) + self.iH(O, C, Vm)  # mA/m2
-
-
     def currents(self, Vm, states):
+        ''' Concrete implementation of the abstract API method. '''
         m, h, n, s, u, O, C, _, _ = states
         currents = super().currents(Vm, [m, h, n, s, u])
         currents['iKLeak'] = self.iKLeak(Vm)  # mA/m2

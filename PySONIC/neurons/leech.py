@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 11:56:27
+# @Last Modified time: 2019-03-13 10:14:26
 
 
 from functools import partialmethod
@@ -249,12 +249,18 @@ class LeechTouch(PointNeuron):
         return self.GLeak * (Vm - self.VLeak)
 
 
-    def iNet(self, Vm, states):
+    def currents(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, _, A_Na, _, A_Ca = states
-        return (self.iNa(m, h, Vm) + self.iK(n, Vm) + self.iCa(s, Vm) +
-                self.iLeak(Vm) + self.iPumpNa(A_Na, Vm) + self.iKCa(A_Ca, Vm))  # mA/m2
+        return {
+            'iNa': self.iNa(m, h, Vm),
+            'iK': self.iK(n, Vm),
+            'iCa': self.iCa(s, Vm),
+            'iLeak': self.iLeak(Vm),
+            'iPumpNa': self.iPumpNa(A_Na, Vm),
+            'iKCa': self.iKCa(A_Ca, Vm)
+        }  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -704,13 +710,19 @@ class LeechPressure(LeechMech):
         return self.iCaS * (C_Ca_in - self.C_Ca_in0) / 1.5
 
 
-    def iNet(self, Vm, states):
+    def currents(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, c, C_Na_in, C_Ca_in = states
-        return (self.iNa(m, h, Vm, C_Na_in) + self.iK(n, Vm) + self.iCa(s, Vm, C_Ca_in) +
-                self.iKCa(c, Vm) + self.iLeak(Vm) +
-                (self.iPumpNa(C_Na_in) / 3.) + self.iPumpCa(C_Ca_in))  # mA/m2
+        return {
+            'iNa': self.iNa(m, h, Vm, C_Na_in),
+            'iK': self.iK(n, Vm),
+            'iCa': self.iCa(s, Vm, C_Ca_in),
+            'iKCa': self.iKCa(c, Vm),
+            'iLeak': self.iLeak(Vm),
+            'iPumpNa': self.iPumpNa(C_Na_in) / 3.,
+            'iPumpCa': self.iPumpCa(C_Ca_in)
+        }  # mA/m2
 
 
     def steadyStates(self, Vm):
@@ -967,12 +979,18 @@ class LeechRetzius(LeechMech):
         return GK * (Vm - self.VK)
 
 
-    def iNet(self, Vm, states):
+    def currents(self, Vm, states):
         ''' Concrete implementation of the abstract API method. '''
 
         m, h, n, s, c, a, b = states
-        return (self.iNa(m, h, Vm) + self.iK(n, Vm) + self.iCa(s, Vm) + self.iLeak(Vm) +
-                self.iKCa(c, Vm) + self.iA(a, b, Vm))  # mA/m2
+        return {
+            'iNa': self.iNa(m, h, Vm),
+            'iK': self.iK(n, Vm),
+            'iCa': self.iCa(s, Vm),
+            'iLeak': self.iLeak(Vm),
+            'iKCa': self.iKCa(c, Vm),
+            'iA': self.iA(a, b, Vm)
+        }  # mA/m2
 
 
     def steadyStates(self, Vm):
