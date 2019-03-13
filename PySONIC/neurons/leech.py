@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:41:16
+# @Last Modified time: 2019-03-13 18:25:17
 
 
 from functools import partialmethod
@@ -38,17 +38,17 @@ class LeechTouch(PointNeuron):
     # Cell-specific biophysical parameters
     Cm0 = 1e-2  # Cell membrane resting capacitance (F/m2)
     Vm0 = -53.58  # Cell membrane resting potential (mV)
-    VNa = 45.0  # Sodium Nernst potential (mV)
-    VK = -62.0  # Potassium Nernst potential (mV)
-    VCa = 60.0  # Calcium Nernst potential (mV)
-    VLeak = -48.0  # Non-specific leakage Nernst potential (mV)
-    VPumpNa = -300.0  # Sodium pump current reversal potential (mV)
-    GNaMax = 3500.0  # Max. conductance of Sodium current (S/m^2)
-    GKMax = 900.0  # Max. conductance of Potassium current (S/m^2)
-    GCaMax = 20.0  # Max. conductance of Calcium current (S/m^2)
-    GKCaMax = 236.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
-    GLeak = 1.0  # Conductance of non-specific leakage current (S/m^2)
-    GPumpNa = 20.0  # Max. conductance of Sodium pump current (S/m^2)
+    ENa = 45.0  # Sodium Nernst potential (mV)
+    EK = -62.0  # Potassium Nernst potential (mV)
+    ECa = 60.0  # Calcium Nernst potential (mV)
+    ELeak = -48.0  # Non-specific leakage Nernst potential (mV)
+    EPumpNa = -300.0  # Sodium pump current reversal potential (mV)
+    gNabar = 3500.0  # Max. conductance of Sodium current (S/m^2)
+    gKbar = 900.0  # Max. conductance of Potassium current (S/m^2)
+    gCabar = 20.0  # Max. conductance of Calcium current (S/m^2)
+    gKCabar = 236.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
+    gLeak = 1.0  # Conductance of non-specific leakage current (S/m^2)
+    gPumpNa = 20.0  # Max. conductance of Sodium pump current (S/m^2)
     taum = 0.1e-3  # Sodium activation time constant (s)
     taus = 0.6e-3  # Calcium activation time constant (s)
 
@@ -63,13 +63,13 @@ class LeechTouch(PointNeuron):
     curr_factor = 1e6  # mA to nA
 
     # Time constants for the removal of ions from intracellular pools (s)
-    tau_Na_removal = 16.0  # Na+ removal
-    tau_Ca_removal = 1.25  # Ca2+ removal
+    taur_Na = 16.0  # Na+ removal
+    taur_Ca = 1.25  # Ca2+ removal
 
     # Time constants for the iPumpNa and iKCa currents activation
     # from specific intracellular ions (s)
-    tau_PumpNa_act = 0.1  # iPumpNa activation from intracellular Na+
-    tau_KCa_act = 0.01  # iKCa activation from intracellular Ca2+
+    taua_PumpNa = 0.1  # iPumpNa activation from intracellular Na+
+    taua_KCa = 0.01  # iKCa activation from intracellular Ca2+
 
     # Default plotting scheme
     pltvars_scheme = {
@@ -81,20 +81,11 @@ class LeechTouch(PointNeuron):
 
 
     def __init__(self):
-        ''' Constructor of the class. '''
-
-        # Names and initial states of the channels state probabilities
         self.states_names = ['m', 'h', 'n', 's', 'C_Na', 'A_Na', 'C_Ca', 'A_Ca']
-        self.states0 = np.array([])
-
-        # Names of the channels effective coefficients
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphas', 'betas']
-
         self.K_Na = self.K_Na_original * self.surface * self.curr_factor
         self.K_Ca = self.K_Ca_original * self.surface * self.curr_factor
-
-        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
 
 
@@ -195,22 +186,22 @@ class LeechTouch(PointNeuron):
 
     def derC_Na(self, C_Na, I_Na):
         ''' Derivative of Sodium concentration in intracellular pool. '''
-        return self._derC_ion(C_Na, I_Na, self.K_Na, self.tau_Na_removal)
+        return self._derC_ion(C_Na, I_Na, self.K_Na, self.taur_Na)
 
 
     def derA_Na(self, A_Na, C_Na):
         ''' Derivative of Sodium pool-dependent activation function for iPumpNa. '''
-        return self._derA_ion(A_Na, C_Na, self.tau_PumpNa_act)
+        return self._derA_ion(A_Na, C_Na, self.taua_PumpNa)
 
 
     def derC_Ca(self, C_Ca, I_Ca):
         ''' Derivative of Calcium concentration in intracellular pool. '''
-        return self._derC_ion(C_Ca, I_Ca, self.K_Ca, self.tau_Ca_removal)
+        return self._derC_ion(C_Ca, I_Ca, self.K_Ca, self.taur_Ca)
 
 
     def derA_Ca(self, A_Ca, C_Ca):
         ''' Derivative of Calcium pool-dependent activation function for iKCa. '''
-        return self._derA_ion(A_Ca, C_Ca, self.tau_KCa_act)
+        return self._derA_ion(A_Ca, C_Ca, self.taua_KCa)
 
 
     # ------------------ Currents -------------------
@@ -223,7 +214,7 @@ class LeechTouch(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GNaMax * m**3 * h * (Vm - self.VNa)
+        return self.gNabar * m**3 * h * (Vm - self.ENa)
 
 
     def iK(self, n, Vm):
@@ -233,7 +224,7 @@ class LeechTouch(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GKMax * n**2 * (Vm - self.VK)
+        return self.gKbar * n**2 * (Vm - self.EK)
 
 
     def iCa(self, s, Vm):
@@ -246,7 +237,7 @@ class LeechTouch(PointNeuron):
         '''
 
         ''' Calcium inward current. '''
-        return self.GCaMax * s * (Vm - self.VCa)
+        return self.gCabar * s * (Vm - self.ECa)
 
 
     def iKCa(self, A_Ca, Vm):
@@ -256,7 +247,7 @@ class LeechTouch(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GKCaMax * A_Ca * (Vm - self.VK)
+        return self.gKCabar * A_Ca * (Vm - self.EK)
 
 
     def iPumpNa(self, A_Na, Vm):
@@ -266,7 +257,7 @@ class LeechTouch(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GPumpNa * A_Na * (Vm - self.VPumpNa)
+        return self.gPumpNa * A_Na * (Vm - self.EPumpNa)
 
 
     def iLeak(self, Vm):
@@ -275,12 +266,11 @@ class LeechTouch(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GLeak * (Vm - self.VLeak)
+        return self.gLeak * (Vm - self.ELeak)
 
 
     def currents(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
-
+        ''' Overriding of abstract parent method. '''
         m, h, n, s, _, A_Na, _, A_Ca = states
         return {
             'iNa': self.iNa(m, h, Vm),
@@ -293,7 +283,7 @@ class LeechTouch(PointNeuron):
 
 
     def steadyStates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Standard gating dynamics: Solve the equation dx/dt = 0 at Vm for each x-state
         meq = self.minf(Vm)
@@ -315,9 +305,7 @@ class LeechTouch(PointNeuron):
 
 
     def derStates(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
-
-        # Unpack states
+        ''' Overriding of abstract parent method. '''
         m, h, n, s, C_Na, A_Na, C_Ca, A_Ca = states
 
         # Standard gating states derivatives
@@ -341,7 +329,7 @@ class LeechTouch(PointNeuron):
 
 
     def getEffRates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
         Tm = self.taum
@@ -370,13 +358,12 @@ class LeechTouch(PointNeuron):
 
 
     def derStatesEff(self, Qm, states, interp_data):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.coeff_names])
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
-        # Unpack states
         m, h, n, s, C_Na, A_Na, C_Ca, A_Ca = states
 
         # Standard gating states derivatives
@@ -584,9 +571,9 @@ class LeechMech(PointNeuron):
             :return: current per unit area (mA/m2)
         '''
 
-        GNa = self.GNaMax * m**4 * h
-        VNa = nernst(Z_Na, C_Na_in, self.C_Na_out, self.T)  # mV
-        return GNa * (Vm - VNa)
+        GNa = self.gNabar * m**4 * h
+        ENa = nernst(Z_Na, C_Na_in, self.C_Na_out, self.T)  # mV
+        return GNa * (Vm - ENa)
 
 
     def iK(self, n, Vm):
@@ -597,8 +584,8 @@ class LeechMech(PointNeuron):
             :return: current per unit area (mA/m2)
         '''
 
-        GK = self.GKMax * n**2
-        return GK * (Vm - self.VK)
+        GK = self.gKbar * n**2
+        return GK * (Vm - self.EK)
 
 
     def iCa(self, s, Vm, C_Ca_in):
@@ -610,9 +597,9 @@ class LeechMech(PointNeuron):
             :return: current per unit area (mA/m2)
         '''
 
-        GCa = self.GCaMax * s
-        VCa = nernst(Z_Ca, C_Ca_in, self.C_Ca_out, self.T)  # mV
-        return GCa * (Vm - VCa)
+        GCa = self.gCabar * s
+        ECa = nernst(Z_Ca, C_Ca_in, self.C_Ca_out, self.T)  # mV
+        return GCa * (Vm - ECa)
 
 
     def iKCa(self, c, Vm):
@@ -623,8 +610,8 @@ class LeechMech(PointNeuron):
             :return: current per unit area (mA/m2)
         '''
 
-        GKCa = self.GKCaMax * c
-        return GKCa * (Vm - self.VK)
+        GKCa = self.gKCabar * c
+        return GKCa * (Vm - self.EK)
 
 
     def iLeak(self, Vm):
@@ -634,7 +621,7 @@ class LeechMech(PointNeuron):
             :return: current per unit area (mA/m2)
         '''
 
-        return self.GLeak * (Vm - self.VLeak)
+        return self.gLeak * (Vm - self.ELeak)
 
 
 class LeechPressure(LeechMech):
@@ -666,19 +653,19 @@ class LeechPressure(LeechMech):
     C_Na_in0 = 0.01  # Initial Sodium intracellular concentration (M)
     C_Ca_in0 = 1e-7  # Initial Calcium intracellular concentration (M)
 
-    # VNa = 60  # Sodium Nernst potential, from MOD file on ModelDB (mV)
-    # VCa = 125  # Calcium Nernst potential, from MOD file on ModelDB (mV)
-    VK = -68.0  # Potassium Nernst potential (mV)
-    VLeak = -49.0  # Non-specific leakage Nernst potential (mV)
+    # ENa = 60  # Sodium Nernst potential, from MOD file on ModelDB (mV)
+    # ECa = 125  # Calcium Nernst potential, from MOD file on ModelDB (mV)
+    EK = -68.0  # Potassium Nernst potential (mV)
+    ELeak = -49.0  # Non-specific leakage Nernst potential (mV)
     INaPmax = 70.0  # Maximum pump rate of the NaK-ATPase (mA/m2)
     khalf_Na = 0.012  # Sodium concentration at which NaK-ATPase is at half its maximum rate (M)
     ksteep_Na = 1e-3  # Sensitivity of NaK-ATPase to varying Sodium concentrations (M)
     iCaS = 0.1  # Calcium pump current parameter (mA/m2)
-    GNaMax = 3500.0  # Max. conductance of Sodium current (S/m^2)
-    GKMax = 60.0  # Max. conductance of Potassium current (S/m^2)
-    GCaMax = 0.02  # Max. conductance of Calcium current (S/m^2)
-    GKCaMax = 8.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
-    GLeak = 5.0  # Conductance of non-specific leakage current (S/m^2)
+    gNabar = 3500.0  # Max. conductance of Sodium current (S/m^2)
+    gKbar = 60.0  # Max. conductance of Potassium current (S/m^2)
+    gCabar = 0.02  # Max. conductance of Calcium current (S/m^2)
+    gKCabar = 8.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
+    gLeak = 5.0  # Conductance of non-specific leakage current (S/m^2)
 
     diam = 50e-6  # Cell soma diameter (m)
 
@@ -736,7 +723,7 @@ class LeechPressure(LeechMech):
 
 
     def currents(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         m, h, n, s, c, C_Na_in, C_Ca_in = states
         return {
@@ -751,7 +738,7 @@ class LeechPressure(LeechMech):
 
 
     def steadyStates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Intracellular concentrations
         C_Na_eq = self.C_Na_in0
@@ -768,7 +755,7 @@ class LeechPressure(LeechMech):
 
 
     def derStates(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Unpack states
         m, h, n, s, c, C_Na_in, C_Ca_in = states
@@ -789,7 +776,7 @@ class LeechPressure(LeechMech):
 
 
     def getEffRates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
         am_avg = np.mean(self.alpham(Vm))
@@ -807,7 +794,7 @@ class LeechPressure(LeechMech):
 
 
     def derStatesEff(self, Qm, states, interp_data):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.coeff_names])
@@ -856,17 +843,17 @@ class LeechRetzius(LeechMech):
     Cm0 = 5e-2  # Cell membrane resting capacitance (F/m2)
     Vm0 = -44.45  # Cell membrane resting potential (mV)
 
-    VNa = 50.0  # Sodium Nernst potential, from retztemp.ses file on ModelDB (mV)
-    VCa = 125.0  # Calcium Nernst potential, from cachdend.mod file on ModelDB (mV)
-    VK = -79.0  # Potassium Nernst potential, from retztemp.ses file on ModelDB (mV)
-    VLeak = -30.0  # Non-specific leakage Nernst potential, from leakdend.mod file on ModelDB (mV)
+    ENa = 50.0  # Sodium Nernst potential, from retztemp.ses file on ModelDB (mV)
+    ECa = 125.0  # Calcium Nernst potential, from cachdend.mod file on ModelDB (mV)
+    EK = -79.0  # Potassium Nernst potential, from retztemp.ses file on ModelDB (mV)
+    ELeak = -30.0  # Non-specific leakage Nernst potential, from leakdend.mod file on ModelDB (mV)
 
-    GNaMax = 1250.0  # Max. conductance of Sodium current (S/m^2)
-    GKMax = 10.0  # Max. conductance of Potassium current (S/m^2)
+    gNabar = 1250.0  # Max. conductance of Sodium current (S/m^2)
+    gKbar = 10.0  # Max. conductance of Potassium current (S/m^2)
     GAMax = 100.0  # Max. conductance of transient Potassium current (S/m^2)
-    GCaMax = 4.0  # Max. conductance of Calcium current (S/m^2)
-    GKCaMax = 130.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
-    GLeak = 1.25  # Conductance of non-specific leakage current (S/m^2)
+    gCabar = 4.0  # Max. conductance of Calcium current (S/m^2)
+    gKCabar = 130.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
+    gLeak = 1.25  # Conductance of non-specific leakage current (S/m^2)
 
     Vhalf = -73.1  # mV
 
@@ -998,11 +985,11 @@ class LeechRetzius(LeechMech):
         '''
 
         GK = self.GAMax * a * b
-        return GK * (Vm - self.VK)
+        return GK * (Vm - self.EK)
 
 
     def currents(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         m, h, n, s, c, a, b = states
         return {
@@ -1016,7 +1003,7 @@ class LeechRetzius(LeechMech):
 
 
     def steadyStates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Standard gating dynamics: Solve the equation dx/dt = 0 at Vm for each x-state
         meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
@@ -1031,7 +1018,7 @@ class LeechRetzius(LeechMech):
 
 
     def derStates(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Unpack states
         m, h, n, s, c, a, b = states
@@ -1050,7 +1037,7 @@ class LeechRetzius(LeechMech):
 
 
     def getEffRates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
         am_avg = np.mean(self.alpham(Vm))
@@ -1079,7 +1066,7 @@ class LeechRetzius(LeechMech):
 
 
     def derStatesEff(self, Qm, states, interp_data):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.coeff_names])

@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:40:25
+# @Last Modified time: 2019-03-13 18:15:56
 
 import numpy as np
 from ..core import PointNeuron
@@ -29,197 +29,171 @@ class Cortical(PointNeuron):
     # Generic biophysical parameters of cortical cells
     Cm0 = 1e-2  # Cell membrane resting capacitance (F/m2)
     Vm0 = 0.0  # Dummy value for membrane potential (mV)
-    VNa = 50.0  # Sodium Nernst potential (mV)
-    VK = -90.0  # Potassium Nernst potential (mV)
-    VCa = 120.0  # # Calcium Nernst potential (mV)
+    ENa = 50.0  # Sodium Nernst potential (mV)
+    EK = -90.0  # Potassium Nernst potential (mV)
+    ECa = 120.0  # # Calcium Nernst potential (mV)
 
 
     def __init__(self):
-        ''' Constructor of the class '''
-
-        # Names and initial states of the channels state probabilities
         self.states_names = ['m', 'h', 'n', 'p']
-        self.states0 = np.array([])
-
-        # Names of the different coefficients to be averaged in a lookup table.
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphap', 'betap']
+        self.states0 = np.array([])
 
 
     def alpham(self, Vm):
-        ''' Compute the alpha rate for the open-probability of Sodium channels.
+        ''' Voltage-dependent activation rate of m-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         alpha = 0.32 * vtrap(13 - Vdiff, 4)  # ms-1
         return alpha * 1e3  # s-1
 
 
     def betam(self, Vm):
-        ''' Compute the beta rate for the open-probability of Sodium channels.
+        ''' Voltage-dependent inactivation rate of m-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         beta = 0.28 * vtrap(Vdiff - 40, 5)  # ms-1
         return beta * 1e3  # s-1
 
 
     def alphah(self, Vm):
-        ''' Compute the alpha rate for the inactivation-probability of Sodium channels.
+        ''' Voltage-dependent activation rate of h-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         alpha = (0.128 * np.exp(-(Vdiff - 17) / 18))  # ms-1
         return alpha * 1e3  # s-1
 
 
     def betah(self, Vm):
-        ''' Compute the beta rate for the inactivation-probability of Sodium channels.
+        ''' Voltage-dependent inactivation rate of h-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         beta = (4 / (1 + np.exp(-(Vdiff - 40) / 5)))  # ms-1
         return beta * 1e3  # s-1
 
 
     def alphan(self, Vm):
-        ''' Compute the alpha rate for the open-probability of delayed-rectifier Potassium channels.
+        ''' Voltage-dependent activation rate of n-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         alpha = 0.032 * vtrap(15 - Vdiff, 5)  # ms-1
         return alpha * 1e3  # s-1
 
 
     def betan(self, Vm):
-        ''' Compute the beta rate for the open-probability of delayed-rectifier Potassium channels.
+        ''' Voltage-dependent inactivation rate of n-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         beta = (0.5 * np.exp(-(Vdiff - 10) / 40))  # ms-1
         return beta * 1e3  # s-1
 
 
     def pinf(self, Vm):
-        ''' Compute the asymptotic value of the open-probability of
-            slow non-inactivating Potassium channels.
+        ''' Voltage-dependent steady-state opening of p-gate
 
             :param Vm: membrane potential (mV)
-            :return: asymptotic probability (-)
+            :return: steady-state opening (-)
         '''
-
-        return 1.0 / (1 + np.exp(-(Vm + 35) / 10))  # prob
+        return 1.0 / (1 + np.exp(-(Vm + 35) / 10))
 
 
     def taup(self, Vm):
-        ''' Compute the decay time constant for adaptation of
-            slow non-inactivating Potassium channels.
+        ''' Voltage-dependent adaptation time for adaptation of p-gate
 
             :param Vm: membrane potential (mV)
-            :return: decayed time constant (s)
+            :return: adaptation time (s)
         '''
-
         return self.TauMax / (3.3 * np.exp((Vm + 35) / 20) + np.exp(-(Vm + 35) / 20))  # s
 
 
     def derM(self, Vm, m):
-        ''' Compute the evolution of the open-probability of Sodium channels.
+        ''' Evolution of m-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param m: open-probability of Sodium channels (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param m: open-probability of m-gate (-)
+            :return: time derivative of m-gate open-probability (s-1)
         '''
-
         return self.alpham(Vm) * (1 - m) - self.betam(Vm) * m
 
 
     def derH(self, Vm, h):
-        ''' Compute the evolution of the inactivation-probability of Sodium channels.
+        ''' Evolution of h-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param h: inactivation-probability of Sodium channels (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param h: open-probability of h-gate (-)
+            :return: time derivative of h-gate open-probability (s-1)
         '''
-
         return self.alphah(Vm) * (1 - h) - self.betah(Vm) * h
 
 
     def derN(self, Vm, n):
-        ''' Compute the evolution of the open-probability of delayed-rectifier Potassium channels.
+        ''' Evolution of n-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param n: open-probability of delayed-rectifier Potassium channels (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param n: open-probability of n-gate (-)
+            :return: time derivative of n-gate open-probability (s-1)
         '''
-
         return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
 
 
     def derP(self, Vm, p):
-        ''' Compute the evolution of the open-probability of
-            slow non-inactivating Potassium channels.
+        ''' Evolution of p-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param p: open-probability of slow non-inactivating Potassium channels (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param p: open-probability of p-gate (-)
+            :return: time derivative of p-gate open-probability (s-1)
         '''
-
         return (self.pinf(Vm) - p) / self.taup(Vm)
 
 
     def iNa(self, m, h, Vm):
         ''' Sodium current
 
-            :param m: open-probability of m-gate
-            :param h: open-probability of h-gate
+            :param m: open-probability of m-gate (-)
+            :param h: open-probability of h-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        GNa = self.GNaMax * m**3 * h
-        return GNa * (Vm - self.VNa)
+        return self.gNabar * m**3 * h * (Vm - self.ENa)
 
 
     def iKd(self, n, Vm):
         ''' Delayed-rectifier Potassium current
 
-            :param n: open-probability of n-gate
+            :param n: open-probability of n-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        GK = self.GKMax * n**4
-        return GK * (Vm - self.VK)
+        return self.gKbar * n**4 * (Vm - self.EK)
 
 
     def iM(self, p, Vm):
         ''' Slow non-inactivating Potassium current
 
-            :param p: open-probability of p-gate
+            :param p: open-probability of p-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        GM = self.GMMax * p
-        return GM * (Vm - self.VK)
+        return self.gMbar * p * (Vm - self.EK)
 
 
     def iLeak(self, Vm):
@@ -228,12 +202,11 @@ class Cortical(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        return self.GLeak * (Vm - self.VLeak)
+        return self.gLeak * (Vm - self.ELeak)
 
 
     def currents(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
         m, h, n, p = states
         return {
             'iNa': self.iNa(m, h, Vm),
@@ -244,53 +217,47 @@ class Cortical(PointNeuron):
 
 
     def steadyStates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
-
-        # Solve the equation dx/dt = 0 at Vm for each x-state
+        ''' Overriding of abstract parent method. '''
         meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
         heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
         neq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
         peq = self.pinf(Vm)
+
         return np.array([meq, heq, neq, peq])
 
 
     def derStates(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
-
+        ''' Overriding of abstract parent method. '''
         m, h, n, p = states
         dmdt = self.derM(Vm, m)
         dhdt = self.derH(Vm, h)
         dndt = self.derN(Vm, n)
         dpdt = self.derP(Vm, p)
+
         return [dmdt, dhdt, dndt, dpdt]
 
 
     def getEffRates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
-
-        # Compute average cycle value for rate constants
+        ''' Overriding of abstract parent method. '''
         am_avg = np.mean(self.alpham(Vm))
         bm_avg = np.mean(self.betam(Vm))
         ah_avg = np.mean(self.alphah(Vm))
         bh_avg = np.mean(self.betah(Vm))
         an_avg = np.mean(self.alphan(Vm))
         bn_avg = np.mean(self.betan(Vm))
-
         Tp = self.taup(Vm)
         pinf = self.pinf(Vm)
         ap_avg = np.mean(pinf / Tp)
         bp_avg = np.mean(1 / Tp) - ap_avg
 
-        # Return array of coefficients
         return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg, ap_avg, bp_avg])
 
 
     def derStatesEff(self, Qm, states, interp_data):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.coeff_names])
-
         m, h, n, p = states
         dmdt = rates[0] * (1 - m) - rates[1] * m
         dhdt = rates[2] * (1 - h) - rates[3] * h
@@ -315,11 +282,11 @@ class CorticalRS(Cortical):
 
     # Cell-specific biophysical parameters
     Vm0 = -71.9  # Cell membrane resting potential (mV)
-    GNaMax = 560.0  # Max. conductance of Sodium current (S/m^2)
-    GKMax = 60.0  # Max. conductance of delayed Potassium current (S/m^2)
-    GMMax = 0.75  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
-    GLeak = 0.205  # Conductance of non-specific leakage current (S/m^2)
-    VLeak = -70.3  # Non-specific leakage Nernst potential (mV)
+    gNabar = 560.0  # Max. conductance of Sodium current (S/m^2)
+    gKbar = 60.0  # Max. conductance of delayed Potassium current (S/m^2)
+    gMbar = 0.75  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
+    gLeak = 0.205  # Conductance of non-specific leakage current (S/m^2)
+    ELeak = -70.3  # Non-specific leakage Nernst potential (mV)
     VT = -56.2  # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
@@ -332,12 +299,7 @@ class CorticalRS(Cortical):
 
 
     def __init__(self):
-        ''' Constructor of the class. '''
-
-        # Instantiate parent class
         super().__init__()
-
-        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
 
 
@@ -356,11 +318,11 @@ class CorticalFS(Cortical):
 
     # Cell-specific biophysical parameters
     Vm0 = -71.4  # Cell membrane resting potential (mV)
-    GNaMax = 580.0  # Max. conductance of Sodium current (S/m^2)
-    GKMax = 39.0  # Max. conductance of delayed Potassium current (S/m^2)
-    GMMax = 0.787  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
-    GLeak = 0.38  # Conductance of non-specific leakage current (S/m^2)
-    VLeak = -70.4  # Non-specific leakage Nernst potential (mV)
+    gNabar = 580.0  # Max. conductance of Sodium current (S/m^2)
+    gKbar = 39.0  # Max. conductance of delayed Potassium current (S/m^2)
+    gMbar = 0.787  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
+    gLeak = 0.38  # Conductance of non-specific leakage current (S/m^2)
+    ELeak = -70.4  # Non-specific leakage Nernst potential (mV)
     VT = -57.9  # Spike threshold adjustment parameter (mV)
     TauMax = 0.502  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
@@ -373,12 +335,7 @@ class CorticalFS(Cortical):
 
 
     def __init__(self):
-        ''' Constructor of the class. '''
-
-        # Instantiate parent class
         super().__init__()
-
-        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
 
 
@@ -402,12 +359,12 @@ class CorticalLTS(Cortical):
 
     # Cell-specific biophysical parameters
     Vm0 = -54.0  # Cell membrane resting potential (mV)
-    GNaMax = 500.0  # Max. conductance of Sodium current (S/m^2)
-    GKMax = 40.0  # Max. conductance of delayed Potassium current (S/m^2)
-    GMMax = 0.28  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
-    GTMax = 4.0  # Max. conductance of low-threshold Calcium current (S/m^2)
-    GLeak = 0.19  # Conductance of non-specific leakage current (S/m^2)
-    VLeak = -50.0  # Non-specific leakage Nernst potential (mV)
+    gNabar = 500.0  # Max. conductance of Sodium current (S/m^2)
+    gKbar = 40.0  # Max. conductance of delayed Potassium current (S/m^2)
+    gMbar = 0.28  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
+    gCaTbar = 4.0  # Max. conductance of low-threshold Calcium current (S/m^2)
+    gLeak = 0.19  # Conductance of non-specific leakage current (S/m^2)
+    ELeak = -50.0  # Non-specific leakage Nernst potential (mV)
     VT = -50.0  # Spike threshold adjustment parameter (mV)
     TauMax = 4.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
     Vx = -7.0  # Voltage-dependence uniform shift factor at 36°C (mV)
@@ -421,62 +378,46 @@ class CorticalLTS(Cortical):
     }
 
     def __init__(self):
-        ''' Constructor of the class. '''
-
-        # Instantiate parent class
         super().__init__()
-
-        # Add names of cell-specific Calcium channel probabilities
         self.states_names += ['s', 'u']
-
-        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
-        self.states0 = self.steadyStates(self.Vm0)
-
-        # Define the names of the different coefficients to be averaged in a lookup table.
         self.coeff_names += ['alphas', 'betas', 'alphau', 'betau']
+        self.states0 = self.steadyStates(self.Vm0)
 
 
     def sinf(self, Vm):
-        ''' Compute the asymptotic value of the open-probability of the S-type,
-            activation gate of Calcium channels.
+        ''' Voltage-dependent steady-state opening of s-gate
 
             :param Vm: membrane potential (mV)
-            :return: asymptotic probability (-)
+            :return: steady-state opening (-)
         '''
-
-        return 1.0 / (1.0 + np.exp(-(Vm + self.Vx + 57.0) / 6.2))  # prob
+        return 1.0 / (1.0 + np.exp(-(Vm + self.Vx + 57.0) / 6.2))
 
 
     def taus(self, Vm):
-        ''' Compute the decay time constant for adaptation of S-type,
-            activation gate of Calcium channels.
+        ''' Voltage-dependent adaptation time for adaptation of s-gate
 
             :param Vm: membrane potential (mV)
-            :return: decayed time constant (s)
+            :return: adaptation time (s)
         '''
-        tmp = np.exp(-(Vm + self.Vx + 132.0) / 16.7) + np.exp((Vm + self.Vx + 16.8) / 18.2)
-        return 1.0 / 3.7 * (0.612 + 1.0 / tmp) * 1e-3  # s
+        x = np.exp(-(Vm + self.Vx + 132.0) / 16.7) + np.exp((Vm + self.Vx + 16.8) / 18.2)
+        return 1.0 / 3.7 * (0.612 + 1.0 / x) * 1e-3  # s
 
 
     def uinf(self, Vm):
-        ''' Compute the asymptotic value of the open-probability of the U-type,
-            inactivation gate of Calcium channels.
+        ''' Voltage-dependent steady-state opening of u-gate
 
             :param Vm: membrane potential (mV)
-            :return: asymptotic probability (-)
+            :return: steady-state opening (-)
         '''
-
         return 1.0 / (1.0 + np.exp((Vm + self.Vx + 81.0) / 4.0))  # prob
 
 
     def tauu(self, Vm):
-        ''' Compute the decay time constant for adaptation of U-type,
-            inactivation gate of Calcium channels.
+        ''' Voltage-dependent adaptation time for adaptation of u-gate
 
             :param Vm: membrane potential (mV)
-            :return: decayed time constant (s)
+            :return: adaptation time (s)
         '''
-
         if Vm + self.Vx < -80.0:
             return 1.0 / 3.7 * np.exp((Vm + self.Vx + 467.0) / 66.6) * 1e-3  # s
         else:
@@ -484,44 +425,38 @@ class CorticalLTS(Cortical):
 
 
     def derS(self, Vm, s):
-        ''' Compute the evolution of the open-probability of the S-type,
-            activation gate of Calcium channels.
+        ''' Evolution of s-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param s: open-probability of S-type Calcium activation gates (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param s: open-probability of s-gate (-)
+            :return: time derivative of s-gate open-probability (s-1)
         '''
-
         return (self.sinf(Vm) - s) / self.taus(Vm)
 
 
     def derU(self, Vm, u):
-        ''' Compute the evolution of the open-probability of the U-type,
-            inactivation gate of Calcium channels.
+        ''' Evolution of u-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param u: open-probability of U-type Calcium inactivation gates (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param u: open-probability of u-gate (-)
+            :return: time derivative of u-gate open-probability (s-1)
         '''
-
         return (self.uinf(Vm) - u) / self.tauu(Vm)
 
 
     def iCaT(self, s, u, Vm):
         ''' Low-threshold (T-type) Calcium current
 
-            :param s: open-probability of s-gate
-            :param u: open-probability of u-gate
+            :param s: open-probability of s-gate (-)
+            :param u: open-probability of u-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        GT = self.GTMax * s**2 * u
-        return GT * (Vm - self.VCa)
+        return self.gCaTbar * s**2 * u * (Vm - self.ECa)
 
 
     def currents(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
         m, h, n, p, s, u = states
         currents = super().currents(Vm, [m, h, n, p])
         currents['iCaT'] = self.iCaT(s, u, Vm)  # mA/m2
@@ -529,7 +464,7 @@ class CorticalLTS(Cortical):
 
 
     def steadyStates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Call parent method to compute Sodium and Potassium channels gates steady-states
         NaK_eqstates = super().steadyStates(Vm)
@@ -542,7 +477,7 @@ class CorticalLTS(Cortical):
 
 
     def derStates(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Unpack input states
         *NaK_states, s, u = states
@@ -559,7 +494,7 @@ class CorticalLTS(Cortical):
 
 
     def getEffRates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Call parent method to compute Sodium and Potassium effective rate constants
         NaK_rates = super().getEffRates(Vm)
@@ -578,7 +513,7 @@ class CorticalLTS(Cortical):
 
 
     def derStatesEff(self, Qm, states, interp_data):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Unpack input states
         *NaK_states, s, u = states
@@ -615,12 +550,12 @@ class CorticalIB(Cortical):
 
     # Cell-specific biophysical parameters
     Vm0 = -71.4  # Cell membrane resting potential (mV)
-    GNaMax = 500  # Max. conductance of Sodium current (S/m^2)
-    GKMax = 50  # Max. conductance of delayed Potassium current (S/m^2)
-    GMMax = 0.3  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
-    GCaLMax = 1.0  # Max. conductance of L-type Calcium current (S/m^2)
-    GLeak = 0.1  # Conductance of non-specific leakage current (S/m^2)
-    VLeak = -70  # Non-specific leakage Nernst potential (mV)
+    gNabar = 500  # Max. conductance of Sodium current (S/m^2)
+    gKbar = 50  # Max. conductance of delayed Potassium current (S/m^2)
+    gMbar = 0.3  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
+    gCaLbar = 1.0  # Max. conductance of L-type Calcium current (S/m^2)
+    gLeak = 0.1  # Conductance of non-specific leakage current (S/m^2)
+    ELeak = -70  # Non-specific leakage Nernst potential (mV)
     VT = -56.2  # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
@@ -633,105 +568,85 @@ class CorticalIB(Cortical):
     }
 
     def __init__(self):
-        ''' Constructor of the class. '''
-
-        # Instantiate parent class
         super().__init__()
-
-        # Add names of cell-specific Calcium channel probabilities
         self.states_names += ['q', 'r']
-
-        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
-        self.states0 = self.steadyStates(self.Vm0)
-
-        # Define the names of the different coefficients to be averaged in a lookup table.
         self.coeff_names += ['alphaq', 'betaq', 'alphar', 'betar']
+        self.states0 = self.steadyStates(self.Vm0)
 
 
     def alphaq(self, Vm):
-        ''' Compute the alpha rate for the open-probability of L-type Calcium channels.
+        ''' Voltage-dependent activation rate of q-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         alpha = 0.055 * vtrap(-(Vm + 27), 3.8)  # ms-1
         return alpha * 1e3  # s-1
 
 
     def betaq(self, Vm):
-        ''' Compute the beta rate for the open-probability of L-type Calcium channels.
+        ''' Voltage-dependent inactivation rate of q-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         beta = 0.94 * np.exp(-(Vm + 75) / 17)  # ms-1
         return beta * 1e3  # s-1
 
 
     def alphar(self, Vm):
-        ''' Compute the alpha rate for the inactivation-probability of L-type Calcium channels.
+        ''' Voltage-dependent activation rate of r-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         alpha = 0.000457 * np.exp(-(Vm + 13) / 50)  # ms-1
         return alpha * 1e3  # s-1
 
 
     def betar(self, Vm):
-        ''' Compute the beta rate for the inactivation-probability of L-type Calcium channels.
+        ''' Voltage-dependent inactivation rate of r-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         beta = 0.0065 / (np.exp(-(Vm + 15) / 28) + 1)  # ms-1
         return beta * 1e3  # s-1
 
 
     def derQ(self, Vm, q):
-        ''' Compute the evolution of the open-probability of the Q (activation) gate
-            of L-type Calcium channels.
+        ''' Evolution of q-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param q: open-probability of Q gate (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param q: open-probability of q-gate (-)
+            :return: time derivative of q-gate open-probability (s-1)
         '''
-
         return self.alphaq(Vm) * (1 - q) - self.betaq(Vm) * q
 
 
     def derR(self, Vm, r):
-        ''' Compute the evolution of the open-probability of the R (inactivation) gate
-            of L-type Calcium channels.
+        ''' Evolution of r-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param r: open-probability of R gate (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param r: open-probability of r-gate (-)
+            :return: time derivative of r-gate open-probability (s-1)
         '''
-
         return self.alphar(Vm) * (1 - r) - self.betar(Vm) * r
 
 
     def iCaL(self, q, r, Vm):
         ''' High-threshold (L-type) Calcium current
 
-            :param q: open-probability of q-gate
-            :param r: open-probability of r-gate
+            :param q: open-probability of q-gate (-)
+            :param r: open-probability of r-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        GCaL = self.GCaLMax * q**2 * r
-        return GCaL * (Vm - self.VCa)
+        return self.gCaLbar * q**2 * r * (Vm - self.ECa)
 
 
     def currents(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
-
+        ''' Overriding of abstract parent method. '''
         m, h, n, p, q, r = states
         return {
             'iNa': self.iNa(m, h, Vm),
@@ -743,7 +658,7 @@ class CorticalIB(Cortical):
 
 
     def steadyStates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Call parent method to compute Sodium and Potassium channels gates steady-states
         NaK_eqstates = super().steadyStates(Vm)
@@ -758,7 +673,7 @@ class CorticalIB(Cortical):
 
 
     def derStates(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Unpack input states
         *NaK_states, q, r = states
@@ -775,7 +690,7 @@ class CorticalIB(Cortical):
 
 
     def getEffRates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Call parent method to compute Sodium and Potassium effective rate constants
         NaK_rates = super().getEffRates(Vm)
@@ -792,7 +707,7 @@ class CorticalIB(Cortical):
 
 
     def derStatesEff(self, Qm, states, interp_data):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Unpack input states
         *NaK_states, q, r = states

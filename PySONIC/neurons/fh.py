@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:53:56
+# @Last Modified time: 2019-03-13 18:18:59
 
 import numpy as np
 from ..core import PointNeuron
@@ -31,15 +31,15 @@ class FrankenhaeuserHuxley(PointNeuron):
     Cm0 = 2e-2  # Cell membrane resting capacitance (F/m2)
     Vm0 = -70.  # Membrane resting potential (mV)
     celsius = 20.0  # Temperature (Celsius)
-    GLeak = 300.3  # Leakage conductance (S/m2)
-    VLeak = -69.974  # Leakage resting potential (mV)
+    gLeak = 300.3  # Leakage conductance (S/m2)
+    ELeak = -69.974  # Leakage resting potential (mV)
     pNabar = 8e-5  # Sodium permeability constant (m/s)
     pPbar = .54e-5  # Non-specific permeability constant (m/s)
     pKbar = 1.2e-5  # Potassium permeability constant (m/s)
-    nai = 13.74e-3  # Sodium intracellular concentration (M)
-    nao = 114.5e-3  # Sodium extracellular concentration (M)
-    ki = 120e-3  # Potassium intracellular concentration (M)
-    ko = 2.5e-3  # Potassium extracellular concentration (M)
+    Nai = 13.74e-3  # Sodium intracellular concentration (M)
+    Nao = 114.5e-3  # Sodium extracellular concentration (M)
+    Ki = 120e-3  # Potassium intracellular concentration (M)
+    Ko = 2.5e-3  # Potassium extracellular concentration (M)
 
     # Default plotting scheme
     pltvars_scheme = {
@@ -50,17 +50,12 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def __init__(self):
-        ''' Constructor of the class '''
-        self.q10 = 3**((self.celsius - 20) / 10)
-        self.T = self.celsius + CELSIUS_2_KELVIN
-
-        # Names and initial states of the channels state probabilities
         self.states_names = ['m', 'h', 'n', 'p']
-        self.states0 = self.steadyStates(self.Vm0)
-
-        # Names of the different coefficients to be averaged in a lookup table.
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphap', 'betap']
+        self.q10 = 3**((self.celsius - 20) / 10)
+        self.T = self.celsius + CELSIUS_2_KELVIN
+        self.states0 = self.steadyStates(self.Vm0)
 
 
     def alpham(self, Vm):
@@ -199,7 +194,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        iNa_drive = ghkDrive(Vm, Z_Na, self.nai, self.nao, self.T)  # mC/m3
+        iNa_drive = ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
         return self.pNabar * m**2 * h * iNa_drive  # mA/m2
 
 
@@ -210,7 +205,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        iKd_drive = ghkDrive(Vm, Z_K, self.ki, self.ko, self.T)  # mC/m3
+        iKd_drive = ghkDrive(Vm, Z_K, self.Ki, self.Ko, self.T)  # mC/m3
         return self.pKbar * n**2 * iKd_drive  # mA/m2
 
 
@@ -221,7 +216,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        iP_drive = ghkDrive(Vm, Z_Na, self.nai, self.nao, self.T)  # mC/m3
+        iP_drive = ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
         return self.pPbar * p**2 * iP_drive  # mA/m2
 
 
@@ -231,11 +226,11 @@ class FrankenhaeuserHuxley(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GLeak * (Vm - self.VLeak)
+        return self.gLeak * (Vm - self.ELeak)
 
 
     def currents(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
         m, h, n, p = states
         return {
             'iNa': self.iNa(m, h, Vm),
@@ -246,7 +241,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def steadyStates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
         # Solve the equation dx/dt = 0 at Vm for each x-state
         meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
         heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
@@ -256,7 +251,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def derStates(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
         m, h, n, p = states
         dmdt = self.derM(Vm, m)
         dhdt = self.derH(Vm, h)
@@ -266,7 +261,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def getEffRates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
         am_avg = np.mean(self.alpham(Vm))
@@ -283,7 +278,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def derStatesEff(self, Qm, states, interp_data):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.coeff_names])
         m, h, n, p = states

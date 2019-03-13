@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 16:04:31
+# @Last Modified time: 2019-03-13 18:19:55
 
 
 import numpy as np
@@ -40,8 +40,8 @@ class OtsukaSTN(PointNeuron):
     Cai0 = 5e-9  # M (5 nM)
 
     # Reversal potentials
-    VNa = 60.0  # Sodium Nernst potential (mV)
-    VK = -90.0  # Potassium Nernst potential (mV)
+    ENa = 60.0  # Sodium Nernst potential (mV)
+    EK = -90.0  # Potassium Nernst potential (mV)
 
     # Physical constants
     T = 306.15  # K (33°C)
@@ -49,14 +49,13 @@ class OtsukaSTN(PointNeuron):
     # Calcium dynamics
     Cao = 2e-3  # M (2 mM)
     taur_Cai = 1 / 2e3  # decay time constant for intracellular Ca2+ dissolution (s)
-    KCa = 2e3  # s-1
 
     # Leakage current
-    GLeak = 3.5  # Conductance of non-specific leakage current (S/m^2)
-    VLeak = -60.0  # Leakage reversal potential (mV)
+    gLeak = 3.5  # Conductance of non-specific leakage current (S/m^2)
+    ELeak = -60.0  # Leakage reversal potential (mV)
 
     # Fast Na current
-    GNaMax = 490.0  # Max. conductance of Sodium current (S/m^2)
+    gNabar = 490.0  # Max. conductance of Sodium current (S/m^2)
     thetax_m = -40  # mV
     thetax_h = -45.5  # mV
     kx_m = -8  # mV
@@ -73,7 +72,7 @@ class OtsukaSTN(PointNeuron):
     sigmaT2_h = 16  # mV
 
     # Delayed rectifier K+ current
-    GKMax = 570.0  # Max. conductance of delayed-rectifier Potassium current (S/m^2)
+    gKbar = 570.0  # Max. conductance of delayed-rectifier Potassium current (S/m^2)
     thetax_n = -41  # mV
     kx_n = -14  # mV
     tau0_n = 0 * 1e-3  # s
@@ -84,7 +83,7 @@ class OtsukaSTN(PointNeuron):
     sigmaT2_n = 50  # mV
 
     # T-type Ca2+ current
-    GTMax = 50.0  # Max. conductance of low-threshold Calcium current (S/m^2)
+    gCaTbar = 50.0  # Max. conductance of low-threshold Calcium current (S/m^2)
     thetax_p = -56  # mV
     thetax_q = -85  # mV
     kx_p = -6.7  # mV
@@ -103,7 +102,7 @@ class OtsukaSTN(PointNeuron):
     sigmaT2_q = 16  # mV
 
     # L-type Ca2+ current
-    GLMax = 150.0  # Max. conductance of high-threshold Calcium current (S/m^2)
+    gCaLbar = 150.0  # Max. conductance of high-threshold Calcium current (S/m^2)
     thetax_c = -30.6  # mV
     thetax_d1 = -60  # mV
     thetax_d2 = 0.1 * 1e-6  # M
@@ -125,7 +124,7 @@ class OtsukaSTN(PointNeuron):
     sigmaT2_d1 = 20  # mV
 
     # A-type K+ current
-    GAMax = 50.0  # Max. conductance of A-type Potassium current (S/m^2)
+    gAbar = 50.0  # Max. conductance of A-type Potassium current (S/m^2)
     thetax_a = -45  # mV
     thetax_b = -90  # mV
     kx_a = -14.7  # mV
@@ -142,7 +141,7 @@ class OtsukaSTN(PointNeuron):
     sigmaT2_b = 10  # mV
 
     # Ca2+-activated K+ current
-    GKCaMax = 10.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
+    gKCaMax = 10.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
     thetax_r = 0.17 * 1e-6  # M
     kx_r = -0.08 * 1e-6  # M
     tau_r = 2 * 1e-3  # s
@@ -160,12 +159,7 @@ class OtsukaSTN(PointNeuron):
 
 
     def __init__(self):
-        ''' Constructor of the class '''
-
-        # Names and initial states of the channels state probabilities
         self.states_names = ['a', 'b', 'c', 'd1', 'd2', 'm', 'h', 'n', 'p', 'q', 'r', 'Cai']
-
-        # Names of the different coefficients to be averaged in a lookup table.
         self.coeff_names = [
             'alphaa', 'betaa',
             'alphab', 'betab',
@@ -177,14 +171,8 @@ class OtsukaSTN(PointNeuron):
             'alphap', 'betap',
             'alphaq', 'betaq',
         ]
-
-        # Compute deff for neuron's resting potential and equilibrium Calcium concentration
         self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
-
-        # Compute conversion factor from electrical current (mA/m2) to Calcium concentration (M/s)
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
-
-        # Initial states
         self.states0 = self.steadyStates(self.Vm0)
 
 
@@ -200,13 +188,13 @@ class OtsukaSTN(PointNeuron):
 
 
     def _xinf(self, var, theta, k):
-        ''' Generic function computing the steady-state activation/inactivation of a
-            particular ion channel at a given voltage or ion concentration.
+        ''' Generic function computing the steady-state opening of a
+            particular channel gate at a given voltage or ion concentration.
 
             :param var: membrane potential (mV) or ion concentration (mM)
             :param theta: half-(in)activation voltage or concentration (mV or mM)
             :param k: slope parameter of (in)activation function (mV or mM)
-            :return: steady-state (in)activation (-)
+            :return: steady-state opening (-)
         '''
         return 1 / (1 + np.exp((var - theta) / k))
 
@@ -386,68 +374,68 @@ class OtsukaSTN(PointNeuron):
     def iNa(self, m, h, Vm):
         ''' Sodium current
 
-            :param m: open-probability of m-gate
-            :param h: open-probability of h-gate
+            :param m: open-probability of m-gate (-)
+            :param h: open-probability of h-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GNaMax * m**3 * h * (Vm - self.VNa)
+        return self.gNabar * m**3 * h * (Vm - self.ENa)
 
 
     def iKd(self, n, Vm):
         ''' Delayed-rectifier Potassium current
 
-            :param n: open-probability of n-gate
+            :param n: open-probability of n-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GKMax * n**4 * (Vm - self.VK)
+        return self.gKbar * n**4 * (Vm - self.EK)
 
 
     def iA(self, a, b, Vm):
         ''' A-type Potassium current
 
-            :param a: open-probability of a-gate
-            :param b: open-probability of b-gate
+            :param a: open-probability of a-gate (-)
+            :param b: open-probability of b-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GAMax * a**2 * b * (Vm - self.VK)
+        return self.gAbar * a**2 * b * (Vm - self.EK)
 
 
     def iCaT(self, p, q, Vm, Cai):
         ''' Low-threshold (T-type) Calcium current
 
-            :param p: open-probability of p-gate
-            :param q: open-probability of q-gate
+            :param p: open-probability of p-gate (-)
+            :param q: open-probability of q-gate (-)
             :param Vm: membrane potential (mV)
             :param Cai: submembrane Calcium concentration (M)
             :return: current per unit area (mA/m2)
         '''
-        return self.GTMax * p**2 * q * (Vm - nernst(Z_Ca, Cai, self.Cao, self.T))
+        return self.gCaTbar * p**2 * q * (Vm - nernst(Z_Ca, Cai, self.Cao, self.T))
 
 
     def iCaL(self, c, d1, d2, Vm, Cai):
         ''' High-threshold (L-type) Calcium current
 
-            :param c: open-probability of c-gate
-            :param d1: open-probability of d1-gate
-            :param d2: open-probability of d2-gate
+            :param c: open-probability of c-gate (-)
+            :param d1: open-probability of d1-gate (-)
+            :param d2: open-probability of d2-gate (-)
             :param Vm: membrane potential (mV)
             :param Cai: submembrane Calcium concentration (M)
             :return: current per unit area (mA/m2)
         '''
-        return self.GLMax * c**2 * d1 * d2 * (Vm - nernst(Z_Ca, Cai, self.Cao, self.T))
+        return self.gCaLbar * c**2 * d1 * d2 * (Vm - nernst(Z_Ca, Cai, self.Cao, self.T))
 
 
     def iKCa(self, r, Vm):
         ''' Calcium-activated Potassium current
 
-            :param r: open-probability of r-gate
+            :param r: open-probability of r-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GKCaMax * r**2 * (Vm - self.VK)
+        return self.gKCaMax * r**2 * (Vm - self.EK)
 
 
     def iLeak(self, Vm):
@@ -456,14 +444,12 @@ class OtsukaSTN(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.GLeak * (Vm - self.VLeak)
+        return self.gLeak * (Vm - self.ELeak)
 
 
     def currents(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
-
+        ''' Overriding of abstract parent method. '''
         a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
-
         return {
             'iNa': self.iNa(m, h, Vm),
             'iKd': self.iKd(n, Vm),
@@ -476,9 +462,7 @@ class OtsukaSTN(PointNeuron):
 
 
     def steadyStates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
-
-        # Solve the equation dx/dt = 0 at Vm for each x-state
+        ''' Overriding of abstract parent method. '''
         aeq = self.ainf(Vm)
         beq = self.binf(Vm)
         ceq = self.cinf(Vm)
@@ -488,7 +472,6 @@ class OtsukaSTN(PointNeuron):
         neq = self.ninf(Vm)
         peq = self.pinf(Vm)
         qeq = self.qinf(Vm)
-
         # Cai_eq = self.Cai0
         Cai_eq = self.findCaiSteadyState(Vm)
         d2eq = self.d2inf(Cai_eq)
@@ -498,9 +481,9 @@ class OtsukaSTN(PointNeuron):
 
 
     def derStates(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
-
+        ''' Overriding of abstract parent method. '''
         a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
+
         dadt = self.derA(Vm, a)
         dbdt = self.derB(Vm, b)
         dcdt = self.derC(Vm, c)
@@ -518,7 +501,7 @@ class OtsukaSTN(PointNeuron):
 
 
     def getEffRates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
         Ta = self.taua(Vm)
@@ -572,7 +555,7 @@ class OtsukaSTN(PointNeuron):
 
 
     def derStatesEff(self, Qm, states, interp_data):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.coeff_names])

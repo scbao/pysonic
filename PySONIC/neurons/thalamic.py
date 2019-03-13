@@ -4,11 +4,11 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 16:06:17
+# @Last Modified time: 2019-03-13 18:15:00
 
 import numpy as np
 from ..core import PointNeuron
-from ..constants import FARADAY, Z_Ca
+from ..constants import Z_Ca
 from ..utils import vtrap
 
 
@@ -30,187 +30,163 @@ class Thalamic(PointNeuron):
     # Generic biophysical parameters of thalamic cells
     Cm0 = 1e-2  # Cell membrane resting capacitance (F/m2)
     Vm0 = 0.0  # Dummy value for membrane potential (mV)
-    VNa = 50.0  # Sodium Nernst potential (mV)
-    VK = -90.0  # Potassium Nernst potential (mV)
-    VCa = 120.0  # Calcium Nernst potential (mV)
+    ENa = 50.0  # Sodium Nernst potential (mV)
+    EK = -90.0  # Potassium Nernst potential (mV)
+    ECa = 120.0  # Calcium Nernst potential (mV)
 
     def __init__(self):
-        ''' Constructor of the class '''
-
-        # Names and initial states of the channels state probabilities
         self.states_names = ['m', 'h', 'n', 's', 'u']
-        self.states0 = np.array([])
-
-        # Names of the different coefficients to be averaged in a lookup table.
         self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphas', 'betas', 'alphau', 'betau']
+        self.states0 = np.array([])
 
 
     def alpham(self, Vm):
-        ''' Compute the alpha rate for the open-probability of Sodium channels.
+        ''' Voltage-dependent activation rate of m-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         alpha = 0.32 * vtrap(13 - Vdiff, 4)  # ms-1
         return alpha * 1e3  # s-1
 
 
     def betam(self, Vm):
-        ''' Compute the beta rate for the open-probability of Sodium channels.
+        ''' Voltage-dependent inactivation rate of m-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         beta = 0.28 * vtrap(Vdiff - 40, 5)  # ms-1
         return beta * 1e3  # s-1
 
 
     def alphah(self, Vm):
-        ''' Compute the alpha rate for the inactivation-probability of Sodium channels.
+        ''' Voltage-dependent activation rate of h-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         alpha = (0.128 * np.exp(-(Vdiff - 17) / 18))  # ms-1
         return alpha * 1e3  # s-1
 
 
     def betah(self, Vm):
-        ''' Compute the beta rate for the inactivation-probability of Sodium channels.
+        ''' Voltage-dependent inactivation rate of h-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         beta = (4 / (1 + np.exp(-(Vdiff - 40) / 5)))  # ms-1
         return beta * 1e3  # s-1
 
 
     def alphan(self, Vm):
-        ''' Compute the alpha rate for the open-probability of delayed-rectifier Potassium channels.
+        ''' Voltage-dependent activation rate of n-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         alpha = 0.032 * vtrap(15 - Vdiff, 5)  # ms-1
         return alpha * 1e3  # s-1
 
 
     def betan(self, Vm):
-        ''' Compute the beta rate for the open-probability of delayed-rectifier Potassium channels.
+        ''' Voltage-dependent inactivation rate of n-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
-
         Vdiff = Vm - self.VT
         beta = (0.5 * np.exp(-(Vdiff - 10) / 40))  # ms-1
         return beta * 1e3  # s-1
 
 
     def derM(self, Vm, m):
-        ''' Compute the evolution of the open-probability of Sodium channels.
+        ''' Evolution of m-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param m: open-probability of Sodium channels (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param m: open-probability of m-gate (-)
+            :return: time derivative of m-gate open-probability (s-1)
         '''
-
         return self.alpham(Vm) * (1 - m) - self.betam(Vm) * m
 
 
     def derH(self, Vm, h):
-        ''' Compute the evolution of the inactivation-probability of Sodium channels.
+        ''' Evolution of h-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param h: inactivation-probability of Sodium channels (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param h: open-probability of h-gate (-)
+            :return: time derivative of h-gate open-probability (s-1)
         '''
-
         return self.alphah(Vm) * (1 - h) - self.betah(Vm) * h
 
 
     def derN(self, Vm, n):
-        ''' Compute the evolution of the open-probability of delayed-rectifier Potassium channels.
+        ''' Evolution of n-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param n: open-probability of delayed-rectifier Potassium channels (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param n: open-probability of n-gate (-)
+            :return: time derivative of n-gate open-probability (s-1)
         '''
-
         return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
 
 
     def derS(self, Vm, s):
-        ''' Compute the evolution of the open-probability of the S-type,
-            activation gate of Calcium channels.
+        ''' Evolution of s-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param s: open-probability of S-type Calcium activation gates (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param s: open-probability of s-gate (-)
+            :return: time derivative of s-gate open-probability (s-1)
         '''
-
         return (self.sinf(Vm) - s) / self.taus(Vm)
 
 
     def derU(self, Vm, u):
-        ''' Compute the evolution of the open-probability of the U-type,
-            inactivation gate of Calcium channels.
+        ''' Evolution of u-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param u: open-probability of U-type Calcium inactivation gates (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param u: open-probability of u-gate (-)
+            :return: time derivative of u-gate open-probability (s-1)
         '''
-
         return (self.uinf(Vm) - u) / self.tauu(Vm)
 
 
     def iNa(self, m, h, Vm):
         ''' Sodium current
 
-            :param m: open-probability of m-gate
-            :param h: open-probability of h-gate
+            :param m: open-probability of m-gate (-)
+            :param h: open-probability of h-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        GNa = self.GNaMax * m**3 * h
-        return GNa * (Vm - self.VNa)
+        return self.gNabar * m**3 * h * (Vm - self.ENa)
 
 
     def iKd(self, n, Vm):
         ''' Delayed-rectifier Potassium current
 
-            :param n: open-probability of n-gate
+            :param n: open-probability of n-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        GK = self.GKMax * n**4
-        return GK * (Vm - self.VK)
+        return self.gKbar * n**4 * (Vm - self.EK)
 
 
     def iCaT(self, s, u, Vm):
         ''' Low-threshold (Ts-type) Calcium current
 
-            :param s: open-probability of s-gate
-            :param u: open-probability of u-gate
+            :param s: open-probability of s-gate (-)
+            :param u: open-probability of u-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        GT = self.GTMax * s**2 * u
-        return GT * (Vm - self.VCa)
+        return self.gCaTbar * s**2 * u * (Vm - self.ECa)
 
 
     def iLeak(self, Vm):
@@ -219,12 +195,11 @@ class Thalamic(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        return self.GLeak * (Vm - self.VLeak)
+        return self.gLeak * (Vm - self.ELeak)
 
 
     def currents(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
         m, h, n, s, u = states
         return {
             'iNa': self.iNa(m, h, Vm),
@@ -235,7 +210,7 @@ class Thalamic(PointNeuron):
 
 
     def steadyStates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Solve the equation dx/dt = 0 at Vm for each x-state
         meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
@@ -248,7 +223,7 @@ class Thalamic(PointNeuron):
 
 
     def derStates(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         m, h, n, s, u = states
         dmdt = self.derM(Vm, m)
@@ -256,11 +231,12 @@ class Thalamic(PointNeuron):
         dndt = self.derN(Vm, n)
         dsdt = self.derS(Vm, s)
         dudt = self.derU(Vm, u)
+
         return [dmdt, dhdt, dndt, dsdt, dudt]
 
 
     def getEffRates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
         am_avg = np.mean(self.alpham(Vm))
@@ -283,7 +259,7 @@ class Thalamic(PointNeuron):
 
 
     def derStatesEff(self, Qm, states, interp_data):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.coeff_names])
@@ -318,11 +294,11 @@ class ThalamicRE(Thalamic):
 
     # Cell-specific biophysical parameters
     Vm0 = -89.5  # Cell membrane resting potential (mV)
-    GNaMax = 2000.0  # Max. conductance of Sodium current (S/m^2)
-    GKMax = 200.0  # Max. conductance of Potassium current (S/m^2)
-    GTMax = 30.0  # Max. conductance of low-threshold Calcium current (S/m^2)
-    GLeak = 0.5  # Conductance of non-specific leakage current (S/m^2)
-    VLeak = -90.0  # Non-specific leakage Nernst potential (mV)
+    gNabar = 2000.0  # Max. conductance of Sodium current (S/m^2)
+    gKbar = 200.0  # Max. conductance of Potassium current (S/m^2)
+    gCaTbar = 30.0  # Max. conductance of low-threshold Calcium current (S/m^2)
+    gLeak = 0.5  # Conductance of non-specific leakage current (S/m^2)
+    ELeak = -90.0  # Non-specific leakage Nernst potential (mV)
     VT = -67.0  # Spike threshold adjustment parameter (mV)
 
     # Default plotting scheme
@@ -333,53 +309,42 @@ class ThalamicRE(Thalamic):
     }
 
     def __init__(self):
-        ''' Constructor of the class. '''
-
-        # Instantiate parent class
         super().__init__()
-
-        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
 
 
     def sinf(self, Vm):
-        ''' Compute the asymptotic value of the open-probability of the S-type,
-            activation gate of Calcium channels.
+        ''' Voltage-dependent steady-state opening of s-gate
 
             :param Vm: membrane potential (mV)
-            :return: asymptotic probability (-)
+            :return: steady-state opening (-)
         '''
-
         return 1.0 / (1.0 + np.exp(-(Vm + 52.0) / 7.4))  # prob
 
 
     def taus(self, Vm):
-        ''' Compute the decay time constant for adaptation of S-type,
-            activation gate of Calcium channels.
+        ''' Voltage-dependent adaptation time for adaptation of s-gate
 
             :param Vm: membrane potential (mV)
-            :return: decayed time constant (s)
+            :return: adaptation time (s)
         '''
         return (1 + 0.33 / (np.exp((Vm + 27.0) / 10.0) + np.exp(-(Vm + 102.0) / 15.0))) * 1e-3  # s
 
 
     def uinf(self, Vm):
-        ''' Compute the asymptotic value of the open-probability of the U-type,
-            inactivation gate of Calcium channels.
+        ''' Voltage-dependent steady-state opening of u-gate
 
             :param Vm: membrane potential (mV)
-            :return: asymptotic probability (-)
+            :return: steady-state opening (-)
         '''
-
         return 1.0 / (1.0 + np.exp((Vm + 80.0) / 5.0))  # prob
 
 
     def tauu(self, Vm):
-        ''' Compute the decay time constant for adaptation of U-type,
-            inactivation gate of Calcium channels.
+        ''' Voltage-dependent adaptation time for adaptation of u-gate
 
             :param Vm: membrane potential (mV)
-            :return: decayed time constant (s)
+            :return: adaptation time (s)
         '''
         return (28.3 + 0.33 / (np.exp((Vm + 48.0) / 4.0) + np.exp(-(Vm + 407.0) / 50.0))) * 1e-3  # s
 
@@ -407,14 +372,14 @@ class ThalamoCortical(Thalamic):
     # Cell-specific biophysical parameters
     # Vm0 = -63.4  # Cell membrane resting potential (mV)
     Vm0 = -61.93  # Cell membrane resting potential (mV)
-    GNaMax = 900.0  # Max. conductance of Sodium current (S/m^2)
-    GKMax = 100.0  # Max. conductance of Potassium current (S/m^2)
-    GTMax = 20.0  # Max. conductance of low-threshold Calcium current (S/m^2)
-    GKL = 0.138  # Conductance of leakage Potassium current (S/m^2)
-    GhMax = 0.175  # Max. conductance of mixed cationic current (S/m^2)
-    GLeak = 0.1  # Conductance of non-specific leakage current (S/m^2)
-    Vh = -40.0  # Mixed cationic current reversal potential (mV)
-    VLeak = -70.0  # Non-specific leakage Nernst potential (mV)
+    gNabar = 900.0  # bar. conductance of Sodium current (S/m^2)
+    gKbar = 100.0  # bar. conductance of Potassium current (S/m^2)
+    gCaTbar = 20.0  # Max. conductance of low-threshold Calcium current (S/m^2)
+    gKL = 0.138  # Conductance of leakage Potassium current (S/m^2)
+    gHbar = 0.175  # Max. conductance of mixed cationic current (S/m^2)
+    gLeak = 0.1  # Conductance of non-specific leakage current (S/m^2)
+    EH = -40.0  # Mixed cationic current reversal potential (mV)
+    ELeak = -70.0  # Non-specific leakage Nernst potential (mV)
     VT = -52.0  # Spike threshold adjustment parameter (mV)
     Vx = 0.0  # Voltage-dependence uniform shift factor at 36°C (mV)
 
@@ -437,85 +402,47 @@ class ThalamoCortical(Thalamic):
 
 
     def __init__(self):
-        ''' Constructor of the class. '''
-
-        # Instantiate parent class
         super().__init__()
-
-        # Compute current to concentration conversion constant
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
-
-        # Define names of the channels state probabilities
         self.states_names += ['O', 'C', 'P0', 'Cai']
-
-        # Define the names of the different coefficients to be averaged in a lookup table.
         self.coeff_names += ['alphao', 'betao']
-
-        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
         self.states0 = self.steadyStates(self.Vm0)
 
 
     def sinf(self, Vm):
-        ''' Compute the asymptotic value of the open-probability of the S-type,
-            activation gate of Calcium channels.
-
-            Reference:
-            *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac, Y.,
-            Markram, H., and Destexhe, A. (2008). Minimal Hodgkin-Huxley type models for different
-            classes of cortical and thalamic neurons. Biol Cybern 99, 427–441.*
+        ''' Voltage-dependent steady-state opening of s-gate
 
             :param Vm: membrane potential (mV)
-            :return: asymptotic probability (-)
+            :return: steady-state opening (-)
         '''
-
         return 1.0 / (1.0 + np.exp(-(Vm + self.Vx + 57.0) / 6.2))  # prob
 
 
     def taus(self, Vm):
-        ''' Compute the decay time constant for adaptation of S-type,
-            activation gate of Calcium channels.
-
-            Reference:
-            *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac, Y.,
-            Markram, H., and Destexhe, A. (2008). Minimal Hodgkin-Huxley type models for different
-            classes of cortical and thalamic neurons. Biol Cybern 99, 427–441.*
+        ''' Voltage-dependent adaptation time for adaptation of s-gate
 
             :param Vm: membrane potential (mV)
-            :return: decayed time constant (s)
+            :return: adaptation time (s)
         '''
-        tmp = np.exp(-(Vm + self.Vx + 132.0) / 16.7) + np.exp((Vm + self.Vx + 16.8) / 18.2)
-        return 1.0 / 3.7 * (0.612 + 1.0 / tmp) * 1e-3  # s
+        x = np.exp(-(Vm + self.Vx + 132.0) / 16.7) + np.exp((Vm + self.Vx + 16.8) / 18.2)
+        return 1.0 / 3.7 * (0.612 + 1.0 / x) * 1e-3  # s
 
 
     def uinf(self, Vm):
-        ''' Compute the asymptotic value of the open-probability of the U-type,
-            inactivation gate of Calcium channels.
-
-            Reference:
-            *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac, Y.,
-            Markram, H., and Destexhe, A. (2008). Minimal Hodgkin-Huxley type models for different
-            classes of cortical and thalamic neurons. Biol Cybern 99, 427–441.*
+        ''' Voltage-dependent steady-state opening of u-gate
 
             :param Vm: membrane potential (mV)
-            :return: asymptotic probability (-)
+            :return: steady-state opening (-)
         '''
-
         return 1.0 / (1.0 + np.exp((Vm + self.Vx + 81.0) / 4.0))  # prob
 
 
     def tauu(self, Vm):
-        ''' Compute the decay time constant for adaptation of U-type,
-            inactivation gate of Calcium channels.
-
-            Reference:
-            *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac, Y.,
-            Markram, H., and Destexhe, A. (2008). Minimal Hodgkin-Huxley type models for different
-            classes of cortical and thalamic neurons. Biol Cybern 99, 427–441.*
+        ''' Voltage-dependent adaptation time for adaptation of u-gate
 
             :param Vm: membrane potential (mV)
-            :return: decayed time constant (s)
+            :return: adaptation time (s)
         '''
-
         if Vm + self.Vx < -80.0:
             return 1.0 / 3.7 * np.exp((Vm + self.Vx + 467.0) / 66.6) * 1e-3  # s
         else:
@@ -523,150 +450,107 @@ class ThalamoCortical(Thalamic):
 
 
     def derS(self, Vm, s):
-        ''' Compute the evolution of the open-probability of the S-type,
-            activation gate of Calcium channels.
+        ''' Evolution of s-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param s: open-probability of S-type Calcium activation gates (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param s: open-probability of s-gate (-)
+            :return: time derivative of s-gate open-probability (s-1)
         '''
-
         return (self.sinf(Vm) - s) / self.taus(Vm)
 
 
     def derU(self, Vm, u):
-        ''' Compute the evolution of the open-probability of the U-type,
-            inactivation gate of Calcium channels.
+        ''' Evolution of u-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param u: open-probability of U-type Calcium inactivation gates (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param u: open-probability of u-gate (-)
+            :return: time derivative of u-gate open-probability (s-1)
         '''
-
         return (self.uinf(Vm) - u) / self.tauu(Vm)
 
 
-
     def oinf(self, Vm):
-        ''' Voltage-dependent steady-state activation of hyperpolarization-activated
-            cation current channels.
-
-            Reference:
-            *Huguenard, J.R., and McCormick, D.A. (1992). Simulation of the currents involved in
-            rhythmic oscillations in thalamic relay neurons. J. Neurophysiol. 68, 1373–1383.*
+        ''' Voltage-dependent steady-state opening of O-gate
 
             :param Vm: membrane potential (mV)
-            :return: steady-state activation (-)
+            :return: steady-state opening (-)
         '''
-
         return 1.0 / (1.0 + np.exp((Vm + 75.0) / 5.5))
 
 
     def tauo(self, Vm):
-        ''' Time constant for activation of hyperpolarization-activated cation current channels.
-
-            Reference:
-            *Huguenard, J.R., and McCormick, D.A. (1992). Simulation of the currents involved in
-            rhythmic oscillations in thalamic relay neurons. J. Neurophysiol. 68, 1373–1383.*
+        ''' Voltage-dependent adaptation time for adaptation of O-gate
 
             :param Vm: membrane potential (mV)
-            :return: time constant (s)
+            :return: adaptation time (s)
         '''
-
         return 1 / (np.exp(-14.59 - 0.086 * Vm) + np.exp(-1.87 + 0.0701 * Vm)) * 1e-3
 
 
     def alphao(self, Vm):
-        ''' Transition rate between closed and open form of hyperpolarization-activated
-            cation current channels.
+        ''' Voltage-dependent transition rate between closed and open forms of O-gate
 
             :param Vm: membrane potential (mV)
-            :return: transition rate (s-1)
+            :return: rate (s-1)
         '''
-
         return self.oinf(Vm) / self.tauo(Vm)
 
 
     def betao(self, Vm):
-        ''' Transition rate between open and closed form of hyperpolarization-activated
-            cation current channels.
+        ''' Voltage-dependent transition rate between open and closed forms of O-gate
 
             :param Vm: membrane potential (mV)
-            :return: transition rate (s-1)
+            :return: rate (s-1)
         '''
-
         return (1 - self.oinf(Vm)) / self.tauo(Vm)
 
 
     def derC(self, C, O, Vm):
-        ''' Compute the evolution of the proportion of hyperpolarization-activated
-            cation current channels in closed state.
+        ''' Evolution of O-gate closed-probability
 
-            Kinetics scheme of Calcium dependent activation derived from:
-            *Destexhe, A., Bal, T., McCormick, D.A., and Sejnowski, T.J. (1996). Ionic mechanisms
-            underlying synchronized oscillations and propagating waves in a model of ferret
-            thalamic slices. J. Neurophysiol. 76, 2049–2070.*
-
+            :param C: closed-probability of O-gate (-)
+            :param O: open-probability of O-gate (-)
             :param Vm: membrane potential (mV)
-            :param C: proportion of Ih channels in closed state (-)
-            :param O: proportion of Ih channels in open state (-)
-            :return: derivative of proportion w.r.t. time (s-1)
+            :return: time derivative of O-gate closed-probability (s-1)
         '''
-
         return self.betao(Vm) * O - self.alphao(Vm) * C
 
 
     def derO(self, C, O, P0, Vm):
-        ''' Compute the evolution of the proportion of hyperpolarization-activated
-            cation current channels in open state.
+        ''' Evolution of O-gate open-probability
 
-            Kinetics scheme of Calcium dependent activation derived from:
-            *Destexhe, A., Bal, T., McCormick, D.A., and Sejnowski, T.J. (1996). Ionic mechanisms
-            underlying synchronized oscillations and propagating waves in a model of ferret
-            thalamic slices. J. Neurophysiol. 76, 2049–2070.*
-
-            :param Vm: membrane potential (mV)
-            :param C: proportion of Ih channels in closed state (-)
-            :param O: proportion of Ih channels in open state (-)
+            :param C: closed-probability of O-gate (-)
+            :param O: open-probability of O-gate (-)
             :param P0: proportion of Ih channels regulating factor in unbound state (-)
-            :return: derivative of proportion w.r.t. time (s-1)
+            :param Vm: membrane potential (mV)
+            :return: time derivative of O-gate open-probability (s-1)
         '''
-
         return - self.derC(C, O, Vm) - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
 
 
     def derP0(self, P0, Cai):
-        ''' Compute the evolution of the proportion of Ih channels regulating factor
-            in unbound state.
+        ''' Evolution of unbound probability of Ih regulating factor.
 
-            Kinetics scheme of Calcium dependent activation derived from:
-            *Destexhe, A., Bal, T., McCormick, D.A., and Sejnowski, T.J. (1996). Ionic mechanisms
-            underlying synchronized oscillations and propagating waves in a model of ferret
-            thalamic slices. J. Neurophysiol. 76, 2049–2070.*
-
-            :param Vm: membrane potential (mV)
-            :param P0: proportion of Ih channels regulating factor in unbound state (-)
-            :param Cai: Calcium concentration in effective submembranal space (M)
-            :return: derivative of proportion w.r.t. time (s-1)
+            :param P0: unbound probability of Ih regulating factor (-)
+            :param Cai: submembrane Calcium concentration (M)
+            :return: time derivative of ubnound probability (s-1)
         '''
-
         return self.k2 * (1 - P0) - self.k1 * P0 * Cai**self.nCa
 
 
     def derCai(self, Cai, s, u, Vm):
-        ''' Compute the evolution of the Calcium concentration in submembranal space.
+        ''' Evolution of submembrane Calcium concentration.
 
             Model of Ca2+ buffering and contribution from iCaT derived from:
             *McCormick, D.A., and Huguenard, J.R. (1992). A model of the electrophysiological
             properties of thalamocortical relay neurons. J. Neurophysiol. 68, 1384–1400.*
 
-            :param Cai: Calcium concentration in submembranal space (M)
-            :param s: open-probability of s-gate
-            :param u: open-probability of u-gate
+            :param Cai: submembrane Calcium concentration (M)
+            :param s: open-probability of s-gate (-)
+            :param u: open-probability of u-gate (-)
             :param Vm: membrane potential (mV)
-            :return: time derivative of Calcium concentration in submembranal space (M/s)
+            :return: time derivative of submembrane Calcium concentration (M/s)
         '''
-
         return (self.Cai_min - Cai) / self.taur_Cai - self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)
 
 
@@ -676,25 +560,23 @@ class ThalamoCortical(Thalamic):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
-        return self.GKL * (Vm - self.VK)
+        return self.gKL * (Vm - self.EK)
 
 
     def iH(self, O, C, Vm):
         ''' Outward mixed cationic current
 
-            :param O: proportion of the channels in open form
-            :param C: proportion of the channels in closed form
+            :param C: closed-probability of O-gate (-)
+            :param O: open-probability of O-gate (-)
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
         OL = 1 - O - C  # proportion of channels in locked-open form
-        return self.GhMax * (O + 2 * OL) * (Vm - self.Vh)
+        return self.gHbar * (O + 2 * OL) * (Vm - self.EH)
 
 
     def currents(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
         m, h, n, s, u, O, C, _, _ = states
         currents = super().currents(Vm, [m, h, n, s, u])
         currents['iKLeak'] = self.iKLeak(Vm)  # mA/m2
@@ -703,7 +585,7 @@ class ThalamoCortical(Thalamic):
 
 
     def steadyStates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Call parent method to compute Sodium, Potassium and Calcium channels gates steady-states
         NaKCa_eqstates = super().steadyStates(Vm)
@@ -727,7 +609,7 @@ class ThalamoCortical(Thalamic):
 
 
     def derStates(self, Vm, states):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         m, h, n, s, u, O, C, P0, Cai = states
 
@@ -743,7 +625,7 @@ class ThalamoCortical(Thalamic):
 
 
     def getEffRates(self, Vm):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         # Compute effective coefficients for Sodium, Potassium and Calcium conductances
         NaKCa_effrates = super().getEffRates(Vm)
@@ -758,7 +640,7 @@ class ThalamoCortical(Thalamic):
 
 
     def derStatesEff(self, Qm, states, interp_data):
-        ''' Concrete implementation of the abstract API method. '''
+        ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.coeff_names])
