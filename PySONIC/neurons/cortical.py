@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 18:15:56
+# @Last Modified time: 2019-03-14 22:41:14
 
 import numpy as np
 from ..core import PointNeuron
@@ -290,14 +290,6 @@ class CorticalRS(Cortical):
     VT = -56.2  # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_{Kd}\ kin.': ['n'],
-        'i_M\ kin.': ['p']
-    }
-
-
     def __init__(self):
         super().__init__()
         self.states0 = self.steadyStates(self.Vm0)
@@ -325,14 +317,6 @@ class CorticalFS(Cortical):
     ELeak = -70.4  # Non-specific leakage Nernst potential (mV)
     VT = -57.9  # Spike threshold adjustment parameter (mV)
     TauMax = 0.502  # Max. adaptation decay of slow non-inactivating Potassium current (s)
-
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_{Kd}\ kin.': ['n'],
-        'i_M\ kin.': ['p']
-    }
-
 
     def __init__(self):
         super().__init__()
@@ -368,14 +352,6 @@ class CorticalLTS(Cortical):
     VT = -50.0  # Spike threshold adjustment parameter (mV)
     TauMax = 4.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
     Vx = -7.0  # Voltage-dependence uniform shift factor at 36°C (mV)
-
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_{Kd}\ kin.': ['n'],
-        'i_M\ kin.': ['p'],
-        'i_{CaT}\ kin.': ['s', 'u']
-    }
 
     def __init__(self):
         super().__init__()
@@ -558,14 +534,6 @@ class CorticalIB(Cortical):
     ELeak = -70  # Non-specific leakage Nernst potential (mV)
     VT = -56.2  # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
-
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_{Kd}\ kin.': ['n'],
-        'i_M\ kin.': ['p'],
-        'i_{CaL}\ kin.': ['q', 'r']
-    }
 
     def __init__(self):
         super().__init__()

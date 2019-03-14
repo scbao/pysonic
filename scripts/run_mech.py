@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 16:31:50
+# @Last Modified time: 2019-03-14 23:31:48
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -66,7 +66,7 @@ def main():
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('-p', '--plot', default=False, action='store_true', help='Plot results')
+    ap.add_argument('-p', '--plot', type=str, default='Z', help='Variables to plot')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
 
     # Stimulation parameters
@@ -86,8 +86,10 @@ def main():
     loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
     outdir = args['outputdir'] if 'outputdir' in args else selectDirDialog()
+    if outdir == '':
+        logger.error('No output directory selected')
+        quit()
     mpi = args['mpi']
-    plot = args['plot']
     Cm0 = args['Cm0'] * 1e-2  # F/m2
     Qm0 = args['Qm0'] * 1e-5  # C/m2
     radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
@@ -113,8 +115,12 @@ def main():
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    if plot:
-        plotBatch(pkl_filepaths)
+    if args['plot']:
+        pltscheme = {
+            'Z': {'Z': ['Z']},
+            'all': None
+        }[args['plot']]
+        plotBatch(pkl_filepaths, pltscheme=pltscheme)
         plt.show()
 
 

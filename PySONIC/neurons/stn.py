@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 19:43:10
+# @Last Modified time: 2019-03-14 23:20:54
 
 
 import numpy as np
@@ -146,17 +146,6 @@ class OtsukaSTN(PointNeuron):
     kx_r = -0.08 * 1e-6  # M
     tau_r = 2 * 1e-3  # s
 
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_{Kd}\ kin.': ['n'],
-        'i_A\ kin.': ['a', 'b'],
-        'i_{CaT}\ kin.': ['p', 'q'],
-        'i_{CaL}\ kin.': ['c', 'd1', 'd2'],
-        'Ca^{2+}_i': ['Cai'],
-        'i_{KCa}\ kin.': ['r'],
-    }
-
 
     def __init__(self):
         self.states_names = ['a', 'b', 'c', 'd1', 'd2', 'm', 'h', 'n', 'p', 'q', 'r', 'Cai']
@@ -174,6 +163,23 @@ class OtsukaSTN(PointNeuron):
         self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
         self.states0 = self.steadyStates(self.Vm0)
+
+
+    def getPltScheme(self):
+        pltscheme = super().getPltScheme()
+        pltscheme['[Ca^{2+}]_i'] = ['Cai']
+        return pltscheme
+
+
+    def getPltVars(self):
+        pltvars = super().getPltVars()
+        pltvars['Cai'] = {
+            'desc': 'sumbmembrane Ca2+ concentration',
+            'label': '[Ca^{2+}]_i',
+            'unit': 'uM',
+            'factor': 1e6
+        }
+        return pltvars
 
 
     def getEffectiveDepth(self, Cai, Vm):

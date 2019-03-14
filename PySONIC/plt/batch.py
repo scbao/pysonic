@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 19:07:52
+# @Last Modified time: 2019-03-14 23:20:38
 
 import pickle
 import ntpath
@@ -10,12 +10,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ..utils import *
-from ..core import BilayerSonophore
+from ..core import BilayerSonophore, NeuronalBilayerSonophore
 from ..neurons import getNeuronsDict
 
 
 def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
-              ask_before_save=True, fig_ext='png', tag='fig', fs=15, lw=2, title=True,
+              ask_before_save=True, fig_ext='png', tag='fig', fs=10, lw=2, title=True,
               show_patches=True, frequency=1):
     ''' Plot a figure with profiles of several specific NICE output variables, for several
         NICE simulations.
@@ -60,10 +60,13 @@ def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
         _, tpatch_on, tpatch_off = getStimPulses(t, states)
 
         # Initialize appropriate object
-        if sim_type in ['ASTIM', 'ESTIM']:
-            obj = getNeuronsDict()[getNeuronType(pkl_filename)]()
-        else:
+        obj = {}
+        if sim_type == 'MECH':
             obj = BilayerSonophore(meta['a'], meta['Cm0'], meta['Qm0'])
+        else:
+            obj = getNeuronsDict()[getNeuronType(pkl_filename)]()
+            if sim_type == 'ASTIM':
+                obj = NeuronalBilayerSonophore(meta['a'], obj, meta['Fdrive'])
 
         # Retrieve plot variables
         tvar, pltvars = getTimePltVar(obj.tscale), obj.getPltVars()
@@ -95,9 +98,12 @@ def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
         for ax, (grouplabel, keys) in zip(axes, pltscheme.items()):
             nvars = len(keys)
             ax_pltvars = [pltvars[k] for k in keys]
+            if nvars == 1:
+                ax_pltvars[0]['color'] = 'k'
+                ax_pltvars[0]['ls'] = '-'
 
             # Set y-axis unit and bounds
-            ax.set_ylabel('$\\rm {}\ ({})$'.format(grouplabel, ax_pltvars[0].get('unit', '-')),
+            ax.set_ylabel('$\\rm {}\ ({})$'.format(grouplabel, ax_pltvars[0].get('unit', '')),
                           fontsize=fs)
             if 'bounds' in ax_pltvars[0]:
                 ax_min = min([ap['bounds'][0] for ap in ax_pltvars])
@@ -107,7 +113,7 @@ def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
             # Plot time series
             icolor = 0
             for pltvar, name in zip(ax_pltvars, pltscheme[grouplabel]):
-                var = extractPltVar(obj, pltvar, df, t.size, name)
+                var = extractPltVar(obj, pltvar, df, meta, t.size, name)
                 ax.plot(t, var, pltvar.get('ls', '-'), c=pltvar.get('color', 'C{}'.format(icolor)),
                         lw=lw, label='$\\rm {}$'.format(pltvar['label']))
                 if 'color' not in pltvar:

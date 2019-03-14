@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 19:25:51
+# @Last Modified time: 2019-03-14 23:21:03
 
 import numpy as np
 from ..core import PointNeuron
@@ -41,13 +41,6 @@ class FrankenhaeuserHuxley(PointNeuron):
     Ki = 120e-3  # Potassium intracellular concentration (M)
     Ko = 2.5e-3  # Potassium extracellular concentration (M)
 
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_{Kd}\ kin.': ['n'],
-        'i_P\ kin.': ['p']
-    }
-
 
     def __init__(self):
         self.states_names = ['m', 'h', 'n', 'p']
@@ -56,6 +49,11 @@ class FrankenhaeuserHuxley(PointNeuron):
         self.q10 = 3**((self.celsius - 20) / 10)
         self.T = self.celsius + CELSIUS_2_KELVIN
         self.states0 = self.steadyStates(self.Vm0)
+
+    def getPltVars(self):
+        pltvars = super().getPltVars()
+        pltvars['Qm']['bounds'] = (-150, 50)
+        return pltvars
 
 
     def alpham(self, Vm):

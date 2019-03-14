@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-01-08 16:30:33
+# @Last Modified time: 2019-03-14 23:28:52
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -64,8 +64,7 @@ def main():
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('-p', '--plotVm', default=False, action='store_true', help='Plot Vm')
-    ap.add_argument('--plotall', default=False, action='store_true', help='Plot all variables')
+    ap.add_argument('-p', '--plot', type=str, default='V', help='Variables to plot')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
     ap.add_argument('-t', '--titrate', default=False, action='store_true', help='Perform titration')
 
@@ -83,7 +82,9 @@ def main():
     loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
     outdir = args['outputdir'] if 'outputdir' in args else selectDirDialog()
-    plot = True if (args['plotVm'] or args['plotall']) else False
+    if outdir == '':
+        logger.error('No output directory selected')
+        quit()
     titrate = args['titrate']
     neuron_str = args['neuron']
     stim_params = dict(
@@ -105,12 +106,13 @@ def main():
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    if plot:
-        if args['plotVm']:
-            vars_dict = {'V_m': ['Vm']}
-        elif args['plotall']:
-            vars_dict = None
-        plotBatch(pkl_filepaths, vars_dict=vars_dict)
+    if args['plot']:
+        pltscheme = {
+            'Q': {'Q_m': ['Qm']},
+            'V': {'V_m': ['Vm']},
+            'all': None
+        }[args['plot']]
+        plotBatch(pkl_filepaths, pltscheme=pltscheme)
         plt.show()
 
 

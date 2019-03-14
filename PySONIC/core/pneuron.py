@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 18:46:36
+# @Last Modified time: 2019-03-14 22:48:01
 
 import os
 import time
@@ -110,14 +110,9 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
 
     def getPltScheme(self):
-
-        pltscheme = {
-            'Q_m': ['Qm'],
-            'V_m': ['Vm'],
-        }
-
+        pltscheme = {'Q_m': ['Qm'], 'V_m': ['Vm']}
         for cname in self.getCurrentsNames():
-            if cname != 'iLeak':
+            if 'Leak' not in cname:
                 key = 'I_{{{}}}\ kin.'.format(cname[1:])
                 cargs = inspect.getargspec(getattr(self, cname))[0][1:]
                 pltscheme[key] = [var for var in cargs if var not in ['Vm', 'Cai']]
@@ -127,8 +122,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
 
     def getPltVars(self):
-        ''' Return a dictionary containing information about all plot variables
-            related to the neuron (description, label, unit, factor, possible alias). '''
+        ''' Return a dictionary with information about all plot variables related to the neuron. '''
 
         pltvars = {
             'Qm': {
@@ -164,7 +158,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
                 'label': 'I_{{{}}}'.format(cname[1:]),
                 'unit': 'A/m^2',
                 'factor': 1e-3,
-                'alias': 'obj.{}({})'.format(cname, ', '.join(['df["{}"]'.format(a) for a in cargs]))
+                'func': '{}({})'.format(cname, ', '.join(['df["{}"]'.format(a) for a in cargs]))
             }
             for var in cargs:
                 if var not in ['Vm', 'Cai']:
@@ -181,7 +175,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
             'label': 'I_{net}',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'alias': 'obj.iNet(df["Vm"], df[obj.states_names].values.T)',
+            'func': 'iNet(df["Vm"], df[obj.states_names].values.T)',
             'ls': '--',
             'color': 'k'
         }

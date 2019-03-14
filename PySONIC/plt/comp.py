@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 16:42:09
+# @Last Modified time: 2019-03-14 22:02:57
 
 import sys
 import pickle
@@ -13,7 +13,6 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import FormatStrFormatter
 
 from ..utils import *
-# from .pltvars import pltvars
 from ..core import BilayerSonophore
 from ..neurons import getNeuronsDict
 

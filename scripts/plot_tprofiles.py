@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 17:25:40
+# @Last Modified time: 2019-03-14 23:32:50
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -12,15 +12,11 @@ import logging
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 
-from PySONIC.utils import logger, OpenFilesDialog
+from PySONIC.utils import logger, OpenFilesDialog, selectDirDialog
 from PySONIC.plt import plotComp, plotBatch
 
 # Set logging level
 logger.setLevel(logging.INFO)
-
-default_comp = 'Qm'
-defaults_batch = {'Q_m': ['Qm'], 'V_m': ['Vm']}
-# defaults_batch = {'Pac': ['Pac'], 'Z': ['Z'], 'Cm': ['Cm'], 'Vm': ['Vm'], 'Qm': ['Qm']}
 
 
 def main():
@@ -32,14 +28,12 @@ def main():
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
     ap.add_argument('-c', '--compare', default=False, action='store_true', help='Comparative graph')
     ap.add_argument('-s', '--save', default=False, action='store_true', help='Save output')
-    ap.add_argument('--vars', type=str, nargs='+', default=None, help='Variables to plot')
+    ap.add_argument('-p', '--plot', type=str, nargs='+', default=None, help='Variables to plot')
     ap.add_argument('-f', '--frequency', type=int, default=1, help='Sampling frequency for plot')
 
     # Parse arguments
-    args = ap.parse_args()
-
-    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
-    logger.setLevel(loglevel)
+    args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
+    logger.setLevel(logging.DEBUG if args['verbose'] else logging.INFO)
 
     # Select data files
     pkl_filepaths, _ = OpenFilesDialog('pkl')
@@ -48,15 +42,16 @@ def main():
         return
 
     # Comparative plot
-    if args.compare:
-        varname = default_comp if args.vars is None else args.vars[0]
-        plotComp(pkl_filepaths, varname=varname)
+    if args['compare']:
+        plotComp(pkl_filepaths, varname=args.get('plot', [None])[0])
     else:
-        pltscheme = defaults_batch if args.vars is None else {key: [key] for key in args.vars}
-        plotBatch(pkl_filepaths, title=True, pltscheme=pltscheme, directory=args.outputdir,
-                  plt_save=args.save, ask_before_save=not args.save)
+        pltscheme = {key: [key] for key in args['plot']} if 'plot' in args else None
+        if 'outputdir' not in args:
+            args['outputdir'] = selectDirDialog() if args['save'] else None
+        plotBatch(pkl_filepaths, title=True, pltscheme=pltscheme, directory=args['outputdir'],
+                  plt_save=args['save'], ask_before_save=not args['save'])
 
-    if not args.hide:
+    if not args['hide']:
         plt.show()
 
 

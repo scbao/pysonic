@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 18:48:15
+# @Last Modified time: 2019-03-14 23:19:32
 
 import numpy as np
 from ..core import PointNeuron
@@ -301,12 +301,6 @@ class ThalamicRE(Thalamic):
     ELeak = -90.0  # Non-specific leakage Nernst potential (mV)
     VT = -67.0  # Spike threshold adjustment parameter (mV)
 
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_{Kd}\ kin.': ['n'],
-        'i_{TS}\ kin.': ['s', 'u']
-    }
 
     def __init__(self):
         super().__init__()
@@ -392,14 +386,6 @@ class ThalamoCortical(Thalamic):
     k3 = 100.0  # intracellular Ca2+ regulation factor (s-1)
     k4 = 1.0  # intracellular Ca2+ regulation factor (s-1)
 
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_{Kd}\ kin.': ['n'],
-        'i_{T}\ kin.': ['s', 'u'],
-        'i_{H}\ kin.': ['O', 'OL']
-    }
-
 
     def __init__(self):
         super().__init__()
@@ -409,9 +395,16 @@ class ThalamoCortical(Thalamic):
         self.states0 = self.steadyStates(self.Vm0)
 
 
+    def getPltScheme(self):
+        pltscheme = super().getPltScheme()
+        pltscheme['I_{H}\\ kin.'] = ['O', 'OL', 'P0']
+        pltscheme['[Ca^{2+}]_i'] = ['Cai']
+        return pltscheme
+
+
     def getPltVars(self):
-        all_pltvars = super().getPltVars()
-        all_pltvars.update({
+        pltvars = super().getPltVars()
+        pltvars.update({
             'Cai': {
                 'desc': 'sumbmembrane Ca2+ concentration',
                 'label': '[Ca^{2+}]_i',
@@ -422,7 +415,7 @@ class ThalamoCortical(Thalamic):
                 'desc': 'iH O-gate locked-opening',
                 'label': 'O_L',
                 'bounds': (-0.1, 1.1),
-                'alias': '1 - df["O"] - df["C"]'
+                'func': 'OL(df["O"], df["C"])'
             },
             'P0': {
                 'desc': 'iH regulating factor activation',
@@ -430,7 +423,7 @@ class ThalamoCortical(Thalamic):
                 'bounds': (-0.1, 1.1)
             }
         })
-        return all_pltvars
+        return pltvars
 
 
     def sinf(self, Vm):
@@ -552,6 +545,17 @@ class ThalamoCortical(Thalamic):
         return - self.derC(C, O, Vm) - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
 
 
+    def OL(self, O, C):
+        ''' O-gate locked-open probability.
+
+            :param O: open-probability of O-gate (-)
+            :param C: closed-probability of O-gate (-)
+            :return: loked-open-probability of O-gate (-)
+
+        '''
+        return 1 - O - C
+
+
     def derP0(self, P0, Cai):
         ''' Evolution of unbound probability of Ih regulating factor.
 
@@ -595,8 +599,7 @@ class ThalamoCortical(Thalamic):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        OL = 1 - O - C  # proportion of channels in locked-open form
-        return self.gHbar * (O + 2 * OL) * (Vm - self.EH)
+        return self.gHbar * (O + 2 * self.OL(O, C)) * (Vm - self.EH)
 
 
     def currents(self, Vm, states):

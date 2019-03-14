@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 20:21:41
+# @Last Modified time: 2019-03-14 23:26:52
 
 import os
 import time
@@ -27,6 +27,8 @@ from ..batches import xlslog
 class NeuronalBilayerSonophore(BilayerSonophore):
     ''' This class inherits from the BilayerSonophore class and receives an PointNeuron instance
         at initialization, to define the electro-mechanical NICE model and its SONIC variant. '''
+
+    tscale = 'ms'  # relevant temporal scale of the model
 
     def __init__(self, a, neuron, Fdrive=None, embedding_depth=0.0):
         ''' Constructor of the class.
@@ -57,6 +59,13 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             si_format(self.a, precision=0, space=' '),
             self.neuron.name)
 
+    def getPltVars(self):
+        pltvars = super().getPltVars()
+        pltvars.update(self.neuron.getPltVars())
+        return pltvars
+
+    def getPltScheme(self):
+        return self.neuron.getPltScheme()
 
     def fullDerivatives(self, y, t, Adrive, Fdrive, phi):
         ''' Compute the derivatives of the (n+3) ODE full NBLS system variables.

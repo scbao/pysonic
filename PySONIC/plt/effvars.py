@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-05 10:41:44
+# @Last Modified time: 2019-03-14 22:03:18
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib
 
-from PySONIC.plt import pltvars
 from PySONIC.utils import logger, si_prefixes, isWithin, getLookups2D, getLookupsOff
 
 

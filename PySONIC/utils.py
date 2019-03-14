@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 18:33:59
+# @Last Modified time: 2019-03-14 22:34:19
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -373,9 +373,13 @@ def plotStimPatches(ax, tpatch_on, tpatch_off, tfactor):
                    edgecolor='none', facecolor='#8A8A8A', alpha=0.2)
 
 
-def extractPltVar(obj, pltvar, df, nsamples, name):
-    if 'alias' in pltvar:
-        var = eval(pltvar['alias'])
+def extractPltVar(obj, pltvar, df, meta, nsamples, name):
+    if 'func' in pltvar:
+        s = 'obj.{}'.format(pltvar['func'])
+        try:
+            var = eval(s)
+        except AttributeError:
+            var = eval(s.replace('obj', 'obj.neuron'))
     elif 'key' in pltvar:
         var = df[pltvar['key']]
     elif 'constant' in pltvar:
@@ -388,7 +392,6 @@ def extractPltVar(obj, pltvar, df, nsamples, name):
     var *= pltvar.get('factor', 1)
 
     return var
-
 
 
 def getNeuronLookupsFile(mechname, a=None, Fdrive=None, Adrive=None, fs=False):
