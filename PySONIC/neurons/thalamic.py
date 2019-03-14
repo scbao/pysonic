@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 18:15:00
+# @Last Modified time: 2019-03-13 20:02:02
 
 import numpy as np
 from ..core import PointNeuron
@@ -407,6 +407,36 @@ class ThalamoCortical(Thalamic):
         self.states_names += ['O', 'C', 'P0', 'Cai']
         self.coeff_names += ['alphao', 'betao']
         self.states0 = self.steadyStates(self.Vm0)
+
+
+    def getPltVars(self):
+        all_pltvars = super().getPltVars()
+        all_pltvars.update({
+            'Cai': {
+                'desc': 'sumbmembrane Ca2+ concentration',
+                'label': '[Ca^{2+}]_i',
+                'unit': 'uM',
+                'factor': 1e6
+            },
+            'OL': {
+                'desc': 'iH O-gate locked-opening',
+                'label': 'O_L',
+                'unit': None,
+                'factor': 1,
+                'min': 0.1,
+                'max:': 1.1,
+                'alias': '1 - df["O"] - df["C"]'
+            },
+            'P0': {
+                'desc': 'iH regulating factor activation',
+                'label': 'P_0',
+                'unit': None,
+                'factor': 1,
+                'min': -0.1,
+                'max': 1.1
+            }
+        })
+        return all_pltvars
 
 
     def sinf(self, Vm):

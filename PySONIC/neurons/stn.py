@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 18:19:55
+# @Last Modified time: 2019-03-13 19:43:10
 
 
 import numpy as np
@@ -295,41 +295,116 @@ class OtsukaSTN(PointNeuron):
 
 
     def derA(self, Vm, a):
+        ''' Evolution of a-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param a: open-probability of a-gate (-)
+            :return: time derivative of a-gate open-probability (s-1)
+        '''
         return (self.ainf(Vm) - a) / self.taua(Vm)
 
+
     def derB(self, Vm, b):
+        ''' Evolution of b-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param b: open-probability of b-gate (-)
+            :return: time derivative of b-gate open-probability (s-1)
+        '''
         return (self.binf(Vm) - b) / self.taub(Vm)
 
+
     def derC(self, Vm, c):
+        ''' Evolution of c-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param c: open-probability of c-gate (-)
+            :return: time derivative of c-gate open-probability (s-1)
+        '''
         return (self.cinf(Vm) - c) / self.tauc(Vm)
 
+
     def derD1(self, Vm, d1):
+        ''' Evolution of d1-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param d1: open-probability of d1-gate (-)
+            :return: time derivative of d1-gate open-probability (s-1)
+        '''
         return (self.d1inf(Vm) - d1) / self.taud1(Vm)
 
+
     def derD2(self, Cai, d2):
+        ''' Evolution of Calcium-dependent d2-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param d2: open-probability of d2-gate (-)
+            :return: time derivative of d2-gate open-probability (s-1)
+        '''
         return (self.d2inf(Cai) - d2) / self.tau_d2
 
+
     def derM(self, Vm, m):
+        ''' Evolution of m-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param m: open-probability of m-gate (-)
+            :return: time derivative of m-gate open-probability (s-1)
+        '''
         return (self.minf(Vm) - m) / self.taum(Vm)
 
+
     def derH(self, Vm, h):
+        ''' Evolution of h-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param h: open-probability of h-gate (-)
+            :return: time derivative of h-gate open-probability (s-1)
+        '''
         return (self.hinf(Vm) - h) / self.tauh(Vm)
 
+
     def derN(self, Vm, n):
+        ''' Evolution of n-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param n: open-probability of n-gate (-)
+            :return: time derivative of n-gate open-probability (s-1)
+        '''
         return (self.ninf(Vm) - n) / self.taun(Vm)
 
+
     def derP(self, Vm, p):
+        ''' Evolution of p-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param p: open-probability of p-gate (-)
+            :return: time derivative of p-gate open-probability (s-1)
+        '''
         return (self.pinf(Vm) - p) / self.taup(Vm)
 
+
     def derQ(self, Vm, q):
+        ''' Evolution of q-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param q: open-probability of q-gate (-)
+            :return: time derivative of q-gate open-probability (s-1)
+        '''
         return (self.qinf(Vm) - q) / self.tauq(Vm)
 
     def derR(self, Cai, r):
+        ''' Evolution of Calcium-dependent r-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param s: open-probability of r-gate (-)
+            :return: time derivative of r-gate open-probability (s-1)
+        '''
         return (self.rinf(Cai) - r) / self.tau_r
 
 
     def derCai(self, p, q, c, d1, d2, Cai, Vm):
-        ''' Compute the time derivative of the Calcium concentration in submembranal space.
+        ''' Evolution of Calcium concentration in submembranal space.
 
             :param Vm: membrane potential (mV)
             :param Cai: Calcium concentration in submembranal space (M)
@@ -346,7 +421,7 @@ class OtsukaSTN(PointNeuron):
 
 
     def derCaiSteadyState(self, Cai, Vm):
-        ''' Compute the time derivative of the Calcium concentration in submembranal space,
+        ''' Evolution of Calcium concentration in submembranal space,
             assuming quasi-steady gating states.
 
             :param Vm: membrane potential (mV)

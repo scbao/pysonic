@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 14:54:06
+# @Last Modified time: 2019-03-13 19:14:10
 
 import sys
 import pickle
@@ -121,8 +121,8 @@ def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
                 vars_dict = {'P_{AC}': ['Pac'], 'Z': ['Z'], 'n_g': ['ng']}
             if sim_type in ['ASTIM', 'ESTIM'] and hasattr(neuron, 'pltvars_scheme'):
                 vars_dict.update(neuron.pltvars_scheme)
-                pltvars.update(neuron.getCurrentsPltVars())
-                vars_dict['I'] = list(neuron.getCurrentsPltVars().keys())
+                pltvars.update(neuron.getPltVars())
+                vars_dict['I'] = list(neuron.getPltVars().keys())
         labels = list(vars_dict.keys())
         naxes = len(vars_dict)
 

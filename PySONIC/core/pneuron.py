@@ -4,13 +4,14 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 16:02:19
+# @Last Modified time: 2019-03-13 20:08:49
 
 import os
 import time
 import pickle
 import abc
 import inspect
+import re
 import numpy as np
 from scipy.integrate import odeint
 import pandas as pd
@@ -102,34 +103,68 @@ class PointNeuron(metaclass=abc.ABCMeta):
         return 1e-6 / (z_ion * depth * FARADAY)
 
 
-    def getCurrentsPltVars(self):
-        ''' Return a dictionary of implemented currents with their description. '''
+    def getPltVars(self):
+        ''' Return a dictionary containing information about all plot variables
+            related to the neuron (description, label, unit, factor, possible alias). '''
 
-        # Get list of all current names
-        cnames = list(self.currents(np.nan, [np.nan] * len(self.states_names)).keys())
+        all_pltvars = {
+            'Qm': {
+                'desc': 'charge density',
+                'label': 'Q_m',
+                'unit': 'nC/cm^2',
+                'factor': 1e5,
+                'min': -100,
+                'max': 50
+            },
 
-        # Generate a dictionary of 1 plot varibale from each ionic current
-        cpltvars = {}
-        for cname in cnames:
+            'Vm': {
+                'desc': 'membrane potential',
+                'label': 'V_m',
+                'unit': 'mV',
+                'factor': 1,
+            },
+
+            'ELeak': {
+                'constant': 'neuron.ELeak',
+                'desc': 'non-specific leakage current resting potential',
+                'label': 'V_{leak}',
+                'unit': 'mV',
+                'factor': 1e0
+            }
+        }
+
+        for cname in self.currents(np.nan, [np.nan] * len(self.states_names)).keys():
             cfunc = getattr(self, cname)
             cargs = inspect.getargspec(cfunc)[0][1:]
-            cpltvars[cname] = dict(
+            all_pltvars[cname] = dict(
                 desc=inspect.getdoc(cfunc).splitlines()[0],
                 label='I_{{{}}}'.format(cname[1:]),
                 unit='A/m^2',
                 factor=1e-3,
                 alias='neuron.{}({})'.format(cname, ', '.join(['df["{}"]'.format(a) for a in cargs]))
             )
+            for var in cargs:
+                if var not in ['Vm', 'Cai']:
+                    vfunc = getattr(self, 'der{}{}'.format(var[0].upper(), var[1:]))
+                    desc = cname + re.sub('^Evolution of', '', inspect.getdoc(vfunc).splitlines()[0])
+                    all_pltvars[var] = dict(
+                        desc=desc,
+                        label=var,
+                        unit=None,
+                        factor=1,
+                        min=-0.1,
+                        max=1.1
+                    )
 
-        # add plot variable for net membrane current
-        cpltvars['iNet'] = dict(
+        all_pltvars['iNet'] = dict(
             desc=inspect.getdoc(getattr(self, 'iNet')).splitlines()[0],
             label='I_{net}',
             unit='A/m^2',
             factor=1e-3,
             alias='neuron.iNet(df["Vm"], neuron_states)'
         )
-        return cpltvars
+
+        return all_pltvars
 
 
     @abc.abstractmethod

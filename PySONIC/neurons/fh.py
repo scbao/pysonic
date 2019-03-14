@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 18:18:59
+# @Last Modified time: 2019-03-13 19:25:51
 
 import numpy as np
 from ..core import PointNeuron
@@ -59,10 +59,10 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def alpham(self, Vm):
-        ''' Compute the alpha rate for the open-probability of Sodium channels.
+        ''' Voltage-dependent activation rate of m-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
         alpha = 0.36 * vtrap(22. - Vdiff, 3.)  # ms-1
@@ -70,10 +70,10 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def betam(self, Vm):
-        ''' Compute the beta rate for the open-probability of Sodium channels.
+        ''' Voltage-dependent inactivation rate of m-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
         beta = 0.4 * vtrap(Vdiff - 13., 20.)  # ms-1
@@ -81,10 +81,10 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def alphah(self, Vm):
-        ''' Compute the alpha rate for the inactivation-probability of Sodium channels.
+        ''' Voltage-dependent activation rate of h-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
         alpha = 0.1 * vtrap(Vdiff + 10.0, 6.)  # ms-1
@@ -92,10 +92,10 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def betah(self, Vm):
-        ''' Compute the beta rate for the inactivation-probability of Sodium channels.
+        ''' Voltage-dependent inactivation rate of h-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
         beta = 4.5 / (np.exp((45. - Vdiff) / 10.) + 1)  # ms-1
@@ -103,10 +103,10 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def alphan(self, Vm):
-        ''' Compute the alpha rate for the open-probability of delayed-rectifier Potassium channels.
+        ''' Voltage-dependent activation rate of n-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
         alpha = 0.02 * vtrap(35. - Vdiff, 10.0)  # ms-1
@@ -114,10 +114,10 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def betan(self, Vm):
-        ''' Compute the beta rate for the open-probability of delayed-rectifier Potassium channels.
+        ''' Voltage-dependent inactivation rate of n-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
         beta = 0.05 * vtrap(Vdiff - 10., 10.)  # ms-1
@@ -125,10 +125,10 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def alphap(self, Vm):
-        ''' Compute the alpha rate for the open-probability of non-specific delayed current.
+        ''' Voltage-dependent activation rate of p-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
         alpha = 0.006 * vtrap(40. - Vdiff, 10.0)  # ms-1
@@ -136,10 +136,10 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def betap(self, Vm):
-        ''' Compute the beta rate for the open-probability of non-specific delayed current.
+        ''' Voltage-dependent inactivation rate of p-gate
 
             :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
+            :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
         beta = 0.09 * vtrap(Vdiff + 25., 20.)  # ms-1
@@ -147,41 +147,41 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def derM(self, Vm, m):
-        ''' Compute the evolution of the open-probability of Sodium channels.
+        ''' Evolution of m-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param m: open-probability of Sodium channels (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param m: open-probability of m-gate (-)
+            :return: time derivative of m-gate open-probability (s-1)
         '''
         return self.alpham(Vm) * (1 - m) - self.betam(Vm) * m
 
 
     def derH(self, Vm, h):
-        ''' Compute the evolution of the inactivation-probability of Sodium channels.
+        ''' Evolution of h-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param h: inactivation-probability of Sodium channels (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param h: open-probability of h-gate (-)
+            :return: time derivative of h-gate open-probability (s-1)
         '''
         return self.alphah(Vm) * (1 - h) - self.betah(Vm) * h
 
 
     def derN(self, Vm, n):
-        ''' Compute the evolution of the open-probability of delayed-rectifier Potassium channels.
+        ''' Evolution of n-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param n: open-probability of delayed-rectifier Potassium channels (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param n: open-probability of n-gate (-)
+            :return: time derivative of n-gate open-probability (s-1)
         '''
         return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
 
 
     def derP(self, Vm, p):
-        ''' Compute the evolution of the open-probability of non-specific delayed current.
+        ''' Evolution of p-gate open-probability
 
             :param Vm: membrane potential (mV)
-            :param p: open-probability (prob)
-            :return: derivative of open-probability w.r.t. time (prob/s)
+            :param p: open-probability of p-gate (-)
+            :return: time derivative of p-gate open-probability (s-1)
         '''
         return self.alphap(Vm) * (1 - p) - self.betap(Vm) * p
 
