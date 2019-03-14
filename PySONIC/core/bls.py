@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-02-28 17:18:31
+# @Last Modified time: 2019-03-14 18:47:45
 
 from enum import Enum
 import time
@@ -72,6 +72,8 @@ class BilayerSonophore:
     epsilon0 = 8.854e-12  # Vacuum permittivity (F/m)
     epsilonR = 1.0  # Relative permittivity of intramembrane cavity (dimensionless)
 
+    tscale = 'us'  # relevant temporal scale of the model
+
     def __init__(self, a, Cm0, Qm0, Fdrive=None, embedding_depth=0.0):
         ''' Constructor of the class.
             :param a: in-plane radius of the sonophore structure within the membrane (m)
@@ -102,6 +104,7 @@ class BilayerSonophore:
 
         # If no lookup, compute parameters and store them in lookup
         if akey not in lookups or Qkey not in lookups[akey]:
+
             # Find Delta that cancels out Pm + Pec at Z = 0 (m)
             if self.Qm0 == 0.0:
                 D_eq = self.Delta_
@@ -175,7 +178,6 @@ class BilayerSonophore:
         return s
 
     def reinit(self):
-
         logger.debug('Re-initializing BLS object')
 
         # Find Delta that cancels out Pm + Pec at Z = 0 (m)
@@ -191,10 +193,74 @@ class BilayerSonophore:
         self.ng0 = self.gasPa2mol(self.P0, self.V0)
 
 
-    def curvrad(self, Z):
-        ''' Return the (signed) instantaneous curvature radius of the leaflet.
+    def getPltScheme(self):
+        return {
+            'P_{AC}': ['Pac'],
+            'Z': ['Z'],
+            'n_g': ['ng']
+        }
 
-            :param Z: leaflet apex outward deflection value (m)
+
+    def getPltVars(self):
+        ''' Return a dictionary containing information about all plot variables
+            related to the model (description, label, unit, factor, possible alias). '''
+        return {
+            'Pac': {
+                'desc': 'acoustic pressure',
+                'label': 'P_{AC}',
+                'unit': 'kPa',
+                'factor': 1e-3,
+                'alias': 'obj.Pacoustic(t, meta["Adrive"] * states, meta["Fdrive"])'
+            },
+
+            'Z': {
+                'desc': 'leaflets deflection',
+                'label': 'Z',
+                'unit': 'nm',
+                'factor': 1e9,
+                'bounds': (-1.0, 10.0)
+            },
+
+            'ng': {
+                'desc': 'gas content',
+                'label': 'n_g',
+                'unit': '10^{-22}\ mol',
+                'factor': 1e22,
+                'bounds': (1.0, 15.0)
+            },
+
+            'Pmavg': {
+                'desc': 'average intermolecular pressure',
+                'label': 'P_M',
+                'unit': 'kPa',
+                'factor': 1e-3,
+                'alias': 'obj.PMavgpred(df["Z"])'
+            },
+
+            'Telastic': {
+                'desc': 'leaflet elastic tension',
+                'label': 'T_E',
+                'unit': 'mN/m',
+                'factor': 1e3,
+                'alias': 'obj.TEleaflet(df["Z"])'
+            },
+
+            'Cm': {
+                'desc': 'membrane capacitance',
+                'label': 'C_m',
+                'unit': 'uF/cm^2',
+                'factor': 1e2,
+                'bounds': (0.0, 1.5),
+                'alias': 'obj.v_Capct(df["Z"])'
+            }
+        }
+
+
+    def curvrad(self, Z):
+        ''' Leaflet curvature radius
+            (signed variable)
+
+            :param Z: leaflet apex deflection (m)
             :return: leaflet curvature radius (m)
         '''
         if Z == 0.0:
@@ -209,41 +275,41 @@ class BilayerSonophore:
 
 
     def surface(self, Z):
-        ''' Return the surface area of the stretched leaflet (spherical cap).
+        ''' Surface area of the stretched leaflet
+            (spherical cap formula)
 
-            :param Z: leaflet apex outward deflection value (m)
-            :return: surface of the stretched leaflet (m^2)
+            :param Z: leaflet apex deflection (m)
+            :return: stretched leaflet surface (m^2)
         '''
         return np.pi * (self.a**2 + Z**2)
 
 
     def volume(self, Z):
-        ''' Return the total volume of the inter-leaflet space (cylinder +/-
-            spherical cap).
+        ''' Volume of the inter-leaflet space
+            (cylinder +/- 2 spherical caps)
 
-            :param Z: leaflet apex outward deflection value (m)
-            :return: inner volume of the bilayer sonophore structure (m^3)
+            :param Z: leaflet apex deflection (m)
+            :return: bilayer sonophore inner volume (m^3)
         '''
         return np.pi * self.a**2 * self.Delta\
             * (1 + (Z / (3 * self.Delta) * (3 + Z**2 / self.a**2)))
 
 
     def arealstrain(self, Z):
-        ''' Compute the areal strain of the stretched leaflet.
+        ''' Areal strain of the stretched leaflet
             epsilon = (S - S0)/S0 = (Z/a)^2
 
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :return: areal strain (dimensionless)
         '''
         return (Z / self.a)**2
 
 
     def Capct(self, Z):
-        ''' Compute the membrane capacitance per unit area,
-            under the assumption of parallel-plate capacitor
-            with average inter-layer distance.
+        ''' Membrane capacitance
+            (parallel-plate capacitor evaluated at average inter-layer distance)
 
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :return: capacitance per unit area (F/m2)
         '''
         if Z == 0.0:
@@ -260,12 +326,11 @@ class BilayerSonophore:
 
 
     def derCapct(self, Z, U):
-        ''' Compute the derivative of the membrane capacitance per unit area
-            with respect to time, under the assumption of parallel-plate capacitor.
+        ''' Evolution of membrane capacitance
 
-            :param Z: leaflet apex outward deflection value (m)
-            :param U: leaflet apex outward deflection velocity (m/s)
-            :return: derivative of capacitance per unit area (F/m2.s)
+            :param Z: leaflet apex deflection (m)
+            :param U: leaflet apex deflection velocity (m/s)
+            :return: time derivative of capacitance per unit area (F/m2.s)
         '''
         dCmdZ = ((self.Cm0 * self.Delta / self.a**2) *
                  ((Z**2 + self.a**2) / (Z * (2 * Z + self.Delta)) -
@@ -275,11 +340,11 @@ class BilayerSonophore:
 
 
     def localdef(self, r, Z, R):
-        ''' Compute the (signed) local transverse leaflet deviation at a distance
-            r from the center of the dome.
+        ''' Local leaflet deflection at specific radial distance
+            (signed)
 
             :param r: in-plane distance from center of the sonophore (m)
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :param R: leaflet curvature radius (m)
             :return: local transverse leaflet deviation (m)
         '''
@@ -290,10 +355,9 @@ class BilayerSonophore:
 
 
     def Pacoustic(self, t, Adrive, Fdrive, phi=np.pi):
-        ''' Compute the acoustic pressure at a specific time, given
-            the amplitude, frequency and phase of the acoustic stimulus.
+        ''' Time-varying acoustic pressure
 
-            :param t: time of interest
+            :param t: time (s)
             :param Adrive: acoustic drive amplitude (Pa)
             :param Fdrive: acoustic drive frequency (Hz)
             :param phi: acoustic drive phase (rad)
@@ -302,10 +366,10 @@ class BilayerSonophore:
 
 
     def PMlocal(self, r, Z, R):
-        ''' Compute the local intermolecular pressure.
+        ''' Local intermolecular pressure
 
             :param r: in-plane distance from center of the sonophore (m)
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :param R: leaflet curvature radius (m)
             :return: local intermolecular pressure (Pa)
         '''
@@ -315,17 +379,16 @@ class BilayerSonophore:
 
 
     def PMavg(self, Z, R, S):
-        ''' Compute the average intermolecular pressure felt across the leaflet
-            by quadratic integration.
+        ''' Average intermolecular pressure across the leaflet
+            (computed by quadratic integration)
 
             :param Z: leaflet apex outward deflection value (m)
             :param R: leaflet curvature radius (m)
             :param S: surface of the stretched leaflet (m^2)
-            :return: averaged intermolecular resultant pressure across the leaflet (Pa)
+            :return: averaged intermolecular resultant pressure (Pa)
 
             .. warning:: quadratic integration is computationally expensive.
         '''
-
         # Integrate intermolecular force over an infinitely thin ring of radius r from 0 to a
         fTotal, _ = integrate.quad(lambda r, Z, R: 2 * np.pi * r * self.PMlocal(r, Z, R),
                                    0, self.a, args=(Z, R))
@@ -388,10 +451,10 @@ class BilayerSonophore:
 
 
     def PMavgpred(self, Z):
-        ''' Return the predicted intermolecular pressure based on a specific Lennard-Jones
-            function fitted on the deflection physiological range.
+        ''' Approximated average intermolecular pressure
+            (using nonlinearly fitted Lennard-Jones function)
 
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :return: predicted average intermolecular pressure (Pa)
         '''
         return LennardJones(Z, self.Delta, self.LJ_approx['x0'], self.LJ_approx['C'],
@@ -399,11 +462,11 @@ class BilayerSonophore:
 
 
     def Pelec(self, Z, Qm):
-        ''' Compute the electric equivalent pressure term.
+        ''' Electrical pressure term
 
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :param Qm: membrane charge density (C/m2)
-            :return: electric equivalent pressure (Pa)
+            :return: electrical pressure (Pa)
         '''
         relS = self.S0 / self.surface(Z)
         abs_perm = self.epsilon0 * self.epsilonR  # F/m
@@ -418,25 +481,18 @@ class BilayerSonophore:
             :param Qm: membrane charge density (C/m2)
             :return: equilibrium value (m) and associated pressure (Pa)
         '''
-
         f = lambda Delta: (self.pDelta * (
-            (self.Delta_ / Delta)**self.m - (self.Delta_ / Delta)**self.n) + self.Pelec(0.0, Qm)
-        )
-
-        Delta_lb = 0.1 * self.Delta_
-        Delta_ub = 2.0 * self.Delta_
-
-        Delta_eq = brentq(f, Delta_lb, Delta_ub, xtol=1e-16)
+            (self.Delta_ / Delta)**self.m - (self.Delta_ / Delta)**self.n) + self.Pelec(0.0, Qm))
+        Delta_eq = brentq(f, 0.1 * self.Delta_, 2.0 * self.Delta_, xtol=1e-16)
         logger.debug('∆eq = %.2f nm', Delta_eq * 1e9)
         return (Delta_eq, f(Delta_eq))
 
 
-    def gasflux(self, Z, P):
-        ''' Compute the gas molar flux through the BLS boundary layer for
-            an unsteady system.
+    def gasFlux(self, Z, P):
+        ''' Gas molar flux through the sonophore boundary layers
 
-            :param Z: leaflet apex outward deflection value (m)
-            :param P: internal gas pressure in the inter-leaflet space (Pa)
+            :param Z: leaflet apex deflection (m)
+            :param P: internal gas pressure (Pa)
             :return: gas molar flux (mol/s)
         '''
         dC = self.C0 - P / self.kH
@@ -444,39 +500,35 @@ class BilayerSonophore:
 
 
     def gasmol2Pa(self, ng, V):
-        ''' Compute the gas pressure in the inter-leaflet space for an
-            unsteady system, from the value of gas molar content.
+        ''' Internal gas pressure for a given molar content
 
             :param ng: internal molar content (mol)
-            :param V: inner volume of the bilayer sonophore structure (m^3)
+            :param V: sonophore inner volume (m^3)
             :return: internal gas pressure (Pa)
         '''
         return ng * Rg * self.T / V
 
 
     def gasPa2mol(self, P, V):
-        ''' Compute the gas molar content in the inter-leaflet space for
-            an unsteady system, from the value of internal gas pressure.
+        ''' Internal gas molar content for a given pressure
 
-            :param P: internal gas pressure in the inter-leaflet space (Pa)
-            :param V: inner volume of the bilayer sonophore structure (m^3)
+            :param P: internal gas pressure (Pa)
+            :param V: sonophore inner volume (m^3)
             :return: internal gas molar content (mol)
         '''
         return P * V / (Rg * self.T)
 
 
     def PtotQS(self, Z, ng, Qm, Pac, Pm_comp_method):
-        ''' Compute the balance pressure of the quasi-steady system, upon application
-            of an external perturbation on a charged membrane:
-            Ptot = Pm + Pg + Pec - P0 - Pac.
+        ''' Net quasi-steady pressure for a given acoustic pressure
+            (Ptot = Pm + Pg + Pec - P0 - Pac)
 
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :param ng: internal molar content (mol)
             :param Qm: membrane charge density (C/m2)
-            :param Pac: external acoustic perturbation (Pa)
-            :param Pm_comp_method: type of method used to compute average intermolecular pressure
+            :param Pac: acoustic pressure (Pa)
+            :param Pm_comp_method: computation method for average intermolecular pressure
             :return: total balance pressure (Pa)
-
         '''
         if Pm_comp_method is PmCompMethod.direct:
             Pm = self.PMavg(Z, self.curvrad(Z), self.surface(Z))
@@ -486,18 +538,14 @@ class BilayerSonophore:
 
 
     def balancedefQS(self, ng, Qm, Pac=0.0, Pm_comp_method=PmCompMethod.predict):
-        ''' Compute the leaflet deflection upon application of an external
-            perturbation to a quasi-steady system with a charged membrane.
-
-            This function uses the Brent method (progressive approximation of
-            function root) to solve the following transcendental equation for Z:
-            Pm + Pg + Pec - P0 - Pac = 0.
+        ''' Quasi-steady equilibrium deflection for a given acoustic pressure
+            (computed by approximating the root of quasi-steady pressure)
 
             :param ng: internal molar content (mol)
             :param Qm: membrane charge density (C/m2)
             :param Pac: external acoustic perturbation (Pa)
-            :param Pm_comp_method: type of method used to compute average intermolecular pressure
-            :return: leaflet deflection (Z) canceling out the balance equation
+            :param Pm_comp_method: computation method for average intermolecular pressure
+            :return: leaflet deflection canceling quasi-steady pressure (m)
         '''
         lb = -0.49 * self.Delta
         ub = self.a
@@ -508,40 +556,36 @@ class BilayerSonophore:
 
 
     def TEleaflet(self, Z):
-        ''' Compute the circumferential elastic tension felt across the
-            entire leaflet upon stretching.
+        ''' Elastic tension in leaflet
 
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :return: circumferential elastic tension (N/m)
         '''
         return self.kA * self.arealstrain(Z)
 
 
     def TEtissue(self, Z):
-        ''' Compute the circumferential elastic tension felt across the
-            embedding viscoelastic tissue layer upon stretching.
+        ''' Elastic tension in surrounding viscoelastic layer
 
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :return: circumferential elastic tension (N/m)
         '''
         return self.kA_tissue * self.arealstrain(Z)
 
 
     def TEtot(self, Z):
-        ''' Compute the total circumferential elastic tension (leaflet
-            and embedding tissue) felt upon stretching.
+        ''' Total elastic tension (leaflet + surrounding viscoelastic layer)
 
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :return: circumferential elastic tension (N/m)
         '''
         return self.TEleaflet(Z) + self.TEtissue(Z)
 
 
     def PEtot(self, Z, R):
-        ''' Compute the total elastic tension pressure (leaflet + embedding
-            tissue) felt upon stretching.
+        ''' Total elastic tension pressure (leaflet + surrounding viscoelastic layer)
 
-            :param Z: leaflet apex outward deflection value (m)
+            :param Z: leaflet apex deflection (m)
             :param R: leaflet curvature radius (m)
             :return: elastic tension pressure (Pa)
         '''
@@ -549,65 +593,59 @@ class BilayerSonophore:
 
 
     def PVleaflet(self, U, R):
-        ''' Compute the viscous stress felt across the entire leaflet
-            upon stretching.
+        ''' Viscous stress pressure in leaflet
 
-            :param U: leaflet apex outward deflection velocity (m/s)
+            :param U: leaflet apex deflection velocity (m/s)
             :param R: leaflet curvature radius (m)
-            :return: leaflet viscous stress (Pa)
+            :return: leaflet viscous stress pressure (Pa)
         '''
         return - 12 * U * self.delta0 * self.muS / R**2
 
 
     def PVfluid(self, U, R):
-        ''' Compute the viscous stress felt across the entire fluid
-            upon stretching.
+        ''' Viscous stress pressure in surrounding medium
 
-            :param U: leaflet apex outward deflection velocity (m/s)
+            :param U: leaflet apex deflection velocity (m/s)
             :param R: leaflet curvature radius (m)
-            :return: fluid viscous stress (Pa)
+            :return: fluid viscous stress pressure (Pa)
         '''
         return - 4 * U * self.muL / np.abs(R)
 
 
-    def accP(self, Pres, R):
-        ''' Compute the pressure-driven acceleration of the leaflet in the
-            unsteady system, upon application of an external perturbation.
+    def accP(self, Ptot, R):
+        ''' Leaflet transverse acceleration resulting from pressure imbalance
 
-            :param Pres: net resultant pressure (Pa)
+            :param Ptot: net pressure (Pa)
             :param R: leaflet curvature radius (m)
             :return: pressure-driven acceleration (m/s^2)
         '''
-        return Pres / (self.rhoL * np.abs(R))
+        return Ptot / (self.rhoL * np.abs(R))
 
 
     def accNL(self, U, R):
-        ''' Compute the non-linear term of the leaflet acceleration in the
-        unsteady system, upon application of an external perturbation.
+        ''' Leaflet transverse nonlinear acceleration
 
-        :param U: leaflet apex outward deflection velocity (m/s)
-        :param R: leaflet curvature radius (m)
-        :return: nonlinear acceleration (m/s^2)
+            :param U: leaflet apex deflection velocity (m/s)
+            :param R: leaflet curvature radius (m)
+            :return: nonlinear acceleration term (m/s^2)
 
-        .. note:: A simplified version of nonlinear acceleration (neglecting
-            dR/dH) is used here.
-
-        '''
+            .. note:: A simplified version of nonlinear acceleration (neglecting
+                dR/dH) is used here.
+            '''
         # return - (3/2 - 2*R/H) * U**2 / R
         return -(3 * U**2) / (2 * R)
 
 
     def derivatives(self, y, t, Adrive, Fdrive, Qm, phi, Pm_comp_method=PmCompMethod.predict):
-        ''' Compute the derivatives of the 3-ODE mechanical system variables,
-            with an imposed constant charge density.
+        ''' Evolution of the mechanical system
 
             :param y: vector of HH system variables at time t
-            :param t: specific instant in time (s)
+            :param t: time instant (s)
             :param Adrive: acoustic drive amplitude (Pa)
             :param Fdrive: acoustic drive frequency (Hz)
             :param Qm: membrane charge density (F/m2)
             :param phi: acoustic drive phase (rad)
-            :param Pm_comp_method: type of method used to compute average intermolecular pressure
+            :param Pm_comp_method: computation method for average intermolecular pressure
             :return: vector of mechanical system derivatives at time t
         '''
 
@@ -634,14 +672,14 @@ class BilayerSonophore:
         # Compute derivatives
         dUdt = self.accP(Ptot, R) + self.accNL(U, R)
         dZdt = U
-        dngdt = self.gasflux(Z, Pg)
+        dngdt = self.gasFlux(Z, Pg)
 
         # Return derivatives vector
         return [dUdt, dZdt, dngdt]
 
 
     def checkInputs(self, Fdrive, Adrive, Qm, phi):
-        ''' Check validity of stimulation parameters.
+        ''' Check validity of stimulation parameters
 
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
@@ -665,8 +703,7 @@ class BilayerSonophore:
 
 
     def simulate(self, Fdrive, Adrive, Qm, phi=np.pi, Pm_comp_method=PmCompMethod.predict):
-        ''' Compute short solutions of the mechanical system for specific
-            US stimulation parameters and with an imposed membrane charge density.
+        ''' Simulate mechanical system until prediodic stabilization
 
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
@@ -743,8 +780,7 @@ class BilayerSonophore:
 
 
     def runAndSave(self, outdir, Fdrive, Adrive, Qm):
-        ''' Run a simulation of the mechanical system with specific stimulation parameters
-            and an imposed value of charge density, and save the results in a PKL file.
+        ''' Simulate mechanical system and save results in a PKL file.
 
             :param outdir: full path to output directory
             :param Fdrive: US frequency (Hz)
@@ -833,8 +869,7 @@ class BilayerSonophore:
         return outpath
 
     def getCycleProfiles(self, Fdrive, Adrive, Qm):
-        ''' Run a mechanical simulation until periodic stabilization, and compute pressure profiles
-            over the last acoustic cycle.
+        ''' Simulate mechanical system and compute pressures over the last acoustic cycle
 
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)

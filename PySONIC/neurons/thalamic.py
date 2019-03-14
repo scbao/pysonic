@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 20:02:02
+# @Last Modified time: 2019-03-14 18:48:15
 
 import numpy as np
 from ..core import PointNeuron
@@ -421,19 +421,13 @@ class ThalamoCortical(Thalamic):
             'OL': {
                 'desc': 'iH O-gate locked-opening',
                 'label': 'O_L',
-                'unit': None,
-                'factor': 1,
-                'min': 0.1,
-                'max:': 1.1,
+                'bounds': (-0.1, 1.1),
                 'alias': '1 - df["O"] - df["C"]'
             },
             'P0': {
                 'desc': 'iH regulating factor activation',
                 'label': 'P_0',
-                'unit': None,
-                'factor': 1,
-                'min': -0.1,
-                'max': 1.1
+                'bounds': (-0.1, 1.1)
             }
         })
         return all_pltvars

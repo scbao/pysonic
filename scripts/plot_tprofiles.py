@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-27 18:57:43
+# @Last Modified time: 2019-03-14 17:25:40
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -52,8 +52,8 @@ def main():
         varname = default_comp if args.vars is None else args.vars[0]
         plotComp(pkl_filepaths, varname=varname)
     else:
-        vars_dict = defaults_batch if args.vars is None else {key: [key] for key in args.vars}
-        plotBatch(pkl_filepaths, title=True, vars_dict=vars_dict, directory=args.outputdir,
+        pltscheme = defaults_batch if args.vars is None else {key: [key] for key in args.vars}
+        plotBatch(pkl_filepaths, title=True, pltscheme=pltscheme, directory=args.outputdir,
                   plt_save=args.save, ask_before_save=not args.save)
 
     if not args.hide:

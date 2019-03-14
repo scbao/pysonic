@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 14:31:22
+# @Last Modified time: 2019-03-14 17:25:19
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -82,7 +82,7 @@ def main():
         titles = ['{:.2f} kPa ({:.0f} W/m2)'.format(A * 1e-3, I)
                   for A, I in zip(subset_amplitudes, subset_intensities)]
         print(titles)
-        figtraces = plotBatch([fpaths[i] for i in isubset], vars_dict={'Q_m': ['Qm']})
+        figtraces = plotBatch([fpaths[i] for i in isubset], pltscheme={'Q_m': ['Qm']})
         for fig, title in zip(figtraces, titles):
             fig.axes[0].set_title(title)
             fig.canvas.set_window_title(figbase + 'b {}'.format(title))

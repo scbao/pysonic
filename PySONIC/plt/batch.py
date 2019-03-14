@@ -2,9 +2,8 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 19:14:10
+# @Last Modified time: 2019-03-14 19:07:52
 
-import sys
 import pickle
 import ntpath
 import numpy as np
@@ -12,18 +11,17 @@ import matplotlib.pyplot as plt
 
 from ..utils import *
 from ..core import BilayerSonophore
-from .pltvars import pltvars
 from ..neurons import getNeuronsDict
 
 
-def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
+def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
               ask_before_save=True, fig_ext='png', tag='fig', fs=15, lw=2, title=True,
               show_patches=True, frequency=1):
     ''' Plot a figure with profiles of several specific NICE output variables, for several
         NICE simulations.
 
         :param filepaths: list of full paths to output data files to be compared
-        :param vars_dict: dict of lists of variables names to extract and plot together
+        :param pltscheme: dict of lists of variables names to extract and plot together
         :param plt_save: boolean stating whether to save the created figures
         :param directory: directory where to save figures
         :param ask_before_save: boolean stating whether to show the created figures
@@ -34,180 +32,108 @@ def plotBatch(filepaths, vars_dict=None, plt_save=False, directory=None,
         :param title: boolean stating whether to display a general title on the figures
         :param show_patches: boolean indicating whether to indicate periods of stimulation with
          colored rectangular patches
+        :param frequency: downsampling frequency for time series
+        :return: list of figure handles
     '''
 
-    # Check validity of plot variables
-    if vars_dict:
-        yvars = list(sum(list(vars_dict.values()), []))
-        for key in yvars:
-            if key not in pltvars:
-                raise KeyError('Unknown plot variable: "{}"'.format(key))
-
-    # Dictionary of neurons
-    neurons_dict = getNeuronsDict()
+    figs = []
 
     # Loop through data files
-    figs = []
     for filepath in filepaths:
 
-        # Get code from file name
+        # Retrieve file code and sim type from file name
         pkl_filename = ntpath.basename(filepath)
         filecode = pkl_filename[0:-4]
-
-        # Retrieve sim type
-        mo1 = rgxp.fullmatch(pkl_filename)
-        mo2 = rgxp_mech.fullmatch(pkl_filename)
-        if mo1:
-            mo = mo1
-        elif mo2:
-            mo = mo2
-        else:
-            logger.error('Error: "%s" file does not match regexp pattern', pkl_filename)
-            sys.exit(1)
-        sim_type = mo.group(1)
-        if sim_type not in ('MECH', 'ASTIM', 'ESTIM'):
-            raise ValueError('Invalid simulation type: {}'.format(sim_type))
+        sim_type = getSimType(pkl_filename)
 
         # Load data
         logger.info('Loading data from "%s"', pkl_filename)
         with open(filepath, 'rb') as fh:
             frame = pickle.load(fh)
-            df = frame['data']
+            df = frame['data'].iloc[::frequency]
             meta = frame['meta']
 
         # Extract variables
         logger.info('Extracting variables')
-        t = df['t'].values[::frequency]
-        states = df['states'].values[::frequency]
-        nsamples = t.size
+        t = df['t'].values
+        states = df['states'].values
+        _, tpatch_on, tpatch_off = getStimPulses(t, states)
 
-        # Initialize channel mechanism
+        # Initialize appropriate object
         if sim_type in ['ASTIM', 'ESTIM']:
-            neuron_name = mo.group(2)
-            global neuron
-            neuron = neurons_dict[neuron_name]()
-            neuron_states = [df[sn].values[::frequency] for sn in neuron.states_names]
-            Cm0 = neuron.Cm0
-            Qm0 = Cm0 * neuron.Vm0 * 1e-3
-            t_plt = pltvars['t_ms']
+            obj = getNeuronsDict()[getNeuronType(pkl_filename)]()
         else:
-            Cm0 = meta['Cm0']
-            Qm0 = meta['Qm0']
-            t_plt = pltvars['t_us']
+            obj = BilayerSonophore(meta['a'], meta['Cm0'], meta['Qm0'])
 
-        # Initialize BLS
-        if sim_type in ['MECH', 'ASTIM']:
-            global bls
-            Fdrive = meta['Fdrive']
-            a = meta['a']
-            bls = BilayerSonophore(a, Cm0, Qm0)
+        # Retrieve plot variables
+        tvar, pltvars = getTimePltVar(obj.tscale), obj.getPltVars()
 
-        # Determine patches location
-        npatches, tpatch_on, tpatch_off = getStimPulses(t, states)
+        # Check plot scheme if provided, otherwise generate it
+        if pltscheme:
+            for key in list(sum(list(pltscheme.values()), [])):
+                if key not in pltvars:
+                    raise KeyError('Unknown plot variable: "{}"'.format(key))
+        else:
+            pltscheme = obj.getPltScheme()
 
-        # Adding onset to time vector
-        if t_plt['onset'] > 0.0:
-            tonset = np.array([-t_plt['onset'], -t[0] - t[1]])
+        # Preset and rescale time vector
+        if tvar['onset'] > 0.0:
+            tonset = np.array([-tvar['onset'], -t[0] - t[1]])
             t = np.hstack((tonset, t))
             states = np.hstack((states, np.zeros(2)))
+        t *= tvar['factor']
 
-        # Determine variables to plot if not provided
-        if not vars_dict:
-            if sim_type == 'ASTIM':
-                vars_dict = {'Q_m': ['Qm'], 'V_m': ['Vm']}
-            elif sim_type == 'ESTIM':
-                vars_dict = {'V_m': ['Vm']}
-            elif sim_type == 'MECH':
-                vars_dict = {'P_{AC}': ['Pac'], 'Z': ['Z'], 'n_g': ['ng']}
-            if sim_type in ['ASTIM', 'ESTIM'] and hasattr(neuron, 'pltvars_scheme'):
-                vars_dict.update(neuron.pltvars_scheme)
-                pltvars.update(neuron.getPltVars())
-                vars_dict['I'] = list(neuron.getPltVars().keys())
-        labels = list(vars_dict.keys())
-        naxes = len(vars_dict)
-
-        # Plotting
+        # Create figure
+        naxes = len(pltscheme)
         if naxes == 1:
             fig, ax = plt.subplots(figsize=(11, 4))
             axes = [ax]
         else:
             fig, axes = plt.subplots(naxes, 1, figsize=(11, min(3 * naxes, 9)))
 
-        for i in range(naxes):
+        # Loop through each subgraph and plot appropriate variables
+        for ax, (grouplabel, keys) in zip(axes, pltscheme.items()):
+            nvars = len(keys)
+            ax_pltvars = [pltvars[k] for k in keys]
 
-            ax = axes[i]
-            for item in ['top', 'right']:
-                ax.spines[item].set_visible(False)
-            ax_pltvars = [pltvars[j] for j in vars_dict[labels[i]]]
-            nvars = len(ax_pltvars)
-
-            # X-axis
-            if i < naxes - 1:
-                ax.get_xaxis().set_ticklabels([])
-            else:
-                ax.set_xlabel('${}\ ({})$'.format(t_plt['label'], t_plt['unit']), fontsize=fs)
-                for tick in ax.xaxis.get_major_ticks():
-                    tick.label.set_fontsize(fs)
-
-            # Y-axis
-            if ax_pltvars[0]['unit']:
-                ax.set_ylabel('${}\ ({})$'.format(labels[i], ax_pltvars[0]['unit']),
-                              fontsize=fs)
-            else:
-                ax.set_ylabel('${}$'.format(labels[i]), fontsize=fs)
-            if 'min' in ax_pltvars[0] and 'max' in ax_pltvars[0]:
-                ax_min = min([ap['min'] for ap in ax_pltvars])
-                ax_max = max([ap['max'] for ap in ax_pltvars])
+            # Set y-axis unit and bounds
+            ax.set_ylabel('$\\rm {}\ ({})$'.format(grouplabel, ax_pltvars[0].get('unit', '-')),
+                          fontsize=fs)
+            if 'bounds' in ax_pltvars[0]:
+                ax_min = min([ap['bounds'][0] for ap in ax_pltvars])
+                ax_max = max([ap['bounds'][1] for ap in ax_pltvars])
                 ax.set_ylim(ax_min, ax_max)
-            ax.locator_params(axis='y', nbins=2)
-            for tick in ax.yaxis.get_major_ticks():
-                tick.label.set_fontsize(fs)
 
-            # Time series
+            # Plot time series
             icolor = 0
-            for j in range(nvars):
-
-                # Extract variable
-                pltvar = ax_pltvars[j]
-                if 'alias' in pltvar:
-                    var = eval(pltvar['alias'])
-                elif 'key' in pltvar:
-                    var = df[pltvar['key']].values[::frequency]
-                elif 'constant' in pltvar:
-                    var = eval(pltvar['constant']) * np.ones(nsamples)
-                else:
-                    var = df[vars_dict[labels[i]][j]].values[::frequency]
-                if var.size == t.size - 2:
-                    if pltvar['desc'] == 'membrane potential':
-                        var = np.hstack((np.array([neuron.Vm0] * 2), var))
-                    else:
-                        var = np.hstack((np.array([var[0]] * 2), var))
-                        # var = np.insert(var, 0, var[0])
-
-                # Plot variable
-                if 'constant' in pltvar or pltvar['label'] in ['I_{net}']:
-                    ax.plot(t * t_plt['factor'], var * pltvar['factor'], '--', c='black', lw=lw,
-                            label='${}$'.format(pltvar['label']))
-                else:
-                    ax.plot(t * t_plt['factor'], var * pltvar['factor'],
-                            c='C{}'.format(icolor), lw=lw, label='${}$'.format(pltvar['label']))
+            for pltvar, name in zip(ax_pltvars, pltscheme[grouplabel]):
+                var = extractPltVar(obj, pltvar, df, t.size, name)
+                ax.plot(t, var, pltvar.get('ls', '-'), c=pltvar.get('color', 'C{}'.format(icolor)),
+                        lw=lw, label='$\\rm {}$'.format(pltvar['label']))
+                if 'color' not in pltvar:
                     icolor += 1
 
-            # Patches
-            if show_patches == 1:
-                (ybottom, ytop) = ax.get_ylim()
-                for j in range(npatches):
-                    ax.axvspan(tpatch_on[j] * t_plt['factor'], tpatch_off[j] * t_plt['factor'],
-                               edgecolor='none', facecolor='#8A8A8A', alpha=0.2)
-            # Legend
+            # Add legend
             if nvars > 1 or 'gate' in ax_pltvars[0]['desc']:
-                ax.legend(fontsize=fs, loc=7, ncol=nvars // 4 + 1)
+                ax.legend(fontsize=fs, loc=7, ncol=nvars // 4 + 1, frameon=False)
 
-
-        # Title
+        # Post-process figure
+        for ax in axes:
+            for item in ['top', 'right']:
+                ax.spines[item].set_visible(False)
+            ax.locator_params(axis='y', nbins=2)
+            for item in ax.get_yticklabels():
+                item.set_fontsize(fs)
+        for ax in axes[:-1]:
+            ax.set_xticklabels([])
+        for item in axes[-1].get_xticklabels():
+            item.set_fontsize(fs)
+        axes[-1].set_xlabel('$\\rm {}\ ({})$'.format(tvar['label'], tvar['unit']), fontsize=fs)
+        if show_patches == 1:
+            for ax in axes:
+                plotStimPatches(ax, tpatch_on, tpatch_off, tvar['factor'])
         if title:
             axes[0].set_title(figtitle(meta), fontsize=fs)
-
         fig.tight_layout()
 
         # Save figure if needed (automatic or checked)

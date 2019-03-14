@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 13:45:33
+# @Last Modified time: 2019-03-14 18:33:59
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -103,6 +103,37 @@ timeunits = {
     'ESTIM': 't_ms',
     'MECH': 't_us'
 }
+
+
+def getTimePltVar(tscale):
+    ''' Return time plot variable for a given temporal scale. '''
+    return {
+        'desc': 'time',
+        'label': 'time',
+        'unit': tscale,
+        'factor': {'ms': 1e3, 'us': 1e6}[tscale],
+        'onset': {'ms': 1e-3, 'us': 1e-6}[tscale]
+    }
+
+
+def getSimType(fname):
+    ''' Get sim type from filename. '''
+    for exp in [rgxp, rgxp_mech]:
+        mo = exp.fullmatch(fname)
+        if mo:
+            sim_type = mo.group(1)
+            if sim_type not in ('MECH', 'ASTIM', 'ESTIM'):
+                raise ValueError('Invalid simulation type: {}'.format(sim_type))
+            return sim_type
+    raise ValueError('Error: "{}" file does not match regexp pattern'.format(fname))
+
+
+def getNeuronType(fname):
+    ''' Get neuron type from filename. '''
+    mo = rgxp.fullmatch(fname)
+    if mo:
+        return mo.group(2)
+    raise ValueError('Error: "{}" file does not match regexp pattern'.format(fname))
 
 
 def cm2inch(*tupl):
@@ -334,6 +365,30 @@ def getStimPulses(t, states):
 
     # return 3-tuple with #pulses, pulse ON and pulse OFF instants
     return npulses, tpulse_on, tpulse_off
+
+
+def plotStimPatches(ax, tpatch_on, tpatch_off, tfactor):
+    for j in range(tpatch_on.size):
+        ax.axvspan(tpatch_on[j] * tfactor, tpatch_off[j] * tfactor,
+                   edgecolor='none', facecolor='#8A8A8A', alpha=0.2)
+
+
+def extractPltVar(obj, pltvar, df, nsamples, name):
+    if 'alias' in pltvar:
+        var = eval(pltvar['alias'])
+    elif 'key' in pltvar:
+        var = df[pltvar['key']]
+    elif 'constant' in pltvar:
+        var = eval(pltvar['constant']) * np.ones(nsamples)
+    else:
+        var = df[name]
+
+    if var.size == nsamples - 2:
+        var = np.hstack((np.array([pltvar.get('y0', var[0])] * 2), var))
+    var *= pltvar.get('factor', 1)
+
+    return var
+
 
 
 def getNeuronLookupsFile(mechname, a=None, Fdrive=None, Adrive=None, fs=False):

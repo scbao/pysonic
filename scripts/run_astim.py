@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 11:03:01
+# @Last Modified time: 2019-03-14 17:29:52
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -73,9 +73,7 @@ def main():
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('-p', '--plotQ', default=False, action='store_true', help='Plot Qm')
-    ap.add_argument('--plotV', default=False, action='store_true', help='Plot Vm')
-    ap.add_argument('--plotall', default=False, action='store_true', help='Plot all variables')
+    ap.add_argument('-p', '--plot', type=str, default=None, help='Variables to plot')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
     ap.add_argument('-t', '--titrate', default=False, action='store_true', help='Perform titration')
     ap.add_argument('-m', '--method', type=str, default=defaults['method'],
@@ -101,7 +99,6 @@ def main():
     loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
     outdir = args['outputdir'] if 'outputdir' in args else selectDirDialog()
-    plot = True if (args['plotQ'] or args['plotV'] or args['plotall']) else False
     mpi = args['mpi']
     titrate = args['titrate']
     method = args['method']
@@ -146,14 +143,13 @@ def main():
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    if plot:
-        if args['plotQ']:
-            vars_dict = {'Q_m': ['Qm']}
-        elif args['plotV']:
-            vars_dict = {'V_m': ['Vm']}
-        elif args['plotall']:
-            vars_dict = None
-        plotBatch(pkl_filepaths, vars_dict=vars_dict, fs=10)
+    if args['plot']:
+        pltscheme = {
+            'Q': {'Q_m': ['Qm']},
+            'V': {'V_m': ['Vm']},
+            'all': None
+        }[args['plot']]
+        plotBatch(pkl_filepaths, pltscheme=pltscheme, fs=10)
         plt.show()
 
 

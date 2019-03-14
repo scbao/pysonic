@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 20:08:49
+# @Last Modified time: 2019-03-14 18:46:36
 
 import os
 import time
@@ -52,6 +52,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
               1-dimensional linear interpolators of "effective" coefficients. This method must
               return a list of derivatives ordered identically as in the states0 attribute.
     '''
+
+    tscale = 'ms'  # relevant temporal scale of the model
 
     def __repr__(self):
         return self.__class__.__name__
@@ -103,68 +105,88 @@ class PointNeuron(metaclass=abc.ABCMeta):
         return 1e-6 / (z_ion * depth * FARADAY)
 
 
+    def getCurrentsNames(self):
+        return list(self.currents(np.nan, [np.nan] * len(self.states_names)).keys())
+
+
+    def getPltScheme(self):
+
+        pltscheme = {
+            'Q_m': ['Qm'],
+            'V_m': ['Vm'],
+        }
+
+        for cname in self.getCurrentsNames():
+            if cname != 'iLeak':
+                key = 'I_{{{}}}\ kin.'.format(cname[1:])
+                cargs = inspect.getargspec(getattr(self, cname))[0][1:]
+                pltscheme[key] = [var for var in cargs if var not in ['Vm', 'Cai']]
+        pltscheme['I'] = self.getCurrentsNames() + ['iNet']
+
+        return pltscheme
+
+
     def getPltVars(self):
         ''' Return a dictionary containing information about all plot variables
             related to the neuron (description, label, unit, factor, possible alias). '''
 
-        all_pltvars = {
+        pltvars = {
             'Qm': {
                 'desc': 'charge density',
                 'label': 'Q_m',
                 'unit': 'nC/cm^2',
                 'factor': 1e5,
-                'min': -100,
-                'max': 50
+                'bounds': (-100, 50)
             },
 
             'Vm': {
                 'desc': 'membrane potential',
                 'label': 'V_m',
                 'unit': 'mV',
-                'factor': 1,
+                'y0': self.Vm0
             },
 
             'ELeak': {
-                'constant': 'neuron.ELeak',
+                'constant': 'obj.ELeak',
                 'desc': 'non-specific leakage current resting potential',
                 'label': 'V_{leak}',
                 'unit': 'mV',
-                'factor': 1e0
+                'ls': '--',
+                'color': 'k'
             }
         }
 
-        for cname in self.currents(np.nan, [np.nan] * len(self.states_names)).keys():
+        for cname in self.getCurrentsNames():
             cfunc = getattr(self, cname)
             cargs = inspect.getargspec(cfunc)[0][1:]
-            all_pltvars[cname] = dict(
-                desc=inspect.getdoc(cfunc).splitlines()[0],
-                label='I_{{{}}}'.format(cname[1:]),
-                unit='A/m^2',
-                factor=1e-3,
-                alias='neuron.{}({})'.format(cname, ', '.join(['df["{}"]'.format(a) for a in cargs]))
-            )
+            pltvars[cname] = {
+                'desc': inspect.getdoc(cfunc).splitlines()[0],
+                'label': 'I_{{{}}}'.format(cname[1:]),
+                'unit': 'A/m^2',
+                'factor': 1e-3,
+                'alias': 'obj.{}({})'.format(cname, ', '.join(['df["{}"]'.format(a) for a in cargs]))
+            }
             for var in cargs:
                 if var not in ['Vm', 'Cai']:
                     vfunc = getattr(self, 'der{}{}'.format(var[0].upper(), var[1:]))
                     desc = cname + re.sub('^Evolution of', '', inspect.getdoc(vfunc).splitlines()[0])
-                    all_pltvars[var] = dict(
-                        desc=desc,
-                        label=var,
-                        unit=None,
-                        factor=1,
-                        min=-0.1,
-                        max=1.1
-                    )
+                    pltvars[var] = {
+                        'desc': desc,
+                        'label': var,
+                        'bounds': (-0.1, 1.1)
+                    }
 
-        all_pltvars['iNet'] = dict(
-            desc=inspect.getdoc(getattr(self, 'iNet')).splitlines()[0],
-            label='I_{net}',
-            unit='A/m^2',
-            factor=1e-3,
-            alias='neuron.iNet(df["Vm"], neuron_states)'
-        )
+        pltvars['iNet'] = {
+            'desc': inspect.getdoc(getattr(self, 'iNet')).splitlines()[0],
+            'label': 'I_{net}',
+            'unit': 'A/m^2',
+            'factor': 1e-3,
+            'alias': 'obj.iNet(df["Vm"], df[obj.states_names].values.T)',
+            'ls': '--',
+            'color': 'k'
+        }
 
-        return all_pltvars
+        return pltvars
 
 
     @abc.abstractmethod

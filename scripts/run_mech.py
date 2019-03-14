@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-22 17:55:11
+# @Last Modified time: 2019-03-14 16:31:50
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -114,7 +114,7 @@ def main():
 
     # Plot resulting profiles
     if plot:
-        plotBatch(pkl_filepaths, vars_dict={'Z': ['Z']})
+        plotBatch(pkl_filepaths)
         plt.show()
 
 
