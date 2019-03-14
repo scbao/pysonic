@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:21:03
+# @Last Modified time: 2019-03-14 23:46:12
 
 import numpy as np
 from ..core import PointNeuron
@@ -43,12 +43,11 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def __init__(self):
-        self.states_names = ['m', 'h', 'n', 'p']
-        self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
+        self.states = ['m', 'h', 'n', 'p']
+        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphap', 'betap']
         self.q10 = 3**((self.celsius - 20) / 10)
         self.T = self.celsius + CELSIUS_2_KELVIN
-        self.states0 = self.steadyStates(self.Vm0)
 
     def getPltVars(self):
         pltvars = super().getPltVars()
@@ -278,7 +277,7 @@ class FrankenhaeuserHuxley(PointNeuron):
     def derStatesEff(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.coeff_names])
+                          for rn in self.rates])
         m, h, n, p = states
         dmdt = rates[0] * (1 - m) - rates[1] * m
         dhdt = rates[2] * (1 - h) - rates[3] * h

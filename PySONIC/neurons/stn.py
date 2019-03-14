@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:20:54
+# @Last Modified time: 2019-03-14 23:47:25
 
 
 import numpy as np
@@ -148,8 +148,8 @@ class OtsukaSTN(PointNeuron):
 
 
     def __init__(self):
-        self.states_names = ['a', 'b', 'c', 'd1', 'd2', 'm', 'h', 'n', 'p', 'q', 'r', 'Cai']
-        self.coeff_names = [
+        self.states = ['a', 'b', 'c', 'd1', 'd2', 'm', 'h', 'n', 'p', 'q', 'r', 'Cai']
+        self.rates = [
             'alphaa', 'betaa',
             'alphab', 'betab',
             'alphac', 'betac',
@@ -162,7 +162,6 @@ class OtsukaSTN(PointNeuron):
         ]
         self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
-        self.states0 = self.steadyStates(self.Vm0)
 
 
     def getPltScheme(self):
@@ -639,7 +638,7 @@ class OtsukaSTN(PointNeuron):
         ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.coeff_names])
+                          for rn in self.rates])
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         a, b, c, d1, d2, m, h, n, p, q, r, Cai = states

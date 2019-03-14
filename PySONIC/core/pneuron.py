@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 22:48:01
+# @Last Modified time: 2019-03-14 23:45:09
 
 import os
 import time
@@ -30,11 +30,9 @@ class PointNeuron(metaclass=abc.ABCMeta):
             - **name**: a string defining the name of the mechanism.
             - **Cm0**: a float defining the membrane resting capacitance (in F/m2)
             - **Vm0**: a float defining the membrane resting potential (in mV)
-            - **states_names**: a list of strings defining the names of the different state
+            - **states**: a list of strings defining the names of the different state
               probabilities governing the channels behaviour (i.e. the differential HH variables).
-            - **states0**: a 1D array of floats (NOT integers !!!) defining the initial values of
-              the different state probabilities.
-            - **coeff_names**: a list of strings defining the names of the different coefficients
+            - **rates**: a list of strings defining the names of the different coefficients
               to be used in effective simulations.
 
         The mandatory methods are:
@@ -44,13 +42,15 @@ class PointNeuron(metaclass=abc.ABCMeta):
               potential value (in mV).
             - **derStates**: compute the derivatives of channel states, given a specific membrane
               potential (in mV) and channel states. This method must return a list of derivatives
-              ordered identically as in the states0 attribute.
+              ordered identically as in the steadyStates output.
             - **getEffRates**: get the effective rate constants of ion channels to be used in
               effective simulations. This method must return an array of effective rates ordered
-              identically as in the coeff_names attribute.
+              identically as in the rates attribute.
             - **derStatesEff**: compute the effective derivatives of channel states, based on
               1-dimensional linear interpolators of "effective" coefficients. This method must
-              return a list of derivatives ordered identically as in the states0 attribute.
+              return a list of derivatives ordered identically as in the steadyStates output.
+            - **steadyStates**: compute the steady-state values of all internal states
+              for a given membrane potential.
     '''
 
     tscale = 'ms'  # relevant temporal scale of the model
@@ -106,7 +106,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
 
     def getCurrentsNames(self):
-        return list(self.currents(np.nan, [np.nan] * len(self.states_names)).keys())
+        return list(self.currents(np.nan, [np.nan] * len(self.states)).keys())
 
 
     def getPltScheme(self):
@@ -175,7 +175,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
             'label': 'I_{net}',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': 'iNet(df["Vm"], df[obj.states_names].values.T)',
+            'func': 'iNet(df["Vm"], df[obj.states].values.T)',
             'ls': '--',
             'color': 'k'
         }
@@ -230,8 +230,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
     def getGates(self):
         ''' Retrieve the names of the neuron's states that match an ion channel gating. '''
         gates = []
-        for x in self.states_names:
-            if 'alpha{}'.format(x.lower()) in self.coeff_names:
+        for x in self.states:
+            if 'alpha{}'.format(x.lower()) in self.rates:
                 gates.append(x)
         return gates
 
@@ -363,7 +363,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         n_off = int(np.round(toffset / dt))
 
         # Set initial conditions
-        y0 = [self.Vm0, *self.states0]
+        y0 = [self.Vm0, *self.steadyStates(self.Vm0)]
         nvar = len(y0)
 
         # Initialize global arrays
@@ -515,8 +515,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
             'Vm': Vm,
             'Qm': Vm * self.Cm0 * 1e-3
         })
-        for j in range(len(self.states_names)):
-            df[self.states_names[j]] = channels[j]
+        for j in range(len(self.states)):
+            df[self.states[j]] = channels[j]
 
         meta = {
             'neuron': self.name,

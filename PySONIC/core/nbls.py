@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:26:52
+# @Last Modified time: 2019-03-14 23:42:51
 
 import os
 import time
@@ -151,7 +151,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         states = np.array([1, 1])
         t = np.array([0., dt])
         y_membrane = np.array([[0., (Z1 - Z0) / dt], [Z0, Z1], [ng0, ng0], [Qm0, Qm0]])
-        y_channels = np.tile(self.neuron.states0, (2, 1)).T
+        y_channels = np.tile(self.neuron.steadyStates(self.neuron.Vm0), (2, 1)).T
         y = np.vstack((y_membrane, y_channels))
         nvar = y.shape[0]
 
@@ -281,7 +281,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Initialize global arrays
         states = np.array([1])
         t = np.array([0.0])
-        y = np.atleast_2d(np.insert(self.neuron.states0, 0, self.Qm0)).T
+        y = np.atleast_2d(np.insert(self.neuron.steadyStates(self.neuron.Vm0), 0, self.Qm0)).T
         nvar = y.shape[0]
 
         # Initializing accurate pulse time vector
@@ -400,7 +400,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         states = np.array([1, 1])
         t = np.array([0., dt_full])
         y_membrane = np.array([[0., (Z1 - Z0) / dt_full], [Z0, Z1], [ng0, ng0], [Qm0, Qm0]])
-        y_channels = np.tile(self.neuron.states0, (2, 1)).T
+        y_channels = np.tile(self.neuron.steadyStates(self.neuron.Vm0), (2, 1)).T
         y = np.vstack((y_membrane, y_channels))
         nvar = y.shape[0]
 
@@ -682,8 +682,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             'Qm': Qm,
             'Vm': Vm
         })
-        for j in range(len(self.neuron.states_names)):
-            df[self.neuron.states_names[j]] = channels[j]
+        for j in range(len(self.neuron.states)):
+            df[self.neuron.states[j]] = channels[j]
 
         meta = {
             'neuron': self.neuron.name,
@@ -767,14 +767,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Initialize output arrays
         Vmeff = np.empty((amps.size, charges.size))
-        QS_states = np.empty((len(self.neuron.states_names), amps.size, charges.size, DCs.size))
+        QS_states = np.empty((len(self.neuron.states), amps.size, charges.size, DCs.size))
 
         # Interpolate Vmeff from lookups at each (US amplitude, membrane charge) combination
         Vmeff = interp1d(Qref, lookups2D['V'], axis=1)(charges)
         Vmeff = interp1d(Aref, Vmeff, axis=0)(amps)
 
         # For each neuron state
-        for i, x in enumerate(self.neuron.states_names):
+        for i, x in enumerate(self.neuron.states):
             # If channel state, compute DC-averaged QSS values from interpolated rate constants
             # at each (US amplitude, membrane charge) combination
             if x in self.neuron.getGates():

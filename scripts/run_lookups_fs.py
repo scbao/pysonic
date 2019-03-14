@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:42:29
+# @Last Modified time: 2019-03-14 23:38:55
 
 ''' Create lookup table for specific neuron. '''
 
@@ -71,7 +71,7 @@ def computeAStimLookups(neuron, a, Fdrive, Aref, Qref, fsref, mpi=False, logleve
     # reshape outputs into 4D arrays and add them to lookups dictionary
     logger.info('Reshaping output into lookup tables')
 
-    keys = ['V', 'ng'] + neuron.coeff_names
+    keys = ['V', 'ng'] + neuron.rates
     assert len(keys) == len(outputs), 'Lookup keys not matching array size'
     lookups = {}
     for key, output in zip(keys, outputs):

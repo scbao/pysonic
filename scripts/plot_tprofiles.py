@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:32:50
+# @Last Modified time: 2019-03-14 23:36:39
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -41,7 +41,7 @@ def main():
         logger.error('No input file')
         return
 
-    # Comparative plot
+    # Plot appropriate graph
     if args['compare']:
         plotComp(pkl_filepaths, varname=args.get('plot', [None])[0])
     else:
@@ -50,7 +50,6 @@ def main():
             args['outputdir'] = selectDirDialog() if args['save'] else None
         plotBatch(pkl_filepaths, title=True, pltscheme=pltscheme, directory=args['outputdir'],
                   plt_save=args['save'], ask_before_save=not args['save'])
-
     if not args['hide']:
         plt.show()
 

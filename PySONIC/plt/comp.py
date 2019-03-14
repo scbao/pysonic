@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 22:02:57
+# @Last Modified time: 2019-03-14 23:37:41
 
 import sys
 import pickle
@@ -227,7 +227,7 @@ def plotComp(filepaths, varname, labels=None, fs=15, lw=2, colors=None, lines=No
 
             # Extract neuron states if needed
             if 'alias' in pltvar and 'neuron_states' in pltvar['alias']:
-                neuron_states = [df[sn].values for sn in neuron.states_names]
+                neuron_states = [df[sn].values for sn in neuron.states]
         else:
             Cm0 = meta['Cm0']
             Qm0 = meta['Qm0']

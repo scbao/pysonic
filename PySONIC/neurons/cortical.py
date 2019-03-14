@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 22:41:14
+# @Last Modified time: 2019-03-14 23:46:02
 
 import numpy as np
 from ..core import PointNeuron
@@ -35,10 +35,9 @@ class Cortical(PointNeuron):
 
 
     def __init__(self):
-        self.states_names = ['m', 'h', 'n', 'p']
-        self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
+        self.states = ['m', 'h', 'n', 'p']
+        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphap', 'betap']
-        self.states0 = np.array([])
 
 
     def alpham(self, Vm):
@@ -257,7 +256,7 @@ class Cortical(PointNeuron):
         ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.coeff_names])
+                          for rn in self.rates])
         m, h, n, p = states
         dmdt = rates[0] * (1 - m) - rates[1] * m
         dhdt = rates[2] * (1 - h) - rates[3] * h
@@ -292,8 +291,6 @@ class CorticalRS(Cortical):
 
     def __init__(self):
         super().__init__()
-        self.states0 = self.steadyStates(self.Vm0)
-
 
 
 class CorticalFS(Cortical):
@@ -320,7 +317,6 @@ class CorticalFS(Cortical):
 
     def __init__(self):
         super().__init__()
-        self.states0 = self.steadyStates(self.Vm0)
 
 
 
@@ -355,9 +351,8 @@ class CorticalLTS(Cortical):
 
     def __init__(self):
         super().__init__()
-        self.states_names += ['s', 'u']
-        self.coeff_names += ['alphas', 'betas', 'alphau', 'betau']
-        self.states0 = self.steadyStates(self.Vm0)
+        self.states += ['s', 'u']
+        self.rates += ['alphas', 'betas', 'alphau', 'betau']
 
 
     def sinf(self, Vm):
@@ -499,7 +494,7 @@ class CorticalLTS(Cortical):
 
         # Compute Calcium channels states derivatives
         Ca_rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                             for rn in self.coeff_names[8:]])
+                             for rn in self.rates[8:]])
         dsdt = Ca_rates[0] * (1 - s) - Ca_rates[1] * s
         dudt = Ca_rates[2] * (1 - u) - Ca_rates[3] * u
 
@@ -537,9 +532,8 @@ class CorticalIB(Cortical):
 
     def __init__(self):
         super().__init__()
-        self.states_names += ['q', 'r']
-        self.coeff_names += ['alphaq', 'betaq', 'alphar', 'betar']
-        self.states0 = self.steadyStates(self.Vm0)
+        self.states += ['q', 'r']
+        self.rates += ['alphaq', 'betaq', 'alphar', 'betar']
 
 
     def alphaq(self, Vm):
@@ -685,7 +679,7 @@ class CorticalIB(Cortical):
 
         # Compute Calcium channels states derivatives
         CaL_rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                              for rn in self.coeff_names[8:]])
+                              for rn in self.rates[8:]])
         dqdt = CaL_rates[0] * (1 - q) - CaL_rates[1] * q
         drdt = CaL_rates[2] * (1 - r) - CaL_rates[3] * r
 

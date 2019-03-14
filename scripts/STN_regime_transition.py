@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-12 09:33:08
+# @Last Modified time: 2019-03-14 23:37:44
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -130,7 +130,7 @@ def plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive, fs=12):
     ax.set_ylabel('$X_\infty$', fontsize=fs)
     ax.set_yticks([0, 0.5, 1])
     ax.set_ylim([-0.05, 1.05])
-    for i, label in enumerate(neuron.states_names):
+    for i, label in enumerate(neuron.states):
         ax.plot(Qref * 1e5, QS_states[i], label=label, c=colors[i])
 
     # Subplot 3: currents

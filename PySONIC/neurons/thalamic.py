@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:19:32
+# @Last Modified time: 2019-03-14 23:47:47
 
 import numpy as np
 from ..core import PointNeuron
@@ -35,10 +35,9 @@ class Thalamic(PointNeuron):
     ECa = 120.0  # Calcium Nernst potential (mV)
 
     def __init__(self):
-        self.states_names = ['m', 'h', 'n', 's', 'u']
-        self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                            'alphas', 'betas', 'alphau', 'betau']
-        self.states0 = np.array([])
+        self.states = ['m', 'h', 'n', 's', 'u']
+        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
+                      'alphas', 'betas', 'alphau', 'betau']
 
 
     def alpham(self, Vm):
@@ -262,7 +261,7 @@ class Thalamic(PointNeuron):
         ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.coeff_names])
+                          for rn in self.rates])
 
         m, h, n, s, u = states
         dmdt = rates[0] * (1 - m) - rates[1] * m
@@ -304,7 +303,6 @@ class ThalamicRE(Thalamic):
 
     def __init__(self):
         super().__init__()
-        self.states0 = self.steadyStates(self.Vm0)
 
 
     def sinf(self, Vm):
@@ -390,9 +388,8 @@ class ThalamoCortical(Thalamic):
     def __init__(self):
         super().__init__()
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
-        self.states_names += ['O', 'C', 'P0', 'Cai']
-        self.coeff_names += ['alphao', 'betao']
-        self.states0 = self.steadyStates(self.Vm0)
+        self.states += ['O', 'C', 'P0', 'Cai']
+        self.rates += ['alphao', 'betao']
 
 
     def getPltScheme(self):
@@ -670,7 +667,7 @@ class ThalamoCortical(Thalamic):
         ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.coeff_names])
+                          for rn in self.rates])
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         # Unpack states

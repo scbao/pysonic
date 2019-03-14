@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 18:25:17
+# @Last Modified time: 2019-03-14 23:47:10
 
 
 from functools import partialmethod
@@ -81,12 +81,11 @@ class LeechTouch(PointNeuron):
 
 
     def __init__(self):
-        self.states_names = ['m', 'h', 'n', 's', 'C_Na', 'A_Na', 'C_Ca', 'A_Ca']
-        self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
+        self.states = ['m', 'h', 'n', 's', 'C_Na', 'A_Na', 'C_Ca', 'A_Ca']
+        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
                             'alphas', 'betas']
         self.K_Na = self.K_Na_original * self.surface * self.curr_factor
         self.K_Ca = self.K_Ca_original * self.surface * self.curr_factor
-        self.states0 = self.steadyStates(self.Vm0)
 
 
     # ----------------- Generic -----------------
@@ -361,7 +360,7 @@ class LeechTouch(PointNeuron):
         ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.coeff_names])
+                          for rn in self.rates])
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         m, h, n, s, C_Na, A_Na, C_Ca, A_Ca = states
@@ -691,15 +690,11 @@ class LeechPressure(LeechMech):
         self.K_Ca = SV_ratio / (Z_Ca * FARADAY) * 1e-6  # Calcium (M/s)
 
         # Names and initial states of the channels state probabilities
-        self.states_names = ['m', 'h', 'n', 's', 'c', 'C_Na', 'C_Ca']
-        self.states0 = np.array([])
+        self.states = ['m', 'h', 'n', 's', 'c', 'C_Na', 'C_Ca']
 
         # Names of the channels effective coefficients
-        self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                            'alphas', 'betas']
-
-        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
-        self.states0 = self.steadyStates(self.Vm0)
+        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
+                      'alphas', 'betas']
 
 
     def iPumpNa(self, C_Na_in):
@@ -797,7 +792,7 @@ class LeechPressure(LeechMech):
         ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.coeff_names])
+                          for rn in self.rates])
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         # Unpack states
@@ -874,16 +869,12 @@ class LeechRetzius(LeechMech):
         ''' Constructor of the class. '''
 
         # Names and initial states of the channels state probabilities
-        self.states_names = ['m', 'h', 'n', 's', 'c', 'a', 'b']
-        self.states0 = np.array([])
+        self.states = ['m', 'h', 'n', 's', 'c', 'a', 'b']
 
         # Names of the channels effective coefficients
-        self.coeff_names = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                            'alphas', 'betas', 'alphac', 'betac', 'alphaa', 'betaa'
-                            'alphab', 'betab']
-
-        # Define initial channel probabilities (solving dx/dt = 0 at resting potential)
-        self.states0 = self.steadyStates(self.Vm0)
+        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
+                      'alphas', 'betas', 'alphac', 'betac', 'alphaa', 'betaa'
+                      'alphab', 'betab']
 
 
     def ainf(self, Vm):
@@ -1069,7 +1060,7 @@ class LeechRetzius(LeechMech):
         ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.coeff_names])
+                          for rn in self.rates])
 
         # Unpack states
         m, h, n, s, c, a, b = states

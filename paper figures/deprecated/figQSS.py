@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 19:11:29
+# @Last Modified time: 2019-03-14 23:37:57
 
 ''' Subpanels of the QSS approximation figure. '''
 
@@ -95,7 +95,7 @@ def plotQSSvars_vs_Adrive(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     xcut = ax.get_xlim()[0]
     for ycut in [0.54, 0.56]:
         ax.plot([xcut / f, xcut * f], [ycut - d, ycut + d], color='k', clip_on=False)
-    for label, QS_state in zip(neuron.states_names, QS_states):
+    for label, QS_state in zip(neuron.states, QS_states):
         if label == 'h':
             QS_state -= 0.4
         ax.plot(Aref * 1e-3, QS_state, label=label)
