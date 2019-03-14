@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-27 17:57:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-02-27 18:57:24
+# @Last Modified time: 2019-03-15 00:16:21
 
 ''' Sub-panels of threshold curves for various sonophore radii and US frequencies. '''
 
@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.neurons import getNeuronsDict
-from PySONIC.utils import logger, si_format, selectDirDialog, cm2inch
+from PySONIC.utils import logger, si_format, selectDirDialog
+from PySONIC.plt import cm2inch
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42

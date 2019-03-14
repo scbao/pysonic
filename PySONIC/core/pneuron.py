@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:45:09
+# @Last Modified time: 2019-03-15 00:12:54
 
 import os
 import time
@@ -104,6 +104,41 @@ class PointNeuron(metaclass=abc.ABCMeta):
         '''
         return 1e-6 / (z_ion * depth * FARADAY)
 
+    def nernst(self, z_ion, Cion_in, Cion_out, T):
+        ''' Nernst potential of a specific ion given its intra and extracellular concentrations.
+
+            :param z_ion: ion valence
+            :param Cion_in: intracellular ion concentration
+            :param Cion_out: extracellular ion concentration
+            :param T: temperature (K)
+            :return: ion Nernst potential (mV)
+        '''
+        return (Rg * T) / (z_ion * FARADAY) * np.log(Cion_out / Cion_in) * 1e3
+
+    def vtrap(self, x, y):
+        ''' Generic function used to compute rate constants. '''
+        return x / (np.exp(x / y) - 1)
+
+
+    def efun(self, x):
+        ''' Generic function used to compute rate constants. '''
+        return x / (np.exp(x) - 1)
+
+
+    def ghkDrive(self, Vm, Z_ion, Cion_in, Cion_out, T):
+        ''' Use the Goldman-Hodgkin-Katz equation to compute the electrochemical driving force
+            of a specific ion species for a given membrane potential.
+
+            :param Vm: membrane potential (mV)
+            :param Cin: intracellular ion concentration (M)
+            :param Cout: extracellular ion concentration (M)
+            :param T: temperature (K)
+            :return: electrochemical driving force of a single ion particle (mC.m-3)
+        '''
+        x = Z_ion * FARADAY * Vm / (Rg * T) * 1e-3   # [-]
+        eCin = Cion_in * efun(-x)  # M
+        eCout = Cion_out * efun(x)  # M
+        return FARADAY * (eCin - eCout) * 1e6  # mC/m3
 
     def getCurrentsNames(self):
         return list(self.currents(np.nan, [np.nan] * len(self.states)).keys())

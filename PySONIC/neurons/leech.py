@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:47:10
+# @Last Modified time: 2019-03-15 00:08:37
 
 
 from functools import partialmethod
@@ -12,7 +12,6 @@ import numpy as np
 
 from ..core import PointNeuron
 from ..constants import FARADAY, Rg, Z_Na, Z_Ca
-from ..utils import nernst
 
 
 class LeechTouch(PointNeuron):
@@ -571,7 +570,7 @@ class LeechMech(PointNeuron):
         '''
 
         GNa = self.gNabar * m**4 * h
-        ENa = nernst(Z_Na, C_Na_in, self.C_Na_out, self.T)  # mV
+        ENa = self.nernst(Z_Na, C_Na_in, self.C_Na_out, self.T)  # mV
         return GNa * (Vm - ENa)
 
 
@@ -597,7 +596,7 @@ class LeechMech(PointNeuron):
         '''
 
         GCa = self.gCabar * s
-        ECa = nernst(Z_Ca, C_Ca_in, self.C_Ca_out, self.T)  # mV
+        ECa = self.nernst(Z_Ca, C_Ca_in, self.C_Ca_out, self.T)  # mV
         return GCa * (Vm - ECa)
 
 

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-14 16:03:58
+# @Last Modified time: 2019-03-15 00:16:40
 
 import os
 import ntpath
@@ -14,10 +14,11 @@ import matplotlib
 from matplotlib.ticker import FormatStrFormatter
 
 from ..core import NeuronalBilayerSonophore
-from ..utils import logger, si_format, ASTIM_filecode, cm2inch
+from ..utils import logger, si_format, ASTIM_filecode
 from ..postpro import findPeaks
 from ..constants import *
 from ..neurons import getNeuronsDict
+from .pltutils import cm2inch
 
 
 def getActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs):

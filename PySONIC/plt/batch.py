@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:20:38
+# @Last Modified time: 2019-03-15 00:04:18
 
 import pickle
 import ntpath
@@ -10,8 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ..utils import *
-from ..core import BilayerSonophore, NeuronalBilayerSonophore
-from ..neurons import getNeuronsDict
+from .pltutils import *
 
 
 def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
@@ -60,13 +59,7 @@ def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
         _, tpatch_on, tpatch_off = getStimPulses(t, states)
 
         # Initialize appropriate object
-        obj = {}
-        if sim_type == 'MECH':
-            obj = BilayerSonophore(meta['a'], meta['Cm0'], meta['Qm0'])
-        else:
-            obj = getNeuronsDict()[getNeuronType(pkl_filename)]()
-            if sim_type == 'ASTIM':
-                obj = NeuronalBilayerSonophore(meta['a'], obj, meta['Fdrive'])
+        obj = getObject(sim_type, meta)
 
         # Retrieve plot variables
         tvar, pltvars = getTimePltVar(obj.tscale), obj.getPltVars()

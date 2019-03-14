@@ -2,11 +2,10 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:46:12
+# @Last Modified time: 2019-03-15 00:13:49
 
 import numpy as np
 from ..core import PointNeuron
-from ..utils import vtrap, ghkDrive
 from ..constants import CELSIUS_2_KELVIN, Z_Na, Z_K
 
 
@@ -62,7 +61,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
-        alpha = 0.36 * vtrap(22. - Vdiff, 3.)  # ms-1
+        alpha = 0.36 * self.vtrap(22. - Vdiff, 3.)  # ms-1
         return self.q10 * alpha * 1e3  # s-1
 
 
@@ -73,7 +72,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
-        beta = 0.4 * vtrap(Vdiff - 13., 20.)  # ms-1
+        beta = 0.4 * self.vtrap(Vdiff - 13., 20.)  # ms-1
         return self.q10 * beta * 1e3  # s-1
 
 
@@ -84,7 +83,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
-        alpha = 0.1 * vtrap(Vdiff + 10.0, 6.)  # ms-1
+        alpha = 0.1 * self.vtrap(Vdiff + 10.0, 6.)  # ms-1
         return self.q10 * alpha * 1e3  # s-1
 
 
@@ -106,7 +105,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
-        alpha = 0.02 * vtrap(35. - Vdiff, 10.0)  # ms-1
+        alpha = 0.02 * self.vtrap(35. - Vdiff, 10.0)  # ms-1
         return self.q10 * alpha * 1e3  # s-1
 
 
@@ -117,7 +116,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
-        beta = 0.05 * vtrap(Vdiff - 10., 10.)  # ms-1
+        beta = 0.05 * self.vtrap(Vdiff - 10., 10.)  # ms-1
         return self.q10 * beta * 1e3  # s-1
 
 
@@ -128,7 +127,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
-        alpha = 0.006 * vtrap(40. - Vdiff, 10.0)  # ms-1
+        alpha = 0.006 * self.vtrap(40. - Vdiff, 10.0)  # ms-1
         return self.q10 * alpha * 1e3  # s-1
 
 
@@ -139,7 +138,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.Vm0
-        beta = 0.09 * vtrap(Vdiff + 25., 20.)  # ms-1
+        beta = 0.09 * self.vtrap(Vdiff + 25., 20.)  # ms-1
         return self.q10 * beta * 1e3  # s-1
 
 
@@ -191,7 +190,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        iNa_drive = ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
+        iNa_drive = self.ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
         return self.pNabar * m**2 * h * iNa_drive  # mA/m2
 
 
@@ -202,7 +201,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        iKd_drive = ghkDrive(Vm, Z_K, self.Ki, self.Ko, self.T)  # mC/m3
+        iKd_drive = self.ghkDrive(Vm, Z_K, self.Ki, self.Ko, self.T)  # mC/m3
         return self.pKbar * n**2 * iKd_drive  # mA/m2
 
 
@@ -213,7 +212,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        iP_drive = ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
+        iP_drive = self.ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
         return self.pPbar * p**2 * iP_drive  # mA/m2
 
 

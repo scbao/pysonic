@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:37:41
+# @Last Modified time: 2019-03-15 00:04:44
 
 import sys
 import pickle
@@ -15,6 +15,7 @@ from matplotlib.ticker import FormatStrFormatter
 from ..utils import *
 from ..core import BilayerSonophore
 from ..neurons import getNeuronsDict
+from .pltutils import *
 
 
 class InteractiveLegend(object):

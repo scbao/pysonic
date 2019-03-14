@@ -4,11 +4,10 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:46:02
+# @Last Modified time: 2019-03-15 00:10:15
 
 import numpy as np
 from ..core import PointNeuron
-from ..utils import vtrap
 
 
 class Cortical(PointNeuron):
@@ -47,7 +46,7 @@ class Cortical(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.VT
-        alpha = 0.32 * vtrap(13 - Vdiff, 4)  # ms-1
+        alpha = 0.32 * self.vtrap(13 - Vdiff, 4)  # ms-1
         return alpha * 1e3  # s-1
 
 
@@ -58,7 +57,7 @@ class Cortical(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.VT
-        beta = 0.28 * vtrap(Vdiff - 40, 5)  # ms-1
+        beta = 0.28 * self.vtrap(Vdiff - 40, 5)  # ms-1
         return beta * 1e3  # s-1
 
 
@@ -91,7 +90,7 @@ class Cortical(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.VT
-        alpha = 0.032 * vtrap(15 - Vdiff, 5)  # ms-1
+        alpha = 0.032 * self.vtrap(15 - Vdiff, 5)  # ms-1
         return alpha * 1e3  # s-1
 
 
@@ -542,7 +541,7 @@ class CorticalIB(Cortical):
             :param Vm: membrane potential (mV)
             :return: rate (s-1)
         '''
-        alpha = 0.055 * vtrap(-(Vm + 27), 3.8)  # ms-1
+        alpha = 0.055 * self.vtrap(-(Vm + 27), 3.8)  # ms-1
         return alpha * 1e3  # s-1
 
 

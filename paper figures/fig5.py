@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 11:33:46
+# @Last Modified time: 2019-03-15 00:15:44
 
 ''' Sub-panels of the NICE and SONIC accuracies comparative figure. '''
 
@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 from PySONIC.utils import *
 from PySONIC.neurons import *
 from PySONIC.batches import createAStimQueue
-from PySONIC.plt import plotComp, plotSpikingMetrics
+from PySONIC.plt import plotComp, plotSpikingMetrics, cm2inch
 
 from utils import *
 

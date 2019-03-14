@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 22:34:19
+# @Last Modified time: 2019-03-15 00:19:13
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -12,21 +12,11 @@ import operator
 import os
 import math
 import pickle
-import re
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
 import colorlog
 from scipy.interpolate import interp1d
-import matplotlib
-
-from .constants import FARADAY, Rg
-
-
-# Matplotlib parameters
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
-matplotlib.rcParams['font.family'] = 'arial'
 
 
 # Package logger
@@ -72,10 +62,6 @@ def MECH_filecode(a, Fdrive, Adrive, Qm):
         a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
 
 
-rgxp = re.compile('(ESTIM|ASTIM)_([A-Za-z]*)_(.*).pkl')
-rgxp_mech = re.compile('(MECH)_(.*).pkl')
-
-
 # Figure naming conventions
 def figtitle(meta):
     ''' Return appropriate title based on simulation metadata. '''
@@ -96,52 +82,6 @@ def figtitle(meta):
             return '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.2f}kPa, {:.0f}ms{} - {} model'.format(
                 meta['neuron'], meta['a'] * 1e9, wavetype, meta['Fdrive'] * 1e-3,
                 meta['Adrive'] * 1e-3, meta['tstim'] * 1e3, suffix, meta['method'])
-
-
-timeunits = {
-    'ASTIM': 't_ms',
-    'ESTIM': 't_ms',
-    'MECH': 't_us'
-}
-
-
-def getTimePltVar(tscale):
-    ''' Return time plot variable for a given temporal scale. '''
-    return {
-        'desc': 'time',
-        'label': 'time',
-        'unit': tscale,
-        'factor': {'ms': 1e3, 'us': 1e6}[tscale],
-        'onset': {'ms': 1e-3, 'us': 1e-6}[tscale]
-    }
-
-
-def getSimType(fname):
-    ''' Get sim type from filename. '''
-    for exp in [rgxp, rgxp_mech]:
-        mo = exp.fullmatch(fname)
-        if mo:
-            sim_type = mo.group(1)
-            if sim_type not in ('MECH', 'ASTIM', 'ESTIM'):
-                raise ValueError('Invalid simulation type: {}'.format(sim_type))
-            return sim_type
-    raise ValueError('Error: "{}" file does not match regexp pattern'.format(fname))
-
-
-def getNeuronType(fname):
-    ''' Get neuron type from filename. '''
-    mo = rgxp.fullmatch(fname)
-    if mo:
-        return mo.group(2)
-    raise ValueError('Error: "{}" file does not match regexp pattern'.format(fname))
-
-
-def cm2inch(*tupl):
-    inch = 2.54
-    if isinstance(tupl[0], tuple):
-        return tuple(i / inch for i in tupl[0])
-    else:
-        return tuple(i / inch for i in tupl)
 
 
 # SI units prefixes
@@ -339,61 +279,6 @@ def rescale(x, lb=None, ub=None, lb_new=0, ub_new=1):
     return xnorm * (ub_new - lb_new) + lb_new
 
 
-def getStimPulses(t, states):
-    ''' Determine the onset and offset times of pulses from a stimulation vector.
-
-        :param t: time vector (s).
-        :param states: a vector of stimulation state (ON/OFF) at each instant in time.
-        :return: 3-tuple with number of patches, timing of STIM-ON an STIM-OFF instants.
-    '''
-
-    # Compute states derivatives and identify bounds indexes of pulses
-    dstates = np.diff(states)
-    ipulse_on = np.insert(np.where(dstates > 0.0)[0] + 1, 0, 0)
-    ipulse_off = np.where(dstates < 0.0)[0] + 1
-    if ipulse_off.size < ipulse_on.size:
-        ioff = t.size - 1
-        if ipulse_off.size == 0:
-            ipulse_off = np.array([ioff])
-        else:
-            ipulse_off = np.insert(ipulse_off, ipulse_off.size - 1, ioff)
-
-    # Get time instants for pulses ON and OFF
-    npulses = ipulse_on.size
-    tpulse_on = t[ipulse_on]
-    tpulse_off = t[ipulse_off]
-
-    # return 3-tuple with #pulses, pulse ON and pulse OFF instants
-    return npulses, tpulse_on, tpulse_off
-
-
-def plotStimPatches(ax, tpatch_on, tpatch_off, tfactor):
-    for j in range(tpatch_on.size):
-        ax.axvspan(tpatch_on[j] * tfactor, tpatch_off[j] * tfactor,
-                   edgecolor='none', facecolor='#8A8A8A', alpha=0.2)
-
-
-def extractPltVar(obj, pltvar, df, meta, nsamples, name):
-    if 'func' in pltvar:
-        s = 'obj.{}'.format(pltvar['func'])
-        try:
-            var = eval(s)
-        except AttributeError:
-            var = eval(s.replace('obj', 'obj.neuron'))
-    elif 'key' in pltvar:
-        var = df[pltvar['key']]
-    elif 'constant' in pltvar:
-        var = eval(pltvar['constant']) * np.ones(nsamples)
-    else:
-        var = df[name]
-
-    if var.size == nsamples - 2:
-        var = np.hstack((np.array([pltvar.get('y0', var[0])] * 2), var))
-    var *= pltvar.get('factor', 1)
-
-    return var
-
-
 def getNeuronLookupsFile(mechname, a=None, Fdrive=None, Adrive=None, fs=False):
     fpath = os.path.join(
         os.path.split(__file__)[0],
@@ -584,7 +469,6 @@ def isWithin(name, val, bounds, rel_tol=1e-9):
             name, val, bounds[0], bounds[1]))
 
 
-
 def getLookupsCompTime(mechname):
 
     # Check lookup file existence
@@ -599,45 +483,6 @@ def getLookupsCompTime(mechname):
         tcomps4D = df['tcomp']
 
     return np.sum(tcomps4D)
-
-
-def nernst(z_ion, Cion_in, Cion_out, T):
-    ''' Return the Nernst potential of a specific ion given its intra and extracellular
-        concentrations.
-
-        :param z_ion: ion valence
-        :param Cion_in: intracellular ion concentration
-        :param Cion_out: extracellular ion concentration
-        :param T: temperature (K)
-        :return: ion Nernst potential (mV)
-    '''
-    return (Rg * T) / (z_ion * FARADAY) * np.log(Cion_out / Cion_in) * 1e3
-
-
-def vtrap(x, y):
-    ''' Generic function used to compute rate constants. '''
-    return x / (np.exp(x / y) - 1)
-
-
-def efun(x):
-    ''' Generic function used to compute rate constants. '''
-    return x / (np.exp(x) - 1)
-
-
-def ghkDrive(Vm, Z_ion, Cion_in, Cion_out, T):
-    ''' Use the Goldman-Hodgkin-Katz equation to compute the electrochemical driving force
-        of a specific ion species for a given membrane potential.
-
-        :param Vm: membrane potential (mV)
-        :param Cin: intracellular ion concentration (M)
-        :param Cout: extracellular ion concentration (M)
-        :param T: temperature (K)
-        :return: electrochemical driving force of a single ion particle (mC.m-3)
-    '''
-    x = Z_ion * FARADAY * Vm / (Rg * T) * 1e-3   # [-]
-    eCin = Cion_in * efun(-x)  # M
-    eCout = Cion_out * efun(x)  # M
-    return FARADAY * (eCin - eCout) * 1e6  # mC/m3
 
 
 def getLowIntensitiesSTN():

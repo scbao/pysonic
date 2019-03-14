@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 11:31:34
+# @Last Modified time: 2019-03-15 00:16:56
 
 
 import pickle
@@ -13,6 +13,8 @@ import matplotlib.cm as cm
 from ..utils import *
 from ..constants import *
 from ..postpro import findPeaks
+from .pltutils import cm2inch
+
 
 # Plot parameters
 phaseplotvars = {

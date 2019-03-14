@@ -4,12 +4,11 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:47:47
+# @Last Modified time: 2019-03-15 00:11:10
 
 import numpy as np
 from ..core import PointNeuron
 from ..constants import Z_Ca
-from ..utils import vtrap
 
 
 class Thalamic(PointNeuron):
@@ -47,7 +46,7 @@ class Thalamic(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.VT
-        alpha = 0.32 * vtrap(13 - Vdiff, 4)  # ms-1
+        alpha = 0.32 * self.vtrap(13 - Vdiff, 4)  # ms-1
         return alpha * 1e3  # s-1
 
 
@@ -58,7 +57,7 @@ class Thalamic(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.VT
-        beta = 0.28 * vtrap(Vdiff - 40, 5)  # ms-1
+        beta = 0.28 * self.vtrap(Vdiff - 40, 5)  # ms-1
         return beta * 1e3  # s-1
 
 
@@ -91,7 +90,7 @@ class Thalamic(PointNeuron):
             :return: rate (s-1)
         '''
         Vdiff = Vm - self.VT
-        alpha = 0.032 * vtrap(15 - Vdiff, 5)  # ms-1
+        alpha = 0.032 * self.vtrap(15 - Vdiff, 5)  # ms-1
         return alpha * 1e3  # s-1
 
 

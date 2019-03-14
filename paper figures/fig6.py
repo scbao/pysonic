@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-02-27 17:31:32
+# @Last Modified time: 2019-03-15 00:16:04
 
 ''' Sub-panels of the NICE and SONIC computation times comparative figure. '''
 
@@ -17,6 +17,7 @@ from argparse import ArgumentParser
 from PySONIC.utils import *
 from PySONIC.neurons import *
 from PySONIC.batches import createAStimQueue
+from PySONIC.plt import cm2inch
 
 from utils import *
 

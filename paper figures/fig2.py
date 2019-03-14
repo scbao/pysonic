@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-02-28 11:11:16
+# @Last Modified time: 2019-03-15 00:15:28
 
 ''' Sub-panels of the model optimization figure. '''
 
@@ -16,7 +16,8 @@ from matplotlib.ticker import FormatStrFormatter
 from matplotlib.patches import Rectangle
 from argparse import ArgumentParser
 
-from PySONIC.utils import logger, rescale, cm2inch, getStimPulses, si_format, selectDirDialog
+from PySONIC.utils import logger, rescale, si_format, selectDirDialog
+from PySONIC.plt import getStimPulses, cm2inch
 from PySONIC.constants import NPC_FULL
 from PySONIC.neurons import CorticalRS
 from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore

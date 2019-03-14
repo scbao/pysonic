@@ -2,14 +2,13 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:47:25
+# @Last Modified time: 2019-03-15 00:09:03
 
 
 import numpy as np
 from scipy.optimize import brentq
 from ..core import PointNeuron
 from ..constants import FARADAY, Z_Ca
-from ..utils import nernst
 
 
 class OtsukaSTN(PointNeuron):
@@ -492,7 +491,7 @@ class OtsukaSTN(PointNeuron):
             :param Cai: submembrane Calcium concentration (M)
             :return: current per unit area (mA/m2)
         '''
-        return self.gCaTbar * p**2 * q * (Vm - nernst(Z_Ca, Cai, self.Cao, self.T))
+        return self.gCaTbar * p**2 * q * (Vm - self.nernst(Z_Ca, Cai, self.Cao, self.T))
 
 
     def iCaL(self, c, d1, d2, Vm, Cai):
@@ -505,7 +504,7 @@ class OtsukaSTN(PointNeuron):
             :param Cai: submembrane Calcium concentration (M)
             :return: current per unit area (mA/m2)
         '''
-        return self.gCaLbar * c**2 * d1 * d2 * (Vm - nernst(Z_Ca, Cai, self.Cao, self.T))
+        return self.gCaLbar * c**2 * d1 * d2 * (Vm - self.nernst(Z_Ca, Cai, self.Cao, self.T))
 
 
     def iKCa(self, r, Vm):
