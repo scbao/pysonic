@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:19:13
+# @Last Modified time: 2019-03-15 00:29:15
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -104,6 +104,16 @@ si_prefixes = {
     'Z': 1e21,   # zetta
     'Y': 1e24,   # yotta
 }
+
+
+def loadData(fpath, frequency=1):
+    ''' Load dataframe and metadata dictionary from pickle file. '''
+    logger.info('Loading data from "%s"', os.path.basename(fpath))
+    with open(fpath, 'rb') as fh:
+        frame = pickle.load(fh)
+        df = frame['data'].iloc[::frequency]
+        meta = frame['meta']
+        return df, meta
 
 
 def si_format(x, precision=0, space=' '):

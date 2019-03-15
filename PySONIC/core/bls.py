@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 22:19:53
+# @Last Modified time: 2019-03-15 01:01:47
 
 from enum import Enum
 import time
@@ -192,14 +192,12 @@ class BilayerSonophore:
         self.V0 = np.pi * self.Delta * self.a**2
         self.ng0 = self.gasPa2mol(self.P0, self.V0)
 
-
     def getPltScheme(self):
         return {
             'P_{AC}': ['Pac'],
             'Z': ['Z'],
             'n_g': ['ng']
         }
-
 
     def getPltVars(self):
         ''' Return a dictionary with information about all plot variables related to the model. '''

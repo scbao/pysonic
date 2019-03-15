@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:12:54
+# @Last Modified time: 2019-03-15 01:07:52
 
 import os
 import time
@@ -54,6 +54,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
     '''
 
     tscale = 'ms'  # relevant temporal scale of the model
+    defvar = 'V'  # default plot variable
 
     def __repr__(self):
         return self.__class__.__name__
@@ -136,8 +137,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :return: electrochemical driving force of a single ion particle (mC.m-3)
         '''
         x = Z_ion * FARADAY * Vm / (Rg * T) * 1e-3   # [-]
-        eCin = Cion_in * efun(-x)  # M
-        eCout = Cion_out * efun(x)  # M
+        eCin = Cion_in * self.efun(-x)  # M
+        eCout = Cion_out * self.efun(x)  # M
         return FARADAY * (eCin - eCout) * 1e6  # mC/m3
 
     def getCurrentsNames(self):

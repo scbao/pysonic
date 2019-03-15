@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:42:51
+# @Last Modified time: 2019-03-15 01:01:29
 
 import os
 import time
@@ -29,6 +29,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         at initialization, to define the electro-mechanical NICE model and its SONIC variant. '''
 
     tscale = 'ms'  # relevant temporal scale of the model
+    defvar = 'Q'  # default plot variable
 
     def __init__(self, a, neuron, Fdrive=None, embedding_depth=0.0):
         ''' Constructor of the class.

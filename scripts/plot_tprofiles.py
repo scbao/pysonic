@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:36:39
+# @Last Modified time: 2019-03-15 01:11:57
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -43,7 +43,14 @@ def main():
 
     # Plot appropriate graph
     if args['compare']:
-        plotComp(pkl_filepaths, varname=args.get('plot', [None])[0])
+        if 'plot' not in args:
+            logger.error('Plot variable must be specified')
+            quit()
+        try:
+            plotComp(pkl_filepaths, varname=args['plot'][0])
+        except KeyError as e:
+            logger.error(e)
+            quit()
     else:
         pltscheme = {key: [key] for key in args['plot']} if 'plot' in args else None
         if 'outputdir' not in args:

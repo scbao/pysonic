@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:04:18
+# @Last Modified time: 2019-03-15 01:03:05
 
 import pickle
 import ntpath
@@ -41,21 +41,16 @@ def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
     for filepath in filepaths:
 
         # Retrieve file code and sim type from file name
-        pkl_filename = ntpath.basename(filepath)
+        pkl_filename = os.path.basename(filepath)
         filecode = pkl_filename[0:-4]
         sim_type = getSimType(pkl_filename)
 
-        # Load data
-        logger.info('Loading data from "%s"', pkl_filename)
-        with open(filepath, 'rb') as fh:
-            frame = pickle.load(fh)
-            df = frame['data'].iloc[::frequency]
-            meta = frame['meta']
-
-        # Extract variables
-        logger.info('Extracting variables')
+        # Load data and extract variables
+        df, meta = loadData(filepath, frequency)
         t = df['t'].values
         states = df['states'].values
+
+        # Determine stimulus patch from states
         _, tpatch_on, tpatch_off = getStimPulses(t, states)
 
         # Initialize appropriate object
@@ -87,8 +82,10 @@ def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
         else:
             fig, axes = plt.subplots(naxes, 1, figsize=(11, min(3 * naxes, 9)))
 
-        # Loop through each subgraph and plot appropriate variables
+        # Loop through each subgraph
         for ax, (grouplabel, keys) in zip(axes, pltscheme.items()):
+
+            # Extract variables to plot
             nvars = len(keys)
             ax_pltvars = [pltvars[k] for k in keys]
             if nvars == 1:

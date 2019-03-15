@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:18:45
+# @Last Modified time: 2019-03-15 00:26:09
 
 ''' Dictionary of plotting settings for output variables of the model.  '''
 
