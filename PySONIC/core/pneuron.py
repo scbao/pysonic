@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:28:42
+# @Last Modified time: 2019-03-15 02:08:30
 
 import os
 import time
@@ -140,6 +140,9 @@ class PointNeuron(metaclass=abc.ABCMeta):
         eCin = Cion_in * self.efun(-x)  # M
         eCout = Cion_out * self.efun(x)  # M
         return FARADAY * (eCin - eCout) * 1e6  # mC/m3
+
+    def getDesc(self):
+        return inspect.getdoc(self).splitlines()[0]
 
     def getCurrentsNames(self):
         return list(self.currents(np.nan, [np.nan] * len(self.states)).keys())

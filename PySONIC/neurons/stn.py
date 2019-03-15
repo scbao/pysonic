@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:09:03
+# @Last Modified time: 2019-03-15 02:02:44
 
 
 import numpy as np
@@ -12,15 +12,7 @@ from ..constants import FARADAY, Z_Ca
 
 
 class OtsukaSTN(PointNeuron):
-    ''' Class defining the Otsuka model of sub-thalamic nucleus neuron
-        with 5 different current types:
-            - Inward Sodium current (iNa)
-            - Outward, delayed-rectifer Potassium current (iKd)
-            - Inward, A-type Potassium current (iA)
-            - Inward, low-threshold Calcium current (iCaT)
-            - Inward, high-threshold Calcium current (iCaL)
-            - Outward, Calcium-dependent Potassium current (iKCa)
-            - Non-specific leakage current (iLeak)
+    ''' Sub-thalamic nucleus neuron
 
         References:
         *Otsuka, T., Abe, T., Tsukagawa, T., and Song, W.-J. (2004). Conductance-Based Model

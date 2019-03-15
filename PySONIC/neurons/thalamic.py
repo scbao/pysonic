@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:11:10
+# @Last Modified time: 2019-03-15 02:06:23
 
 import numpy as np
 from ..core import PointNeuron
@@ -12,13 +12,7 @@ from ..constants import Z_Ca
 
 
 class Thalamic(PointNeuron):
-    ''' Class defining the generic membrane channel dynamics of a thalamic neuron
-        with 4 different current types:
-            - Inward Sodium current
-            - Outward Potassium current
-            - Inward Calcium current
-            - Non-specific leakage current
-        This generic class cannot be used directly as it does not contain any specific parameters.
+    ''' Generic thalamic neuron
 
         Reference:
         *Plaksin, M., Kimmel, E., and Shoham, S. (2016). Cell-Type-Selective Effects of
@@ -274,7 +268,7 @@ class Thalamic(PointNeuron):
 
 
 class ThalamicRE(Thalamic):
-    ''' Specific membrane channel dynamics of a thalamic reticular neuron.
+    ''' Thalamic reticular neuron
 
         References:
         *Destexhe, A., Contreras, D., Steriade, M., Sejnowski, T.J., and Huguenard, J.R. (1996).
@@ -342,8 +336,7 @@ class ThalamicRE(Thalamic):
 
 
 class ThalamoCortical(Thalamic):
-    ''' Specific membrane channel dynamics of a thalamo-cortical neuron, with a specific
-        hyperpolarization-activated, mixed cationic current and a leakage Potassium current.
+    ''' Thalamo-cortical neuron, with a specific
 
         References:
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac, Y.,

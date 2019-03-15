@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:08:37
+# @Last Modified time: 2019-03-15 02:04:20
 
 
 from functools import partialmethod
@@ -15,14 +15,7 @@ from ..constants import FARADAY, Rg, Z_Na, Z_Ca
 
 
 class LeechTouch(PointNeuron):
-    ''' Class defining the membrane channel dynamics of a leech touch sensory neuron.
-        with 4 different current types:
-            - Inward Sodium current
-            - Outward Potassium current
-            - Inward Calcium current
-            - Non-specific leakage current
-            - Calcium-dependent, outward Potassium current
-            - Outward, Sodium pumping current
+    ''' Leech touch sensory neuron
 
         Reference:
         *Cataldo, E., Brunelli, M., Byrne, J.H., Av-Ron, E., Cai, Y., and Baxter, D.A. (2005).
@@ -384,12 +377,8 @@ class LeechTouch(PointNeuron):
         return [dmdt, dhdt, dndt, dsdt, dCNa_dt, dANa_dt, dCCa_dt, dACa_dt]
 
 
-
-
-
 class LeechMech(PointNeuron):
-    ''' Class defining the basic dynamics of Sodium, Potassium and Calcium channels for several
-        neurons of the leech.
+    ''' Generic leech neuron
 
         Reference:
         *Baccus, S.A. (1998). Synaptic facilitation by reflected action potentials: enhancement
@@ -623,15 +612,7 @@ class LeechMech(PointNeuron):
 
 
 class LeechPressure(LeechMech):
-    ''' Class defining the membrane channel dynamics of a leech pressure sensory neuron.
-        with 7 different current types:
-            - Inward Sodium current
-            - Outward Potassium current
-            - Inward high-voltage-activated Calcium current
-            - Non-specific leakage current
-            - Calcium-dependent, outward Potassium current
-            - Sodium pump current
-            - Calcium pump current
+    ''' Leech pressure sensory neuron
 
         Reference:
         *Baccus, S.A. (1998). Synaptic facilitation by reflected action potentials: enhancement
@@ -815,13 +796,7 @@ class LeechPressure(LeechMech):
 
 
 class LeechRetzius(LeechMech):
-    ''' Class defining the membrane channel dynamics of a leech Retzius neuron.
-        with 5 different current types:
-            - Inward Sodium current
-            - Outward Potassium current
-            - Inward high-voltage-activated Calcium current
-            - Non-specific leakage current
-            - Calcium-dependent, outward Potassium current
+    ''' Leech Retzius neuron
 
         References:
         *Vazquez, Y., Mendez, B., Trueta, C., and De-Miguel, F.F. (2009). Summation of excitatory

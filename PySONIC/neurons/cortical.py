@@ -4,20 +4,14 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:10:15
+# @Last Modified time: 2019-03-15 02:06:42
 
 import numpy as np
 from ..core import PointNeuron
 
 
 class Cortical(PointNeuron):
-    ''' Class defining the generic membrane channel dynamics of a cortical neuron
-        with 4 different current types:
-            - Inward Sodium current
-            - Outward, delayed-rectifier Potassium current
-            - Outward, slow non.inactivating Potassium current
-            - Non-specific leakage current
-        This generic class cannot be used directly as it does not contain any specific parameters.
+    ''' Generic cortical neuron
 
         Reference:
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac,
@@ -36,7 +30,7 @@ class Cortical(PointNeuron):
     def __init__(self):
         self.states = ['m', 'h', 'n', 'p']
         self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                            'alphap', 'betap']
+                      'alphap', 'betap']
 
 
     def alpham(self, Vm):
@@ -266,8 +260,7 @@ class Cortical(PointNeuron):
 
 
 class CorticalRS(Cortical):
-    ''' Specific membrane channel dynamics of a cortical regular spiking, excitatory
-        pyramidal neuron.
+    ''' Cortical regular spiking, excitatory pyramidal neuron
 
         Reference:
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac,
@@ -293,7 +286,7 @@ class CorticalRS(Cortical):
 
 
 class CorticalFS(Cortical):
-    ''' Specific membrane channel dynamics of a cortical fast-spiking, inhibitory neuron.
+    ''' Cortical fast-spiking, inhibitory neuron
 
         Reference:
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac,
@@ -320,8 +313,7 @@ class CorticalFS(Cortical):
 
 
 class CorticalLTS(Cortical):
-    ''' Specific membrane channel dynamics of a cortical low-threshold spiking, inhibitory
-        neuron with an additional inward Calcium current due to the presence of a T-type channel.
+    ''' Cortical low-threshold spiking, inhibitory neuron
 
         References:
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac,
@@ -502,8 +494,7 @@ class CorticalLTS(Cortical):
 
 
 class CorticalIB(Cortical):
-    ''' Specific membrane channel dynamics of a cortical intrinsically bursting neuron with
-        an additional inward Calcium current due to the presence of a L-type channel.
+    ''' Cortical intrinsically bursting neuron
 
         References:
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac,

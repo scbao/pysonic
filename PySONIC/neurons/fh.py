@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:13:49
+# @Last Modified time: 2019-03-15 02:02:20
 
 import numpy as np
 from ..core import PointNeuron
@@ -10,12 +10,7 @@ from ..constants import CELSIUS_2_KELVIN, Z_Na, Z_K
 
 
 class FrankenhaeuserHuxley(PointNeuron):
-    ''' Class defining the membrane channel dynamics of a Xenopus myelinated neuron
-        with 4 different current types:
-            - Inward Sodium current
-            - Outward, delayed-rectifier Potassium current
-            - Non-specific delayed current
-            - Non-specific leakage current
+    ''' Xenopus myelinated fiber node
 
         Reference:
         *Frankenhaeuser, B., and Huxley, A.F. (1964). The action potential in the myelinated nerve
