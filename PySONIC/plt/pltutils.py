@@ -2,9 +2,9 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:26:09
+# @Last Modified time: 2019-03-15 01:32:28
 
-''' Dictionary of plotting settings for output variables of the model.  '''
+''' Useful functions to generate plots. '''
 
 import re
 import numpy as np
@@ -116,47 +116,3 @@ def extractPltVar(obj, pltvar, df, meta, nsamples, name):
     var *= pltvar.get('factor', 1)
 
     return var
-
-
-
-tmp = {
-    'Nai': {
-        'desc': 'sumbmembrane Na+ concentration',
-        'label': '[Na^+]_i',
-        'unit': 'uM',
-        'factor': 1e6
-    },
-
-    'Nai_arb': {
-        'key': 'Nai',
-        'desc': 'submembrane Na+ concentration',
-        'label': '[Na^+]',
-        'unit': 'arb.',
-        'factor': 1
-    },
-
-    'C_Na_arb_activation': {
-        'key': 'A_Na',
-        'desc': 'Na+ dependent PumpNa current activation',
-        'label': 'A_{Na^+}',
-        'unit': 'arb',
-        'factor': 1
-    },
-
-    'C_Ca_arb': {
-        'key': 'C_Ca',
-        'desc': 'submembrane Ca2+ concentration',
-        'label': '[Ca^{2+}]',
-        'unit': 'arb.',
-        'factor': 1
-    },
-
-    'C_Ca_arb_activation': {
-        'key': 'A_Ca',
-        'desc': 'Ca2+ dependent Potassium current activation',
-        'label': 'A_{Ca^{2+}}',
-        'unit': 'arb',
-        'factor': 1
-    },
-
-}
