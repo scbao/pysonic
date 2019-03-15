@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:07:52
+# @Last Modified time: 2019-03-15 01:28:42
 
 import os
 import time
@@ -216,6 +216,14 @@ class PointNeuron(metaclass=abc.ABCMeta):
             'color': 'k'
         }
 
+        for x in self.getGates():
+            for rate in ['alpha', 'beta']:
+                pltvars['{}{}'.format(rate, x)] = {
+                    'label': '\\{}_{{{}}}'.format(rate, x),
+                    'unit': 'ms^{-1}',
+                    'factor': 1e-3
+                }
+
         return pltvars
 
 
@@ -261,7 +269,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
     def Qbounds(self):
         ''' Determine bounds of membrane charge physiological range for a given neuron. '''
         return np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
-
 
     def getGates(self):
         ''' Retrieve the names of the neuron's states that match an ion channel gating. '''

@@ -2,10 +2,8 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:13:50
+# @Last Modified time: 2019-03-15 01:16:08
 
-import sys
-import pickle
 import ntpath
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,8 +11,6 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import FormatStrFormatter
 
 from ..utils import *
-from ..core import BilayerSonophore
-from ..neurons import getNeuronsDict
 from .pltutils import *
 
 

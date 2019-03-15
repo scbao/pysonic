@@ -2,10 +2,8 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:03:05
+# @Last Modified time: 2019-03-15 01:16:31
 
-import pickle
-import ntpath
 import numpy as np
 import matplotlib.pyplot as plt
 

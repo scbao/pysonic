@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 22:03:18
+# @Last Modified time: 2019-03-15 01:21:22
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -11,6 +11,7 @@ import matplotlib.cm as cm
 import matplotlib
 
 from PySONIC.utils import logger, si_prefixes, isWithin, getLookups2D, getLookupsOff
+from PySONIC.core import NeuronalBilayerSonophore
 
 
 def setGrid(n, ncolmax=3):
@@ -48,6 +49,9 @@ def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
 
     # Get reference US-OFF lookups (1D)
     _, lookupsoff = getLookupsOff(neuron.name)
+
+    nbls = NeuronalBilayerSonophore(32e-9, neuron)
+    pltvars = nbls.getPltVars()
 
     # Get 2D lookups at specific combination
     zref, Qref, lookups2D, zvar = getLookups2D(neuron.name, a=a, Fdrive=Fdrive, Adrive=Adrive)
@@ -118,19 +122,19 @@ def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
             y = lookups2D[key][i]
             if 'alpha' in key or 'beta' in key:
                 y[y > y0.max() * 2] = np.nan
-            ax.plot(Qref * xvar['factor'], y * yvar['factor'], c=sm.to_rgba(z))
+            ax.plot(Qref * xvar.get('factor', 1), y * yvar.get('factor', 1), c=sm.to_rgba(z))
             ymin = min(ymin, y.min())
             ymax = max(ymax, y.max())
 
         # Plot reference variable
-        ax.plot(Qref * xvar['factor'], y0 * yvar['factor'], '--', c='k')
+        ax.plot(Qref * xvar.get('factor', 1), y0 * yvar.get('factor', 1), '--', c='k')
         ymax = max(ymax, y0.max())
         ymin = min(ymin, y0.min())
 
         # Set axis y-limits
         if 'alpha' in key or 'beta' in key:
             ymax = y0.max() * 2
-        ylim = [ymin * yvar['factor'], ymax * yvar['factor']]
+        ylim = [ymin * yvar.get('factor', 1), ymax * yvar.get('factor', 1)]
         if key == 'Cm':
             factor = 1e1
             ylim = [np.floor(ylim[0] * factor) / factor, np.ceil(ylim[1] * factor) / factor]
