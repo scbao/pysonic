@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 02:02:20
+# @Last Modified time: 2019-03-18 21:13:46
 
 import numpy as np
 from ..core import PointNeuron
@@ -38,8 +38,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
     def __init__(self):
         self.states = ['m', 'h', 'n', 'p']
-        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                            'alphap', 'betap']
+        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan', 'alphap', 'betap']
         self.q10 = 3**((self.celsius - 20) / 10)
         self.T = self.celsius + CELSIUS_2_KELVIN
 
@@ -186,7 +185,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :return: current per unit area (mA/m2)
         '''
         iNa_drive = self.ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
-        return self.pNabar * m**2 * h * iNa_drive  # mA/m2
+        return self.pNabar * m**2 * h * iNa_drive
 
 
     def iKd(self, n, Vm):
@@ -197,7 +196,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :return: current per unit area (mA/m2)
         '''
         iKd_drive = self.ghkDrive(Vm, Z_K, self.Ki, self.Ko, self.T)  # mC/m3
-        return self.pKbar * n**2 * iKd_drive  # mA/m2
+        return self.pKbar * n**2 * iKd_drive
 
 
     def iP(self, p, Vm):
@@ -208,7 +207,7 @@ class FrankenhaeuserHuxley(PointNeuron):
             :return: current per unit area (mA/m2)
         '''
         iP_drive = self.ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
-        return self.pPbar * p**2 * iP_drive  # mA/m2
+        return self.pPbar * p**2 * iP_drive
 
 
     def iLeak(self, Vm):

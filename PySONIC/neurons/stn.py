@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 02:02:44
+# @Last Modified time: 2019-03-18 18:45:42
 
 
 import numpy as np
@@ -63,7 +63,7 @@ class OtsukaSTN(PointNeuron):
     sigmaT2_h = 16  # mV
 
     # Delayed rectifier K+ current
-    gKbar = 570.0  # Max. conductance of delayed-rectifier Potassium current (S/m^2)
+    gKdbar = 570.0  # Max. conductance of delayed-rectifier Potassium current (S/m^2)
     thetax_n = -41  # mV
     kx_n = -14  # mV
     tau0_n = 0 * 1e-3  # s
@@ -460,7 +460,7 @@ class OtsukaSTN(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.gKbar * n**4 * (Vm - self.EK)
+        return self.gKdbar * n**4 * (Vm - self.EK)
 
 
     def iA(self, a, b, Vm):

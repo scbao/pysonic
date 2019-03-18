@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 02:06:42
+# @Last Modified time: 2019-03-18 20:43:13
 
 import numpy as np
 from ..core import PointNeuron
@@ -175,7 +175,7 @@ class Cortical(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.gKbar * n**4 * (Vm - self.EK)
+        return self.gKdbar * n**4 * (Vm - self.EK)
 
 
     def iM(self, p, Vm):
@@ -210,16 +210,19 @@ class Cortical(PointNeuron):
 
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
-        meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
-        heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
-        neq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
-        peq = self.pinf(Vm)
 
-        return np.array([meq, heq, neq, peq])
+        # Voltage-gated steady-states
+        m_eq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
+        h_eq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
+        n_eq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
+        p_eq = self.pinf(Vm)
+
+        return np.array([m_eq, h_eq, n_eq, p_eq])
 
 
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
+
         m, h, n, p = states
         dmdt = self.derM(Vm, m)
         dhdt = self.derH(Vm, h)
@@ -274,7 +277,7 @@ class CorticalRS(Cortical):
     # Cell-specific biophysical parameters
     Vm0 = -71.9  # Cell membrane resting potential (mV)
     gNabar = 560.0  # Max. conductance of Sodium current (S/m^2)
-    gKbar = 60.0  # Max. conductance of delayed Potassium current (S/m^2)
+    gKdbar = 60.0  # Max. conductance of delayed Potassium current (S/m^2)
     gMbar = 0.75  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
     gLeak = 0.205  # Conductance of non-specific leakage current (S/m^2)
     ELeak = -70.3  # Non-specific leakage Nernst potential (mV)
@@ -300,7 +303,7 @@ class CorticalFS(Cortical):
     # Cell-specific biophysical parameters
     Vm0 = -71.4  # Cell membrane resting potential (mV)
     gNabar = 580.0  # Max. conductance of Sodium current (S/m^2)
-    gKbar = 39.0  # Max. conductance of delayed Potassium current (S/m^2)
+    gKdbar = 39.0  # Max. conductance of delayed Potassium current (S/m^2)
     gMbar = 0.787  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
     gLeak = 0.38  # Conductance of non-specific leakage current (S/m^2)
     ELeak = -70.4  # Non-specific leakage Nernst potential (mV)
@@ -331,7 +334,7 @@ class CorticalLTS(Cortical):
     # Cell-specific biophysical parameters
     Vm0 = -54.0  # Cell membrane resting potential (mV)
     gNabar = 500.0  # Max. conductance of Sodium current (S/m^2)
-    gKbar = 40.0  # Max. conductance of delayed Potassium current (S/m^2)
+    gKdbar = 40.0  # Max. conductance of delayed Potassium current (S/m^2)
     gMbar = 0.28  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
     gCaTbar = 4.0  # Max. conductance of low-threshold Calcium current (S/m^2)
     gLeak = 0.19  # Conductance of non-specific leakage current (S/m^2)
@@ -428,14 +431,11 @@ class CorticalLTS(Cortical):
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
-        # Call parent method to compute Sodium and Potassium channels gates steady-states
-        NaK_eqstates = super().steadyStates(Vm)
+        # Voltage-gated steady-states
+        NaK_eq = super().steadyStates(Vm)
+        Ca_eq = np.array([self.sinf(Vm), self.uinf(Vm)])
 
-        # Compute Calcium channel gates steady-states
-        Ca_eqstates = np.array([self.sinf(Vm), self.uinf(Vm)])
-
-        # Merge all steady-states and return
-        return np.concatenate((NaK_eqstates, Ca_eqstates))
+        return np.concatenate((NaK_eq, Ca_eq))
 
 
     def derStates(self, Vm, states):
@@ -512,7 +512,7 @@ class CorticalIB(Cortical):
     # Cell-specific biophysical parameters
     Vm0 = -71.4  # Cell membrane resting potential (mV)
     gNabar = 500  # Max. conductance of Sodium current (S/m^2)
-    gKbar = 50  # Max. conductance of delayed Potassium current (S/m^2)
+    gKdbar = 50  # Max. conductance of delayed Potassium current (S/m^2)
     gMbar = 0.3  # Max. conductance of slow non-inactivating Potassium current (S/m^2)
     gCaLbar = 1.0  # Max. conductance of L-type Calcium current (S/m^2)
     gLeak = 0.1  # Conductance of non-specific leakage current (S/m^2)
@@ -612,16 +612,13 @@ class CorticalIB(Cortical):
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
-        # Call parent method to compute Sodium and Potassium channels gates steady-states
-        NaK_eqstates = super().steadyStates(Vm)
+        # Voltage-gated steady-states
+        NaK_eq = super().steadyStates(Vm)
+        q_eq = self.alphaq(Vm) / (self.alphaq(Vm) + self.betaq(Vm))
+        r_eq = self.alphar(Vm) / (self.alphar(Vm) + self.betar(Vm))
+        CaL_eq = np.array([q_eq, r_eq])
 
-        # Compute L-type Calcium channel gates steady-states
-        qeq = self.alphaq(Vm) / (self.alphaq(Vm) + self.betaq(Vm))
-        req = self.alphar(Vm) / (self.alphar(Vm) + self.betar(Vm))
-        CaL_eqstates = np.array([qeq, req])
-
-        # Merge all steady-states and return
-        return np.concatenate((NaK_eqstates, CaL_eqstates))
+        return np.concatenate((NaK_eq, CaL_eq))
 
 
     def derStates(self, Vm, states):

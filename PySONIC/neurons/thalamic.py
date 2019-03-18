@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 02:06:23
+# @Last Modified time: 2019-03-18 20:44:48
 
 import numpy as np
 from ..core import PointNeuron
@@ -167,7 +167,7 @@ class Thalamic(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.gKbar * n**4 * (Vm - self.EK)
+        return self.gKdbar * n**4 * (Vm - self.EK)
 
 
     def iCaT(self, s, u, Vm):
@@ -204,14 +204,14 @@ class Thalamic(PointNeuron):
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
-        # Solve the equation dx/dt = 0 at Vm for each x-state
-        meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
-        heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
-        neq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
-        seq = self.sinf(Vm)
-        ueq = self.uinf(Vm)
+        # Voltage-gated steady-states
+        m_eq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
+        h_eq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
+        n_eq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
+        s_eq = self.sinf(Vm)
+        u_eq = self.uinf(Vm)
 
-        return np.array([meq, heq, neq, seq, ueq])
+        return np.array([m_eq, h_eq, n_eq, s_eq, u_eq])
 
 
     def derStates(self, Vm, states):
@@ -287,7 +287,7 @@ class ThalamicRE(Thalamic):
     # Cell-specific biophysical parameters
     Vm0 = -89.5  # Cell membrane resting potential (mV)
     gNabar = 2000.0  # Max. conductance of Sodium current (S/m^2)
-    gKbar = 200.0  # Max. conductance of Potassium current (S/m^2)
+    gKdbar = 200.0  # Max. conductance of Potassium current (S/m^2)
     gCaTbar = 30.0  # Max. conductance of low-threshold Calcium current (S/m^2)
     gLeak = 0.5  # Conductance of non-specific leakage current (S/m^2)
     ELeak = -90.0  # Non-specific leakage Nernst potential (mV)
@@ -357,9 +357,9 @@ class ThalamoCortical(Thalamic):
     # Vm0 = -63.4  # Cell membrane resting potential (mV)
     Vm0 = -61.93  # Cell membrane resting potential (mV)
     gNabar = 900.0  # bar. conductance of Sodium current (S/m^2)
-    gKbar = 100.0  # bar. conductance of Potassium current (S/m^2)
+    gKdbar = 100.0  # bar. conductance of Potassium current (S/m^2)
     gCaTbar = 20.0  # Max. conductance of low-threshold Calcium current (S/m^2)
-    gKL = 0.138  # Conductance of leakage Potassium current (S/m^2)
+    gKLeak = 0.138  # Conductance of leakage Potassium current (S/m^2)
     gHbar = 0.175  # Max. conductance of mixed cationic current (S/m^2)
     gLeak = 0.1  # Conductance of non-specific leakage current (S/m^2)
     EH = -40.0  # Mixed cationic current reversal potential (mV)
@@ -577,7 +577,7 @@ class ThalamoCortical(Thalamic):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.gKL * (Vm - self.EK)
+        return self.gKLeak * (Vm - self.EK)
 
 
     def iH(self, O, C, Vm):
@@ -603,25 +603,22 @@ class ThalamoCortical(Thalamic):
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
-        # Call parent method to compute Sodium, Potassium and Calcium channels gates steady-states
-        NaKCa_eqstates = super().steadyStates(Vm)
+        # Voltage-gated steady-states
+        NaKCa_eq = super().steadyStates(Vm)
+        seq = NaKCa_eq[3]
+        ueq = NaKCa_eq[4]
 
-        # Compute steady-state Calcium current
-        seq = NaKCa_eqstates[3]
-        ueq = NaKCa_eqstates[4]
-        iCaTeq = self.iCaT(seq, ueq, Vm)
-
-        # Compute steady-state variables for the kinetics system of Ih
-        Cai_eq = self.Cai_min - self.taur_Cai * self.iCa_to_Cai_rate * iCaTeq
+        # Other steady-states
+        iCaT_eq = self.iCaT(seq, ueq, Vm)
+        Cai_eq = self.Cai_min - self.taur_Cai * self.iCa_to_Cai_rate * iCaT_eq
         P0_eq = self.k2 / (self.k2 + self.k1 * Cai_eq**self.nCa)
         BA = self.betao(Vm) / self.alphao(Vm)
         O_eq = self.k4 / (self.k3 * (1 - P0_eq) + self.k4 * (1 + BA))
         C_eq = BA * O_eq
 
-        kin_eqstates = np.array([O_eq, C_eq, P0_eq, Cai_eq])
+        kin_eq = np.array([O_eq, C_eq, P0_eq, Cai_eq])
 
-        # Merge all steady-states and return
-        return np.concatenate((NaKCa_eqstates, kin_eqstates))
+        return np.concatenate((NaKCa_eq, kin_eq))
 
 
     def derStates(self, Vm, states):
