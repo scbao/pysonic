@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:29:15
+# @Last Modified time: 2019-03-18 16:50:08
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -505,3 +505,21 @@ def getLowIntensitiesSTN():
         np.arange(101, 131, 1),
         np.array([140])
     ))  # W/m2
+
+
+
+def getIndex(container, value):
+    ''' Return the index of a float / string value in a list / array
+
+        :param container: list / 1D-array of elements
+        :param value: value to search for
+        :return: index of value (if found)
+    '''
+    if isinstance(value, float):
+        container = np.array(container)
+        imatches = np.where(np.isclose(container, value, rtol=1e-9, atol=1e-16))[0]
+        if len(imatches) == 0:
+            raise ValueError('{} not found in {}'.format(value, container))
+        return imatches[0]
+    elif isinstance(value, str):
+        return container.index(value)

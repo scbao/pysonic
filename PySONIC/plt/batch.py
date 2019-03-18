@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:16:31
+# @Last Modified time: 2019-03-18 14:18:02
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -69,7 +69,6 @@ def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
         if tvar['onset'] > 0.0:
             tonset = np.array([-tvar['onset'], -t[0] - t[1]])
             t = np.hstack((tonset, t))
-            states = np.hstack((states, np.zeros(2)))
         t *= tvar['factor']
 
         # Create figure

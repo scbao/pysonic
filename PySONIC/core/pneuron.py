@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 02:08:30
+# @Last Modified time: 2019-03-18 16:07:44
 
 import os
 import time
@@ -149,13 +149,16 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
 
     def getPltScheme(self):
-        pltscheme = {'Q_m': ['Qm'], 'V_m': ['Vm']}
+        pltscheme = {
+            'Q_m': ['Qm'],
+            'V_m': ['Vm']
+        }
+        pltscheme['I'] = self.getCurrentsNames() + ['iNet']
         for cname in self.getCurrentsNames():
             if 'Leak' not in cname:
-                key = 'I_{{{}}}\ kin.'.format(cname[1:])
+                key = 'i_{{{}}}\ kin.'.format(cname[1:])
                 cargs = inspect.getargspec(getattr(self, cname))[0][1:]
                 pltscheme[key] = [var for var in cargs if var not in ['Vm', 'Cai']]
-        pltscheme['I'] = self.getCurrentsNames() + ['iNet']
 
         return pltscheme
 
@@ -165,7 +168,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
         pltvars = {
             'Qm': {
-                'desc': 'charge density',
+                'desc': 'membrane charge density',
                 'label': 'Q_m',
                 'unit': 'nC/cm^2',
                 'factor': 1e5,
@@ -216,7 +219,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
             'factor': 1e-3,
             'func': 'iNet(df["Vm"], df[obj.states].values.T)',
             'ls': '--',
-            'color': 'k'
+            'color': 'black'
         }
 
         for x in self.getGates():

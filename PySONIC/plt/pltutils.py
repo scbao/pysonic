@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:32:28
+# @Last Modified time: 2019-03-18 14:13:18
 
 ''' Useful functions to generate plots. '''
 
@@ -110,6 +110,7 @@ def extractPltVar(obj, pltvar, df, meta, nsamples, name):
         var = eval(pltvar['constant']) * np.ones(nsamples)
     else:
         var = df[name]
+    var = var.values.copy()
 
     if var.size == nsamples - 2:
         var = np.hstack((np.array([pltvar.get('y0', var[0])] * 2), var))
