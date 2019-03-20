@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-18 16:07:44
+# @Last Modified time: 2019-03-20 11:15:46
 
 import os
 import time
@@ -101,7 +101,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
             :param: z_ion: ion valence
             :param depth: submembrane depth (m)
-            :return: time derivative of submembrane ion concentration (M/s)
+            :return: conversion factor (Mmol.m-1.C-1)
         '''
         return 1e-6 / (z_ion * depth * FARADAY)
 

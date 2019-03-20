@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-18 18:45:42
+# @Last Modified time: 2019-03-20 11:24:59
 
 
 import numpy as np
@@ -39,7 +39,7 @@ class OtsukaSTN(PointNeuron):
 
     # Calcium dynamics
     Cao = 2e-3  # M (2 mM)
-    taur_Cai = 1 / 2e3  # decay time constant for intracellular Ca2+ dissolution (s)
+    taur_Cai = 0.5e-3  # decay time constant for intracellular Ca2+ dissolution (s)
 
     # Leakage current
     gLeak = 3.5  # Conductance of non-specific leakage current (S/m^2)
@@ -132,7 +132,7 @@ class OtsukaSTN(PointNeuron):
     sigmaT2_b = 10  # mV
 
     # Ca2+-activated K+ current
-    gKCaMax = 10.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
+    gKCabar = 10.0  # Max. conductance of Calcium-dependent Potassium current (S/m^2)
     thetax_r = 0.17 * 1e-6  # M
     kx_r = -0.08 * 1e-6  # M
     tau_r = 2 * 1e-3  # s
@@ -152,7 +152,7 @@ class OtsukaSTN(PointNeuron):
             'alphaq', 'betaq',
         ]
         self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
-        self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
+        self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)  # Mmol.m-1.C-1
 
 
     def getPltScheme(self):
@@ -506,7 +506,7 @@ class OtsukaSTN(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.gKCaMax * r**2 * (Vm - self.EK)
+        return self.gKCabar * r**2 * (Vm - self.EK)
 
 
     def iLeak(self, Vm):
@@ -543,8 +543,11 @@ class OtsukaSTN(PointNeuron):
         neq = self.ninf(Vm)
         peq = self.pinf(Vm)
         qeq = self.qinf(Vm)
-        # Cai_eq = self.Cai0
-        Cai_eq = self.findCaiSteadyState(Vm)
+
+        Cai_eq = self.Cai0
+        # Cai_eq = 0.136e-6  # M
+        # Cai_eq = self.findCaiSteadyState(Vm)
+
         d2eq = self.d2inf(Cai_eq)
         req = self.rinf(Cai_eq)
 

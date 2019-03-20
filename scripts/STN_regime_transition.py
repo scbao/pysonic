@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:37:44
+# @Last Modified time: 2019-03-19 16:24:26
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -65,7 +65,7 @@ def getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim, PRF
         df = frame['data']
         t = df['t'].values
         Qm = df['Qm'].values
-        Ca = df['C_Ca'].values
+        Ca = df['Cai'].values
         Qm = Qm[t < tstim]
         Ca = Ca[t < tstim]
         t = t[t < tstim]
@@ -104,6 +104,16 @@ def plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive, fs=12):
     # Compute QSS currents
     currents = neuron.currents(Vmeff, QS_states)
     iNet = sum(currents.values())
+
+    Qi = -22.7e-5  # C/m2
+    print('inerpolated QSS system at Qm = {:.5f} nC/cm2:'.format(Qi * 1e5))
+    print('Vmeff = {:.5f} mV'.format(np.interp(Qi, Qref, Vmeff)))
+    for name, vec in currents.items():
+        print('{} = {:.5f} A/m2'.format(name, np.interp(Qi, Qref, vec) * 1e-3))
+    print('iNet = {:.5f} A/m2'.format(np.interp(Qi, Qref, iNet) * 1e-3))
+    for name, vec in zip(neuron.states, QS_states[:-1, :]):
+        print('{} = {:.5f}'.format(name, np.interp(Qi, Qref, vec)))
+    print('Cai = {:.5f} uM'.format(np.interp(Qi, Qref, QS_states[-1, :]) * 1e6))
 
     # Create figure
     fig, axes = plt.subplots(3, 1, figsize=(7, 9))
@@ -275,7 +285,8 @@ def main():
 
     figs = []
     if 'a' in figset:
-        for Adrive in [amps[0], amps[amps.size // 2], amps[-1]]:
+        # for Adrive in [amps[0], amps[amps.size // 2], amps[-1]]:
+        for Adrive in [amps[-1]]:
             figs.append(plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive))
     if 'b' in figset:
         figs.append(plotInetQSS_vs_Qm(neuron, a, Fdrive, amps))

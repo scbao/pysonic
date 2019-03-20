@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-03-18 21:17:03
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-18 21:18:02
+# @Last Modified time: 2019-03-18 21:37:58
 
 
 import inspect
@@ -134,12 +134,13 @@ class NmodlGenerator:
         return '\n'.join(block)
 
     def initial_block(self):
-        block = [
-            ': Set initial states values'
-        ]
-        for g in self.neuron.getGates():
-            block.append('{0} = alpha{1}(0, v) / (alpha{1}(0, v) + beta{1}(0, v))'.format(
-                self.translateState(g), g.lower()))
+        block = [': Set initial states values']
+        for s in self.neuron.states:
+            if s in self.neuron.getGates():
+                block.append('{0} = alpha{1}(0, v) / (alpha{1}(0, v) + beta{1}(0, v))'.format(
+                    self.translateState(s), s.lower()))
+            else:
+                block.append('{} = ???'.format(self.translateState(s)))
 
         return 'INITIAL {{{}{}\n}}'.format(self.tabreturn, self.tabreturn.join(block))
 
@@ -164,10 +165,13 @@ class NmodlGenerator:
 
     def derivative_block(self):
         block = [': Gating states derivatives']
-        for g in self.neuron.getGates():
-            block.append(
-                '{0}\' = alpha{1}{2} * (1 - {0}) - beta{1}{2} * {0}'.format(
-                    self.translateState(g), g.lower(), '(Adrive * stimon, v)')
-            )
+        for s in self.neuron.states:
+            if s in self.neuron.getGates():
+                block.append(
+                    '{0}\' = alpha{1}{2} * (1 - {0}) - beta{1}{2} * {0}'.format(
+                        self.translateState(s), s.lower(), '(Adrive * stimon, v)')
+                )
+            else:
+                block.append('{}\' = ???'.format(self.translateState(s)))
 
         return 'DERIVATIVE states {{{}{}\n}}'.format(self.tabreturn, self.tabreturn.join(block))

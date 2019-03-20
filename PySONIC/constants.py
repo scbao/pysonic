@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-13 15:53:59
+# @Last Modified time: 2019-03-19 16:42:22
 
 ''' Algorithmic constants used in the package. '''
 
@@ -28,7 +28,7 @@ NCYCLES_MAX = 10  # max number of acoustic cycles in mechanical simulations
 CHARGE_RANGE = (-200e-5, 150e-5)  # physiological charge range constraining the membrane (C/m2)
 
 # E-STIM simulations
-DT_ESTIM = 1e-6
+DT_ESTIM = 1e-5
 
 # A-STIM simulations
 SOLVER_NSTEPS = 1000  # maximum number of steps allowed during one call to the LSODA/DOP853 solvers
