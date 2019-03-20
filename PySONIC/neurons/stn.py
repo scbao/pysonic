@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-20 11:24:59
+# @Last Modified time: 2019-03-20 13:32:52
 
 
 import numpy as np
@@ -544,9 +544,9 @@ class OtsukaSTN(PointNeuron):
         peq = self.pinf(Vm)
         qeq = self.qinf(Vm)
 
-        Cai_eq = self.Cai0
-        # Cai_eq = 0.136e-6  # M
-        # Cai_eq = self.findCaiSteadyState(Vm)
+        # Cai_eq = self.Cai0
+        # Cai_eq = 0.11e-6  # M
+        Cai_eq = self.findCaiSteadyState(Vm)
 
         d2eq = self.d2inf(Cai_eq)
         req = self.rinf(Cai_eq)

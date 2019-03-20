@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:01:29
+# @Last Modified time: 2019-03-20 14:54:29
 
 import os
 import time
@@ -745,8 +745,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param amps: US amplitudes (Pa)
             :param charges: membrane charge densities (C/m2)
             :param DCs: duty cycle value(s)
-            :return: 3-tuple with reference values of US amplitude and charge density
-            as well as bilinearly interpolated QSS gating variables
+            :return: 4-tuple with reference values of US amplitude and charge density,
+                as well as interpolated Vmeff and QSS gating variables
         '''
 
         # Get lookups for specific (a, f, A) combination
@@ -765,58 +765,49 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             charges = np.array([charges])
         if isinstance(DCs, float):
             DCs = np.array([DCs])
+        nA, nQ, nDC = amps.size, charges.size, DCs.size
+        cs = {True: 's', False: ''}
+        print('{} amplitude{}, {} charge{}, {} DC{}'.format(
+            nA, cs[nA > 1], nQ, cs[nQ > 1], nDC, cs[nDC > 1]))
 
-        # Initialize output arrays
-        Vmeff = np.empty((amps.size, charges.size))
-        QS_states = np.empty((len(self.neuron.states), amps.size, charges.size, DCs.size))
+        # Re-interpolate lookups at input charges
+        lookups2D = {key: interp1d(Qref, y2D, axis=1)(charges) for key, y2D in lookups2D.items()}
 
-        # Interpolate Vmeff from lookups at each (US amplitude, membrane charge) combination
-        Vmeff = interp1d(Qref, lookups2D['V'], axis=1)(charges)
-        Vmeff = interp1d(Aref, Vmeff, axis=0)(amps)
+        # Interpolate US-ON (for each input amplitude) and US-OFF (A = 0) lookups
+        lookups_on = {key: interp1d(Aref, y2D, axis=0)(amps) for key, y2D in lookups2D.items()}
+        lookups_off = {key: interp1d(Aref, y2D, axis=0)(0.0) for key, y2D in lookups2D.items()}
 
-        # For each neuron state
+        # Compute DC-averaged Vmeff
+        Vmeff_on, Vmeff_off = lookups_on['V'], lookups_off['V']
+        Vmeff_avg = np.empty((nA, nQ, nDC))
+        for iA, Adrive in enumerate(amps):
+            for iDC, DC in enumerate(DCs):
+                Vmeff_avg[iA, :, iDC] = Vmeff_on[iA, :] * DC + Vmeff_off * (1 - DC)
+
+        # Compute QSS states
+        QS_states = np.empty((len(self.neuron.states), nA, nQ, nDC))
         for i, x in enumerate(self.neuron.states):
+
             # If channel state, compute DC-averaged QSS values from interpolated rate constants
-            # at each (US amplitude, membrane charge) combination
             if x in self.neuron.getGates():
+                alpha_str, beta_str = ['{}{}'.format(s, x.lower()) for s in ['alpha', 'beta']]
+                alphax_on, alphax_off = lookups_on[alpha_str], lookups_off[alpha_str]
+                betax_on, betax_off = lookups_on[beta_str], lookups_off[beta_str]
+                for iA, Adrive in enumerate(amps):
+                    for iDC, DC in enumerate(DCs):
+                        alphax = alphax_on[iA, :] * DC + alphax_off * (1 - DC)
+                        betax = betax_on[iA, :] * DC + betax_off * (1 - DC)
+                        QS_states[i, iA, :, iDC] = alphax / (alphax + betax)
 
-                # Get lookup tables of specific rate constants
-                x = x.lower()
-                alpha_str, beta_str = ['{}{}'.format(s, x) for s in ['alpha', 'beta']]
-                rates2D = [lookups2D[key] for key in [alpha_str, beta_str]]
-
-                # Re-interpolate at input charges
-                rates2D = [interp1d(Qref, y2D, axis=1)(charges) for y2D in rates2D]
-
-                # Interpolate US-OFF rate constants
-                rates_off = [interp1d(Aref, y2D, axis=0)(0.0) for y2D in rates2D]
-
-                # For each amplitude
-                for j, Adrive in enumerate(amps):
-                    # Interpolate US-ON rate constants
-                    rates_on = [interp1d(Aref, y2D, axis=0)(Adrive) for y2D in rates2D]
-
-                    # Compute DC-averaged rate constants
-                    alphax = rates_on[0] * DCs + rates_off[0] * (1 - DCs)
-                    betax = rates_on[1] * DCs + rates_off[1] * (1 - DCs)
-
-                    # Compute QSS gating variable with appropriate dimensions
-                    xinf = np.atleast_2d(alphax / (alphax + betax))
-                    if xinf.shape != (charges.size, DCs.size):
-                        xinf = xinf.T
-                    QS_states[i, j, :, :] = xinf
-
-            # Otherwise, compute QSS values from neuron's voltage-dependent steady-state
-            # (i.e., only along charge dimension)
+            # Otherwise, compute QSS values from DC-averaged Vmeff
             else:
-                xQSS_vs_Q = np.array([self.neuron.steadyStates(Q / self.neuron.Cm0 * 1e3)[i]
-                                      for Q in charges])
-                xQSS_vs_Q_3D = np.tile(xQSS_vs_Q, (amps.size, DCs.size, 1))
-                xQSS_vs_Q_3D = np.einsum('ikj->ijk', xQSS_vs_Q_3D)
-                QS_states[i, :, :, :] = xQSS_vs_Q_3D
+                for iA, Adrive in enumerate(amps):
+                    for iDC, DC in enumerate(DCs):
+                        QS_states[i, iA, :, iDC] = np.array([
+                            self.neuron.steadyStates(Vmeff_avg[iA, iQ, iDC])[i] for iQ in range(nQ)])
 
         # Return reference inputs and output arrays
-        return amps, charges, np.squeeze(Vmeff), np.squeeze(QS_states)
+        return amps, charges, np.squeeze(Vmeff_on), np.squeeze(QS_states)
 
 
     def findRheobaseAmps(self, DCs, Fdrive, Vthr):

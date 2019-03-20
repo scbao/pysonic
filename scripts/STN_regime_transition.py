@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-19 16:24:26
+# @Last Modified time: 2019-03-20 12:15:54
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -105,7 +105,7 @@ def plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive, fs=12):
     currents = neuron.currents(Vmeff, QS_states)
     iNet = sum(currents.values())
 
-    Qi = -22.7e-5  # C/m2
+    Qi = -22.76e-5  # C/m2
     print('inerpolated QSS system at Qm = {:.5f} nC/cm2:'.format(Qi * 1e5))
     print('Vmeff = {:.5f} mV'.format(np.interp(Qi, Qref, Vmeff)))
     for name, vec in currents.items():
@@ -141,7 +141,8 @@ def plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive, fs=12):
     ax.set_yticks([0, 0.5, 1])
     ax.set_ylim([-0.05, 1.05])
     for i, label in enumerate(neuron.states):
-        ax.plot(Qref * 1e5, QS_states[i], label=label, c=colors[i])
+        if label != 'Cai':
+            ax.plot(Qref * 1e5, QS_states[i], label=label, c=colors[i])
 
     # Subplot 3: currents
     ax = axes[2]
