@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-20 17:07:14
+# @Last Modified time: 2019-03-20 17:57:06
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -361,8 +361,12 @@ def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
 
     # Get charge value that cancels out net current in QSS approx. and sim
     Qeq_QSS = getStableQmQSS(neuron, a, Fdrive, amps)
+    Qeq_QSS2 = np.array([Q[0] if Q is not None and len(Q) == 1 else np.nan for Q in Qeq_QSS])
 
     _, Qeq_sim, _ = getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim)
+
+    Q_rmse = np.sqrt(np.nanmean((Qeq_sim - Qeq_QSS2)**2))
+    logger.info('RMSE Q = %.3f nC/cm2', Q_rmse * 1e5)
 
     # Plot Qm balancing net current as function of amplitude
     fig, ax = plt.subplots(figsize=(6, 4))
@@ -406,7 +410,7 @@ def main():
     ap.add_argument('-c', '--cmap', type=str, default='viridis', help='Colormap name')
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
     ap.add_argument('-s', '--save', default=False, action='store_true',
-                    help='Save output figures as pdf')
+                    help='Save output figures as png')
 
     # Parse arguments
     args = ap.parse_args()
@@ -453,7 +457,7 @@ def main():
             for fig in figs:
                 s = fig.canvas.get_window_title()
                 s = s.replace('(', '- ').replace('/', '_').replace(')', '')
-                figname = '{}.pdf'.format(s)
+                figname = '{}.png'.format(s)
                 fig.savefig(os.path.join(outputdir, figname), transparent=True)
     else:
         plt.show()
