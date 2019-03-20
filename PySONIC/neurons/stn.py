@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-20 13:32:52
+# @Last Modified time: 2019-03-20 16:38:29
 
 
 import numpy as np
@@ -400,43 +400,35 @@ class OtsukaSTN(PointNeuron):
 
 
     def derCai(self, p, q, c, d1, d2, Cai, Vm):
-        ''' Evolution of Calcium concentration in submembranal space.
+        ''' Evolution of Calcium concentration in submembrane space.
 
-            :param Vm: membrane potential (mV)
-            :param Cai: Calcium concentration in submembranal space (M)
             :param p: open-probability of p-gate
             :param q: open-probability of q-gate
             :param c: open-probability of c-gate
             :param d1: open-probability of d1-gate
             :param d2: open-probability of d2-gate
-            :return: time derivative of Calcium concentration in submembranal space (M/s)
+            :param Cai: Calcium concentration in submembranal space (M)
+            :param Vm: membrane potential (mV)
+            :return: time derivative of Calcium concentration in submembrane space (M/s)
         '''
         iCaT = self.iCaT(p, q, Vm, Cai)
         iCaL = self.iCaL(c, d1, d2, Vm, Cai)
         return - self.iCa_to_Cai_rate * (iCaT + iCaL) - Cai / self.taur_Cai
 
 
-    def derCaiSteadyState(self, Cai, Vm):
-        ''' Evolution of Calcium concentration in submembranal space,
-            assuming quasi-steady gating states.
-
-            :param Vm: membrane potential (mV)
-            :param Cai: Calcium concentration in submembranal space (M)
-            :return: time derivative of Calcium concentration in submembranal space (M/s)
-        '''
-        return self.derCai(self.pinf(Vm), self.qinf(Vm), self.cinf(Vm), self.d1inf(Vm),
-                           self.d2inf(Cai), Cai, Vm)
-
-
-    def findCaiSteadyState(self, Vm):
+    def findCaiSteadyState(self, p, q, c, d1, Vm):
         ''' Find the steady-state intracellular Calcium concentration for a
-            specific membrane potential.
+            specific membrane potential and voltage-gated channel states.
 
+            :param p: open-probability of p-gate
+            :param q: open-probability of q-gate
+            :param c: open-probability of c-gate
+            :param d1: open-probability of d1-gate
             :param Vm: membrane potential (mV)
-            :return: steady-state Calcium concentration in submembranal space (M)
+            :return: steady-state Calcium concentration in submembrane space (M)
         '''
         return brentq(
-            lambda x: self.derCaiSteadyState(x, Vm),
+            lambda x: self.derCai(p, q, c, d1, self.d2inf(x), x, Vm),
             self.Cai0 * 1e-4, self.Cai0 * 1e3,
             xtol=1e-16
         )
@@ -543,11 +535,7 @@ class OtsukaSTN(PointNeuron):
         neq = self.ninf(Vm)
         peq = self.pinf(Vm)
         qeq = self.qinf(Vm)
-
-        # Cai_eq = self.Cai0
-        # Cai_eq = 0.11e-6  # M
-        Cai_eq = self.findCaiSteadyState(Vm)
-
+        Cai_eq = self.Cai0
         d2eq = self.d2inf(Cai_eq)
         req = self.rinf(Cai_eq)
 

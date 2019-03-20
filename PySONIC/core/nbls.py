@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-20 14:54:29
+# @Last Modified time: 2019-03-20 16:27:58
 
 import os
 import time
@@ -767,8 +767,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             DCs = np.array([DCs])
         nA, nQ, nDC = amps.size, charges.size, DCs.size
         cs = {True: 's', False: ''}
-        print('{} amplitude{}, {} charge{}, {} DC{}'.format(
-            nA, cs[nA > 1], nQ, cs[nQ > 1], nDC, cs[nDC > 1]))
+        logger.debug('%u amplitude%s, %u charge%s, %u DC%s',
+                     nA, cs[nA > 1], nQ, cs[nQ > 1], nDC, cs[nDC > 1])
 
         # Re-interpolate lookups at input charges
         lookups2D = {key: interp1d(Qref, y2D, axis=1)(charges) for key, y2D in lookups2D.items()}
