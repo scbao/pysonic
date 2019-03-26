@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-20 11:15:46
+# @Last Modified time: 2019-03-26 11:31:03
 
 import os
 import time
@@ -90,7 +90,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         ''' Net membrane current
 
             :param Vm: membrane potential (mV)
-            :states: state probabilities of the ion channels
+            :states: states of ion channels gating and related variables
             :return: current per unit area (mA/m2)
         '''
         return sum(self.currents(Vm, states).values())
@@ -179,7 +179,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
                 'desc': 'membrane potential',
                 'label': 'V_m',
                 'unit': 'mV',
-                'y0': self.Vm0
+                'y0': self.Vm0,
+                'bounds': (-150, 70)
             },
 
             'ELeak': {
@@ -232,10 +233,15 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
         return pltvars
 
+    def getRatesNames(self, states):
+        return list(sum(
+            [['alpha{}'.format(x.lower()), 'beta{}'.format(x.lower())] for x in states],
+            []
+        ))
 
     @abc.abstractmethod
     def steadyStates(self, Vm):
-        ''' Compute the channels steady-state values for a specific membrane potential value.
+        ''' Compute the steady-state values for a specific membrane potential value.
 
             :param Vm: membrane potential (mV)
             :return: array of steady-states
@@ -249,6 +255,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :states: state probabilities of the ion channels
             :return: current per unit area (mA/m2)
         '''
+
 
     @abc.abstractmethod
     def getEffRates(self, Vm):
@@ -417,12 +424,12 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
         # Initialize global arrays
         t = np.array([0.])
-        states = np.array([1])
+        stimstate = np.array([1])
         y = np.array([y0]).T
 
-        # Initialize pulse time and states vectors
+        # Initialize pulse time and stimstate vectors
         t_pulse0 = np.linspace(0, Tpulse_on + Tpulse_off, n_pulse_on + n_pulse_off)
-        states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
+        stimstate_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
 
         # Loop through all pulse (ON and OFF) intervals
         for i in range(npulses):
@@ -442,23 +449,23 @@ class PointNeuron(metaclass=abc.ABCMeta):
                     args=(0.0,)).T
 
             # Append pulse arrays to global arrays
-            states = np.concatenate([states, states_pulse[1:]])
+            stimstate = np.concatenate([stimstate, stimstate_pulse[1:]])
             t = np.concatenate([t, t_pulse[1:]])
             y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
 
         # Integrate offset interval
         if n_off > 0:
             t_off = np.linspace(0, toffset, n_off) + t[-1]
-            states_off = np.zeros(n_off)
+            stimstate_off = np.zeros(n_off)
             y_off = odeint(self.Vderivatives, y[:, -1], t_off, args=(0.0, )).T
 
             # Concatenate offset arrays to global arrays
-            states = np.concatenate([states, states_off[1:]])
+            stimstate = np.concatenate([stimstate, stimstate_off[1:]])
             t = np.concatenate([t, t_off[1:]])
             y = np.concatenate([y, y_off[:, 1:]], axis=1)
 
         # Return output variables
-        return (t, y, states)
+        return (t, y, stimstate)
 
     def titrate(self, tstim, toffset, PRF=None, DC=1.0, Arange=(0., 2 * TITRATION_ESTIM_A_MAX)):
         ''' Use a dichotomic recursive search to determine the threshold amplitude needed
@@ -476,7 +483,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
         # Run simulation and detect spikes
         t0 = time.time()
-        (t, y, states) = self.simulate(Astim, tstim, toffset, PRF, DC)
+        (t, y, stimstate) = self.simulate(Astim, tstim, toffset, PRF, DC)
         tcomp = time.time() - t0
         dt = t[1] - t[0]
         ipeaks, *_ = findPeaks(y[0, :], SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
@@ -489,14 +496,14 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
         # If accurate threshold is found, return simulation results
         if (Arange[1] - Arange[0]) <= TITRATION_ESTIM_DA_MAX and nspikes == 1:
-            return (Astim, t, y, states, latency, tcomp)
+            return (Astim, t, y, stimstate, latency, tcomp)
 
         # Otherwise, refine titration interval and iterate recursively
         else:
             if nspikes == 0:
                 # if Astim too close to max then stop
                 if (TITRATION_ESTIM_A_MAX - Astim) <= TITRATION_ESTIM_DA_MAX:
-                    return (np.nan, t, y, states, latency, tcomp)
+                    return (np.nan, t, y, stimstate, latency, tcomp)
                 Arange = (Astim, Arange[1])
             else:
                 Arange = (Arange[0], Astim)
@@ -527,7 +534,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
             # Run simulation
             tstart = time.time()
-            t, y, states = self.simulate(Astim, tstim, toffset, PRF, DC)
+            t, y, stimstate = self.simulate(Astim, tstim, toffset, PRF, DC)
             Vm, *channels = y
             tcomp = time.time() - tstart
 
@@ -545,7 +552,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
                          if DC < 1.0 else ''))
 
             # Run titration
-            Astim, t, y, states, lat, tcomp = self.titrate(tstim, toffset, PRF, DC)
+            Astim, t, y, stimstate, lat, tcomp = self.titrate(tstim, toffset, PRF, DC)
             Vm, *channels = y
             nspikes = 1
             if Astim is np.nan:
@@ -560,7 +567,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         # Store dataframe and metadata
         df = pd.DataFrame({
             't': t,
-            'states': states,
+            'stimstate': stimstate,
             'Vm': Vm,
             'Qm': Vm * self.Cm0 * 1e-3
         })

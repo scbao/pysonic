@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-18 21:13:46
+# @Last Modified time: 2019-03-26 11:39:03
 
 import numpy as np
 from ..core import PointNeuron
@@ -38,7 +38,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
     def __init__(self):
         self.states = ['m', 'h', 'n', 'p']
-        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan', 'alphap', 'betap']
+        self.rates = self.getRatesNames(self.states)
         self.q10 = 3**((self.celsius - 20) / 10)
         self.T = self.celsius + CELSIUS_2_KELVIN
 
@@ -269,12 +269,14 @@ class FrankenhaeuserHuxley(PointNeuron):
 
     def derStatesEff(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
-        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.rates])
+
+        rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
+
         m, h, n, p = states
-        dmdt = rates[0] * (1 - m) - rates[1] * m
-        dhdt = rates[2] * (1 - h) - rates[3] * h
-        dndt = rates[4] * (1 - n) - rates[5] * n
-        dpdt = rates[6] * (1 - p) - rates[7] * p
+
+        dmdt = rates['alpham'] * (1 - m) - rates['betam'] * m
+        dhdt = rates['alphah'] * (1 - h) - rates['betah'] * h
+        dndt = rates['alphan'] * (1 - n) - rates['betan'] * n
+        dpdt = rates['alphap'] * (1 - p) - rates['betap'] * p
 
         return [dmdt, dhdt, dndt, dpdt]

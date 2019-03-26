@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:01:47
+# @Last Modified time: 2019-03-26 11:47:28
 
 from enum import Enum
 import time
@@ -207,7 +207,7 @@ class BilayerSonophore:
                 'label': 'P_{AC}',
                 'unit': 'kPa',
                 'factor': 1e-3,
-                'func': 'Pacoustic(df["t"], meta["Adrive"] * df["states"], meta["Fdrive"])'
+                'func': 'Pacoustic(df["t"], meta["Adrive"] * df["stimstate"], meta["Fdrive"])'
             },
 
             'Z': {
@@ -730,7 +730,7 @@ class BilayerSonophore:
         U1 = (Z1 - Z0) / dt_mech
 
         # Construct arrays to hold system variables
-        states = np.array([1, 1])
+        stimstate = np.array([1, 1])
         t = np.array([t0, t0 + dt_mech])
         y = np.array([[U0, U1], [Z0, Z1], [ng0, ng0]])
 
@@ -758,7 +758,7 @@ class BilayerSonophore:
             ng_last = y_mech[2, :]
 
             # Concatenate time and solutions to global vectors
-            states = np.concatenate([states, np.ones(NPC_FULL)], axis=0)
+            stimstate = np.concatenate([stimstate, np.ones(NPC_FULL)], axis=0)
             t = np.concatenate([t, t_mech], axis=0)
             y = np.concatenate([y, y_mech], axis=1)
 
@@ -770,10 +770,10 @@ class BilayerSonophore:
         else:
             logger.debug('Periodic convergence after %u cycles', j)
 
-        states[-1] = 0
+        stimstate[-1] = 0
 
         # return output variables
-        return (t, y[1:, :], states)
+        return (t, y[1:, :], stimstate)
 
 
     def runAndSave(self, outdir, Fdrive, Adrive, Qm):
@@ -794,7 +794,7 @@ class BilayerSonophore:
 
         # Run simulation
         tstart = time.time()
-        (t, y, states) = self.simulate(Fdrive, Adrive, Qm)
+        (t, y, stimstate) = self.simulate(Fdrive, Adrive, Qm)
         (Z, ng) = y
         tcomp = time.time() - tstart
         logger.debug('completed in %s', si_format(tcomp, 1))
@@ -803,7 +803,7 @@ class BilayerSonophore:
         # Store dataframe and metadata
         df = pd.DataFrame({
             't': t,
-            'states': states,
+            'stimstate': stimstate,
             'U': U,
             'Z': Z,
             'ng': ng

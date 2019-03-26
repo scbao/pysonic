@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-20 16:27:58
+# @Last Modified time: 2019-03-26 11:46:12
 
 import os
 import time
@@ -149,16 +149,16 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Z1 = self.balancedefQS(ng0, Qm0, Pac1)
 
         # Initialize global arrays
-        states = np.array([1, 1])
+        stimstate = np.array([1, 1])
         t = np.array([0., dt])
         y_membrane = np.array([[0., (Z1 - Z0) / dt], [Z0, Z1], [ng0, ng0], [Qm0, Qm0]])
         y_channels = np.tile(self.neuron.steadyStates(self.neuron.Vm0), (2, 1)).T
         y = np.vstack((y_membrane, y_channels))
         nvar = y.shape[0]
 
-        # Initialize pulse time and states vectors
+        # Initialize pulse time and stimstate vectors
         t_pulse0 = np.linspace(0, Tpulse_on + Tpulse_off, n_pulse_on + n_pulse_off)
-        states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
+        stimstate_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
 
         # Initialize progress bar
         if logger.getEffectiveLevel() <= logging.INFO:
@@ -186,7 +186,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                     args=(0.0, 0.0, 0.0)).T
 
             # Append pulse arrays to global arrays
-            states = np.concatenate([states, states_pulse[1:]])
+            stimstate = np.concatenate([stimstate, stimstate_pulse[1:]])
             t = np.concatenate([t, t_pulse[1:]])
             y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
 
@@ -197,11 +197,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Integrate offset interval
         if n_off > 0:
             t_off = np.linspace(0, toffset, n_off) + t[-1]
-            states_off = np.zeros(n_off)
+            stimstate_off = np.zeros(n_off)
             y_off = odeint(self.fullDerivatives, y[:, -1], t_off, args=(0.0, 0.0, 0.0)).T
 
             # Concatenate offset arrays to global arrays
-            states = np.concatenate([states, states_off[1:]])
+            stimstate = np.concatenate([stimstate, stimstate_off[1:]])
             t = np.concatenate([t, t_off[1:]])
             y = np.concatenate([y, y_off[:, 1:]], axis=1)
 
@@ -217,14 +217,13 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                         ds_factor, Fs * 1e-6)
             t = t[::ds_factor]
             y = y[:, ::ds_factor]
-            states = states[::ds_factor]
+            stimstate = stimstate[::ds_factor]
 
         # Compute membrane potential vector (in mV)
         Vm = y[3, :] / self.v_Capct(y[1, :]) * 1e3  # mV
 
         # Return output variables with Vm
-        # return (t, y[1:, :], states)
-        return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), states)
+        return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), stimstate)
 
 
     def runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
@@ -280,7 +279,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         n_off = int(np.round(toffset / dt))
 
         # Initialize global arrays
-        states = np.array([1])
+        stimstate = np.array([1])
         t = np.array([0.0])
         y = np.atleast_2d(np.insert(self.neuron.steadyStates(self.neuron.Vm0), 0, self.Qm0)).T
         nvar = y.shape[0]
@@ -289,7 +288,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         t_pulse_on = np.linspace(0, Tpulse_on, n_pulse_on)
         t_pulse_off = np.linspace(dt, Tpulse_off, n_pulse_off) + Tpulse_on
         t_pulse0 = np.concatenate([t_pulse_on, t_pulse_off])
-        states_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
+        stimstate_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
 
         # Loop through all pulse (ON and OFF) intervals
         for i in range(npulses):
@@ -310,7 +309,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                     args=(lookups_off, )).T
 
             # Append pulse arrays to global arrays
-            states = np.concatenate([states[:-1], states_pulse])
+            stimstate = np.concatenate([stimstate[:-1], stimstate_pulse])
             t = np.concatenate([t, t_pulse[1:]])
             y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
 
@@ -320,28 +319,30 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             y_off = odeint(self.effDerivatives, y[:, -1], t_off, args=(lookups_off, )).T
 
             # Concatenate offset arrays to global arrays
-            states = np.concatenate([states, np.zeros(n_off - 1)])
+            stimstate = np.concatenate([stimstate, np.zeros(n_off - 1)])
             t = np.concatenate([t, t_off[1:]])
             y = np.concatenate([y, y_off[:, 1:]], axis=1)
 
         # Compute effective gas content vector
-        ngeff = np.zeros(states.size)
-        ngeff[states == 0] = np.interp(y[0, states == 0], lookups_on['Q'], lookups_on['ng'])  # mole
-        ngeff[states == 1] = np.interp(y[0, states == 1], lookups_off['Q'], lookups_off['ng'])  # mole
+        ngeff = np.zeros(stimstate.size)
+        ngeff[stimstate == 0] = np.interp(
+            y[0, stimstate == 0], lookups_on['Q'], lookups_on['ng'])  # mole
+        ngeff[stimstate == 1] = np.interp(
+            y[0, stimstate == 1], lookups_off['Q'], lookups_off['ng'])  # mole
 
         # Compute quasi-steady deflection vector
         Zeff = np.array([self.balancedefQS(ng, Qm) for ng, Qm in zip(ngeff, y[0, :])])  # m
 
         # Compute membrane potential vector (in mV)
-        Vm = np.zeros(states.size)
-        Vm[states == 1] = np.interp(y[0, states == 1], lookups_on['Q'], lookups_on['V'])  # mV
-        Vm[states == 0] = np.interp(y[0, states == 0], lookups_off['Q'], lookups_off['V'])  # mV
+        Vm = np.zeros(stimstate.size)
+        Vm[stimstate == 1] = np.interp(y[0, stimstate == 1], lookups_on['Q'], lookups_on['V'])  # mV
+        Vm[stimstate == 0] = np.interp(y[0, stimstate == 0], lookups_off['Q'], lookups_off['V'])  # mV
 
         # Add Zeff, ngeff and Vm to solution matrix
         y = np.vstack([Zeff, ngeff, y[0, :], Vm, y[1:, :]])
 
         # return output variables
-        return (t, y, states)
+        return (t, y, stimstate)
 
 
     def runHybrid(self, Fdrive, Adrive, tstim, toffset, phi=np.pi):
@@ -398,7 +399,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Z1 = self.balancedefQS(ng0, Qm0, Pac1)
 
         # Initialize global arrays
-        states = np.array([1, 1])
+        stimstate = np.array([1, 1])
         t = np.array([0., dt_full])
         y_membrane = np.array([[0., (Z1 - Z0) / dt_full], [Z0, Z1], [ng0, ng0], [Qm0, Qm0]])
         y_channels = np.tile(self.neuron.steadyStates(self.neuron.Vm0), (2, 1)).T
@@ -444,7 +445,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 ng_last = y_full[2, :]
 
                 # Concatenate time and solutions to global vectors
-                states = np.concatenate([states, np.ones(NPC_FULL)], axis=0)
+                stimstate = np.concatenate([stimstate, np.ones(NPC_FULL)], axis=0)
                 t = np.concatenate([t, t_full], axis=0)
                 y = np.concatenate([y, y_full], axis=1)
 
@@ -482,7 +483,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                     k += 1
 
                 # Concatenate time and solutions to global vectors
-                states = np.concatenate([states, np.zeros(NPC_HH)], axis=0)
+                stimstate = np.concatenate([stimstate, np.zeros(NPC_HH)], axis=0)
                 t = np.concatenate([t, t_hh], axis=0)
                 y = np.concatenate([y, np.concatenate([mech_pred, y_hh], axis=0)], axis=1)
 
@@ -507,8 +508,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Vm = y[3, :] / self.v_Capct(y[1, :]) * 1e3  # mV
 
         # Return output variables with Vm
-        # return (t, y[1:, :], states)
-        return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), states)
+        return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), stimstate)
 
 
     def checkInputsFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC,
@@ -583,7 +583,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Run simulation and detect spikes
         t0 = time.time()
-        (t, y, states) = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
+        (t, y, stimstate) = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
         tcomp = time.time() - t0
 
         dt = t[1] - t[0]
@@ -597,14 +597,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # If accurate threshold is found, return simulation results
         if (Arange[1] - Arange[0]) <= TITRATION_ASTIM_DA_MAX and nspikes == 1:
-                        return (Adrive, t, y, states, latency, tcomp)
+                        return (Adrive, t, y, stimstate, latency, tcomp)
 
         # Otherwise, refine titration interval and iterate recursively
         else:
             if nspikes == 0:
                 # if Adrive too close to max then stop
                 if (TITRATION_ASTIM_A_MAX - Adrive) <= TITRATION_ASTIM_DA_MAX:
-                    return (np.nan, t, y, states, latency, tcomp)
+                    return (np.nan, t, y, stimstate, latency, tcomp)
                 Arange = (Adrive, Arange[1])
             else:
                 Arange = (Arange[0], Adrive)
@@ -640,7 +640,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
             # Run simulation
             tstart = time.time()
-            t, y, states = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
+            t, y, stimstate = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
             tcomp = time.time() - tstart
             Z, ng, Qm, Vm, *channels = y
 
@@ -660,8 +660,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                          if DC < 1.0 else ''))
 
             # Run titration
-            Adrive, t, y, states, lat, tcomp = self.titrate(Fdrive, tstim, toffset, PRF, DC,
-                                                            method=method)
+            Adrive, t, y, stimstate, lat, tcomp = self.titrate(
+                Fdrive, tstim, toffset, PRF, DC, method=method)
             Z, ng, Qm, Vm, *channels = y
             if Adrive is np.nan:
                 outstr = 'no spikes detected within titration interval'
@@ -676,7 +676,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
         df = pd.DataFrame({
             't': t,
-            'states': states,
+            'stimstate': stimstate,
             'U': U,
             'Z': Z,
             'ng': ng,
@@ -736,7 +736,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return outpath
 
 
-    def getQSSvars(self, Fdrive, amps=None, charges=None, DCs=1.0):
+    def quasiSteadyStates(self, Fdrive, amps=None, charges=None, DCs=1.0):
         ''' Compute the quasi-steady state values of the neuron's gating variables
             for a combination of US amplitudes, charge densities and duty cycles,
             at a specific US frequency.
@@ -800,6 +800,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                         QS_states[i, iA, :, iDC] = alphax / (alphax + betax)
 
             # Otherwise, compute QSS values from DC-averaged Vmeff
+            # TODO: compute QSS values by calling Xinf function, e.g.:
+            # c_ss, d1_ss, p_ss, q_ss = [QS_states[i] for i in [2, 3, 8, 9]]
+            # for i, Adrive in enumerate(amps):
+            #     Cai_ss = np.array([
+            #         neuron.Caiinf(*[x[i, j] for x in [p_ss, q_ss, c_ss, d1_ss, Vmeff]])
+            #         for j in range(len(Qref))])
+            # QS_states[4, i] = neuron.d2inf(Cai_ss)
+            # QS_states[10, i] = neuron.rinf(Cai_ss)
             else:
                 for iA, Adrive in enumerate(amps):
                     for iDC, DC in enumerate(DCs):
@@ -824,7 +832,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Qthr = self.neuron.Cm0 * Vthr * 1e-3  # C/m2
 
         # Get QSS variables for each amplitude at threshold charge
-        Aref, _, Vmeff, QS_states = self.getQSSvars(Fdrive, charges=Qthr, DCs=DCs)
+        Aref, _, Vmeff, QS_states = self.quasiSteadyStates(Fdrive, charges=Qthr, DCs=DCs)
 
         Athr = np.empty(DCs.size)
         for i, DC in enumerate(DCs):

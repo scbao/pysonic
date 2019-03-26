@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:37:57
+# @Last Modified time: 2019-03-22 20:05:30
 
 ''' Subpanels of the QSS approximation figure. '''
 
@@ -38,7 +38,7 @@ def plotQSSvars_vs_Adrive(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
 
     # Get QSS variables for each amplitude at threshold charge
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    Aref, _, Vmeff, QS_states = nbls.getQSSvars(Fdrive, charges=Qthr, DCs=DC)
+    Aref, _, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, charges=Qthr, DCs=DC)
 
     # Compute US-ON and US-OFF ionic currents
     currents_on = neuron.currents(Vmeff, QS_states)
@@ -149,7 +149,7 @@ def plotQSSdQ_vs_Adrive(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
 
     # Get QSS variables for each amplitude and DC at threshold charge
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    Aref, _, Vmeff, QS_states = nbls.getQSSvars(Fdrive, charges=Qthr, DCs=DCs)
+    Aref, _, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, charges=Qthr, DCs=DCs)
 
     dQnet = np.empty((DCs.size, Aref.size))
     Athr = np.empty(DCs.size)

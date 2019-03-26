@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-20 17:57:06
+# @Last Modified time: 2019-03-22 20:14:05
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -33,7 +33,7 @@ def getStableQmQSS(neuron, a, Fdrive, amps):
 
     # Compute net current profile for each amplitude, from QSS states and Vmeff profiles
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, Qref, Vmeff, QS_states = nbls.getQSSvars(Fdrive, amps=amps)
+    _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
     iNet = neuron.iNet(Vmeff, QS_states)
 
     # Find stable fixed points in iNet(Qref) profile
@@ -101,7 +101,7 @@ def plotCaiDynamics(neuron, a, Cai, Fdrive, Adrive, charges, fs=12):
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
 
     # Compute charge and amplitude dependent variables
-    _, _, Vmeff, QS_states = nbls.getQSSvars(Fdrive, amps=Adrive, charges=charges)
+    _, _, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=Adrive, charges=charges)
     c_ss, d1_ss, p_ss, q_ss = [QS_states[i] for i in [2, 3, 8, 9]]
 
     # Compute Cai-dependent variables
@@ -139,7 +139,7 @@ def plotCaiDynamics(neuron, a, Cai, Fdrive, Adrive, charges, fs=12):
             p_ss[j], q_ss[j], c_ss[j], d1_ss[j], d2_ss, Cai, Vmeff[j])  # M/s
 
         # Find Cai value that cancels derivative
-        Cai_eq = neuron.findCaiSteadyState(
+        Cai_eq = neuron.Caiinf(
             *[x[j] for x in [p_ss, q_ss, c_ss, d1_ss, Vmeff]])
         logger.debug('steady-state Calcium concentration @ %s: %.2e uM', lbl, Cai_eq * 1e6)
 
@@ -164,13 +164,13 @@ def plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive, fs=12):
 
     # Get quasi-steady states and effective membrane potential profiles at this amplitude
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, Qref, Vmeff, QS_states = nbls.getQSSvars(Fdrive, amps=Adrive)
+    _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=Adrive)
 
     # Compute charge and amplitude dependent variables
-    _, charges, Vmeff, QS_states = nbls.getQSSvars(Fdrive, amps=Adrive)
+    _, charges, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=Adrive)
     c_ss, d1_ss, p_ss, q_ss = [QS_states[i] for i in [2, 3, 8, 9]]
     Cai_ss = np.array([
-        neuron.findCaiSteadyState(*[x[j] for x in [p_ss, q_ss, c_ss, d1_ss, Vmeff]])
+        neuron.Caiinf(*[x[j] for x in [p_ss, q_ss, c_ss, d1_ss, Vmeff]])
         for j in range(len(Qref))])
     QS_states[4] = neuron.d2inf(Cai_ss)
     QS_states[10] = neuron.rinf(Cai_ss)
@@ -251,7 +251,7 @@ def plotCaiSS_vs_Qm(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='lin'
 
     # Compute charge and amplitude dependent variables
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, charges, Vmeff, QS_states = nbls.getQSSvars(Fdrive, amps=amps)
+    _, charges, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
     c_ss, d1_ss, p_ss, q_ss = [QS_states[i] for i in [2, 3, 8, 9]]
 
     # Create figure
@@ -268,7 +268,7 @@ def plotCaiSS_vs_Qm(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='lin'
     # Find Cai_eq as a function of charge for each amplitude value
     for i, Adrive in enumerate(amps):
         Cai_eq = np.array([
-            neuron.findCaiSteadyState(*[x[i, j] for x in [p_ss, q_ss, c_ss, d1_ss, Vmeff]])
+            neuron.Caiinf(*[x[i, j] for x in [p_ss, q_ss, c_ss, d1_ss, Vmeff]])
             for j in range(len(charges))])
         ax.plot(charges * 1e5, Cai_eq * 1e6, c=sm.to_rgba(Adrive * 1e-3))
 
@@ -295,14 +295,14 @@ def plotInetQSS_vs_Qm(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='li
 
     # Compute net current profile for each amplitude, from QSS states and Vmeff profiles
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, Qref, Vmeff, QS_states = nbls.getQSSvars(Fdrive, amps=amps)
+    _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
 
     # Compute charge and amplitude dependent variables
-    _, charges, Vmeff, QS_states = nbls.getQSSvars(Fdrive, amps=amps)
+    _, charges, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
     c_ss, d1_ss, p_ss, q_ss = [QS_states[i] for i in [2, 3, 8, 9]]
     for i, Adrive in enumerate(amps):
         Cai_ss = np.array([
-            neuron.findCaiSteadyState(*[x[i, j] for x in [p_ss, q_ss, c_ss, d1_ss, Vmeff]])
+            neuron.Caiinf(*[x[i, j] for x in [p_ss, q_ss, c_ss, d1_ss, Vmeff]])
             for j in range(len(Qref))])
     QS_states[4, i] = neuron.d2inf(Cai_ss)
     QS_states[10, i] = neuron.rinf(Cai_ss)
@@ -394,12 +394,13 @@ def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
     fig.tight_layout()
 
     fig.canvas.set_window_title(
-        '{}_Qeq_vs_amp'.format(neuron.name))
+        '{}_Qeq_vs_amp_{:.0f}s'.format(neuron.name, tstim))
 
     return fig
 
 
 def main():
+
     ap = ArgumentParser()
 
     # Stimulation parameters
@@ -425,7 +426,7 @@ def main():
     Fdrive = 500e3  # Hz
     intensities = getLowIntensitiesSTN()  # W/m2
     amps = Intensity2Pressure(intensities)  # Pa
-    tstim = 1.0  # s
+    tstim = 3.0  # s
     Cai = np.logspace(np.log10(neuron.Cai0 * 1e-4), np.log10(neuron.Cai0 * 1e3), 100)
     charges = np.array([neuron.Qbounds()[1], neuron.Vm0 * neuron.Cm0 * 1e-3])
 

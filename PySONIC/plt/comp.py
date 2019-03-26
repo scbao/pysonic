@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:16:08
+# @Last Modified time: 2019-03-26 11:48:36
 
 import ntpath
 import numpy as np
@@ -163,10 +163,10 @@ def plotComp(filepaths, varname, labels=None, fs=10, lw=2, colors=None, lines=No
         # Load data and extract variables
         df, meta = loadData(filepath)
         t = df['t'].values
-        states = df['states'].values
+        stimstate = df['stimstate'].values
 
-        # Determine stimulus patch from states
-        _, tpatch_on, tpatch_off = getStimPulses(t, states)
+        # Determine stimulus patch from stimstate
+        _, tpatch_on, tpatch_off = getStimPulses(t, stimstate)
 
         # Initialize appropriate object
         obj = getObject(sim_type, meta)
@@ -184,7 +184,6 @@ def plotComp(filepaths, varname, labels=None, fs=10, lw=2, colors=None, lines=No
         if tvar['onset'] > 0.0:
             tonset = np.array([-tvar['onset'], -t[0] - t[1]])
             t = np.hstack((tonset, t))
-            states = np.hstack((states, np.zeros(2)))
         t *= tvar['factor']
 
         # Extract variable and plot time series

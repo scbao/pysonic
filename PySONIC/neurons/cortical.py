@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-18 20:43:13
+# @Last Modified time: 2019-03-26 11:28:59
 
 import numpy as np
 from ..core import PointNeuron
@@ -29,9 +29,7 @@ class Cortical(PointNeuron):
 
     def __init__(self):
         self.states = ['m', 'h', 'n', 'p']
-        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                      'alphap', 'betap']
-
+        self.rates = self.getRatesNames(self.states)
 
     def alpham(self, Vm):
         ''' Voltage-dependent activation rate of m-gate
@@ -251,13 +249,14 @@ class Cortical(PointNeuron):
     def derStatesEff(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
-        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.rates])
+        rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
+
         m, h, n, p = states
-        dmdt = rates[0] * (1 - m) - rates[1] * m
-        dhdt = rates[2] * (1 - h) - rates[3] * h
-        dndt = rates[4] * (1 - n) - rates[5] * n
-        dpdt = rates[6] * (1 - p) - rates[7] * p
+
+        dmdt = rates['alpham'] * (1 - m) - rates['betam'] * m
+        dhdt = rates['alphah'] * (1 - h) - rates['betah'] * h
+        dndt = rates['alphan'] * (1 - n) - rates['betan'] * n
+        dpdt = rates['alphap'] * (1 - p) - rates['betap'] * p
 
         return [dmdt, dhdt, dndt, dpdt]
 
@@ -346,7 +345,7 @@ class CorticalLTS(Cortical):
     def __init__(self):
         super().__init__()
         self.states += ['s', 'u']
-        self.rates += ['alphas', 'betas', 'alphau', 'betau']
+        self.rates = self.getRatesNames(self.states)
 
 
     def sinf(self, Vm):
@@ -484,10 +483,9 @@ class CorticalLTS(Cortical):
         NaK_dstates = super().derStatesEff(Qm, NaK_states, interp_data)
 
         # Compute Calcium channels states derivatives
-        Ca_rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                             for rn in self.rates[8:]])
-        dsdt = Ca_rates[0] * (1 - s) - Ca_rates[1] * s
-        dudt = Ca_rates[2] * (1 - u) - Ca_rates[3] * u
+        Ca_rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates[8:]}
+        dsdt = Ca_rates['alphas'] * (1 - s) - Ca_rates['betas'] * s
+        dudt = Ca_rates['alphau'] * (1 - u) - Ca_rates['betau'] * u
 
         # Merge all states derivatives and return
         return NaK_dstates + [dsdt, dudt]
@@ -523,8 +521,7 @@ class CorticalIB(Cortical):
     def __init__(self):
         super().__init__()
         self.states += ['q', 'r']
-        self.rates += ['alphaq', 'betaq', 'alphar', 'betar']
-
+        self.rates = self.getRatesNames(self.states)
 
     def alphaq(self, Vm):
         ''' Voltage-dependent activation rate of q-gate
@@ -665,10 +662,9 @@ class CorticalIB(Cortical):
         NaK_dstates = super().derStatesEff(Qm, NaK_states, interp_data)
 
         # Compute Calcium channels states derivatives
-        CaL_rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                              for rn in self.rates[8:]])
-        dqdt = CaL_rates[0] * (1 - q) - CaL_rates[1] * q
-        drdt = CaL_rates[2] * (1 - r) - CaL_rates[3] * r
+        Ca_rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates[8:]}
+        dqdt = Ca_rates['alphaq'] * (1 - q) - Ca_rates['betaq'] * q
+        drdt = Ca_rates['alphar'] * (1 - r) - Ca_rates['betar'] * r
 
         # Merge all states derivatives and return
         return NaK_dstates + [dqdt, drdt]

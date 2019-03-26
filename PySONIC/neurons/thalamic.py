@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-18 20:44:48
+# @Last Modified time: 2019-03-26 11:37:49
 
 import numpy as np
 from ..core import PointNeuron
@@ -29,9 +29,7 @@ class Thalamic(PointNeuron):
 
     def __init__(self):
         self.states = ['m', 'h', 'n', 's', 'u']
-        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                      'alphas', 'betas', 'alphau', 'betau']
-
+        self.rates = self.getRatesNames(self.states)
 
     def alpham(self, Vm):
         ''' Voltage-dependent activation rate of m-gate
@@ -253,15 +251,14 @@ class Thalamic(PointNeuron):
     def derStatesEff(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
-        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.rates])
+        rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
 
         m, h, n, s, u = states
-        dmdt = rates[0] * (1 - m) - rates[1] * m
-        dhdt = rates[2] * (1 - h) - rates[3] * h
-        dndt = rates[4] * (1 - n) - rates[5] * n
-        dsdt = rates[6] * (1 - s) - rates[7] * s
-        dudt = rates[8] * (1 - u) - rates[9] * u
+        dmdt = rates['alpham'] * (1 - m) - rates['betam'] * m
+        dhdt = rates['alphah'] * (1 - h) - rates['betah'] * h
+        dndt = rates['alphan'] * (1 - n) - rates['betan'] * n
+        dsdt = rates['alphas'] * (1 - s) - rates['betas'] * s
+        dudt = rates['alphau'] * (1 - u) - rates['betau'] * u
 
         return [dmdt, dhdt, dndt, dsdt, dudt]
 
@@ -381,12 +378,11 @@ class ThalamoCortical(Thalamic):
         super().__init__()
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
         self.states += ['O', 'C', 'P0', 'Cai']
-        self.rates += ['alphao', 'betao']
-
+        self.rates += self.getRatesNames(['O'])
 
     def getPltScheme(self):
         pltscheme = super().getPltScheme()
-        pltscheme['I_{H}\\ kin.'] = ['O', 'OL', 'P0']
+        pltscheme['i_{H}\\ kin.'] = ['O', 'OL', 'P0']
         pltscheme['[Ca^{2+}]_i'] = ['Cai']
         return pltscheme
 
@@ -655,22 +651,21 @@ class ThalamoCortical(Thalamic):
     def derStatesEff(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
-        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.rates])
+        rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         # Unpack states
         m, h, n, s, u, O, C, P0, Cai = states
 
         # INa, IK, iCaT effective states derivatives
-        dmdt = rates[0] * (1 - m) - rates[1] * m
-        dhdt = rates[2] * (1 - h) - rates[3] * h
-        dndt = rates[4] * (1 - n) - rates[5] * n
-        dsdt = rates[6] * (1 - s) - rates[7] * s
-        dudt = rates[8] * (1 - u) - rates[9] * u
+        dmdt = rates['alpham'] * (1 - m) - rates['betam'] * m
+        dhdt = rates['alphah'] * (1 - h) - rates['betah'] * h
+        dndt = rates['alphan'] * (1 - n) - rates['betan'] * n
+        dsdt = rates['alphas'] * (1 - s) - rates['betas'] * s
+        dudt = rates['alphau'] * (1 - u) - rates['betau'] * u
 
         # Ih effective states derivatives
-        dCdt = rates[11] * O - rates[10] * C
+        dCdt = rates['betao'] * O - rates['alphao'] * C
         dOdt = - dCdt - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
         dP0dt = self.derP0(P0, Cai)
         dCaidt = self.derCai(Cai, s, u, Vmeff)

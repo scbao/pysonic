@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-19 15:30:35
+# @Last Modified time: 2019-03-26 11:47:50
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -46,10 +46,10 @@ def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
         # Load data and extract variables
         df, meta = loadData(filepath, frequency)
         t = df['t'].values
-        states = df['states'].values
+        stimstate = df['stimstate'].values
 
-        # Determine stimulus patch from states
-        _, tpatch_on, tpatch_off = getStimPulses(t, states)
+        # Determine stimulus patch from stimstate
+        _, tpatch_on, tpatch_off = getStimPulses(t, stimstate)
 
         # Initialize appropriate object
         obj = getObject(sim_type, meta)

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-20 16:38:29
+# @Last Modified time: 2019-03-26 11:41:17
 
 
 import numpy as np
@@ -140,17 +140,7 @@ class OtsukaSTN(PointNeuron):
 
     def __init__(self):
         self.states = ['a', 'b', 'c', 'd1', 'd2', 'm', 'h', 'n', 'p', 'q', 'r', 'Cai']
-        self.rates = [
-            'alphaa', 'betaa',
-            'alphab', 'betab',
-            'alphac', 'betac',
-            'alphad1', 'betad1',
-            'alpham', 'betam',
-            'alphah', 'betah',
-            'alphan', 'betan',
-            'alphap', 'betap',
-            'alphaq', 'betaq',
-        ]
+        self.rates = self.getRatesNames(['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
         self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)  # Mmol.m-1.C-1
 
@@ -416,7 +406,7 @@ class OtsukaSTN(PointNeuron):
         return - self.iCa_to_Cai_rate * (iCaT + iCaL) - Cai / self.taur_Cai
 
 
-    def findCaiSteadyState(self, p, q, c, d1, Vm):
+    def Caiinf(self, p, q, c, d1, Vm):
         ''' Find the steady-state intracellular Calcium concentration for a
             specific membrane potential and voltage-gated channel states.
 
@@ -535,7 +525,7 @@ class OtsukaSTN(PointNeuron):
         neq = self.ninf(Vm)
         peq = self.pinf(Vm)
         qeq = self.qinf(Vm)
-        Cai_eq = self.Cai0
+        Cai_eq = self.Caiinf(peq, qeq, ceq, d1eq, Vm)
         d2eq = self.d2inf(Cai_eq)
         req = self.rinf(Cai_eq)
 
@@ -619,22 +609,21 @@ class OtsukaSTN(PointNeuron):
     def derStatesEff(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
-        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
-                          for rn in self.rates])
+        rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
 
         a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
 
-        dadt = rates[0] * (1 - a) - rates[1] * a
-        dbdt = rates[2] * (1 - b) - rates[3] * b
-        dcdt = rates[4] * (1 - c) - rates[5] * c
-        dd1dt = rates[6] * (1 - d1) - rates[7] * d1
+        dadt = rates['alphaa'] * (1 - a) - rates['betaa'] * a
+        dbdt = rates['alphab'] * (1 - b) - rates['betab'] * b
+        dcdt = rates['alphac'] * (1 - c) - rates['betac'] * c
+        dd1dt = rates['alphad1'] * (1 - d1) - rates['betad1'] * d1
         dd2dt = self.derD2(Cai, d2)
-        dmdt = rates[8] * (1 - m) - rates[9] * m
-        dhdt = rates[10] * (1 - h) - rates[11] * h
-        dndt = rates[12] * (1 - n) - rates[13] * n
-        dpdt = rates[14] * (1 - p) - rates[15] * p
-        dqdt = rates[16] * (1 - q) - rates[17] * q
+        dmdt = rates['alpham'] * (1 - m) - rates['betam'] * m
+        dhdt = rates['alphah'] * (1 - h) - rates['betah'] * h
+        dndt = rates['alphan'] * (1 - n) - rates['betan'] * n
+        dpdt = rates['alphap'] * (1 - p) - rates['betap'] * p
+        dqdt = rates['alphaq'] * (1 - q) - rates['betaq'] * q
         drdt = self.derR(Cai, r)
         dCaidt = self.derCai(p, q, c, d1, d2, Cai, Vmeff)
 
