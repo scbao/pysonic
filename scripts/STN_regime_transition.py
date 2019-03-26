@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 19:29:02
+# @Last Modified time: 2019-03-26 23:15:37
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -18,7 +18,7 @@ from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.utils import *
 from PySONIC.postpro import getStableFixedPoints
 from PySONIC.neurons import getNeuronsDict
-from PySONIC.plt import plotVarsQSS, plotQSSVarvsAmp, plotVarDynamics
+from PySONIC.plt import plotVarsQSS, plotQSSVarVsAmp, plotVarDynamics
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -88,16 +88,18 @@ def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
     _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
     iNet = neuron.iNet(Vmeff, QS_states)
-    Qeq_QSS = []
-    for i, Adrive in enumerate(amps):
-        Qeq_QSS.append(getStableFixedPoints(Qref, -iNet[i, :]))
 
-    Qeq_QSS2 = np.array([Q[0] if Q is not None and len(Q) == 1 else np.nan for Q in Qeq_QSS])
+    # For each amplitude, take the max of detected stable fixed points
+    # (since stabilization occurs during repolarization phase)
+    Qeq_QSS = np.empty(amps.size)
+    for i, Adrive in enumerate(amps):
+        SFPs = getStableFixedPoints(Qref, -iNet[i, :])
+        Qeq_QSS[i] = SFPs.max() if SFPs is not None else np.nan
 
     # Get sabilization charge value in simulations
     _, Qeq_sim, _ = getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim)
 
-    Q_rmse = np.sqrt(np.nanmean((Qeq_sim - Qeq_QSS2)**2))
+    Q_rmse = np.sqrt(np.nanmean((Qeq_sim - Qeq_QSS)**2))
     logger.info('RMSE Q = %.3f nC/cm2', Q_rmse * 1e5)
 
     # Plot Qm balancing net current as function of amplitude
@@ -111,15 +113,7 @@ def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
     for item in ax.get_xticklabels() + ax.get_yticklabels():
         item.set_fontsize(fs)
 
-    lgd = True
-    for Adrive, Qstab in zip(amps, Qeq_QSS):
-        if Qstab is not None:
-            if lgd:
-                lbl = 'QSS approximation'
-                lgd = False
-            else:
-                lbl = None
-            ax.plot(np.ones(Qstab.size) * Adrive * 1e-3, Qstab * 1e5, '.', c='C0', label=lbl)
+    ax.plot(amps * 1e-3, Qeq_QSS * 1e5, '.', c='C0', label='QSS approximation')
     ax.plot(amps * 1e-3, Qeq_sim * 1e5, '.', c='C1',
             label='end of {:.2f} s stimulus (simulation)'.format(tstim))
     ax.legend(frameon=False, fontsize=fs)
@@ -164,15 +158,15 @@ def main():
 
     figs = []
     if 'a' in figset:
-        for Adrive in [amps[0], amps[amps.size // 2], amps[-1]]:
+        for Adrive in [21.35e3]: #[amps[0], amps[amps.size // 2], amps[-1]]:
             figs += [
                 plotVarsQSS(neuron, a, Fdrive, Adrive),
                 plotVarDynamics(neuron, a, Fdrive, Adrive, charges, 'Cai', Cai_range)
             ]
     if 'b' in figset:
         figs += [
-            plotQSSVarvsAmp(neuron, a, Fdrive, amps, 'Cai', yscale='log'),
-            plotQSSVarvsAmp(neuron, a, Fdrive, amps, 'iNet')
+            plotQSSVarVsAmp(neuron, a, Fdrive, 'Cai', amps=amps, yscale='log'),
+            plotQSSVarVsAmp(neuron, a, Fdrive, 'iNet', amps=amps)
         ]
     if 'c' in figset:
         inputdir = args.inputdir if args.inputdir is not None else selectDirDialog()

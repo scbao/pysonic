@@ -163,7 +163,7 @@ def plotVarsQSS(neuron, a, Fdrive, Adrive, fs=12):
     return fig
 
 
-def plotQSSVarvsAmp(neuron, a, Fdrive, amps, varname, plotQm0=True,
+def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, plotQm0=True,
                     fs=12, cmap='viridis', yscale='lin', zscale='lin'):
     ''' Plot a specific QSS variable (state or current) as a function of
         membrane charge density, for various acoustic amplitudes.
@@ -182,13 +182,13 @@ def plotQSSVarvsAmp(neuron, a, Fdrive, amps, varname, plotQm0=True,
 
     # Get dictionary of charge and amplitude dependent QSS variables
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
+    Aref, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
     df = {k: QS_states[i] for i, k in enumerate(neuron.states)}
     df['Vm'] = Vmeff
 
     #  Define color code
     mymap = plt.get_cmap(cmap)
-    zref = amps * 1e-3
+    zref = Aref * 1e-3
     if zscale == 'lin':
         norm = colors.Normalize(zref.min(), zref.max())
     elif zscale == 'log':
@@ -214,14 +214,14 @@ def plotQSSVarvsAmp(neuron, a, Fdrive, amps, varname, plotQm0=True,
     if hasattr(neuron, y0_str):
         ax.axhline(getattr(neuron, y0_str) * pltvar.get('factor', 1),
                    label=y0_str, c='k', linewidth=0.5)
-    for i, Adrive in enumerate(amps):
+    for i, Adrive in enumerate(Aref):
         var = extractPltVar(
             neuron, pltvar, pd.DataFrame({k: df[k][i] for k in df.keys()}), name=varname)
         ax.plot(Qref * Qvar['factor'], var, c=sm.to_rgba(Adrive * 1e-3), zorder=0)
         if varname == 'iNet':
             SFPs = getStableFixedPoints(Qref, -var)
             if SFPs is not None:
-                ax.plot(SFPs * Qvar['factor'], np.zeros(SFPs.size), '.', c='k', zorder=1)
+                ax.plot(SFPs.max() * Qvar['factor'], 0, '.', c='k', zorder=1)
     if varname == 'iNet':
         ax.axhline(0, color='k', linewidth=0.5)
 
