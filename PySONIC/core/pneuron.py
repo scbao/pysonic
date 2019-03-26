@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 12:16:46
+# @Last Modified time: 2019-03-26 18:21:53
 
 import os
 import time
@@ -87,7 +87,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         '''
 
     def iNet(self, Vm, states):
-        ''' Net membrane current
+        ''' net membrane current
 
             :param Vm: membrane potential (mV)
             :states: states of ion channels gating and related variables
@@ -163,7 +163,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         return pltscheme
 
 
-    def getPltVars(self):
+    def getPltVars(self, wrapleft='df["', wrapright='"]'):
         ''' Return a dictionary with information about all plot variables related to the neuron. '''
 
         pltvars = {
@@ -201,7 +201,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
                 'label': 'I_{{{}}}'.format(cname[1:]),
                 'unit': 'A/m^2',
                 'factor': 1e-3,
-                'func': '{}({})'.format(cname, ', '.join(['df["{}"]'.format(a) for a in cargs]))
+                'func': '{}({})'.format(cname, ', '.join(['{}{}{}'.format(wrapleft, a, wrapright)
+                                                          for a in cargs]))
             }
             for var in cargs:
                 if var not in ['Vm', 'Cai']:
@@ -218,7 +219,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
             'label': 'I_{net}',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': 'iNet(df["Vm"], df[obj.states].values.T)',
+            'func': 'iNet({0}Vm{1}, {2}{3}{4}.values.T)'.format(
+                wrapleft, wrapright, wrapleft[:-1], self.states, wrapright[1:]),
             'ls': '--',
             'color': 'black'
         }
@@ -238,6 +240,10 @@ class PointNeuron(metaclass=abc.ABCMeta):
             [['alpha{}'.format(x.lower()), 'beta{}'.format(x.lower())] for x in states],
             []
         ))
+
+    def Qm0(self):
+        ''' Return the resting charge density (in C/m2). '''
+        return self.Cm0 * self.Vm0 * 1e-3  # C/cm2
 
     @abc.abstractmethod
     def steadyStates(self, Vm):

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 14:23:22
+# @Last Modified time: 2019-03-26 17:24:22
 
 import os
 import inspect
@@ -61,9 +61,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             si_format(self.a, precision=0, space=' '),
             self.neuron.name)
 
-    def getPltVars(self):
-        pltvars = super().getPltVars()
-        pltvars.update(self.neuron.getPltVars())
+    def getPltVars(self, wrapleft='df["', wrapright='"]'):
+        pltvars = super().getPltVars(wrapleft, wrapright)
+        pltvars.update(self.neuron.getPltVars(wrapleft, wrapright))
         return pltvars
 
     def getPltScheme(self):

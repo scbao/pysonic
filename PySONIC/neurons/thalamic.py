@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 11:37:49
+# @Last Modified time: 2019-03-26 18:23:49
 
 import numpy as np
 from ..core import PointNeuron
@@ -159,7 +159,7 @@ class Thalamic(PointNeuron):
 
 
     def iKd(self, n, Vm):
-        ''' Delayed-rectifier Potassium current
+        ''' delayed-rectifier Potassium current
 
             :param n: open-probability of n-gate (-)
             :param Vm: membrane potential (mV)
@@ -169,7 +169,7 @@ class Thalamic(PointNeuron):
 
 
     def iCaT(self, s, u, Vm):
-        ''' Low-threshold (Ts-type) Calcium current
+        ''' low-threshold (Ts-type) Calcium current
 
             :param s: open-probability of s-gate (-)
             :param u: open-probability of u-gate (-)
@@ -180,7 +180,7 @@ class Thalamic(PointNeuron):
 
 
     def iLeak(self, Vm):
-        ''' Non-specific leakage current
+        ''' non-specific leakage current
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
@@ -387,8 +387,8 @@ class ThalamoCortical(Thalamic):
         return pltscheme
 
 
-    def getPltVars(self):
-        pltvars = super().getPltVars()
+    def getPltVars(self, wrapleft='df["', wrapright='"]'):
+        pltvars = super().getPltVars(wrapleft, wrapright)
         pltvars.update({
             'Cai': {
                 'desc': 'sumbmembrane Ca2+ concentration',
@@ -400,7 +400,7 @@ class ThalamoCortical(Thalamic):
                 'desc': 'iH O-gate locked-opening',
                 'label': 'O_L',
                 'bounds': (-0.1, 1.1),
-                'func': 'OL(df["O"], df["C"])'
+                'func': 'OL({0}O{1}, {0}C{1})'.format(wrapleft, wrapright)
             },
             'P0': {
                 'desc': 'iH regulating factor activation',
@@ -577,7 +577,7 @@ class ThalamoCortical(Thalamic):
 
 
     def iH(self, O, C, Vm):
-        ''' Outward mixed cationic current
+        ''' outward mixed cationic current
 
             :param C: closed-probability of O-gate (-)
             :param O: open-probability of O-gate (-)

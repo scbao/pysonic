@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-18 14:13:18
+# @Last Modified time: 2019-03-26 18:06:02
 
 ''' Useful functions to generate plots. '''
 
@@ -97,7 +97,7 @@ def plotStimPatches(ax, tpatch_on, tpatch_off, tfactor):
                    edgecolor='none', facecolor='#8A8A8A', alpha=0.2)
 
 
-def extractPltVar(obj, pltvar, df, meta, nsamples, name):
+def extractPltVar(obj, pltvar, df, meta=None, nsamples=0, name=''):
     if 'func' in pltvar:
         s = 'obj.{}'.format(pltvar['func'])
         try:

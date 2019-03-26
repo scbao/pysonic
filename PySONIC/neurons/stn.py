@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 13:23:47
+# @Last Modified time: 2019-03-26 18:24:24
 
 
 import numpy as np
@@ -151,10 +151,10 @@ class OtsukaSTN(PointNeuron):
         return pltscheme
 
 
-    def getPltVars(self):
-        pltvars = super().getPltVars()
+    def getPltVars(self, wrapleft='df["', wrapright='"]'):
+        pltvars = super().getPltVars(wrapleft, wrapright)
         pltvars['Cai'] = {
-            'desc': 'sumbmembrane Ca2+ concentration',
+            'desc': 'submembrane Ca2+ concentration',
             'label': '[Ca^{2+}]_i',
             'unit': 'uM',
             'factor': 1e6
@@ -436,7 +436,7 @@ class OtsukaSTN(PointNeuron):
 
 
     def iKd(self, n, Vm):
-        ''' Delayed-rectifier Potassium current
+        ''' delayed-rectifier Potassium current
 
             :param n: open-probability of n-gate (-)
             :param Vm: membrane potential (mV)
@@ -457,7 +457,7 @@ class OtsukaSTN(PointNeuron):
 
 
     def iCaT(self, p, q, Vm, Cai):
-        ''' Low-threshold (T-type) Calcium current
+        ''' low-threshold (T-type) Calcium current
 
             :param p: open-probability of p-gate (-)
             :param q: open-probability of q-gate (-)
@@ -469,7 +469,7 @@ class OtsukaSTN(PointNeuron):
 
 
     def iCaL(self, c, d1, d2, Vm, Cai):
-        ''' High-threshold (L-type) Calcium current
+        ''' high-threshold (L-type) Calcium current
 
             :param c: open-probability of c-gate (-)
             :param d1: open-probability of d1-gate (-)
@@ -492,7 +492,7 @@ class OtsukaSTN(PointNeuron):
 
 
     def iLeak(self, Vm):
-        ''' Non-specific leakage current
+        ''' non-specific leakage current
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)

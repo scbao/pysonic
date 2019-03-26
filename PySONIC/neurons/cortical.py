@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 11:28:59
+# @Last Modified time: 2019-03-26 18:22:34
 
 import numpy as np
 from ..core import PointNeuron
@@ -167,7 +167,7 @@ class Cortical(PointNeuron):
 
 
     def iKd(self, n, Vm):
-        ''' Delayed-rectifier Potassium current
+        ''' delayed-rectifier Potassium current
 
             :param n: open-probability of n-gate (-)
             :param Vm: membrane potential (mV)
@@ -177,7 +177,7 @@ class Cortical(PointNeuron):
 
 
     def iM(self, p, Vm):
-        ''' Slow non-inactivating Potassium current
+        ''' slow non-inactivating Potassium current
 
             :param p: open-probability of p-gate (-)
             :param Vm: membrane potential (mV)
@@ -187,7 +187,7 @@ class Cortical(PointNeuron):
 
 
     def iLeak(self, Vm):
-        ''' Non-specific leakage current
+        ''' non-specific leakage current
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
@@ -409,7 +409,7 @@ class CorticalLTS(Cortical):
 
 
     def iCaT(self, s, u, Vm):
-        ''' Low-threshold (T-type) Calcium current
+        ''' low-threshold (T-type) Calcium current
 
             :param s: open-probability of s-gate (-)
             :param u: open-probability of u-gate (-)
@@ -584,7 +584,7 @@ class CorticalIB(Cortical):
 
 
     def iCaL(self, q, r, Vm):
-        ''' High-threshold (L-type) Calcium current
+        ''' high-threshold (L-type) Calcium current
 
             :param q: open-probability of q-gate (-)
             :param r: open-probability of r-gate (-)

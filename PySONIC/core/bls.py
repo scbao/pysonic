@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 11:47:28
+# @Last Modified time: 2019-03-26 17:23:05
 
 from enum import Enum
 import time
@@ -199,7 +199,7 @@ class BilayerSonophore:
             'n_g': ['ng']
         }
 
-    def getPltVars(self):
+    def getPltVars(self, wrapleft='df["', wrapright='"]'):
         ''' Return a dictionary with information about all plot variables related to the model. '''
         return {
             'Pac': {
@@ -207,7 +207,8 @@ class BilayerSonophore:
                 'label': 'P_{AC}',
                 'unit': 'kPa',
                 'factor': 1e-3,
-                'func': 'Pacoustic(df["t"], meta["Adrive"] * df["stimstate"], meta["Fdrive"])'
+                'func': 'Pacoustic({0}t{1}, meta["Adrive"] * {0}stimstate{1}, meta["Fdrive"])'.format(
+                    wrapleft, wrapright)
             },
 
             'Z': {
@@ -231,7 +232,7 @@ class BilayerSonophore:
                 'label': 'P_M',
                 'unit': 'kPa',
                 'factor': 1e-3,
-                'func': 'PMavgpred(df["Z"])'
+                'func': 'PMavgpred({0}Z{1})'.format(wrapleft, wrapright)
             },
 
             'Telastic': {
@@ -239,7 +240,7 @@ class BilayerSonophore:
                 'label': 'T_E',
                 'unit': 'mN/m',
                 'factor': 1e3,
-                'func': 'TEleaflet(df["Z"])'
+                'func': 'TEleaflet({0}Z{1})'.format(wrapleft, wrapright)
             },
 
             'Cm': {
@@ -248,7 +249,7 @@ class BilayerSonophore:
                 'unit': 'uF/cm^2',
                 'factor': 1e2,
                 'bounds': (0.0, 1.5),
-                'func': 'v_Capct(df["Z"])'
+                'func': 'v_Capct({0}Z{1})'.format(wrapleft, wrapright)
             }
         }
 

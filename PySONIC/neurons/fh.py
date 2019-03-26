@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 11:39:03
+# @Last Modified time: 2019-03-26 18:22:50
 
 import numpy as np
 from ..core import PointNeuron
@@ -42,8 +42,8 @@ class FrankenhaeuserHuxley(PointNeuron):
         self.q10 = 3**((self.celsius - 20) / 10)
         self.T = self.celsius + CELSIUS_2_KELVIN
 
-    def getPltVars(self):
-        pltvars = super().getPltVars()
+    def getPltVars(self, wrapleft='df["', wrapright='"]'):
+        pltvars = super().getPltVars(wrapleft, wrapright)
         pltvars['Qm']['bounds'] = (-150, 50)
         return pltvars
 
@@ -189,7 +189,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def iKd(self, n, Vm):
-        ''' Delayed-rectifier Potassium current
+        ''' delayed-rectifier Potassium current
 
             :param n: open-probability of n-gate
             :param Vm: membrane potential (mV)
@@ -200,7 +200,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def iP(self, p, Vm):
-        ''' Non-specific delayed current
+        ''' non-specific delayed current
 
             :param p: open-probability of p-gate
             :param Vm: membrane potential (mV)
@@ -211,7 +211,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def iLeak(self, Vm):
-        ''' Non-specific leakage current
+        ''' non-specific leakage current
 
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)

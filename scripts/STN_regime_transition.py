@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 14:41:19
+# @Last Modified time: 2019-03-26 19:29:02
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -14,11 +14,11 @@ import matplotlib
 from argparse import ArgumentParser
 import logging
 
-from PySONIC.constants import Z_Ca
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.utils import *
 from PySONIC.postpro import getStableFixedPoints
 from PySONIC.neurons import getNeuronsDict
+from PySONIC.plt import plotVarsQSS, plotQSSVarvsAmp, plotVarDynamics
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -27,21 +27,6 @@ matplotlib.rcParams['font.family'] = 'arial'
 
 # Set logging level
 logger.setLevel(logging.INFO)
-
-
-def getStableQmQSS(neuron, a, Fdrive, amps):
-
-    # Compute net current profile for each amplitude, from QSS states and Vmeff profiles
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
-    iNet = neuron.iNet(Vmeff, QS_states)
-
-    # Find stable fixed points in iNet(Qref) profile
-    Qstab = []
-    for i, Adrive in enumerate(amps):
-        Qstab.append(getStableFixedPoints(Qref, -iNet[i, :]))
-
-    return Qstab
 
 
 def getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim, PRF=100, DC=1.0):
@@ -96,245 +81,20 @@ def getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim, PRF
     return t_stab, Q_stab, Ca_stab
 
 
-def plotCaiDynamics(neuron, a, Cai, Fdrive, Adrive, charges, fs=12):
-
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-
-    # Compute charge and amplitude dependent variables
-    _, _, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=Adrive, charges=charges)
-    c_ss, d1_ss, p_ss, q_ss = [QS_states[i] for i in [2, 3, 8, 9]]
-
-    # Compute Cai-dependent variables
-    ECa_ss = neuron.nernst(Z_Ca, Cai, neuron.Cao, neuron.T)  # mV
-    d2_ss = neuron.d2inf(Cai)
-
-    # Create figure
-    fig, axes = plt.subplots(3, 1, figsize=(7, 6))
-    axes[0].set_title(
-        '{} neuron - [Cai] dynamics @ {:.2f} kPa'.format(neuron.name, Adrive * 1e-3),
-        fontsize=fs)
-    for ax in axes:
-        ax.set_xscale('log')
-        for key in ['top', 'right']:
-            ax.spines[key].set_visible(False)
-    axes[-1].set_xlabel('$\\rm [Ca_i]\ (uM)$', fontsize=fs)
-    axes[0].set_ylabel('$\\rm E_{Ca, \infty}$ (mV)', fontsize=fs)
-    axes[1].set_ylabel('$\\rm d2_{\infty}$ (-)', fontsize=fs)
-    axes[2].set_ylabel('$\\rm {d[Ca_i]/dt}_{\infty}\ (\mu M/s)$', fontsize=fs)
-    axes[2].set_ylim(-40, 40)
-    axes[2].axhline(0, c='k', linewidth=0.5)
-    axes[2].axvline(neuron.Cai0 * 1e6, c='k', label='$\\rm [Ca_i]_0$')
-
-    # Plot Ca-dependent variables
-    axes[0].plot(Cai * 1e6, ECa_ss, c='k')
-    axes[1].plot(Cai * 1e6, d2_ss, c='k')
-
-    # For each amplitude-charge combination
-    icolor = 0
-    for j, Qm in enumerate(charges):
-        lbl = 'Q = {:.0f} nC/cm2'.format(Qm * 1e5)
-
-        # Compute Cai-derivative as a function of Cai
-        dCaidt_ss = neuron.derCai(
-            p_ss[j], q_ss[j], c_ss[j], d1_ss[j], d2_ss, Cai, Vmeff[j])  # M/s
-
-        # Find steady-state Cai
-        Cai_ss = neuron.Caiinf(
-            *[x[j] for x in [Vmeff, p_ss, q_ss, c_ss, d1_ss]])
-        logger.debug('steady-state Calcium concentration @ %s: %.2e uM', lbl, Cai_ss * 1e6)
-
-        # Plot Cai-derivative and its root
-        c = 'C{}'.format(icolor)
-        axes[2].plot(Cai * 1e6, dCaidt_ss * 1e6, c=c, label=lbl)
-        axes[2].axvline(Cai_ss * 1e6, linestyle='--', c=c)
-        icolor += 1
-
-    axes[2].legend(frameon=False, fontsize=fs - 3)
-    for ax in axes:
-        for item in ax.get_xticklabels() + ax.get_yticklabels():
-            item.set_fontsize(fs)
-
-    fig.tight_layout()
-    fig.canvas.set_window_title('{}_Ca_dynamics_{:.2f}kPa'.format(neuron.name, Adrive * 1e-3))
-
-    return fig
-
-
-def plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive, fs=12):
-
-    # Get quasi-steady states and effective membrane potential profiles at this amplitude
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=Adrive)
-
-    # Compute charge and amplitude dependent QS states
-    _, charges, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=Adrive)
-
-    # Compute QSS currents
-    currents = neuron.currents(Vmeff, QS_states)
-    iNet = sum(currents.values())
-
-    # Create figure
-    fig, axes = plt.subplots(3, 1, figsize=(7, 9))
-    axes[-1].set_xlabel('Charge Density (nC/cm2)', fontsize=fs)
-    for ax in axes:
-        for skey in ['top', 'right']:
-            ax.spines[skey].set_visible(False)
-        for item in ax.get_xticklabels() + ax.get_yticklabels():
-            item.set_fontsize(fs)
-        for item in ax.get_xticklabels(minor=True):
-            item.set_visible(False)
-    figname = '{} neuron - QSS dynamics @ {:.2f} kPa'.format(neuron.name, Adrive * 1e-3)
-    fig.suptitle(figname, fontsize=fs)
-
-    # Subplot 1: Vmeff
-    ax = axes[0]
-    ax.set_ylabel('$V_m^*$ (mV)', fontsize=fs)
-    ax.plot(Qref * 1e5, Vmeff, color='k')
-    ax.axhline(neuron.Vm0, linewidth=0.5, color='k')
-
-    # Subplot 2: quasi-steady states
-    colors = plt.get_cmap('tab10').colors + plt.get_cmap('Dark2').colors
-    ax = axes[1]
-    ax.set_ylabel('$X_\infty$', fontsize=fs)
-    ax.set_yticks([0, 0.5, 1])
-    ax.set_ylim([-0.05, 1.05])
-    for i, label in enumerate(neuron.states):
-        if label != 'Cai':
-            ax.plot(Qref * 1e5, QS_states[i], label=label, c=colors[i])
-
-    # Subplot 3: currents
-    ax = axes[2]
-    ax.set_ylabel('QSS currents (A/m2)', fontsize=fs)
-    for k, I in currents.items():
-        ax.plot(Qref * 1e5, I * 1e-3, label=k)
-    ax.plot(Qref * 1e5, iNet * 1e-3, color='k', label='iNet')
-    ax.axhline(0, color='k', linewidth=0.5)
-
-    fig.tight_layout()
-    fig.subplots_adjust(right=0.8)
-    for ax in axes[1:]:
-        ax.legend(loc='center right', fontsize=fs, frameon=False, bbox_to_anchor=(1.3, 0.5))
-
-    fig.canvas.set_window_title(
-        '{}_QSS_states_vs_Qm_{:.2f}kPa'.format(neuron.name, Adrive * 1e-3))
-
-    return fig
-
-
-def plotCaiSS_vs_Qm(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='lin'):
-
-    #  Define color code
-    mymap = plt.get_cmap(cmap)
-    zref = amps * 1e-3
-    if zscale == 'lin':
-        norm = matplotlib.colors.Normalize(zref.min(), zref.max())
-    elif zscale == 'log':
-        norm = matplotlib.colors.LogNorm(zref.min(), zref.max())
-    sm = matplotlib.cm.ScalarMappable(norm=norm, cmap=mymap)
-    sm._A = []
-
-    # Compute charge and amplitude dependent QS Calcium concentration
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, charges, _, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
-    Cai_ss = QS_states[-1]
-
-    # Plot QSS Cai profile as a function of charge density for various amplitudes
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.set_title('{} neuron - [Cai] steady-state vs. amplitude'.format(neuron.name), fontsize=fs)
-    ax.set_xlabel('Charge Density (nC/cm2)', fontsize=fs)
-    ax.set_ylabel('$\\rm [Ca_i]_{\infty}\ (\mu M)$', fontsize=fs)
-    ax.set_yscale('log')
-    for key in ['top', 'right']:
-        ax.spines[key].set_visible(False)
-    ax.axvline(neuron.Vm0 * neuron.Cm0 * 1e2, label='$\\rm Q_{m0}$', c='silver', linewidth=0.5)
-    ax.axhline(neuron.Cai0 * 1e6, label='$\\rm [Ca_i]_0$', c='k', linewidth=0.5)
-    for i, Adrive in enumerate(amps):
-        ax.plot(charges * 1e5, Cai_ss[i] * 1e6, c=sm.to_rgba(Adrive * 1e-3))
-    ax.legend(frameon=False, fontsize=fs)
-    for item in ax.get_xticklabels() + ax.get_yticklabels():
-        item.set_fontsize(fs)
-    fig.tight_layout()
-
-    # Plot US amplitude colorbar
-    fig.subplots_adjust(bottom=0.15, top=0.9, right=0.80, hspace=0.5)
-    cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.75])
-    fig.colorbar(sm, cax=cbarax)
-    cbarax.set_ylabel('Amplitude (kPa)', fontsize=fs)
-    for item in cbarax.get_yticklabels():
-        item.set_fontsize(fs)
-
-    fig.canvas.set_window_title('{}_Cai_QSS_vs_amp'.format(neuron.name))
-
-    return fig
-
-
-
-def plotInetQSS_vs_Qm(neuron, a, Fdrive, amps, fs=12, cmap='viridis', zscale='lin'):
-
-    # Compute net current profile for each amplitude, from QSS states and Vmeff profiles
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
-
-    # Compute charge and amplitude dependent QS states
-    _, charges, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
-
-    # Compute QSS net current
-    iNet = neuron.iNet(Vmeff, QS_states)
-
-    #  Define color code
-    mymap = plt.get_cmap(cmap)
-    zref = amps * 1e-3
-    if zscale == 'lin':
-        norm = matplotlib.colors.Normalize(zref.min(), zref.max())
-    elif zscale == 'log':
-        norm = matplotlib.colors.LogNorm(zref.min(), zref.max())
-    sm = matplotlib.cm.ScalarMappable(norm=norm, cmap=mymap)
-    sm._A = []
-
-    # Create figure
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.set_xlabel('Charge density (nC/cm2)', fontsize=fs)
-    ax.set_ylabel('$\\rm I_{net, QSS}\ (A/m^2)$', fontsize=fs)
-    for skey in ['top', 'right']:
-        ax.spines[skey].set_visible(False)
-    for item in ax.get_xticklabels() + ax.get_yticklabels():
-        item.set_fontsize(fs)
-    figname = '{} neuron - QSS current imbalance vs. amplitude'.format(neuron.name)
-    ax.set_title(figname, fontsize=fs)
-
-    # Plot iNet profiles for each US amplitude (with specific color code)
-    for i, Adrive in enumerate(amps):
-        lbl = '{:.2f} kPa'.format(Adrive * 1e-3)
-        c = sm.to_rgba(Adrive * 1e-3)
-        ax.plot(Qref * 1e5, iNet[i] * 1e-3, label=lbl, c=c)
-    for i, Adrive in enumerate(amps):
-        Qstab = getStableFixedPoints(Qref, -iNet[i, :])
-        if Qstab is not None:
-            ax.plot(Qstab * 1e5, np.zeros(Qstab.size), '.', c='k')
-    ax.axhline(0, color='k', linewidth=0.5)
-
-    fig.tight_layout()
-
-    # Plot US amplitude colorbar
-    fig.subplots_adjust(bottom=0.15, top=0.9, right=0.80, hspace=0.5)
-    cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.75])
-    fig.colorbar(sm, cax=cbarax)
-    cbarax.set_ylabel('Amplitude (kPa)', fontsize=fs)
-    for item in cbarax.get_yticklabels():
-        item.set_fontsize(fs)
-
-    fig.canvas.set_window_title(
-        '{}_iNet_QSS_vs_amp'.format(neuron.name))
-
-    return fig
-
 
 def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
 
-    # Get charge value that cancels out net current in QSS approx. and sim
-    Qeq_QSS = getStableQmQSS(neuron, a, Fdrive, amps)
+    # Get charge value that cancels out net current in QSS approx.
+    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
+    iNet = neuron.iNet(Vmeff, QS_states)
+    Qeq_QSS = []
+    for i, Adrive in enumerate(amps):
+        Qeq_QSS.append(getStableFixedPoints(Qref, -iNet[i, :]))
+
     Qeq_QSS2 = np.array([Q[0] if Q is not None and len(Q) == 1 else np.nan for Q in Qeq_QSS])
 
+    # Get sabilization charge value in simulations
     _, Qeq_sim, _ = getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim)
 
     Q_rmse = np.sqrt(np.nanmean((Qeq_sim - Qeq_QSS2)**2))
@@ -399,21 +159,20 @@ def main():
     intensities = getLowIntensitiesSTN()  # W/m2
     amps = Intensity2Pressure(intensities)  # Pa
     tstim = 3.0  # s
-    Cai = np.logspace(np.log10(neuron.Cai0 * 1e-4), np.log10(neuron.Cai0 * 1e3), 100)
+    Cai_range = np.logspace(np.log10(neuron.Cai0 * 1e-4), np.log10(neuron.Cai0 * 1e3), 100)
     charges = np.array([neuron.Qbounds()[1], neuron.Vm0 * neuron.Cm0 * 1e-3])
 
     figs = []
     if 'a' in figset:
-        # for Adrive in [amps[-1]]:
         for Adrive in [amps[0], amps[amps.size // 2], amps[-1]]:
             figs += [
-                plotQSSvars_vs_Qm(neuron, a, Fdrive, Adrive),
-                plotCaiDynamics(neuron, a, Cai, Fdrive, Adrive, charges)
+                plotVarsQSS(neuron, a, Fdrive, Adrive),
+                plotVarDynamics(neuron, a, Fdrive, Adrive, charges, 'Cai', Cai_range)
             ]
     if 'b' in figset:
         figs += [
-            plotInetQSS_vs_Qm(neuron, a, Fdrive, amps),
-            plotCaiSS_vs_Qm(neuron, a, Fdrive, amps)
+            plotQSSVarvsAmp(neuron, a, Fdrive, amps, 'Cai', yscale='log'),
+            plotQSSVarvsAmp(neuron, a, Fdrive, amps, 'iNet')
         ]
     if 'c' in figset:
         inputdir = args.inputdir if args.inputdir is not None else selectDirDialog()

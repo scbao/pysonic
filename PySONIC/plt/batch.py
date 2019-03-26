@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:19:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 11:47:50
+# @Last Modified time: 2019-03-26 17:15:12
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -79,9 +79,6 @@ def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
         else:
             fig, axes = plt.subplots(naxes, 1, figsize=(11, min(3 * naxes, 9)))
 
-        ilast = np.where(t < meta['tstim'] * tvar['factor'])[0][-1]
-        print('system at t = {:.3f} ms:'.format(t[ilast]))
-
         # Loop through each subgraph
         for ax, (grouplabel, keys) in zip(axes, pltscheme.items()):
 
@@ -104,7 +101,6 @@ def plotBatch(filepaths, pltscheme=None, plt_save=False, directory=None,
             icolor = 0
             for pltvar, name in zip(ax_pltvars, pltscheme[grouplabel]):
                 var = extractPltVar(obj, pltvar, df, meta, t.size, name)
-                print('{} = {:.5f} {}'.format(name, var[ilast], pltvar.get('unit', '')))
                 ax.plot(t, var, pltvar.get('ls', '-'), c=pltvar.get('color', 'C{}'.format(icolor)),
                         lw=lw, label='$\\rm {}$'.format(pltvar['label']))
                 if 'color' not in pltvar:
