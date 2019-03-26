@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 11:31:03
+# @Last Modified time: 2019-03-26 12:16:46
 
 import os
 import time
@@ -283,11 +283,15 @@ class PointNeuron(metaclass=abc.ABCMeta):
         ''' Determine bounds of membrane charge physiological range for a given neuron. '''
         return np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
 
+    def isVoltageGated(self, state):
+        ''' Determine whether a given state is purely voltage-gated or not.'''
+        return 'alpha{}'.format(state.lower()) in self.rates
+
     def getGates(self):
         ''' Retrieve the names of the neuron's states that match an ion channel gating. '''
         gates = []
         for x in self.states:
-            if 'alpha{}'.format(x.lower()) in self.rates:
+            if self.isVoltageGated(x):
                 gates.append(x)
         return gates
 

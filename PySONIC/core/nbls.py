@@ -4,9 +4,10 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 11:46:12
+# @Last Modified time: 2019-03-26 14:23:22
 
 import os
+import inspect
 import time
 import logging
 import pickle
@@ -786,33 +787,56 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Compute QSS states
         QS_states = np.empty((len(self.neuron.states), nA, nQ, nDC))
-        for i, x in enumerate(self.neuron.states):
+        is_computed = np.zeros(len(self.neuron.states), dtype=int)
+        while is_computed.sum() < len(self.neuron.states):
 
-            # If channel state, compute DC-averaged QSS values from interpolated rate constants
-            if x in self.neuron.getGates():
-                alpha_str, beta_str = ['{}{}'.format(s, x.lower()) for s in ['alpha', 'beta']]
-                alphax_on, alphax_off = lookups_on[alpha_str], lookups_off[alpha_str]
-                betax_on, betax_off = lookups_on[beta_str], lookups_off[beta_str]
-                for iA, Adrive in enumerate(amps):
-                    for iDC, DC in enumerate(DCs):
-                        alphax = alphax_on[iA, :] * DC + alphax_off * (1 - DC)
-                        betax = betax_on[iA, :] * DC + betax_off * (1 - DC)
-                        QS_states[i, iA, :, iDC] = alphax / (alphax + betax)
+            for i, x in enumerate(self.neuron.states):
 
-            # Otherwise, compute QSS values from DC-averaged Vmeff
-            # TODO: compute QSS values by calling Xinf function, e.g.:
-            # c_ss, d1_ss, p_ss, q_ss = [QS_states[i] for i in [2, 3, 8, 9]]
-            # for i, Adrive in enumerate(amps):
-            #     Cai_ss = np.array([
-            #         neuron.Caiinf(*[x[i, j] for x in [p_ss, q_ss, c_ss, d1_ss, Vmeff]])
-            #         for j in range(len(Qref))])
-            # QS_states[4, i] = neuron.d2inf(Cai_ss)
-            # QS_states[10, i] = neuron.rinf(Cai_ss)
-            else:
-                for iA, Adrive in enumerate(amps):
-                    for iDC, DC in enumerate(DCs):
-                        QS_states[i, iA, :, iDC] = np.array([
-                            self.neuron.steadyStates(Vmeff_avg[iA, iQ, iDC])[i] for iQ in range(nQ)])
+                # If voltage-gated state, compute DC-averaged QSS values
+                # from interpolated rate constants
+                if self.neuron.isVoltageGated(x):
+                    alpha_str, beta_str = ['{}{}'.format(s, x.lower()) for s in ['alpha', 'beta']]
+                    alphax_on, alphax_off = lookups_on[alpha_str], lookups_off[alpha_str]
+                    betax_on, betax_off = lookups_on[beta_str], lookups_off[beta_str]
+                    for iA, Adrive in enumerate(amps):
+                        for iDC, DC in enumerate(DCs):
+                            alphax = alphax_on[iA, :] * DC + alphax_off * (1 - DC)
+                            betax = betax_on[iA, :] * DC + betax_off * (1 - DC)
+                            QS_states[i, iA, :, iDC] = alphax / (alphax + betax)
+                    is_computed[i] = 1
+
+                # Otherwise, it must be a slowly evolving state -> compute QSS values using
+                # steady-state function with DC-averaged parameters (states and Vmeff)
+                else:
+                    # get xinf method and ist arguments
+                    xinf_func = getattr(self.neuron, '{}inf'.format(x))
+                    xinf_args = inspect.getargspec(xinf_func)[0][1:]
+
+                    # Check if method is Vm-dependent, and extract indexes of QSS states required
+                    # to compute method
+                    iVm = -1
+                    if 'Vm' in xinf_args:
+                        iVm = xinf_args.index('Vm')
+                        xinf_args.remove('Vm')
+                    i_xinf_args = [self.neuron.states.index(arg) for arg in xinf_args]
+
+                    # If all required QSS states are already computed -> compute this QSS state
+                    if np.sum(is_computed[i_xinf_args]) == len(i_xinf_args):
+                        # Extract QSS values of required states
+                        xinf_inputs = QS_states[i_xinf_args]
+
+                        # If method is Vm-dependent, insert DC-averaged Vmeff
+                        # to the dependencies array (at appropriate index)
+                        if iVm > -1:
+                            xinf_inputs = np.insert(xinf_inputs, iVm, Vmeff_avg, axis=0)
+
+                        # Compute QSS value for each (A, Q, DC) combination
+                        for iA, Adrive in enumerate(amps):
+                            for iDC, DC in enumerate(DCs):
+                                QS_states[i, iA, :, iDC] = np.array([
+                                    xinf_func(*xinf_inputs[:, iA, iQ, iDC]) for iQ in range(nQ)])
+
+                        is_computed[i] = 1
 
         # Return reference inputs and output arrays
         return amps, charges, np.squeeze(Vmeff_on), np.squeeze(QS_states)

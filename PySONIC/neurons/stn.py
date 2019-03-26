@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 11:41:17
+# @Last Modified time: 2019-03-26 13:23:47
 
 
 import numpy as np
@@ -406,15 +406,15 @@ class OtsukaSTN(PointNeuron):
         return - self.iCa_to_Cai_rate * (iCaT + iCaL) - Cai / self.taur_Cai
 
 
-    def Caiinf(self, p, q, c, d1, Vm):
+    def Caiinf(self, Vm, p, q, c, d1):
         ''' Find the steady-state intracellular Calcium concentration for a
             specific membrane potential and voltage-gated channel states.
 
+            :param Vm: membrane potential (mV)
             :param p: open-probability of p-gate
             :param q: open-probability of q-gate
             :param c: open-probability of c-gate
             :param d1: open-probability of d1-gate
-            :param Vm: membrane potential (mV)
             :return: steady-state Calcium concentration in submembrane space (M)
         '''
         return brentq(
@@ -525,7 +525,7 @@ class OtsukaSTN(PointNeuron):
         neq = self.ninf(Vm)
         peq = self.pinf(Vm)
         qeq = self.qinf(Vm)
-        Cai_eq = self.Caiinf(peq, qeq, ceq, d1eq, Vm)
+        Cai_eq = self.Caiinf(Vm, peq, qeq, ceq, d1eq)
         d2eq = self.d2inf(Cai_eq)
         req = self.rinf(Cai_eq)
 
