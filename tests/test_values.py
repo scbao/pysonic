@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-21 14:53:14
+# @Last Modified time: 2019-04-03 21:00:56
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -104,23 +104,17 @@ def test_ESTIM():
     # Reference values
     Athr_refs = {'FS': 6.91, 'LTS': 1.54, 'RS': 5.03, 'RE': 3.61, 'TC': 4.05,
                  'LeechT': 4.66, 'LeechP': 13.72, 'IB': 3.08}
-    latency_refs = {'FS': 101.00e-3, 'LTS': 128.56e-3, 'RS': 103.81e-3, 'RE': 148.50e-3,
-                    'TC': 63.46e-3, 'LeechT': 21.32e-3, 'LeechP': 36.84e-3, 'IB': 121.04e-3}
 
     for Neuron in getNeuronsDict().values():
 
         # Perform titration for each neuron
         neuron = Neuron()
         logger.info('%s neuron titration', neuron.name)
-        Athr, _, _, _, latency, _ = neuron.titrate(tstim, toffset)
+        Athr = neuron.titrate(tstim, toffset)
 
         # Check threshold amplitude
         Athr_diff = Athr - Athr_refs[neuron.name]
         assert np.abs(Athr_diff) < 0.1, Athr_err_msg.format(neuron.name, Athr_diff)
-
-        # Check response latency
-        lat_diff = (latency - latency_refs[neuron.name]) * 1e3
-        assert np.abs(lat_diff) < 1.0, latency_err_msg.format(neuron.name, lat_diff)
 
     logger.info('Passed test: E-STIM titration')
 
@@ -147,8 +141,6 @@ def test_ASTIM():
     # Reference values
     Athr_refs = {'FS': 38.96e3, 'LTS': 24.90e3, 'RS': 50.90e3, 'RE': 46.36e3, 'TC': 23.14e3,
                  'LeechT': 21.02e3, 'LeechP': 22.23e3, 'IB': 91.26e3}
-    latency_refs = {'FS': 54.96e-3, 'LTS': 57.46e-3, 'RS': 75.09e-3, 'RE': 79.75e-3,
-                    'TC': 70.73e-3, 'LeechT': 43.25e-3, 'LeechP': 58.01e-3, 'IB': 79.35e-3}
 
     # Titration for each neuron
     for Neuron in getNeuronsDict().values():
@@ -159,15 +151,11 @@ def test_ASTIM():
         logger.info('%s neuron titration', neuron.name)
 
         # Perform titration
-        Athr, _, _, _, latency, _ = nbls.titrate(Fdrive, tstim, toffset, method='sonic')
+        Athr = nbls.titrate(Fdrive, tstim, toffset, method='sonic')
 
         # Check threshold amplitude
         Athr_diff = (Athr - Athr_refs[neuron.name]) * 1e-3
         assert np.abs(Athr_diff) < 0.1, Athr_err_msg.format(neuron.name, Athr_diff)
-        # Check response latency
-        lat_diff = (latency - latency_refs[neuron.name]) * 1e3
-        assert np.abs(lat_diff) < 1.0, latency_err_msg.format(neuron.name, lat_diff)
-
 
     logger.info('Passed test: A-STIM titration')
 

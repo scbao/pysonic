@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:28:52
+# @Last Modified time: 2019-04-03 20:48:09
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -47,7 +47,7 @@ def runEStimBatch(outdir, neuron, stim_params, mpi=False):
 
     # Generate simulations queue
     queue = createEStimQueue(
-        stim_params.get('amps', [None]),
+        stim_params.get('amps', None),
         stim_params['durations'],
         stim_params['offsets'],
         stim_params['PRFs'],
@@ -95,7 +95,7 @@ def main():
         offsets=np.array(args.get('offset', defaults['offset'])) * 1e-3  # s
     )
     if titrate:
-        stim_params['amps'] = [None]
+        stim_params['amps'] = None
 
     # Run E-STIM batch
     if neuron_str not in getNeuronsDict():

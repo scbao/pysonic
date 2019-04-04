@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 17:24:22
+# @Last Modified time: 2019-04-03 21:04:46
 
 import os
 import inspect
@@ -19,7 +19,7 @@ from scipy.interpolate import interp1d
 
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
-from ..utils import logger, si_format, downsample, rmse, ASTIM_filecode, getLookups2D, isWithin
+from ..utils import logger, si_format, downsample, rmse, ASTIM_filecode, getLookups2D, isWithin, titrate
 from ..constants import *
 from ..postpro import findPeaks
 from ..batches import xlslog
@@ -161,6 +161,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         t_pulse0 = np.linspace(0, Tpulse_on + Tpulse_off, n_pulse_on + n_pulse_off)
         stimstate_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
 
+        logger.debug('Computing detailed solution')
+
         # Initialize progress bar
         if logger.getEffectiveLevel() <= logging.INFO:
             widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
@@ -210,7 +212,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         if logger.getEffectiveLevel() <= logging.INFO:
             pbar.finish()
 
-        # Downsample arrays in time-domain accordgin to target temporal resolution
+        # Downsample arrays in time-domain according to target temporal resolution
         ds_factor = int(np.round(CLASSIC_TARGET_DT / dt))
         if ds_factor > 1:
             Fs = 1 / (dt * ds_factor)
@@ -249,6 +251,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Adrive = isWithin('amplitude', Adrive, (Aref.min(), Aref.max()))
 
         # Interpolate 2D lookups at zero and US amplitude
+        logger.debug('Interpolating lookups at A = %.2f kPa and A = 0', Adrive * 1e-3)
         lookups_on = {key: interp1d(Aref, y2D, axis=0)(Adrive) for key, y2D in lookups2D.items()}
         lookups_off = {key: interp1d(Aref, y2D, axis=0)(0.0) for key, y2D in lookups2D.items()}
 
@@ -276,7 +279,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         n_pulse_on = int(np.round(Tpulse_on / dt)) + 1
         n_pulse_off = int(np.round(Tpulse_off / dt))
 
-        # Compute ofset size
+        # Compute offset size
         n_off = int(np.round(toffset / dt))
 
         # Initialize global arrays
@@ -290,6 +293,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         t_pulse_off = np.linspace(dt, Tpulse_off, n_pulse_off) + Tpulse_on
         t_pulse0 = np.concatenate([t_pulse_on, t_pulse_off])
         stimstate_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
+
+        logger.debug('Computing effective solution')
 
         # Loop through all pulse (ON and OFF) intervals
         for i in range(npulses):
@@ -562,10 +567,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 raise ValueError('Pulsed protocol incompatible with hybrid integration method')
             return self.runHybrid(Fdrive, Adrive, tstim, toffset)
 
-
     def titrate(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Arange=None, method='sonic'):
-        ''' Use a dichotomic recursive search to determine the threshold amplitude needed
-            to obtain neural excitation for a given frequency, duration, PRF and duty cycle.
+        ''' Use a binary search to determine the threshold amplitude needed to obtain
+            neural excitation for a given frequency, duration, PRF and duty cycle.
 
             :param Fdrive: US frequency (Hz)
             :param tstim: duration of US stimulation (s)
@@ -573,43 +577,28 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
             :param Arange: search interval for Adrive, iteratively refined
-            :return: 5-tuple with the determined threshold, time profile,
-                 solution matrix, state vector and response latency
+            :return: determined threshold amplitude (Pa)
         '''
+
+        # Define target function
+        def target_func(Adrive, Fdrive, tstim, toffset, PRF, DC, method):
+            t, y, _ = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
+            dt = t[1] - t[0]
+            ipeaks, *_ = findPeaks(y[2, :], SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
+                                   SPIKE_MIN_QPROM)
+            nspikes = ipeaks.size
+            logger.debug('A = %sPa ---> %s spike%s detected',
+                         si_format(Adrive, 2, space=' '),
+                         nspikes, "s" if nspikes > 1 else "")
+            return {0: -1, 1: 0}.get(nspikes, 1)
 
         # Determine amplitude interval if needed
         if Arange is None:
             Arange = (0, getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max())
-        Adrive = (Arange[0] + Arange[1]) / 2
 
-        # Run simulation and detect spikes
-        t0 = time.time()
-        (t, y, stimstate) = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
-        tcomp = time.time() - t0
-
-        dt = t[1] - t[0]
-        ipeaks, *_ = findPeaks(y[2, :], SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
-                               SPIKE_MIN_QPROM)
-        nspikes = ipeaks.size
-        latency = t[ipeaks[0]] if nspikes > 0 else None
-        logger.debug('A = %sPa ---> %s spike%s detected',
-                     si_format(Adrive, 2, space=' '),
-                     nspikes, "s" if nspikes > 1 else "")
-
-        # If accurate threshold is found, return simulation results
-        if (Arange[1] - Arange[0]) <= TITRATION_ASTIM_DA_MAX and nspikes == 1:
-                        return (Adrive, t, y, stimstate, latency, tcomp)
-
-        # Otherwise, refine titration interval and iterate recursively
-        else:
-            if nspikes == 0:
-                # if Adrive too close to max then stop
-                if (TITRATION_ASTIM_A_MAX - Adrive) <= TITRATION_ASTIM_DA_MAX:
-                    return (np.nan, t, y, stimstate, latency, tcomp)
-                Arange = (Adrive, Arange[1])
-            else:
-                Arange = (Arange[0], Adrive)
-            return self.titrate(Fdrive, tstim, toffset, PRF, DC, Arange=Arange, method=method)
+        # Titrate
+        return titrate(target_func, (Fdrive, tstim, toffset, PRF, DC, method),
+                       Arange, TITRATION_ASTIM_DA_MAX)
 
 
     def runAndSave(self, outdir, Fdrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None,
@@ -631,45 +620,34 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         date_str = time.strftime("%Y.%m.%d")
         daytime_str = time.strftime("%H:%M:%S")
 
-        if Adrive is not None:
-            logger.info('%s: simulation @ f = %sHz, A = %sPa, t = %ss (%ss offset)%s',
-                        self, si_format(Fdrive, 0, space=' '),
-                        si_format(Adrive, 2, space=' '),
-                        *si_format([tstim, toffset], 1, space=' '),
-                        (', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2, space=' '), DC * 1e2)
-                         if DC < 1.0 else ''))
+        logger.info(
+            '%s: %s @ f = %sHz, %st = %ss (%ss offset)%s',
+            self,
+            'titration' if Adrive is None else 'simulation',
+            si_format(Fdrive, 0, space=' '),
+            'A = {}Pa, '.format(si_format(Adrive, 2, space=' ')) if Adrive is not None else '',
+            *si_format([tstim, toffset], 1, space=' '),
+            (', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
 
-            # Run simulation
-            tstart = time.time()
-            t, y, stimstate = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
-            tcomp = time.time() - tstart
-            Z, ng, Qm, Vm, *channels = y
+        if Adrive is None:
+            Adrive = self.titrate(Fdrive, tstim, toffset, PRF, DC, method=method)
+            if np.isnan(Adrive):
+                logger.error('Could not find threshold excitation amplitude')
+                return None
 
-            # Detect spikes on Qm signal
-            dt = t[1] - t[0]
-            ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
-                                   SPIKE_MIN_QPROM)
-            nspikes = ipeaks.size
-            lat = t[ipeaks[0]] if nspikes > 0 else 'N/A'
-            outstr = '{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else '')
-        else:
-            logger.info('%s: titration @ f = %sHz, t = %ss%s',
-                        self,
-                        si_format(Fdrive, 0, space=' '),
-                        si_format(tstim, 1, space=' '),
-                        (', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2, space=' '), DC * 1e2)
-                         if DC < 1.0 else ''))
+        # Run simulation
+        tstart = time.time()
+        t, y, stimstate = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
+        tcomp = time.time() - tstart
+        Z, ng, Qm, Vm, *channels = y
 
-            # Run titration
-            Adrive, t, y, stimstate, lat, tcomp = self.titrate(
-                Fdrive, tstim, toffset, PRF, DC, method=method)
-            Z, ng, Qm, Vm, *channels = y
-            if Adrive is np.nan:
-                outstr = 'no spikes detected within titration interval'
-                nspikes = 0
-            else:
-                outstr = 'Athr = {}Pa'.format(si_format(Adrive, 2, space=' '))
-                nspikes = 1
+        # Detect spikes on Qm signal
+        dt = t[1] - t[0]
+        ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
+                               SPIKE_MIN_QPROM)
+        nspikes = ipeaks.size
+        lat = t[ipeaks[0]] if nspikes > 0 else 'N/A'
+        outstr = '{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else '')
         logger.debug('completed in %ss, %s', si_format(tcomp, 1), outstr)
         sr = np.mean(1 / np.diff(t[ipeaks])) if nspikes > 1 else None
 
@@ -857,6 +835,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Get QSS variables for each amplitude at threshold charge
         Aref, _, Vmeff, QS_states = self.quasiSteadyStates(Fdrive, charges=Qthr, DCs=DCs)
+
+        if DCs.size == 1:
+            QS_states = QS_states.reshape((*QS_states.shape, 1))
 
         Athr = np.empty(DCs.size)
         for i, DC in enumerate(DCs):

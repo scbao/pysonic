@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm, colors
 
-from ..postpro import getStableFixedPoints
+from ..postpro import getEqPoint1D
 from ..core import NeuronalBilayerSonophore
 from .pltutils import *
 
@@ -163,8 +163,8 @@ def plotVarsQSS(neuron, a, Fdrive, Adrive, fs=12):
     return fig
 
 
-def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, plotQm0=True,
-                    fs=12, cmap='viridis', yscale='lin', zscale='lin'):
+def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
+                    plotQi=True, fs=12, cmap='viridis', yscale='lin', zscale='lin'):
     ''' Plot a specific QSS variable (state or current) as a function of
         membrane charge density, for various acoustic amplitudes.
 
@@ -172,6 +172,7 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, plotQm0=True,
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param amps: US amplitudes (Pa)
+        :param Qi: initial membrane charge density for phase-plane analysis (C/m2)
         :param varname: extraction key for variable to plot
         :return: figure handle
     '''
@@ -182,9 +183,13 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, plotQm0=True,
 
     # Get dictionary of charge and amplitude dependent QSS variables
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    Aref, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps)
+    Aref, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DC)
     df = {k: QS_states[i] for i, k in enumerate(neuron.states)}
     df['Vm'] = Vmeff
+
+    # If needed, get default initial membrane charge density for phase-plane analysis
+    if Qi is None:
+        Qi = neuron.Qm0()  # C/m2
 
     #  Define color code
     mymap = plt.get_cmap(cmap)
@@ -198,8 +203,8 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, plotQm0=True,
 
     # Plot QSS profile of variable as a function of charge density for various amplitudes
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.set_title('{} neuron\nquasi steady-state {} vs. amplitude'.format(
-        neuron.name, pltvar['desc']), fontsize=fs)
+    ax.set_title('{} neuron - {:.0f} % DC\nquasi steady-state {} vs. amplitude'.format(
+        neuron.name, DC * 1e2, pltvar['desc']), fontsize=fs)
     ax.set_xlabel('{} ($\\rm {}$)'.format(Qvar['desc'], Qvar['unit']), fontsize=fs)
     ax.set_ylabel('$\\rm QSS\ {}\ ({})$'.format(pltvar['label'], pltvar.get('unit', '')),
                   fontsize=fs)
@@ -208,8 +213,8 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, plotQm0=True,
     for key in ['top', 'right']:
         ax.spines[key].set_visible(False)
 
-    if plotQm0:
-        ax.axvline(neuron.Qm0() * 1e5, label='$\\rm Q_{m0}$', c='silver')
+    if plotQi:
+        ax.axvline(Qi * Qvar['factor'], label='$\\rm Q_{m,i}$', c='silver')
     y0_str = '{}0'.format(varname)
     if hasattr(neuron, y0_str):
         ax.axhline(getattr(neuron, y0_str) * pltvar.get('factor', 1),
@@ -219,9 +224,8 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, plotQm0=True,
             neuron, pltvar, pd.DataFrame({k: df[k][i] for k in df.keys()}), name=varname)
         ax.plot(Qref * Qvar['factor'], var, c=sm.to_rgba(Adrive * 1e-3), zorder=0)
         if varname == 'iNet':
-            SFPs = getStableFixedPoints(Qref, -var)
-            if SFPs is not None:
-                ax.plot(SFPs.max() * Qvar['factor'], 0, '.', c='k', zorder=1)
+            ax.plot(getEqPoint1D(Qref, -var, Qi) * Qvar['factor'], 0, '.', c='k', zorder=1,
+                    label='$\\rm Q_{m,eq}$' if i == 0 else '')
     if varname == 'iNet':
         ax.axhline(0, color='k', linewidth=0.5)
 
@@ -238,6 +242,74 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, plotQm0=True,
     for item in cbarax.get_yticklabels():
         item.set_fontsize(fs)
 
-    fig.canvas.set_window_title('{}_QSS_{}_vs_amp'.format(neuron.name, varname))
+    fig.canvas.set_window_title('{}_QSS_{}_vs_amp_{}scale'.format(neuron.name, varname, zscale))
+
+    return fig
+
+
+def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3, PRF=100.0,
+                      DCs=[1.], Qi=None, fs=12, xscale='lin', titrate=False):
+    ''' Plot the equilibrium membrane charge density as a function of acoustic amplitude,
+        given an initial value of membrane charge density.
+
+        :param neurons: neuron objects
+        :param a: sonophore radius (m)
+        :param Fdrive: US frequency (Hz)
+        :param amps: US amplitudes (Pa)
+        :param Qi: initial membrane charge density for phase-plane analysis (C/m2)
+        :return: figure handle
+    '''
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(6, 4))
+    figname = 'equilibrium charge vs. amplitude'
+    ax.set_title(figname)
+    ax.set_xlabel('Amplitude (kPa)', fontsize=fs)
+    ax.set_ylabel('$\\rm Q_{m, eq}\ (nC/cm^2)$', fontsize=fs)
+    if xscale == 'log':
+        ax.set_xscale('log')
+    for skey in ['top', 'right']:
+        ax.spines[skey].set_visible(False)
+    for item in ax.get_xticklabels() + ax.get_yticklabels():
+        item.set_fontsize(fs)
+
+    # For each neuron
+    icolor = 0
+    for i, neuron in enumerate(neurons):
+
+        nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+        rheobase_amps, _ = nbls.findRheobaseAmps(DCs, Fdrive, neuron.VT)
+        for j, DC in enumerate(DCs):
+
+            print(neuron.name, DC)
+
+            # Compute 2D array of QSS net current
+            _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DC)
+            iNet = neuron.iNet(Vmeff, QS_states)
+
+            # If needed, get default initial membrane charge density for phase-plane analysis
+            if Qi is None:
+                Qi = neuron.Qm0()  # C/m2
+
+            # Plot the equilibrium charge density for each acoustic amplitude
+            Qeq = np.array([getEqPoint1D(Qref, dQdt, Qi) for dQdt in -iNet])
+            color = 'C{}'.format(icolor)
+            ax.plot(amps * 1e-3, Qeq * 1e5, c=color,
+                    label='{} neuron - {:.0f} % DC'.format(neuron.name, DC * 1e2))
+
+            # If specified, compute and plot the threshold excitation amplitude
+            if titrate:
+                Athr = nbls.titrate(Fdrive, tstim, toffset, PRF=PRF, DC=DC,
+                                    Arange=(amps.min(), amps.max()))  # Pa
+                ax.axvline(Athr * 1e-3, c=color, linestyle='--')
+                ax.axvline(rheobase_amps[j] * 1e-3, c=color, linestyle='-.')
+
+            icolor += 1
+
+    # Post-process figure
+    ax.legend(frameon=False, fontsize=fs)
+    fig.tight_layout()
+
+    fig.canvas.set_window_title('Qeq_QSS_vs_amp_{}scale'.format(xscale))
 
     return fig

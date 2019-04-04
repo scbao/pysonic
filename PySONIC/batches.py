@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-27 16:58:25
+# @Last Modified time: 2019-04-03 20:47:24
 
 ''' Utility functions used in simulations '''
 
@@ -93,12 +93,17 @@ def createEStimQueue(amps, durations, offsets, PRFs, DCs):
         :param DCs: list (or 1D-array) of duty cycle values
         :return: list of parameters (list) for each simulation
     '''
+    if amps is None:
+        amps = [np.nan]
     DCs = np.array(DCs)
     queue = []
     if 1.0 in DCs:
         queue += createQueue((durations, offsets, min(PRFs), 1.0, amps))
     if np.any(DCs != 1.0):
         queue += createQueue((durations, offsets, PRFs, DCs[DCs != 1.0], amps))
+    for item in queue:
+        if np.isnan(item[-1]):
+            item[-1] = None
     return queue
 
 
@@ -115,6 +120,8 @@ def createAStimQueue(freqs, amps, durations, offsets, PRFs, DCs, method):
         :params method: integration method
         :return: list of parameters (list) for each simulation
     '''
+    if amps is None:
+        amps = [np.nan]
     DCs = np.array(DCs)
     queue = []
     if 1.0 in DCs:
@@ -122,6 +129,8 @@ def createAStimQueue(freqs, amps, durations, offsets, PRFs, DCs, method):
     if np.any(DCs != 1.0):
         queue += createQueue((freqs, durations, offsets, PRFs, DCs[DCs != 1.0], amps))
     for item in queue:
+        if np.isnan(item[-1]):
+            item[-1] = None
         item.append(method)
     return queue
 

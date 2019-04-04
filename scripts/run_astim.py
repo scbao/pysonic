@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:05:19
+# @Last Modified time: 2019-04-03 20:44:16
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -55,7 +55,7 @@ def runAStimBatch(outdir, nbls, stim_params, method, mpi=False):
     # Generate queue
     queue = createAStimQueue(
         stim_params['freqs'],
-        stim_params.get('amps', [None]),
+        stim_params.get('amps', None),
         stim_params['durations'],
         stim_params['offsets'],
         stim_params['PRFs'],
@@ -132,7 +132,7 @@ def main():
     )
 
     if titrate:
-        stim_params['amps'] = [None]
+        stim_params['amps'] = None
 
     # Run A-STIM batch
     if neuron_str not in getNeuronsDict():

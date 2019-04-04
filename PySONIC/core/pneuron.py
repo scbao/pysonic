@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 18:21:53
+# @Last Modified time: 2019-04-03 20:59:33
 
 import os
 import time
@@ -18,7 +18,7 @@ import pandas as pd
 
 from ..postpro import findPeaks
 from ..constants import *
-from ..utils import si_format, logger, ESTIM_filecode
+from ..utils import si_format, logger, ESTIM_filecode, titrate
 from ..batches import xlslog
 
 
@@ -489,35 +489,21 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :return: 5-tuple with the determined threshold, time profile,
                  solution matrix, state vector and response latency
         '''
-        Astim = (Arange[0] + Arange[1]) / 2
 
-        # Run simulation and detect spikes
-        t0 = time.time()
-        (t, y, stimstate) = self.simulate(Astim, tstim, toffset, PRF, DC)
-        tcomp = time.time() - t0
-        dt = t[1] - t[0]
-        ipeaks, *_ = findPeaks(y[0, :], SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
-                               SPIKE_MIN_VPROM)
-        nspikes = ipeaks.size
-        latency = t[ipeaks[0]] if nspikes > 0 else None
-        logger.debug('A = %sA/m2 ---> %s spike%s detected',
-                     si_format(Astim * 1e-3, 2, space=' '),
-                     nspikes, "s" if nspikes > 1 else "")
+        # Define target function
+        def target_func(Astim, tstim, toffset, PRF, DC):
+            t, y, _ = self.simulate(Astim, tstim, toffset, PRF, DC)
+            dt = t[1] - t[0]
+            ipeaks, *_ = findPeaks(y[0, :], SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
+                                   SPIKE_MIN_VPROM)
+            nspikes = ipeaks.size
+            logger.debug('A = %sA/m2 ---> %s spike%s detected',
+                         si_format(Astim * 1e-3, 2, space=' '),
+                         nspikes, "s" if nspikes > 1 else "")
+            return {0: -1, 1: 0}.get(nspikes, 1)
 
-        # If accurate threshold is found, return simulation results
-        if (Arange[1] - Arange[0]) <= TITRATION_ESTIM_DA_MAX and nspikes == 1:
-            return (Astim, t, y, stimstate, latency, tcomp)
-
-        # Otherwise, refine titration interval and iterate recursively
-        else:
-            if nspikes == 0:
-                # if Astim too close to max then stop
-                if (TITRATION_ESTIM_A_MAX - Astim) <= TITRATION_ESTIM_DA_MAX:
-                    return (np.nan, t, y, stimstate, latency, tcomp)
-                Arange = (Astim, Arange[1])
-            else:
-                Arange = (Arange[0], Astim)
-            return self.titrate(tstim, toffset, PRF, DC, Arange=Arange)
+        # Titrate
+        return titrate(target_func, (tstim, toffset, PRF, DC), Arange, TITRATION_ESTIM_DA_MAX)
 
     def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
         ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
@@ -535,42 +521,33 @@ class PointNeuron(metaclass=abc.ABCMeta):
         date_str = time.strftime("%Y.%m.%d")
         daytime_str = time.strftime("%H:%M:%S")
 
-        if Astim is not None:
-            logger.info('%s: simulation @ A = %sA/m2, t = %ss (%ss offset)%s',
-                        self, si_format(Astim * 1e-3, 2, space=' '),
-                        *si_format([tstim, toffset], 1, space=' '),
-                        (', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2, space=' '), DC * 1e2)
-                         if DC < 1.0 else ''))
+        logger.info(
+            '%s: %s @ %st = %ss (%ss offset)%s',
+            self,
+            'titration' if Astim is None else 'simulation',
+            'A = {}A/m2, '.format(si_format(Astim, 2, space=' ')) if Astim is not None else '',
+            *si_format([tstim, toffset], 1, space=' '),
+            (', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
 
-            # Run simulation
-            tstart = time.time()
-            t, y, stimstate = self.simulate(Astim, tstim, toffset, PRF, DC)
-            Vm, *channels = y
-            tcomp = time.time() - tstart
+        if Astim is None:
+            Astim = self.titrate(tstim, toffset, PRF, DC)
+            if np.isnan(Astim):
+                logger.error('Could not find threshold excitation amplitude')
+                return None
 
-            # Detect spikes on Vm signal
-            dt = t[1] - t[0]
-            ipeaks, *_ = findPeaks(Vm, SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
-                                   SPIKE_MIN_VPROM)
-            nspikes = ipeaks.size
-            lat = t[ipeaks[0]] if nspikes > 0 else 'N/A'
-            outstr = '{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else '')
-        else:
-            logger.info('%s: titration @ t = %ss%s',
-                        self, si_format(tstim, 1, space=' '),
-                        (', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2, space=' '), DC * 1e2)
-                         if DC < 1.0 else ''))
+        # Run simulation
+        tstart = time.time()
+        t, y, stimstate = self.simulate(Astim, tstim, toffset, PRF, DC)
+        Vm, *channels = y
+        tcomp = time.time() - tstart
 
-            # Run titration
-            Astim, t, y, stimstate, lat, tcomp = self.titrate(tstim, toffset, PRF, DC)
-            Vm, *channels = y
-            nspikes = 1
-            if Astim is np.nan:
-                outstr = 'no spikes detected within titration interval'
-                nspikes = 0
-            else:
-                nspikes = 1
-                outstr = 'Athr = {}A/m2'.format(si_format(Astim * 1e-3, 2, space=' '))
+        # Detect spikes on Vm signal
+        dt = t[1] - t[0]
+        ipeaks, *_ = findPeaks(Vm, SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
+                               SPIKE_MIN_VPROM)
+        nspikes = ipeaks.size
+        lat = t[ipeaks[0]] if nspikes > 0 else 'N/A'
+        outstr = '{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else '')
         logger.debug('completed in %s, %s', si_format(tcomp, 1), outstr)
         sr = np.mean(1 / np.diff(t[ipeaks])) if nspikes > 1 else None
 

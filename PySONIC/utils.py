@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-18 16:50:08
+# @Last Modified time: 2019-04-03 20:32:03
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -312,7 +312,7 @@ def getLookups4D(mechname):
         :param mechname: name of membrane density mechanism
         :return: 4-tuple with 1D numpy arrays of reference input vectors (charge density and
             one other variable), a dictionary of associated 2D lookup numpy arrays, and
-            a dictionnary with information about the other variable.
+            a dictionary with information about the other variable.
     '''
 
     # Check lookup file existence
@@ -363,10 +363,10 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
         :param mechname: name of membrane density mechanism
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
-        :param Adrive: Acoustic peak pressure ampplitude (Hz)
+        :param Adrive: Acoustic peak pressure amplitude (Hz)
         :return: 4-tuple with 1D numpy arrays of reference input vectors (charge density and
             one other variable), a dictionary of associated 2D lookup numpy arrays, and
-            a dictionnary with information about the other variable.
+            a dictionary with information about the other variable.
     '''
 
     # Get 4D lookups and input vectors
@@ -523,3 +523,43 @@ def getIndex(container, value):
         return imatches[0]
     elif isinstance(value, str):
         return container.index(value)
+
+
+def titrate(target_func, args, xbounds, dx_thr):
+    ''' Use a binary search to determine a target value x within a specific search interval.
+
+        At each iteration, a target function is called that can return one of 3 options:
+        -1: refine search to the upper-half of the search interval
+        +1: refine search to the lower-half of the search interval
+        0: criterion is reached
+
+        If the target function returns 0, the function returns x.
+        Otherwise, it keeps iterating by calling itself recursively.
+
+        :param target_func: function to be called at each iteration.
+        :param args: list of function arguments other than x
+        :param xbounds: search interval for x (progressively refined)
+        :param dx_thr: interval span below which the iteration stops
+        :return: target value x
+    '''
+    # Determine current x as the middle of the search interval
+    x = (xbounds[0] + xbounds[1]) / 2
+
+    # Call the target function with x
+    y = target_func(x, *args)
+
+    # If titration interval is small enough, stop recursion
+    if (xbounds[1] - xbounds[0]) <= dx_thr:
+
+        # If criterion is reached, return threshold value
+        if y == 0:
+            return x
+        # Otherwise, return NaN
+        else:
+            logger.warning('titration does not converge within this interval')
+            return np.nan
+
+    # Otherwise, refine titration interval and iterate recursively
+    else:
+        xbounds = (x, xbounds[1]) if y == -1 else (xbounds[0], x)
+        return titrate(target_func, args, xbounds, dx_thr)

@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 18:23:49
+# @Last Modified time: 2019-04-03 16:33:28
 
 import numpy as np
 from ..core import PointNeuron
@@ -41,7 +41,6 @@ class Thalamic(PointNeuron):
         alpha = 0.32 * self.vtrap(13 - Vdiff, 4)  # ms-1
         return alpha * 1e3  # s-1
 
-
     def betam(self, Vm):
         ''' Voltage-dependent inactivation rate of m-gate
 
@@ -51,7 +50,6 @@ class Thalamic(PointNeuron):
         Vdiff = Vm - self.VT
         beta = 0.28 * self.vtrap(Vdiff - 40, 5)  # ms-1
         return beta * 1e3  # s-1
-
 
     def alphah(self, Vm):
         ''' Voltage-dependent activation rate of h-gate
@@ -63,7 +61,6 @@ class Thalamic(PointNeuron):
         alpha = (0.128 * np.exp(-(Vdiff - 17) / 18))  # ms-1
         return alpha * 1e3  # s-1
 
-
     def betah(self, Vm):
         ''' Voltage-dependent inactivation rate of h-gate
 
@@ -73,7 +70,6 @@ class Thalamic(PointNeuron):
         Vdiff = Vm - self.VT
         beta = (4 / (1 + np.exp(-(Vdiff - 40) / 5)))  # ms-1
         return beta * 1e3  # s-1
-
 
     def alphan(self, Vm):
         ''' Voltage-dependent activation rate of n-gate
@@ -85,7 +81,6 @@ class Thalamic(PointNeuron):
         alpha = 0.032 * self.vtrap(15 - Vdiff, 5)  # ms-1
         return alpha * 1e3  # s-1
 
-
     def betan(self, Vm):
         ''' Voltage-dependent inactivation rate of n-gate
 
@@ -96,7 +91,6 @@ class Thalamic(PointNeuron):
         beta = (0.5 * np.exp(-(Vdiff - 10) / 40))  # ms-1
         return beta * 1e3  # s-1
 
-
     def derM(self, Vm, m):
         ''' Evolution of m-gate open-probability
 
@@ -105,7 +99,6 @@ class Thalamic(PointNeuron):
             :return: time derivative of m-gate open-probability (s-1)
         '''
         return self.alpham(Vm) * (1 - m) - self.betam(Vm) * m
-
 
     def derH(self, Vm, h):
         ''' Evolution of h-gate open-probability
@@ -116,7 +109,6 @@ class Thalamic(PointNeuron):
         '''
         return self.alphah(Vm) * (1 - h) - self.betah(Vm) * h
 
-
     def derN(self, Vm, n):
         ''' Evolution of n-gate open-probability
 
@@ -125,7 +117,6 @@ class Thalamic(PointNeuron):
             :return: time derivative of n-gate open-probability (s-1)
         '''
         return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
-
 
     def derS(self, Vm, s):
         ''' Evolution of s-gate open-probability
@@ -136,7 +127,6 @@ class Thalamic(PointNeuron):
         '''
         return (self.sinf(Vm) - s) / self.taus(Vm)
 
-
     def derU(self, Vm, u):
         ''' Evolution of u-gate open-probability
 
@@ -145,7 +135,6 @@ class Thalamic(PointNeuron):
             :return: time derivative of u-gate open-probability (s-1)
         '''
         return (self.uinf(Vm) - u) / self.tauu(Vm)
-
 
     def iNa(self, m, h, Vm):
         ''' Sodium current
@@ -157,7 +146,6 @@ class Thalamic(PointNeuron):
         '''
         return self.gNabar * m**3 * h * (Vm - self.ENa)
 
-
     def iKd(self, n, Vm):
         ''' delayed-rectifier Potassium current
 
@@ -166,7 +154,6 @@ class Thalamic(PointNeuron):
             :return: current per unit area (mA/m2)
         '''
         return self.gKdbar * n**4 * (Vm - self.EK)
-
 
     def iCaT(self, s, u, Vm):
         ''' low-threshold (Ts-type) Calcium current
@@ -178,7 +165,6 @@ class Thalamic(PointNeuron):
         '''
         return self.gCaTbar * s**2 * u * (Vm - self.ECa)
 
-
     def iLeak(self, Vm):
         ''' non-specific leakage current
 
@@ -186,7 +172,6 @@ class Thalamic(PointNeuron):
             :return: current per unit area (mA/m2)
         '''
         return self.gLeak * (Vm - self.ELeak)
-
 
     def currents(self, Vm, states):
         ''' Overriding of abstract parent method. '''
@@ -197,7 +182,6 @@ class Thalamic(PointNeuron):
             'iCaT': self.iCaT(s, u, Vm),
             'iLeak': self.iLeak(Vm)
         }  # mA/m2
-
 
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
@@ -211,7 +195,6 @@ class Thalamic(PointNeuron):
 
         return np.array([m_eq, h_eq, n_eq, s_eq, u_eq])
 
-
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
 
@@ -223,7 +206,6 @@ class Thalamic(PointNeuron):
         dudt = self.derU(Vm, u)
 
         return [dmdt, dhdt, dndt, dsdt, dudt]
-
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
@@ -246,8 +228,6 @@ class Thalamic(PointNeuron):
         return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg,
                          as_avg, bs_avg, au_avg, bu_avg])
 
-
-
     def derStatesEff(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
@@ -261,7 +241,6 @@ class Thalamic(PointNeuron):
         dudt = rates['alphau'] * (1 - u) - rates['betau'] * u
 
         return [dmdt, dhdt, dndt, dsdt, dudt]
-
 
 
 class ThalamicRE(Thalamic):
@@ -290,10 +269,8 @@ class ThalamicRE(Thalamic):
     ELeak = -90.0  # Non-specific leakage Nernst potential (mV)
     VT = -67.0  # Spike threshold adjustment parameter (mV)
 
-
     def __init__(self):
         super().__init__()
-
 
     def sinf(self, Vm):
         ''' Voltage-dependent steady-state opening of s-gate
@@ -303,7 +280,6 @@ class ThalamicRE(Thalamic):
         '''
         return 1.0 / (1.0 + np.exp(-(Vm + 52.0) / 7.4))  # prob
 
-
     def taus(self, Vm):
         ''' Voltage-dependent adaptation time for adaptation of s-gate
 
@@ -311,7 +287,6 @@ class ThalamicRE(Thalamic):
             :return: adaptation time (s)
         '''
         return (1 + 0.33 / (np.exp((Vm + 27.0) / 10.0) + np.exp(-(Vm + 102.0) / 15.0))) * 1e-3  # s
-
 
     def uinf(self, Vm):
         ''' Voltage-dependent steady-state opening of u-gate
@@ -321,7 +296,6 @@ class ThalamicRE(Thalamic):
         '''
         return 1.0 / (1.0 + np.exp((Vm + 80.0) / 5.0))  # prob
 
-
     def tauu(self, Vm):
         ''' Voltage-dependent adaptation time for adaptation of u-gate
 
@@ -329,7 +303,6 @@ class ThalamicRE(Thalamic):
             :return: adaptation time (s)
         '''
         return (28.3 + 0.33 / (np.exp((Vm + 48.0) / 4.0) + np.exp(-(Vm + 407.0) / 50.0))) * 1e-3  # s
-
 
 
 class ThalamoCortical(Thalamic):
@@ -345,7 +318,6 @@ class ThalamoCortical(Thalamic):
         *McCormick, D.A., and Huguenard, J.R. (1992). A model of the electrophysiological
         properties of thalamocortical relay neurons. J. Neurophysiol. 68, 1384–1400.*
     '''
-
 
     # Name of channel mechanism
     name = 'TC'
@@ -373,7 +345,6 @@ class ThalamoCortical(Thalamic):
     k3 = 100.0  # intracellular Ca2+ regulation factor (s-1)
     k4 = 1.0  # intracellular Ca2+ regulation factor (s-1)
 
-
     def __init__(self):
         super().__init__()
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
@@ -385,7 +356,6 @@ class ThalamoCortical(Thalamic):
         pltscheme['i_{H}\\ kin.'] = ['O', 'OL', 'P0']
         pltscheme['[Ca^{2+}]_i'] = ['Cai']
         return pltscheme
-
 
     def getPltVars(self, wrapleft='df["', wrapright='"]'):
         pltvars = super().getPltVars(wrapleft, wrapright)
@@ -410,7 +380,6 @@ class ThalamoCortical(Thalamic):
         })
         return pltvars
 
-
     def sinf(self, Vm):
         ''' Voltage-dependent steady-state opening of s-gate
 
@@ -418,7 +387,6 @@ class ThalamoCortical(Thalamic):
             :return: steady-state opening (-)
         '''
         return 1.0 / (1.0 + np.exp(-(Vm + self.Vx + 57.0) / 6.2))  # prob
-
 
     def taus(self, Vm):
         ''' Voltage-dependent adaptation time for adaptation of s-gate
@@ -429,7 +397,6 @@ class ThalamoCortical(Thalamic):
         x = np.exp(-(Vm + self.Vx + 132.0) / 16.7) + np.exp((Vm + self.Vx + 16.8) / 18.2)
         return 1.0 / 3.7 * (0.612 + 1.0 / x) * 1e-3  # s
 
-
     def uinf(self, Vm):
         ''' Voltage-dependent steady-state opening of u-gate
 
@@ -437,7 +404,6 @@ class ThalamoCortical(Thalamic):
             :return: steady-state opening (-)
         '''
         return 1.0 / (1.0 + np.exp((Vm + self.Vx + 81.0) / 4.0))  # prob
-
 
     def tauu(self, Vm):
         ''' Voltage-dependent adaptation time for adaptation of u-gate
@@ -450,7 +416,6 @@ class ThalamoCortical(Thalamic):
         else:
             return 1 / 3.7 * (np.exp(-(Vm + self.Vx + 22) / 10.5) + 28.0) * 1e-3  # s
 
-
     def derS(self, Vm, s):
         ''' Evolution of s-gate open-probability
 
@@ -459,7 +424,6 @@ class ThalamoCortical(Thalamic):
             :return: time derivative of s-gate open-probability (s-1)
         '''
         return (self.sinf(Vm) - s) / self.taus(Vm)
-
 
     def derU(self, Vm, u):
         ''' Evolution of u-gate open-probability
@@ -470,7 +434,6 @@ class ThalamoCortical(Thalamic):
         '''
         return (self.uinf(Vm) - u) / self.tauu(Vm)
 
-
     def oinf(self, Vm):
         ''' Voltage-dependent steady-state opening of O-gate
 
@@ -478,7 +441,6 @@ class ThalamoCortical(Thalamic):
             :return: steady-state opening (-)
         '''
         return 1.0 / (1.0 + np.exp((Vm + 75.0) / 5.5))
-
 
     def tauo(self, Vm):
         ''' Voltage-dependent adaptation time for adaptation of O-gate
@@ -488,7 +450,6 @@ class ThalamoCortical(Thalamic):
         '''
         return 1 / (np.exp(-14.59 - 0.086 * Vm) + np.exp(-1.87 + 0.0701 * Vm)) * 1e-3
 
-
     def alphao(self, Vm):
         ''' Voltage-dependent transition rate between closed and open forms of O-gate
 
@@ -497,7 +458,6 @@ class ThalamoCortical(Thalamic):
         '''
         return self.oinf(Vm) / self.tauo(Vm)
 
-
     def betao(self, Vm):
         ''' Voltage-dependent transition rate between open and closed forms of O-gate
 
@@ -505,7 +465,6 @@ class ThalamoCortical(Thalamic):
             :return: rate (s-1)
         '''
         return (1 - self.oinf(Vm)) / self.tauo(Vm)
-
 
     def derC(self, C, O, Vm):
         ''' Evolution of O-gate closed-probability
@@ -516,7 +475,6 @@ class ThalamoCortical(Thalamic):
             :return: time derivative of O-gate closed-probability (s-1)
         '''
         return self.betao(Vm) * O - self.alphao(Vm) * C
-
 
     def derO(self, C, O, P0, Vm):
         ''' Evolution of O-gate open-probability
@@ -529,7 +487,6 @@ class ThalamoCortical(Thalamic):
         '''
         return - self.derC(C, O, Vm) - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
 
-
     def OL(self, O, C):
         ''' O-gate locked-open probability.
 
@@ -540,7 +497,6 @@ class ThalamoCortical(Thalamic):
         '''
         return 1 - O - C
 
-
     def derP0(self, P0, Cai):
         ''' Evolution of unbound probability of Ih regulating factor.
 
@@ -549,7 +505,6 @@ class ThalamoCortical(Thalamic):
             :return: time derivative of ubnound probability (s-1)
         '''
         return self.k2 * (1 - P0) - self.k1 * P0 * Cai**self.nCa
-
 
     def derCai(self, Cai, s, u, Vm):
         ''' Evolution of submembrane Calcium concentration.
@@ -566,7 +521,6 @@ class ThalamoCortical(Thalamic):
         '''
         return (self.Cai_min - Cai) / self.taur_Cai - self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)
 
-
     def iKLeak(self, Vm):
         ''' Potassium leakage current
 
@@ -574,7 +528,6 @@ class ThalamoCortical(Thalamic):
             :return: current per unit area (mA/m2)
         '''
         return self.gKLeak * (Vm - self.EK)
-
 
     def iH(self, O, C, Vm):
         ''' outward mixed cationic current
@@ -586,7 +539,6 @@ class ThalamoCortical(Thalamic):
         '''
         return self.gHbar * (O + 2 * self.OL(O, C)) * (Vm - self.EH)
 
-
     def currents(self, Vm, states):
         ''' Overriding of abstract parent method. '''
         m, h, n, s, u, O, C, _, _ = states
@@ -595,6 +547,47 @@ class ThalamoCortical(Thalamic):
         currents['iH'] = self.iH(O, C, Vm)  # mA/m2
         return currents
 
+    def Caiinf(self, Vm, s, u):
+        ''' Find the steady-state intracellular Calcium concentration for a
+            specific membrane potential and voltage-gated channel states.
+
+            :param Vm: membrane potential (mV)
+            :param s: open-probability of s-gate
+            :param u: open-probability of u-gate
+            :return: steady-state Calcium concentration in submembrane space (M)
+        '''
+        return self.Cai_min - self.taur_Cai * self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)
+
+    def P0inf(self, Cai):
+        ''' Find the steady-state unbound probability of Ih regulating factor
+            for a specific intracellular Calcium concentration.
+
+            :param Cai : Calcium concentration in submembrane space (M)
+            :return: steady-state unbound probability of Ih regulating factor
+        '''
+        return self.k2 / (self.k2 + self.k1 * Cai**self.nCa)
+
+    def Oinf(self, Cai, Vm):
+        ''' Find the steady-state O-gate open-probability for specific
+            membrane potential and intracellular Calcium concentration.
+
+            :param Cai : Calcium concentration in submembrane space (M)
+            :param Vm: membrane potential (mV)
+            :return: steady-state O-gate open-probability
+        '''
+        BA = self.betao(Vm) / self.alphao(Vm)
+        return self.k4 / (self.k3 * (1 - self.P0inf(Cai)) + self.k4 * (1 + BA))
+
+    def Cinf(self, Cai, Vm):
+        ''' Find the steady-state O-gate closed-probability for specific
+            membrane potential and intracellular Calcium concentration.
+
+            :param Cai : Calcium concentration in submembrane space (M)
+            :param Vm: membrane potential (mV)
+            :return: steady-state O-gate closed-probability
+        '''
+        BA = self.betao(Vm) / self.alphao(Vm)
+        return BA * self.Oinf(Cai, Vm)
 
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
@@ -605,17 +598,14 @@ class ThalamoCortical(Thalamic):
         ueq = NaKCa_eq[4]
 
         # Other steady-states
-        iCaT_eq = self.iCaT(seq, ueq, Vm)
-        Cai_eq = self.Cai_min - self.taur_Cai * self.iCa_to_Cai_rate * iCaT_eq
-        P0_eq = self.k2 / (self.k2 + self.k1 * Cai_eq**self.nCa)
-        BA = self.betao(Vm) / self.alphao(Vm)
-        O_eq = self.k4 / (self.k3 * (1 - P0_eq) + self.k4 * (1 + BA))
-        C_eq = BA * O_eq
+        Cai_eq = self.Caiinf(Vm, seq, ueq)
+        P0_eq = self.P0inf(Cai_eq)
+        O_eq = self.Oinf(Cai_eq, Vm)
+        C_eq = self.Cinf(Cai_eq, Vm)
 
         kin_eq = np.array([O_eq, C_eq, P0_eq, Cai_eq])
 
         return np.concatenate((NaKCa_eq, kin_eq))
-
 
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
@@ -632,7 +622,6 @@ class ThalamoCortical(Thalamic):
 
         return NaKCa_derstates + [dOdt, dCdt, dP0dt, dCaidt]
 
-
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
@@ -646,7 +635,6 @@ class ThalamoCortical(Thalamic):
 
         # Return array of coefficients
         return np.concatenate((NaKCa_effrates, iH_effrates))
-
 
     def derStatesEff(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''

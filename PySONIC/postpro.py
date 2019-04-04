@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 23:49:29
+# @Last Modified time: 2019-04-03 14:23:58
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -41,7 +41,7 @@ def getStableFixedPoints(x, dx):
 
         :param x: variable (1D array)
         :param dx: derivative (1D array)
-        :return: array of stable fixed points values (or None if none is found).
+        :return: array of stable fixed points values (or None if none is found)
     '''
 
     stable_fps = []
@@ -54,6 +54,36 @@ def getStableFixedPoints(x, dx):
         return np.array(stable_fps)
     else:
         return None
+
+
+def getEqPoint1D(x, dx, x0):
+    ''' Determine equilibrium point in a 1D plane phase profile, for a given starting point.
+
+        :param x: variable (1D array)
+        :param dx: derivative (1D array)
+        :param x0: abscissa of starting point (float)
+        :return: abscissa of equilibrium point (or np.nan if none is found)
+    '''
+
+    # Find stable fixed points in 1D plane phase profile
+    x_SFPs = getStableFixedPoints(x, dx)
+    if x_SFPs is None:
+        return np.nan
+
+    # Determine relevant stable fixed point from y0 sign
+    y0 = np.interp(x0, x, dx)
+    inds_subset = x_SFPs >= x0
+    ind_SFP = 0
+    if y0 < 0:
+        inds_subset = ~inds_subset
+        ind_SFP = -1
+    x_SFPs = x_SFPs[inds_subset]
+
+    if x_SFPs is None:
+        return np.nan
+
+    return x_SFPs[ind_SFP]
+
 
 
 def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising', kpsh=False, valley=False, ax=None):
