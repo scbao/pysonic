@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-03 21:04:46
+# @Last Modified time: 2019-04-05 17:12:27
 
 import os
 import inspect
@@ -567,6 +567,29 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 raise ValueError('Pulsed protocol incompatible with hybrid integration method')
             return self.runHybrid(Fdrive, Adrive, tstim, toffset)
 
+
+    def nSpikes(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method):
+        ''' Run a simulation and determine number of spikes in the response.
+
+            :param Adrive: acoustic amplitude (Pa)
+            :param Fdrive: US frequency (Hz)
+            :param tstim: duration of US stimulation (s)
+            :param toffset: duration of the offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: pulse duty cycle (-)
+            :return: number of spikes found in response
+        '''
+        t, y, _ = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
+        dt = t[1] - t[0]
+        ipeaks, *_ = findPeaks(y[2, :], SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
+                               SPIKE_MIN_QPROM)
+        nspikes = ipeaks.size
+        logger.debug('A = %sPa ---> %s spike%s detected',
+                     si_format(Adrive, 2, space=' '),
+                     nspikes, "s" if nspikes > 1 else "")
+        return nspikes
+
+
     def titrate(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Arange=None, method='sonic'):
         ''' Use a binary search to determine the threshold amplitude needed to obtain
             neural excitation for a given frequency, duration, PRF and duty cycle.
@@ -580,24 +603,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: determined threshold amplitude (Pa)
         '''
 
-        # Define target function
-        def target_func(Adrive, Fdrive, tstim, toffset, PRF, DC, method):
-            t, y, _ = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
-            dt = t[1] - t[0]
-            ipeaks, *_ = findPeaks(y[2, :], SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
-                                   SPIKE_MIN_QPROM)
-            nspikes = ipeaks.size
-            logger.debug('A = %sPa ---> %s spike%s detected',
-                         si_format(Adrive, 2, space=' '),
-                         nspikes, "s" if nspikes > 1 else "")
-            return {0: -1, 1: 0}.get(nspikes, 1)
-
         # Determine amplitude interval if needed
         if Arange is None:
             Arange = (0, getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max())
 
         # Titrate
-        return titrate(target_func, (Fdrive, tstim, toffset, PRF, DC, method),
+        return titrate(self.nSpikes, (Fdrive, tstim, toffset, PRF, DC, method),
                        Arange, TITRATION_ASTIM_DA_MAX)
 
 

@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-19 16:42:22
+# @Last Modified time: 2019-04-05 17:14:29
 
 ''' Algorithmic constants used in the package. '''
 
@@ -49,13 +49,7 @@ SPIKE_MIN_DT = 5e-4  # minimal time interval for spike detection on charge signa
 MIN_NSPIKES_SPECTRUM = 3  # minimum number of spikes to compute firing rate spectrum
 
 # Titrations
-TITRATION_ASTIM_RHEOBASE_LOG_CONF_INTERVAL = 2
 TITRATION_T_OFFSET = 50e-3  # offset period for titration procedures (s)
-TITRATION_ASTIM_A_MAX = 6e5 - 1  # initial acoustic pressure upper bound for titration (Pa)
-TITRATION_ASTIM_DA_MAX = 1e3  # acoustic pressure search range threshold for titration (Pa)
+TITRATION_ASTIM_DA_MAX = 1e2  # acoustic pressure search range threshold for titration (Pa)
 TITRATION_ESTIM_A_MAX = 50.0  # initial current density upper bound for titration (mA/m2)
 TITRATION_ESTIM_DA_MAX = 0.1  # current density search range threshold for titration (mA/m2)
-TITRATION_T_MAX = 2e-1  # initial stimulus duration upper bound for titration (s)
-TITRATION_DT_THR = 1e-3  # stimulus duration search range threshold for titration (s)
-TITRATION_DDC_THR = 0.01  # stimulus duty cycle search range threshold for titration (-)
-TITRATION_DC_MAX = 1.0  # initial stimulus duty cycle upper bound for titration (-)

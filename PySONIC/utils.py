@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-03 20:32:03
+# @Last Modified time: 2019-04-05 17:14:39
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -321,7 +321,7 @@ def getLookups4D(mechname):
         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 
     # Load lookups dictionary
-    logger.debug('Loading lookup table')
+    logger.debug('Loading %s lookup table', mechname)
     with open(lookup_path, 'rb') as fh:
         df = pickle.load(fh)
         inputs = df['input']
@@ -431,7 +431,7 @@ def getLookups2Dfs(mechname, a, Fdrive, fs):
         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 
     # Load lookups dictionary
-    logger.debug('Loading lookup table')
+    logger.debug('Loading %s lookup table with fs = %.0f%%', mechname, fs * 1e2)
     with open(lookup_path, 'rb') as fh:
         df = pickle.load(fh)
         inputs = df['input']
@@ -525,41 +525,50 @@ def getIndex(container, value):
         return container.index(value)
 
 
-def titrate(target_func, args, xbounds, dx_thr):
-    ''' Use a binary search to determine a target value x within a specific search interval.
+def titrate(nspikes_func, args, xbounds, dx_thr, is_excited=[]):
+    ''' Use a binary search to determine an excitation threshold
+        within a specific search interval.
 
-        At each iteration, a target function is called that can return one of 3 options:
-        -1: refine search to the upper-half of the search interval
-        +1: refine search to the lower-half of the search interval
-        0: criterion is reached
-
-        If the target function returns 0, the function returns x.
-        Otherwise, it keeps iterating by calling itself recursively.
-
-        :param target_func: function to be called at each iteration.
-        :param args: list of function arguments other than x
-        :param xbounds: search interval for x (progressively refined)
-        :param dx_thr: interval span below which the iteration stops
-        :return: target value x
+        :param nspikes_func: function returning the number of spikes for a given condition
+        :param args: list of function arguments other than refined value
+        :param xbounds: search interval for threshold (progressively refined)
+        :param dx_thr: accuracy criterion for threshold
+        :return: excitation threshold
     '''
-    # Determine current x as the middle of the search interval
     x = (xbounds[0] + xbounds[1]) / 2
+    nspikes = nspikes_func(x, *args)
+    is_excited.append(nspikes > 0)
 
-    # Call the target function with x
-    y = target_func(x, *args)
+    conv = False
 
-    # If titration interval is small enough, stop recursion
+    # When titration interval becomes small enough
     if (xbounds[1] - xbounds[0]) <= dx_thr:
+        logger.debug('titration interval smaller than defined threshold')
 
-        # If criterion is reached, return threshold value
-        if y == 0:
-            return x
-        # Otherwise, return NaN
+        # If exactly one spike, convergence is achieved -> return
+        if nspikes == 1:
+            logger.debug('exactly one spike -> convergence')
+            conv = True
+
+        # If both conditions have been encountered during titration process,
+        # we're going towards convergence
+        elif (0 in is_excited and 1 in is_excited):
+            logger.debug('converging around threshold')
+
+            # if current condition yields excitation, convergence is achieved
+            if is_excited[-1]:
+                logger.debug('currently above threshold -> convergence')
+                conv = True
+
+        # If only one condition has been encountered during titration process,
+        # then no titration is impossible within the defined interval -> return NaN
         else:
             logger.warning('titration does not converge within this interval')
             return np.nan
 
-    # Otherwise, refine titration interval and iterate recursively
+    # Return threshold if convergence is reached, otherwise refine interval and iterate
+    if conv:
+        return x
     else:
-        xbounds = (x, xbounds[1]) if y == -1 else (xbounds[0], x)
-        return titrate(target_func, args, xbounds, dx_thr)
+        xbounds = (xbounds[0], x) if is_excited[-1] else (x, xbounds[1])
+        return titrate(nspikes_func, args, xbounds, dx_thr, is_excited=is_excited)

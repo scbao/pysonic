@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm, colors
 
-from ..postpro import getEqPoint1D
+from ..postpro import getFixedPoints, getEqPoint1D
 from ..core import NeuronalBilayerSonophore
 from .pltutils import *
 
@@ -172,6 +172,7 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param amps: US amplitudes (Pa)
+        :param DC: duty cycle (-)
         :param Qi: initial membrane charge density for phase-plane analysis (C/m2)
         :param varname: extraction key for variable to plot
         :return: figure handle
@@ -186,10 +187,6 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
     Aref, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DC)
     df = {k: QS_states[i] for i, k in enumerate(neuron.states)}
     df['Vm'] = Vmeff
-
-    # If needed, get default initial membrane charge density for phase-plane analysis
-    if Qi is None:
-        Qi = neuron.Qm0()  # C/m2
 
     #  Define color code
     mymap = plt.get_cmap(cmap)
@@ -213,18 +210,21 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
     for key in ['top', 'right']:
         ax.spines[key].set_visible(False)
 
-    if plotQi:
+    if plotQi and Qi is not None:
         ax.axvline(Qi * Qvar['factor'], label='$\\rm Q_{m,i}$', c='silver')
     y0_str = '{}0'.format(varname)
     if hasattr(neuron, y0_str):
         ax.axhline(getattr(neuron, y0_str) * pltvar.get('factor', 1),
                    label=y0_str, c='k', linewidth=0.5)
+
     for i, Adrive in enumerate(Aref):
         var = extractPltVar(
             neuron, pltvar, pd.DataFrame({k: df[k][i] for k in df.keys()}), name=varname)
         ax.plot(Qref * Qvar['factor'], var, c=sm.to_rgba(Adrive * 1e-3), zorder=0)
         if varname == 'iNet':
-            ax.plot(getEqPoint1D(Qref, -var, Qi) * Qvar['factor'], 0, '.', c='k', zorder=1,
+            # mark eq. point if starting point provided, otherwise mark all SFPs
+            Qzeros = getFixedPoints(Qref, -var) if Qi is None else [getEqPoint1D(Qref, -var, Qi)]
+            ax.plot(np.array(Qzeros) * Qvar['factor'], np.zeros(len(Qzeros)), '.', c='k', zorder=1,
                     label='$\\rm Q_{m,eq}$' if i == 0 else '')
     if varname == 'iNet':
         ax.axhline(0, color='k', linewidth=0.5)
@@ -275,34 +275,42 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3
 
     # For each neuron
     icolor = 0
+
     for i, neuron in enumerate(neurons):
 
         nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-        rheobase_amps, _ = nbls.findRheobaseAmps(DCs, Fdrive, neuron.VT)
+
+        # Extract 3D (nA x nQ x nDC) arrays for QS states and QS Vmeff
+        Aref, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DCs)
+        if DCs.size == 1:
+            QS_states = QS_states.reshape((*QS_states.shape, 1))
+            Vmeff = Vmeff.reshape((*Vmeff.shape, 1))
+
+        # Compute 3D QSS charge variation array
+        dQdt = -neuron.iNet(Vmeff, QS_states)
+
         for j, DC in enumerate(DCs):
-
-            print(neuron.name, DC)
-
-            # Compute 2D array of QSS net current
-            _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DC)
-            iNet = neuron.iNet(Vmeff, QS_states)
-
-            # If needed, get default initial membrane charge density for phase-plane analysis
-            if Qi is None:
-                Qi = neuron.Qm0()  # C/m2
-
-            # Plot the equilibrium charge density for each acoustic amplitude
-            Qeq = np.array([getEqPoint1D(Qref, dQdt, Qi) for dQdt in -iNet])
             color = 'C{}'.format(icolor)
-            ax.plot(amps * 1e-3, Qeq * 1e5, c=color,
+
+            # Plot either all charge SFPs or only equilibrium charge (if Qi provided)
+            # for each  acoustic amplitude
+            Aplot, Qplot = [], []
+            for k, Adrive in enumerate(Aref):
+                dQ_profile = dQdt[k, :, j]
+                if Qi[i] is None:
+                    Qzeros = getFixedPoints(Qref, dQ_profile).tolist()
+                else:
+                    Qzeros = [getEqPoint1D(Qref, dQdt[k, :, j], Qi[i])]
+                Qplot += Qzeros
+                Aplot += [Adrive] * len(Qzeros)
+            ax.plot(np.array(Aplot) * 1e-3, np.array(Qplot) * 1e5, '.', c=color,
                     label='{} neuron - {:.0f} % DC'.format(neuron.name, DC * 1e2))
 
             # If specified, compute and plot the threshold excitation amplitude
             if titrate:
                 Athr = nbls.titrate(Fdrive, tstim, toffset, PRF=PRF, DC=DC,
-                                    Arange=(amps.min(), amps.max()))  # Pa
+                                    Arange=(Aref.min(), Aref.max()))  # Pa
                 ax.axvline(Athr * 1e-3, c=color, linestyle='--')
-                ax.axvline(rheobase_amps[j] * 1e-3, c=color, linestyle='-.')
 
             icolor += 1
 

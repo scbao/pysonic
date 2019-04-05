@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 23:15:37
+# @Last Modified time: 2019-04-05 17:39:08
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -16,7 +16,7 @@ import logging
 
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.utils import *
-from PySONIC.postpro import getStableFixedPoints
+from PySONIC.postpro import getFixedPoints
 from PySONIC.neurons import getNeuronsDict
 from PySONIC.plt import plotVarsQSS, plotQSSVarVsAmp, plotVarDynamics
 
@@ -93,7 +93,7 @@ def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
     # (since stabilization occurs during repolarization phase)
     Qeq_QSS = np.empty(amps.size)
     for i, Adrive in enumerate(amps):
-        SFPs = getStableFixedPoints(Qref, -iNet[i, :])
+        SFPs = getFixedPoints(Qref, -iNet[i, :])
         Qeq_QSS[i] = SFPs.max() if SFPs is not None else np.nan
 
     # Get sabilization charge value in simulations

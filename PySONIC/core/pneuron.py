@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-03 20:59:33
+# @Last Modified time: 2019-04-05 17:11:07
 
 import os
 import time
@@ -477,8 +477,28 @@ class PointNeuron(metaclass=abc.ABCMeta):
         # Return output variables
         return (t, y, stimstate)
 
+    def nSpikes(self, Astim, tstim, toffset, PRF, DC):
+        ''' Run a simulation and determine number of spikes in the response.
+
+            :param Astim: current amplitude (mA/m2)
+            :param tstim: duration of US stimulation (s)
+            :param toffset: duration of the offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: pulse duty cycle (-)
+            :return: number of spikes found in response
+        '''
+        t, y, _ = self.simulate(Astim, tstim, toffset, PRF, DC)
+        dt = t[1] - t[0]
+        ipeaks, *_ = findPeaks(y[0, :], SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
+                               SPIKE_MIN_VPROM)
+        nspikes = ipeaks.size
+        logger.debug('A = %sA/m2 ---> %s spike%s detected',
+                     si_format(Astim * 1e-3, 2, space=' '),
+                     nspikes, "s" if nspikes > 1 else "")
+        return nspikes
+
     def titrate(self, tstim, toffset, PRF=None, DC=1.0, Arange=(0., 2 * TITRATION_ESTIM_A_MAX)):
-        ''' Use a dichotomic recursive search to determine the threshold amplitude needed
+        ''' Use a binary search to determine the threshold amplitude needed
             to obtain neural excitation for a given duration, PRF and duty cycle.
 
             :param tstim: duration of US stimulation (s)
@@ -486,24 +506,9 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
             :param Arange: search interval for Astim, iteratively refined
-            :return: 5-tuple with the determined threshold, time profile,
-                 solution matrix, state vector and response latency
+            :return: excitation threshold amplitude (mA/m2)
         '''
-
-        # Define target function
-        def target_func(Astim, tstim, toffset, PRF, DC):
-            t, y, _ = self.simulate(Astim, tstim, toffset, PRF, DC)
-            dt = t[1] - t[0]
-            ipeaks, *_ = findPeaks(y[0, :], SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
-                                   SPIKE_MIN_VPROM)
-            nspikes = ipeaks.size
-            logger.debug('A = %sA/m2 ---> %s spike%s detected',
-                         si_format(Astim * 1e-3, 2, space=' '),
-                         nspikes, "s" if nspikes > 1 else "")
-            return {0: -1, 1: 0}.get(nspikes, 1)
-
-        # Titrate
-        return titrate(target_func, (tstim, toffset, PRF, DC), Arange, TITRATION_ESTIM_DA_MAX)
+        return titrate(self.nSpikes, (tstim, toffset, PRF, DC), Arange, TITRATION_ESTIM_DA_MAX)
 
     def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
         ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
