@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-05 17:12:27
+# @Last Modified time: 2019-04-05 21:01:36
 
 import os
 import inspect
@@ -828,12 +828,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                         is_computed[i] = 1
 
         # Return reference inputs and output arrays
-        return amps, charges, np.squeeze(Vmeff_on), np.squeeze(QS_states)
+        return amps, charges, np.squeeze(Vmeff_avg), np.squeeze(QS_states)
 
 
     def findRheobaseAmps(self, DCs, Fdrive, Vthr):
         ''' Find the rheobase amplitudes (i.e. threshold acoustic amplitudes of infinite duration
-            that would result in excitation) of a specific neuron for various stimulation duty cycles.
+            that would result in excitation) of a specific neuron for various duty cycles.
 
             :param DCs: duty cycles vector (-)
             :param Fdrive: acoustic drive frequency (Hz)
@@ -849,30 +849,29 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         if DCs.size == 1:
             QS_states = QS_states.reshape((*QS_states.shape, 1))
+            Vmeff = Vmeff.reshape((*Vmeff.shape, 1))
 
-        Athr = np.empty(DCs.size)
-        for i, DC in enumerate(DCs):
-            # Compute US-ON and US-OFF net membrane current from QSS variables
-            iNet_on = self.neuron.iNet(Vmeff, QS_states[:, :, i])
-            iNet_off = self.neuron.iNet(Vthr, QS_states[:, :, i])
+        # Compute 2D QSS charge variation array at Qthr
+        dQdt = -self.neuron.iNet(Vmeff, QS_states)
 
-            # Compute the pulse average net current along the amplitude space
-            iNet_avg = iNet_on * DC + iNet_off * (1 - DC)
+        # Find the threshold amplitude that cancels dQdt for each duty cycle
+        Arheobase = np.array([np.interp(0, dQdt[:, i], Aref, left=0., right=np.nan)
+                              for i in range(DCs.size)])
 
-            # Find the threshold amplitude that cancels the pulse average net current
-            Athr[i] = np.interp(0, -iNet_avg, Aref, left=0., right=np.nan)
-
-        inan = np.where(np.isnan(Athr))[0]
+        # Check if threshold amplitude is found for all DCs
+        inan = np.where(np.isnan(Arheobase))[0]
         if inan.size > 0:
-            if inan.size == Athr.size:
-                logger.error('No rheobase amplitudes within [%s - %sPa] for the provided duty cycles',
-                             *si_format((Aref.min(), Aref.max())))
+            if inan.size == Arheobase.size:
+                logger.error(
+                    'No rheobase amplitudes within [%s - %sPa] for the provided duty cycles',
+                    *si_format((Aref.min(), Aref.max())))
             else:
                 minDC = DCs[inan.max() + 1]
-                logger.warning('No rheobase amplitudes within [%s - %sPa] below %.1f%% duty cycle',
-                               *si_format((Aref.min(), Aref.max())), minDC * 1e2)
+                logger.warning(
+                    'No rheobase amplitudes within [%s - %sPa] below %.1f%% duty cycle',
+                    *si_format((Aref.min(), Aref.max())), minDC * 1e2)
 
-        return Athr, Aref
+        return Arheobase, Aref
 
 
     def computeEffVars(self, Fdrive, Adrive, Qm, fs=None, phi=np.pi):

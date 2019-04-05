@@ -8,10 +8,11 @@ from matplotlib import cm, colors
 from ..postpro import getFixedPoints, getEqPoint1D
 from ..core import NeuronalBilayerSonophore
 from .pltutils import *
+from ..constants import TITRATION_T_OFFSET
 
 
 def plotVarDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):
-    ''' Plot the QSS-aproximated derivative of a specific variable as function of
+    ''' Plot the QSS-approximated derivative of a specific variable as function of
         the variable itself, as well as equilibrium values, for various membrane
         charge densities at a given acoustic amplitude.
 
@@ -242,12 +243,12 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
     for item in cbarax.get_yticklabels():
         item.set_fontsize(fs)
 
-    fig.canvas.set_window_title('{}_QSS_{}_vs_amp_{}scale'.format(neuron.name, varname, zscale))
+    fig.canvas.set_window_title('{}_QSS_{}_vs_A{}'.format(neuron.name, varname, zscale))
 
     return fig
 
 
-def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3, PRF=100.0,
+def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                       DCs=[1.], Qi=None, fs=12, xscale='lin', titrate=False):
     ''' Plot the equilibrium membrane charge density as a function of acoustic amplitude,
         given an initial value of membrane charge density.
@@ -289,6 +290,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3
         # Compute 3D QSS charge variation array
         dQdt = -neuron.iNet(Vmeff, QS_states)
 
+        # For each duty cycle
         for j, DC in enumerate(DCs):
             color = 'C{}'.format(icolor)
 
@@ -298,9 +300,11 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3
             for k, Adrive in enumerate(Aref):
                 dQ_profile = dQdt[k, :, j]
                 if Qi[i] is None:
-                    Qzeros = getFixedPoints(Qref, dQ_profile).tolist()
+                    Qzeros = getFixedPoints(Qref, dQ_profile)
+                    if Qzeros is not None:
+                        Qzeros = Qzeros.tolist()
                 else:
-                    Qzeros = [getEqPoint1D(Qref, dQdt[k, :, j], Qi[i])]
+                    Qzeros = [getEqPoint1D(Qref, dQ_profile, Qi[i])]
                 Qplot += Qzeros
                 Aplot += [Adrive] * len(Qzeros)
             ax.plot(np.array(Aplot) * 1e-3, np.array(Qplot) * 1e5, '.', c=color,
@@ -308,7 +312,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3
 
             # If specified, compute and plot the threshold excitation amplitude
             if titrate:
-                Athr = nbls.titrate(Fdrive, tstim, toffset, PRF=PRF, DC=DC,
+                Athr = nbls.titrate(Fdrive, tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
                                     Arange=(Aref.min(), Aref.max()))  # Pa
                 ax.axvline(Athr * 1e-3, c=color, linestyle='--')
 
@@ -318,6 +322,12 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3
     ax.legend(frameon=False, fontsize=fs)
     fig.tight_layout()
 
-    fig.canvas.set_window_title('Qeq_QSS_vs_amp_{}scale'.format(xscale))
+    fig.canvas.set_window_title('QSS_{}_vs_{}A_{}_{}%DC{}'.format(
+        'Qeq' if Qi[0] is not None else 'SFPs',
+        xscale,
+        '_'.join([n.name for n in neurons]),
+        '_'.join(['{:.0f}'.format(DC * 1e2) for DC in DCs]),
+        '_with_thresholds' if titrate else ''
+    ))
 
     return fig
