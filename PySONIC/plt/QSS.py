@@ -218,15 +218,20 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
         ax.axhline(getattr(neuron, y0_str) * pltvar.get('factor', 1),
                    label=y0_str, c='k', linewidth=0.5)
 
+    Qzeros = []
     for i, Adrive in enumerate(Aref):
         var = extractPltVar(
             neuron, pltvar, pd.DataFrame({k: df[k][i] for k in df.keys()}), name=varname)
         ax.plot(Qref * Qvar['factor'], var, c=sm.to_rgba(Adrive * 1e-3), zorder=0)
         if varname == 'iNet':
             # mark eq. point if starting point provided, otherwise mark all SFPs
-            Qzeros = getFixedPoints(Qref, -var) if Qi is None else [getEqPoint1D(Qref, -var, Qi)]
-            ax.plot(np.array(Qzeros) * Qvar['factor'], np.zeros(len(Qzeros)), '.', c='k', zorder=1,
-                    label='$\\rm Q_{m,eq}$' if i == 0 else '')
+            if Qi is None:
+                Qzeros += getFixedPoints(Qref, -var).tolist()
+            else:
+                Qzeros += [getEqPoint1D(Qref, -var, Qi)]
+    if len(Qzeros) > 0:
+        ax.plot(np.array(Qzeros) * Qvar['factor'], np.zeros(len(Qzeros)), '.', c='k', zorder=1,
+                label='$\\rm Q_{m,eq}$' if Qi is not None else '$\\rm Q_m\ SPFs$')
     if varname == 'iNet':
         ax.axhline(0, color='k', linewidth=0.5)
 
@@ -266,7 +271,10 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
     figname = 'equilibrium charge vs. amplitude'
     ax.set_title(figname)
     ax.set_xlabel('Amplitude (kPa)', fontsize=fs)
-    ax.set_ylabel('$\\rm Q_{m, eq}\ (nC/cm^2)$', fontsize=fs)
+    if Qi[0] is not None:
+        ax.set_ylabel('$\\rm Q_{m, eq}\ (nC/cm^2)$', fontsize=fs)
+    else:
+        ax.set_ylabel('$\\rm Q_m\ SPFs\ (nC/cm^2)$', fontsize=fs)
     if xscale == 'log':
         ax.set_xscale('log')
     for skey in ['top', 'right']:
