@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-05 17:11:07
+# @Last Modified time: 2019-04-08 14:07:00
 
 import os
 import time
@@ -607,7 +607,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
         return outpath
 
-    def findRheobaseAmps(self, DCs, Vthr, curr='net'):
+
+    def findRheobaseAmps(self, DCs, Vthr):
         ''' Find the rheobase amplitudes (i.e. threshold amplitudes of infinite duration
             that would result in excitation) of a specific neuron for various stimulation duty cycles.
 
@@ -617,10 +618,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         '''
 
         # Compute the pulse average net (or leakage) current along the amplitude space
-        if curr == 'net':
-            iNet = self.iNet(Vthr, self.steadyStates(Vthr))
-        elif curr == 'leak':
-            iNet = self.iLeak(Vthr)
+        iNet = self.iNet(Vthr, self.steadyStates(Vthr))
 
         # Compute rheobase amplitudes
         return iNet / np.array(DCs)

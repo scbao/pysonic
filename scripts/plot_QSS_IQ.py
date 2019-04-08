@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-05 18:46:36
+# @Last Modified time: 2019-04-08 20:48:52
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -38,10 +38,11 @@ def main():
     ap.add_argument('--DC', type=float, nargs='+', default=None, help='Duty cycle (%)')
     ap.add_argument('--Qi', type=str, default=None,
                     help='Initial membrane charge density for phase-plane analysis (nC/cm2)')
-    ap.add_argument('--Ascale', type=str, default='log',
+    ap.add_argument('--Ascale', type=str, default='lin',
                     help='Scale type for acoustic amplitude ("lin" or "log")')
     ap.add_argument('-p', '--plotdetails', default=False, action='store_true',
                     help='Plot details')
+    ap.add_argument('--stim', type=str, default='US', help='Stimulation type ("US" or "elec")')
 
     # Parse arguments
     args = ap.parse_args()
@@ -56,31 +57,47 @@ def main():
     else:
         Qi = np.ones(len(neurons)) * float(args.Qi) * 1e-5  # C/m2
 
+    # US parameters
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
     Arange = (1., 50.)  # kPa
     nA = 300
-    amps = {
+    US_amps = {
         'lin': np.linspace(Arange[0], Arange[1], nA),
-        'log': np.logspace(np.log10(Arange[0]), np.log10(Arange[1]), 100)
+        'log': np.logspace(np.log10(Arange[0]), np.log10(Arange[1]), nA)
     }[args.Ascale] * 1e3  # Pa
+
+    # E-STIM parameters
+    Irange = (-10., 10.)  # mA/m2
+    nI = 100
+    Iinjs = np.linspace(Irange[0], Irange[1], nI)  # mA/m2
+
+    # Pulsing parameters
     tstim = args.tstim * 1e-3  # s
     PRF = args.PRF  # Hz
     DCs = [100.] if args.DC is None else args.DC  # %
     DCs = np.array(DCs) * 1e-2  # (-)
 
+    if args.stim == 'US':
+        amps = US_amps
+        cmap = args.cmap
+    else:
+        a = None
+        Fdrive = None
+        amps = Iinjs
+        cmap = 'coolwarm'
+
     figs = []
 
     if args.plotdetails:
-        # Plot iNet vs Q for different amplitudes for each neuron
-        logger.info('plotting iNet QSS profiles')
+        # Plot iNet vs Q for different amplitudes for each neuron and DC
         for i, neuron in enumerate(neurons):
             for DC in DCs:
                 figs.append(plotQSSVarVsAmp(
-                    neuron, a, Fdrive, 'iNet', amps=amps, DC=DC, Qi=Qi[i], zscale=args.Ascale))
+                    neuron, a, Fdrive, 'iNet', amps=amps, DC=DC, Qi=Qi[i],
+                    cmap=cmap, zscale=args.Ascale))
 
     # Plot equilibrium charge as a function of amplitude for each neuron
-    logger.info('plotting equilibrium charges')
     figs.append(
         plotEqChargeVsAmp(
             neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs,
