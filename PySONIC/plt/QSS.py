@@ -192,13 +192,16 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
     pltvar = neuron.getPltVars()[varname]
     Qvar = neuron.getPltVars()['Qm']
 
-    logger.info('plotting %s QSS profiles for %s stimulation @ %.0f%% DC',
-                varname, stim_type, DC * 1e2)
+    logger.info('plotting %s %s QSS profiles for %s stimulation @ %.0f%% DC',
+                neuron.name, varname, stim_type, DC * 1e2)
 
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
 
     # Get reference QSS dictionary for zero amplitude
     _, Qref, Vmeff0, QS_states0 = nbls.quasiSteadyStates(Fdrive, amps=0.)
+    if stim_type == 'elec':  # if E-STIM case, compute steady states with constant capacitance
+        Vmeff0 = Qref / neuron.Cm0 * 1e3
+        QS_states0 = np.array(list(map(neuron.steadyStates, Vmeff0))).T
     df0 = {k: QS_states0[i] for i, k in enumerate(neuron.states)}
     df0['Vm'] = Vmeff0
 
@@ -265,21 +268,21 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
                 if SFPs is not None:
                     Qzeros += SFPs.tolist()
                 if A > 0 and SFPs.min() > -40e-5 and not tmp:
-                    print(A)
+                    print('Athr = {:.2f} mA/m2'.format(A))
                     tmp = True
             else:
                 Qzeros += [getEqPoint1D(Qref, -var, Qi)]
 
     # Plot reference QSS profile of variable as a function of charge density
-    var = extractPltVar(
+    var0 = extractPltVar(
         neuron, pltvar, pd.DataFrame({k: df0[k] for k in df0.keys()}), name=varname)
-    ax.plot(Qref * Qvar['factor'], var, '--', c='k', zorder=1,
+    ax.plot(Qref * Qvar['factor'], var0, '--', c='k', zorder=1,
             label='$\\rm resting\ {}\ (A=0)$'.format(pltvar['label']))
     if varname == 'iNet':
         if Qi is None:
-            Qzeros += getFixedPoints(Qref, -var).tolist()
+            Qzeros += getFixedPoints(Qref, -var0).tolist()
         else:
-            Qzeros += [getEqPoint1D(Qref, -var, Qi)]
+            Qzeros += [getEqPoint1D(Qref, -var0, Qi)]
 
     # Plot fixed-points, if any
     if len(Qzeros) > 0:
@@ -347,15 +350,16 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
     for item in ax.get_xticklabels() + ax.get_yticklabels():
         item.set_fontsize(fs)
 
-    # For each neuron
     icolor = 0
-
     for i, neuron in enumerate(neurons):
 
         nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
 
         # Compute reference charge variation array for zero amplitude
         _, Qref, Vmeff0, QS_states0 = nbls.quasiSteadyStates(Fdrive, amps=0.)
+        if stim_type == 'elec':  # if E-STIM case, compute steady states with constant capacitance
+            Vmeff0 = Qref / neuron.Cm0 * 1e3
+            QS_states0 = np.array(list(map(neuron.steadyStates, Vmeff0))).T
         dQdt0 = -neuron.iNet(Vmeff0, QS_states0)  # mA/m2
 
         # Compute 3D QSS charge variation array
@@ -401,11 +405,15 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                 if stim_type == 'US':
                     Athr = nbls.titrate(Fdrive, tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
                                         Arange=(Aref.min(), Aref.max()))  # Pa
+                    ax.axvline(Athr * Afactor, c=color, linestyle='--')
                 else:
-                    Athr = neuron.titrate(tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
-                                          Arange=(0., Aref.max()))  # mA/m2
-                ax.axvline(Athr * Afactor, c=color, linestyle='--')
-                ax.axvline(-Athr * Afactor, c=color, linestyle='--')
+                    Athr_pos = neuron.titrate(tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
+                                              Arange=(0., Aref.max()))  # mA/m2
+                    ax.axvline(Athr_pos * Afactor, c=color, linestyle='--')
+                    Athr_neg = neuron.titrate(tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
+                                              Arange=(Aref.min(), 0.))  # mA/m2
+                    ax.axvline(Athr_neg * Afactor, c=color, linestyle='-.')
+
 
             icolor += 1
 

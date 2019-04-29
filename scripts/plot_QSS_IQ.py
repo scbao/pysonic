@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-08 20:48:52
+# @Last Modified time: 2019-04-26 16:41:11
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -85,7 +85,7 @@ def main():
         a = None
         Fdrive = None
         amps = Iinjs
-        cmap = 'coolwarm'
+        cmap = 'RdBu_r'
 
     figs = []
 

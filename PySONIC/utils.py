@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-05 17:14:39
+# @Last Modified time: 2019-04-29 12:04:32
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -525,7 +525,7 @@ def getIndex(container, value):
         return container.index(value)
 
 
-def titrate(nspikes_func, args, xbounds, dx_thr, is_excited=[]):
+def titrate(nspikes_func, args, xbounds, dx_thr, is_excited=None):
     ''' Use a binary search to determine an excitation threshold
         within a specific search interval.
 
@@ -535,10 +535,13 @@ def titrate(nspikes_func, args, xbounds, dx_thr, is_excited=[]):
         :param dx_thr: accuracy criterion for threshold
         :return: excitation threshold
     '''
+
+    if is_excited is None:
+        is_excited = []
+
     x = (xbounds[0] + xbounds[1]) / 2
     nspikes = nspikes_func(x, *args)
     is_excited.append(nspikes > 0)
-
     conv = False
 
     # When titration interval becomes small enough
@@ -570,5 +573,8 @@ def titrate(nspikes_func, args, xbounds, dx_thr, is_excited=[]):
     if conv:
         return x
     else:
-        xbounds = (xbounds[0], x) if is_excited[-1] else (x, xbounds[1])
+        if x > 0.:
+            xbounds = (xbounds[0], x) if is_excited[-1] else (x, xbounds[1])
+        else:
+            xbounds = (x, xbounds[1]) if is_excited[-1] else (xbounds[0], x)
         return titrate(nspikes_func, args, xbounds, dx_thr, is_excited=is_excited)
