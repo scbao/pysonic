@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-03 16:33:28
+# @Last Modified time: 2019-04-30 13:29:32
 
 import numpy as np
 from ..core import PointNeuron
@@ -306,7 +306,7 @@ class ThalamicRE(Thalamic):
 
 
 class ThalamoCortical(Thalamic):
-    ''' Thalamo-cortical neuron, with a specific
+    ''' Thalamo-cortical neuron
 
         References:
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac, Y.,

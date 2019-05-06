@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-26 16:41:11
+# @Last Modified time: 2019-05-06 17:11:52
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -31,6 +31,8 @@ def main():
                     help='Save output figures')
     ap.add_argument('--titrate', default=False, action='store_true',
                     help='Titrate excitation threshold')
+    ap.add_argument('--ss_only', default=False, action='store_true',
+                    help='Plot only steady-state system (A = 0)')
     ap.add_argument('--tstim', type=float, default=500.,
                     help='Stimulus duration for titration (ms)')
     ap.add_argument('--PRF', type=float, default=100.,
@@ -40,8 +42,6 @@ def main():
                     help='Initial membrane charge density for phase-plane analysis (nC/cm2)')
     ap.add_argument('--Ascale', type=str, default='lin',
                     help='Scale type for acoustic amplitude ("lin" or "log")')
-    ap.add_argument('-p', '--plotdetails', default=False, action='store_true',
-                    help='Plot details')
     ap.add_argument('--stim', type=str, default='US', help='Stimulation type ("US" or "elec")')
 
     # Parse arguments
@@ -68,7 +68,7 @@ def main():
     }[args.Ascale] * 1e3  # Pa
 
     # E-STIM parameters
-    Irange = (-10., 10.)  # mA/m2
+    Irange = (-20., 20.)  # mA/m2
     nI = 100
     Iinjs = np.linspace(Irange[0], Irange[1], nI)  # mA/m2
 
@@ -87,21 +87,25 @@ def main():
         amps = Iinjs
         cmap = 'RdBu_r'
 
+    if args.ss_only:
+        amps = None
+        DCs = [1.0]
+
     figs = []
 
-    if args.plotdetails:
-        # Plot iNet vs Q for different amplitudes for each neuron and DC
-        for i, neuron in enumerate(neurons):
-            for DC in DCs:
-                figs.append(plotQSSVarVsAmp(
-                    neuron, a, Fdrive, 'iNet', amps=amps, DC=DC, Qi=Qi[i],
-                    cmap=cmap, zscale=args.Ascale))
+    # Plot iNet vs Q for different amplitudes for each neuron and DC
+    for i, neuron in enumerate(neurons):
+        for DC in DCs:
+            figs.append(plotQSSVarVsAmp(
+                neuron, a, Fdrive, 'iNet', amps=amps, DC=DC, Qi=Qi[i],
+                cmap=cmap, zscale=args.Ascale))
 
     # Plot equilibrium charge as a function of amplitude for each neuron
-    figs.append(
-        plotEqChargeVsAmp(
-            neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs,
-            Qi=Qi, xscale=args.Ascale, titrate=args.titrate))
+    if amps is not None:
+        figs.append(
+            plotEqChargeVsAmp(
+                neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs,
+                Qi=Qi, xscale=args.Ascale, titrate=args.titrate))
 
     if args.save:
         outputdir = args.outputdir if args.outputdir is not None else selectDirDialog()

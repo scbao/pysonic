@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-05 17:39:08
+# @Last Modified time: 2019-04-29 19:03:20
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -158,7 +158,7 @@ def main():
 
     figs = []
     if 'a' in figset:
-        for Adrive in [21.35e3]: #[amps[0], amps[amps.size // 2], amps[-1]]:
+        for Adrive in [21.35e3]:  # [amps[0], amps[amps.size // 2], amps[-1]]:
             figs += [
                 plotVarsQSS(neuron, a, Fdrive, Adrive),
                 plotVarDynamics(neuron, a, Fdrive, Adrive, charges, 'Cai', Cai_range)

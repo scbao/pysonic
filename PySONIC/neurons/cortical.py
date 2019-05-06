@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 18:22:34
+# @Last Modified time: 2019-04-30 13:30:14
 
 import numpy as np
 from ..core import PointNeuron
@@ -262,7 +262,7 @@ class Cortical(PointNeuron):
 
 
 class CorticalRS(Cortical):
-    ''' Cortical regular spiking, excitatory pyramidal neuron
+    ''' Cortical regular spiking neuron
 
         Reference:
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac,
@@ -288,7 +288,7 @@ class CorticalRS(Cortical):
 
 
 class CorticalFS(Cortical):
-    ''' Cortical fast-spiking, inhibitory neuron
+    ''' Cortical fast-spiking neuron
 
         Reference:
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac,
@@ -315,7 +315,7 @@ class CorticalFS(Cortical):
 
 
 class CorticalLTS(Cortical):
-    ''' Cortical low-threshold spiking, inhibitory neuron
+    ''' Cortical low-threshold spiking neuron
 
         References:
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac,

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo
 # @Date:   2019-03-18 18:06:20
-# @Last Modified by:   Theo
-# @Last Modified time: 2019-03-18 21:18:38
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2019-04-30 13:38:11
 
 import os
 import logging
@@ -31,7 +31,6 @@ def main():
     gen = NmodlGenerator(neuron)
     logger.info('generating %s neuron MOD file in "%s"', neuron.name, outdir)
     gen.print(outpath)
-
 
 
 if __name__ == '__main__':
