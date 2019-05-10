@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-05 21:01:36
+# @Last Modified time: 2019-05-09 16:05:45
 
 import os
 import inspect
@@ -764,6 +764,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         lookups2D = {key: interp1d(Qref, y2D, axis=1)(charges) for key, y2D in lookups2D.items()}
 
         # Interpolate US-ON (for each input amplitude) and US-OFF (A = 0) lookups
+        amps = isWithin('amplitude', amps, (Aref.min(), Aref.max()))
         lookups_on = {key: interp1d(Aref, y2D, axis=0)(amps) for key, y2D in lookups2D.items()}
         lookups_off = {key: interp1d(Aref, y2D, axis=0)(0.0) for key, y2D in lookups2D.items()}
 

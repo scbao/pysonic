@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 18:06:02
+# @Last Modified time: 2019-05-10 10:38:56
 
 ''' Useful functions to generate plots. '''
 
@@ -117,3 +117,17 @@ def extractPltVar(obj, pltvar, df, meta=None, nsamples=0, name=''):
     var *= pltvar.get('factor', 1)
 
     return var
+
+
+def computeMeshEdges(x, scale='lin'):
+    ''' Compute the appropriate edges of a mesh that quads a linear or logarihtmic distribution.
+
+        :param x: the input vector
+        :param scale: the type of distribution ('lin' for linear, 'log' for logarihtmic)
+        :return: the edges vector
+    '''
+    if scale == 'log':
+        x = np.log10(x)
+    dx = x[1] - x[0]
+    n = x.size + 1
+    return {'lin': np.linspace, 'log': np.logspace}[scale](x[0] - dx / 2, x[-1] + dx / 2, n)

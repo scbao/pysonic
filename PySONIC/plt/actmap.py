@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:16:40
+# @Last Modified time: 2019-05-10 10:28:27
 
 import os
 import ntpath
@@ -18,7 +18,7 @@ from ..utils import logger, si_format, ASTIM_filecode
 from ..postpro import findPeaks
 from ..constants import *
 from ..neurons import getNeuronsDict
-from .pltutils import cm2inch
+from .pltutils import cm2inch, computeMeshEdges
 
 
 def getActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs):
@@ -91,23 +91,6 @@ def getActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs):
     np.savetxt(actmap_filepath, actmap, delimiter=',')
 
     return actmap
-
-
-def computeMeshEdges(x, scale='lin'):
-    ''' Compute the appropriate edges of a mesh that quads a linear or logarihtmic distribution.
-
-        :param x: the input vector
-        :param scale: the type of distribution ('lin' for linear, 'log' for logarihtmic)
-        :return: the edges vector
-    '''
-    if scale is 'log':
-        x = np.log10(x)
-    dx = x[1] - x[0]
-    if scale is 'lin':
-        y = np.linspace(x[0] - dx / 2, x[-1] + dx / 2, x.size + 1)
-    elif scale is 'log':
-        y = np.logspace(x[0] - dx / 2, x[-1] + dx / 2, x.size + 1)
-    return y
 
 
 def onClick(event, root, neuron, a, Fdrive, tstim, PRF, amps, DCs, meshedges, tmax, Vbounds):

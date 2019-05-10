@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-06 17:11:52
+# @Last Modified time: 2019-05-10 14:22:50
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -14,7 +14,7 @@ import logging
 
 from PySONIC.utils import logger, selectDirDialog
 from PySONIC.neurons import getNeuronsDict
-from PySONIC.plt import plotQSSVarVsAmp, plotEqChargeVsAmp
+from PySONIC.plt import plotQSSvars, plotQSSVarVsAmp, plotEqChargeVsAmp
 
 
 def main():
@@ -31,18 +31,16 @@ def main():
                     help='Save output figures')
     ap.add_argument('--titrate', default=False, action='store_true',
                     help='Titrate excitation threshold')
-    ap.add_argument('--ss_only', default=False, action='store_true',
-                    help='Plot only steady-state system (A = 0)')
+    ap.add_argument('-A', '--amp', type=float, default=None, help='Amplitude (kPa or mA/m2)')
     ap.add_argument('--tstim', type=float, default=500.,
                     help='Stimulus duration for titration (ms)')
     ap.add_argument('--PRF', type=float, default=100.,
                     help='Pulse-repetition-frequency for titration (Hz)')
     ap.add_argument('--DC', type=float, nargs='+', default=None, help='Duty cycle (%)')
-    ap.add_argument('--Qi', type=str, default=None,
-                    help='Initial membrane charge density for phase-plane analysis (nC/cm2)')
     ap.add_argument('--Ascale', type=str, default='lin',
                     help='Scale type for acoustic amplitude ("lin" or "log")')
     ap.add_argument('--stim', type=str, default='US', help='Stimulation type ("US" or "elec")')
+    ap.add_argument('--vars', type=str, nargs='+', default=None, help='Variables to plot')
 
     # Parse arguments
     args = ap.parse_args()
@@ -50,18 +48,11 @@ def main():
     neurons = ['RS', 'LTS'] if args.neurons is None else args.neurons
     neurons = [getNeuronsDict()[n]() for n in neurons]
 
-    if args.Qi == 'Qm0':
-        Qi = np.array([neuron.Qm0() for neuron in neurons])  # C/m2
-    elif args.Qi is None:
-        Qi = [None] * len(neurons)
-    else:
-        Qi = np.ones(len(neurons)) * float(args.Qi) * 1e-5  # C/m2
-
     # US parameters
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
-    Arange = (1., 50.)  # kPa
-    nA = 300
+    Arange = (1., 600.)  # kPa
+    nA = 100
     US_amps = {
         'lin': np.linspace(Arange[0], Arange[1], nA),
         'log': np.logspace(np.log10(Arange[0]), np.log10(Arange[1]), nA)
@@ -79,33 +70,36 @@ def main():
     DCs = np.array(DCs) * 1e-2  # (-)
 
     if args.stim == 'US':
-        amps = US_amps
+        amps = US_amps if args.amp is None else np.array([args.amp * 1e3])
         cmap = args.cmap
     else:
         a = None
         Fdrive = None
-        amps = Iinjs
+        amps = Iinjs if args.amp is None else np.array([args.amp])
         cmap = 'RdBu_r'
 
-    if args.ss_only:
-        amps = None
-        DCs = [1.0]
+    if args.vars is None:
+        args.vars = ['dQdt']
 
     figs = []
 
     # Plot iNet vs Q for different amplitudes for each neuron and DC
     for i, neuron in enumerate(neurons):
         for DC in DCs:
-            figs.append(plotQSSVarVsAmp(
-                neuron, a, Fdrive, 'iNet', amps=amps, DC=DC, Qi=Qi[i],
-                cmap=cmap, zscale=args.Ascale))
+            if amps.size == 1:
+                figs.append(
+                    plotQSSvars(neuron, a, Fdrive, amps[0]))
+            else:
+                for var in args.vars:
+                    figs.append(plotQSSVarVsAmp(
+                        neuron, a, Fdrive, var, amps=amps, DC=DC, cmap=cmap, zscale=args.Ascale))
 
     # Plot equilibrium charge as a function of amplitude for each neuron
-    if amps is not None:
+    if amps.size > 1 and 'dQdt' in args.vars:
         figs.append(
             plotEqChargeVsAmp(
                 neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs,
-                Qi=Qi, xscale=args.Ascale, titrate=args.titrate))
+                xscale=args.Ascale, titrate=args.titrate))
 
     if args.save:
         outputdir = args.outputdir if args.outputdir is not None else selectDirDialog()

@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-29 12:04:37
+# @Last Modified time: 2019-05-09 16:15:17
 
 import os
 import time
@@ -94,6 +94,15 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :return: current per unit area (mA/m2)
         '''
         return sum(self.currents(Vm, states).values())
+
+    def dQdt(self, Vm, states):
+        ''' membrane charge density variation rate
+
+            :param Vm: membrane potential (mV)
+            :states: states of ion channels gating and related variables
+            :return: variation rate (mA/m2)
+        '''
+        return -self.iNet(Vm, states)
 
     def currentToConcentrationRate(self, z_ion, depth):
         ''' Compute the conversion factor from a specific ionic current (in mA/m2)
@@ -220,6 +229,17 @@ class PointNeuron(metaclass=abc.ABCMeta):
             'unit': 'A/m^2',
             'factor': 1e-3,
             'func': 'iNet({0}Vm{1}, {2}{3}{4}.values.T)'.format(
+                wrapleft, wrapright, wrapleft[:-1], self.states, wrapright[1:]),
+            'ls': '--',
+            'color': 'black'
+        }
+
+        pltvars['dQdt'] = {
+            'desc': inspect.getdoc(getattr(self, 'dQdt')).splitlines()[0],
+            'label': 'dQ_m/dt',
+            'unit': 'A/m^2',
+            'factor': 1e-3,
+            'func': 'dQdt({0}Vm{1}, {2}{3}{4}.values.T)'.format(
                 wrapleft, wrapright, wrapleft[:-1], self.states, wrapright[1:]),
             'ls': '--',
             'color': 'black'

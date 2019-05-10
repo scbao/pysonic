@@ -23,7 +23,8 @@
 				"*.c",
 				"*.sh",
 				"*.bat",
-				"Makefile"
+				"Makefile",
+				"*.pkl"
 			],
 			"folder_exclude_patterns":
 			[

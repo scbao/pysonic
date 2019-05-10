@@ -4,8 +4,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm, colors
+from matplotlib.colors import ListedColormap
 
-from ..postpro import getFixedPoints, getEqPoint1D
+from ..postpro import getFixedPoints
 from ..core import NeuronalBilayerSonophore
 from .pltutils import *
 from ..constants import TITRATION_T_OFFSET
@@ -90,9 +91,9 @@ def plotVarDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12
     return fig
 
 
-def plotVarsQSS(neuron, a, Fdrive, Adrive, fs=12):
+def plotQSSvars(neuron, a, Fdrive, Adrive, fs=12):
     ''' Plot effective membrane potential, quasi-steady states and resulting membrane currents
-        as a function of membrane charge density, for a given acoustic amplitudes.
+        as a function of membrane charge density, for a given acoustic amplitude.
 
         :param neuron: neuron object
         :param a: sonophore radius (m)
@@ -112,6 +113,11 @@ def plotVarsQSS(neuron, a, Fdrive, Adrive, fs=12):
     currents = neuron.currents(Vmeff, QS_states)
     iNet = sum(currents.values())
 
+    # Compute fixed points in dQdt profile
+    dQdt = -iNet
+    Q_SFPs = getFixedPoints(Qref, dQdt, filter='stable')
+    Q_UFPs = getFixedPoints(Qref, dQdt, filter='unstable')
+
     # Extract dimensionless states
     norm_QS_states = {}
     for i, label in enumerate(neuron.states):
@@ -120,7 +126,7 @@ def plotVarsQSS(neuron, a, Fdrive, Adrive, fs=12):
 
     # Create figure
     fig, axes = plt.subplots(3, 1, figsize=(7, 9))
-    axes[-1].set_xlabel('Charge Density (nC/cm2)', fontsize=fs)
+    axes[-1].set_xlabel('$\\rm Q_m\ (nC/cm^2)$', fontsize=fs)
     for ax in axes:
         for skey in ['top', 'right']:
             ax.spines[skey].set_visible(False)
@@ -138,9 +144,9 @@ def plotVarsQSS(neuron, a, Fdrive, Adrive, fs=12):
     ax.axhline(neuron.Vm0, linewidth=0.5, color='k')
 
     # Subplot: dimensionless quasi-steady states
-    cset = plt.get_cmap('tab10').colors + plt.get_cmap('Dark2').colors
+    cset = plt.get_cmap('Dark2').colors + plt.get_cmap('tab10').colors
     ax = axes[1]
-    ax.set_ylabel('$X_\infty$', fontsize=fs)
+    ax.set_ylabel('QSS gating variables (-)', fontsize=fs)
     ax.set_yticks([0, 0.5, 1])
     ax.set_ylim([-0.05, 1.05])
     for i, (label, QS_state) in enumerate(norm_QS_states.items()):
@@ -148,16 +154,24 @@ def plotVarsQSS(neuron, a, Fdrive, Adrive, fs=12):
 
     # Subplot: currents
     ax = axes[2]
-    ax.set_ylabel('QSS currents (A/m2)', fontsize=fs)
-    for k, I in currents.items():
-        ax.plot(Qref * 1e5, I * 1e-3, label=k)
-    ax.plot(Qref * 1e5, iNet * 1e-3, color='k', label='iNet')
+    cset = plt.get_cmap('tab10').colors
+    ax.set_ylabel('QSS currents ($\\rm A/m^2$)', fontsize=fs)
+    for i, (k, I) in enumerate(currents.items()):
+        ax.plot(Qref * 1e5, -I * 1e-3, '--', c=cset[i],
+                label='$\\rm -{}$'.format(neuron.getPltVars()[k]['label']))
+    ax.plot(Qref * 1e5, -iNet * 1e-3, color='k', label='$\\rm -I_{Net}$')
     ax.axhline(0, color='k', linewidth=0.5)
+    if Q_SFPs.size > 0:
+        ax.plot(Q_SFPs * 1e5, np.zeros(Q_SFPs.size), 'o', c='k', markersize=5, zorder=2)
+    if Q_SFPs.size > 0:
+        ax.plot(Q_UFPs * 1e5, np.zeros(Q_UFPs.size), 'o', c='k', markersize=5, mfc='none', zorder=2)
 
     fig.tight_layout()
     fig.subplots_adjust(right=0.8)
     for ax in axes[1:]:
         ax.legend(loc='center right', fontsize=fs, frameon=False, bbox_to_anchor=(1.3, 0.5))
+    for ax in axes[:-1]:
+        ax.set_xticklabels([])
 
     fig.canvas.set_window_title(
         '{}_QSS_states_vs_Qm_{:.2f}kPa'.format(neuron.name, Adrive * 1e-3))
@@ -165,8 +179,8 @@ def plotVarsQSS(neuron, a, Fdrive, Adrive, fs=12):
     return fig
 
 
-def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
-                    plotQi=True, fs=12, cmap='viridis', yscale='lin', zscale='lin'):
+def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
+                    fs=12, cmap='viridis', yscale='lin', zscale='lin'):
     ''' Plot a specific QSS variable (state or current) as a function of
         membrane charge density, for various acoustic amplitudes.
 
@@ -175,7 +189,6 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
         :param Fdrive: US frequency (Hz)
         :param amps: US amplitudes (Pa)
         :param DC: duty cycle (-)
-        :param Qi: initial membrane charge density for phase-plane analysis (C/m2)
         :param varname: extraction key for variable to plot
         :return: figure handle
     '''
@@ -192,10 +205,13 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
     pltvar = neuron.getPltVars()[varname]
     Qvar = neuron.getPltVars()['Qm']
     Afactor = {'US': 1e-3, 'elec': 1.}[stim_type]
+    Q_SFPs = []
+    Q_UFPs = []
     Qzeros = []
 
-    logger.info('plotting %s %s QSS profiles for %s stimulation @ %.0f%% DC',
-                neuron.name, varname, stim_type, DC * 1e2)
+    log = 'plotting {} neuron QSS {} vs. amp for {} stimulation @ {:.0f}% DC'.format(
+        neuron.name, varname, stim_type, DC * 1e2)
+    logger.info(log)
 
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
 
@@ -209,8 +225,11 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.set_title('{} neuron - {:.0f} % DC {} stim\nquasi steady-state {} vs. amplitude'.format(
-        neuron.name, DC * 1e2, stim_type, pltvar['desc']), fontsize=fs)
+    title = '{} neuron - {}steady-state {}'.format(
+        neuron.name, 'quasi-' if amps is not None else '', pltvar['desc'])
+    if amps is not None:
+        title += '\nvs. {} amplitude @ {:.0f}% DC'.format(stim_type, DC * 1e2)
+    ax.set_title(title, fontsize=fs)
     ax.set_xlabel('$\\rm {}\ ({})$'.format(Qvar['label'], Qvar['unit']), fontsize=fs)
     ax.set_ylabel('$\\rm QSS\ {}\ ({})$'.format(pltvar['label'], pltvar.get('unit', '')),
                   fontsize=fs)
@@ -219,103 +238,75 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
     for key in ['top', 'right']:
         ax.spines[key].set_visible(False)
 
-    # Plot charge starting point, if any
-    if plotQi and Qi is not None:
-        ax.axvline(Qi * Qvar['factor'], label='$\\rm Q_{m,i}$', c='silver')
-
     # Plot y-variable reference line, if any
+    y0 = None
     y0_str = '{}0'.format(varname)
     if hasattr(neuron, y0_str):
         y0 = getattr(neuron, y0_str) * pltvar.get('factor', 1)
-    elif varname == 'iNet':
+    elif varname in neuron.getCurrentsNames() + ['iNet', 'dQdt']:
         y0 = 0.
         y0_str = ''
-    ax.axhline(y0, label=y0_str, c='k', linewidth=0.5)
+    if y0 is not None:
+        ax.axhline(y0, label=y0_str, c='k', linewidth=0.5)
 
     # Plot reference QSS profile of variable as a function of charge density
     var0 = extractPltVar(
         neuron, pltvar, pd.DataFrame({k: df0[k] for k in df0.keys()}), name=varname)
-    if varname == 'iNet':
-        var0 = -var0
+    ax.plot(Qref * Qvar['factor'], var0, '--', c='k', zorder=1,
+            label='$\\rm A_{{{}}}=0$'.format(stim_type))
+    if varname == 'dQdt':
+        Q_SFPs += getFixedPoints(Qref, var0, filter='stable').tolist()
+        Q_UFPs += getFixedPoints(Qref, var0, filter='unstable').tolist()
 
-    if amps is None:
-        # Plot arrows on ref profile
-        nQ_sparse = 25
-        Qsparse = np.linspace(Qref.min(), Qref.max(), nQ_sparse) * Qvar['factor']
-        var0_sparse = np.interp(Qsparse, Qref * Qvar['factor'], var0)
-        var0_signs = np.sign(var0_sparse)
-        arrow_colors = [{-1: 'r', 1: 'g'}[s] for s in var0_signs]
-        ax.quiver(Qsparse, var0_sparse, var0_signs, np.zeros(Qsparse.size),
-                  color=arrow_colors, units='width', scale=20., width=0.005)
-    ax.plot(Qref * Qvar['factor'], var0, c='k', zorder=1,
-            label='$\\rm resting\ {}\ (A=0)$'.format(pltvar['label']))
+    # Define color code
+    mymap = plt.get_cmap(cmap)
+    zref = amps * Afactor
+    if zscale == 'lin':
+        norm = colors.Normalize(zref.min(), zref.max())
+    elif zscale == 'log':
+        norm = colors.LogNorm(zref.min(), zref.max())
+    sm = cm.ScalarMappable(norm=norm, cmap=mymap)
+    sm._A = []
 
-    if varname == 'iNet':
-        if Qi is None:
-            Qzeros += getFixedPoints(Qref, var0).tolist()
-        else:
-            Qzeros += [getEqPoint1D(Qref, var0, Qi)]
+    # Get amplitude-dependent QSS dictionary
+    if stim_type == 'US':
+        # Get dictionary of charge and amplitude dependent QSS variables
+        _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DC)
+        df = {k: QS_states[i] for i, k in enumerate(neuron.states)}
+        df['Vm'] = Vmeff
+    else:
+        # Repeat zero-amplitude QSS dictionary for all amplitudes
+        df = {k: np.tile(df0[k], (amps.size, 1)) for k in df0}
 
-    # Plot QSS profile of variable as a function of charge density for various amplitudes
-    if amps is not None:
-
-        # Define color code
-        mymap = plt.get_cmap(cmap)
-        zref = amps * Afactor
-        if zscale == 'lin':
-            norm = colors.Normalize(zref.min(), zref.max())
-        elif zscale == 'log':
-            norm = colors.LogNorm(zref.min(), zref.max())
-        sm = cm.ScalarMappable(norm=norm, cmap=mymap)
-        sm._A = []
-
-        # Get amplitude-dependent QSS dictionary
-        if stim_type == 'US':
-            # Get dictionary of charge and amplitude dependent QSS variables
-            _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DC)
-            df = {k: QS_states[i] for i, k in enumerate(neuron.states)}
-            df['Vm'] = Vmeff
-        else:
-            # Repeat zero-amplitude QSS dictionary for all amplitudes
-            df = {k: np.tile(df0[k], (amps.size, 1)) for k in df0}
-
-        # Plot QSS profiles for various amplitudes
-        for i, A in enumerate(amps):
-            var = extractPltVar(
-                neuron, pltvar, pd.DataFrame({k: df[k][i] for k in df.keys()}), name=varname)
-            if varname == 'iNet':
-                var = -var
-                if stim_type == 'elec':
-                    var += A * DC * pltvar['factor']
-            ax.plot(Qref * Qvar['factor'], var, c=sm.to_rgba(A * Afactor), zorder=0)
-            if varname == 'iNet':
-                # mark eq. point if starting point provided, otherwise mark all SFPs
-                if Qi is None:
-                    SFPs = getFixedPoints(Qref, var)
-                    if SFPs is not None:
-                        Qzeros += SFPs.tolist()
-                else:
-                    Qzeros += [getEqPoint1D(Qref, var, Qi)]
+    # Plot QSS profiles for various amplitudes
+    for i, A in enumerate(amps):
+        var = extractPltVar(
+            neuron, pltvar, pd.DataFrame({k: df[k][i] for k in df.keys()}), name=varname)
+        if varname == 'dQdt' and stim_type == 'elec':
+            var += A * DC * pltvar['factor']
+        ax.plot(Qref * Qvar['factor'], var, c=sm.to_rgba(A * Afactor), zorder=0)
+        if varname == 'dQdt':
+            # mark eq. point if starting point provided, otherwise mark all FPs
+            Q_SFPs += getFixedPoints(Qref, var, filter='stable').tolist()
+            Q_UFPs += getFixedPoints(Qref, var, filter='unstable').tolist()
 
     # Plot fixed-points, if any
-    if len(Qzeros) > 0:
-        if amps is not None:
-            ax.plot(np.array(Qzeros) * Qvar['factor'], np.zeros(len(Qzeros)), '.', c='k', zorder=2,
-                    label='$\\rm Q_{m,eq}$' if Qi is not None else '$\\rm Q_m\ SPFs$')
-        else:
-            for Qz in Qzeros:
-                ax.axvline(Qz * Qvar['factor'], linestyle='--', c='k', zorder=2)
+    if len(Q_SFPs) > 0:
+        ax.plot(np.array(Q_SFPs) * Qvar['factor'], np.zeros(len(Q_SFPs)), 'o', c='k',
+                markersize=5, zorder=2)
+    if len(Q_UFPs) > 0:
+        ax.plot(np.array(Q_UFPs) * Qvar['factor'], np.zeros(len(Q_UFPs)), 'x', c='k',
+                markersize=5, zorder=2)
 
     # Add legend and adjust layout
-    if amps is not None:
-        ax.legend(frameon=False, fontsize=fs)
+    ax.legend(frameon=False, fontsize=fs)
     for item in ax.get_xticklabels() + ax.get_yticklabels():
         item.set_fontsize(fs)
     fig.tight_layout()
+    fig.subplots_adjust(bottom=0.15, top=0.9, right=0.80, hspace=0.5)
 
     # Plot amplitude colorbar
     if amps is not None:
-        fig.subplots_adjust(bottom=0.15, top=0.9, right=0.80, hspace=0.5)
         cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.75])
         fig.colorbar(sm, cax=cbarax)
         cbarax.set_ylabel(
@@ -323,14 +314,16 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1., Qi=None,
         for item in cbarax.get_yticklabels():
             item.set_fontsize(fs)
 
-    fig.canvas.set_window_title('{}_QSS_{}_vs_{}A_{}_{:.0f}%DC'.format(
-        neuron.name, varname, zscale, stim_type, DC * 1e2))
+    title = '{}_{}SS_{}'.format(neuron.name, 'Q' if amps is not None else '', varname)
+    if amps is not None:
+        title += '_vs_{}A_{}_{:.0f}%DC'.format(zscale, stim_type, DC * 1e2)
+    fig.canvas.set_window_title(title)
 
     return fig
 
 
 def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
-                      DCs=[1.], Qi=None, fs=12, xscale='lin', titrate=False):
+                      DCs=[1.], fs=12, xscale='lin', titrate=False):
     ''' Plot the equilibrium membrane charge density as a function of acoustic amplitude,
         given an initial value of membrane charge density.
 
@@ -338,7 +331,6 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param amps: US amplitudes (Pa)
-        :param Qi: initial membrane charge density for phase-plane analysis (C/m2)
         :return: figure handle
     '''
 
@@ -354,14 +346,11 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    figname = 'equilibrium charge vs. amplitude'
+    figname = 'charge stability vs. amplitude'
     ax.set_title(figname)
     ax.set_xlabel('Amplitude ({})'.format({'US': 'kPa', 'elec': 'mA/m2'}[stim_type]),
                   fontsize=fs)
-    if Qi[0] is not None:
-        ax.set_ylabel('$\\rm Q_{m, eq}\ (nC/cm^2)$', fontsize=fs)
-    else:
-        ax.set_ylabel('$\\rm Q_m\ SPFs\ (nC/cm^2)$', fontsize=fs)
+    ax.set_ylabel('$\\rm Q_m\ (nC/cm^2)$', fontsize=fs)
     if xscale == 'log':
         ax.set_xscale('log')
     for skey in ['top', 'right']:
@@ -386,66 +375,71 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
 
         # Compute 3D QSS charge variation array
         if stim_type == 'US':
-            Aref, _, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DCs)
+            _, _, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DCs)
             if DCs.size == 1:
                 QS_states = QS_states.reshape((*QS_states.shape, 1))
                 Vmeff = Vmeff.reshape((*Vmeff.shape, 1))
             dQdt = -neuron.iNet(Vmeff, QS_states)  # mA/m2
             Afactor = 1e-3
         else:
-            Aref = amps
             Afactor = 1.
-            dQdt = np.empty((Aref.size, Qref.size, DCs.size))
-            for iA, A in enumerate(Aref):
+            dQdt = np.empty((amps.size, Qref.size, DCs.size))
+            for iA, A in enumerate(amps):
                 for iDC, DC in enumerate(DCs):
                     dQdt[iA, :, iDC] = dQdt0 + A * DC
 
         # For each duty cycle
         for j, DC in enumerate(DCs):
-            color = 'C{}'.format(icolor)
+            color = 'k' if len(neurons) * len(DCs) == 1 else 'C{}'.format(icolor)
 
-            # Plot either all charge SFPs or only equilibrium charge (if Qi provided)
-            # for each  acoustic amplitude
-            Aplot, Qplot = [], []
-            for k, Adrive in enumerate(Aref):
+            # Plot charge SFPs and UFPs for each  acoustic amplitude
+            A_SFPs, A_UFPs, Q_SFPs, Q_UFPs = [], [], [], []
+            for k, Adrive in enumerate(amps):
                 dQ_profile = dQdt[k, :, j]
-                if Qi[i] is None:
-                    Qzeros = getFixedPoints(Qref, dQ_profile)
-                    if Qzeros is not None:
-                        Qzeros = Qzeros.tolist()
-                    else:
-                        Qzeros = [np.nan]
-                else:
-                    Qzeros = [getEqPoint1D(Qref, dQ_profile, Qi[i])]
-                Qplot += Qzeros
-                Aplot += [Adrive] * len(Qzeros)
-            ax.plot(np.array(Aplot) * Afactor, np.array(Qplot) * 1e5, '.', c=color,
-                    label='{} neuron - {:.0f} % DC'.format(neuron.name, DC * 1e2))
-            ax.axhline(neuron.Qm0() * 1e5, c=color, linestyle='--')
+                sfp = getFixedPoints(Qref, dQ_profile, filter='stable').tolist()
+                ufp = getFixedPoints(Qref, dQ_profile, filter='unstable').tolist()
+                Q_SFPs += sfp
+                A_SFPs += [Adrive] * len(sfp)
+                Q_UFPs += ufp
+                A_UFPs += [Adrive] * len(ufp)
+            ax.plot(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5, 'o', c=color, markersize=3,
+                    label='{} neuron - SFPs @ {:.0f} % DC'.format(neuron.name, DC * 1e2))
+            ax.plot(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5, 'x', c=color, markersize=3,
+                    label='{} neuron - UFPs @ {:.0f} % DC'.format(neuron.name, DC * 1e2))
+            # ax.axhline(neuron.Qm0() * 1e5, c=color, linestyle='--')
 
             # If specified, compute and plot the threshold excitation amplitude
             if titrate:
                 if stim_type == 'US':
                     Athr = nbls.titrate(Fdrive, tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
-                                        Arange=(Aref.min(), Aref.max()))  # Pa
+                                        Arange=(amps.min(), amps.max()))  # Pa
                     ax.axvline(Athr * Afactor, c=color, linestyle='--')
                 else:
                     Athr_pos = neuron.titrate(tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
-                                              Arange=(0., Aref.max()))  # mA/m2
+                                              Arange=(0., amps.max()))  # mA/m2
                     ax.axvline(Athr_pos * Afactor, c=color, linestyle='--')
                     Athr_neg = neuron.titrate(tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
-                                              Arange=(Aref.min(), 0.))  # mA/m2
+                                              Arange=(amps.min(), 0.))  # mA/m2
                     ax.axvline(Athr_neg * Afactor, c=color, linestyle='-.')
 
             icolor += 1
+
+        if len(neurons) * len(DCs) == 1:
+            dQdt_sign = np.sign(np.squeeze(dQdt))
+            cmap = ListedColormap(plt.get_cmap('Pastel2').colors[:2])
+            # x = computeMeshEdges(amps, scale=xscale) * Afactor
+            # y = computeMeshEdges(Qref) * 1e5
+            # xx, yy = np.meshgrid(x, y)
+            # print(xx.shape, yy.shape)
+            # ax.pcolormesh(xx.T, yy.T, dQdt_sign, cmap=cmap)
+            ax.contourf(amps * Afactor, Qref * 1e5, dQdt_sign.T, cmap=cmap)
 
     # Post-process figure
     ax.set_ylim(np.array([Qrange[0], 0]) * 1e5)
     ax.legend(frameon=False, fontsize=fs)
     fig.tight_layout()
 
-    fig.canvas.set_window_title('QSS_{}_vs_{}A_{}_{}_{}%DC{}'.format(
-        'Qeq' if Qi[0] is not None else 'SFPs',
+    fig.canvas.set_window_title('QSS_Qstab_vs_{}A_{}_{}_{}%DC{}'.format(
         xscale,
         '_'.join([n.name for n in neurons]),
         stim_type,

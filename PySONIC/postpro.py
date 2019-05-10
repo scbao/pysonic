@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-08 16:47:20
+# @Last Modified time: 2019-05-07 19:11:10
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -25,27 +25,26 @@ def detectCrossings(x, thr=0.0, edge='both'):
     ine, ire, ife = np.array([[], [], []], dtype=int)
     x_padright = np.hstack((x, x[-1]))
     x_padleft = np.hstack((x[0], x))
-    if not edge:
-        ine = np.where((x_padright < thr) & (x_padleft > thr))[0]
-    else:
-        if edge.lower() in ['rising', 'both']:
-            ire = np.where((x_padright <= thr) & (x_padleft > thr))[0]
-        if edge.lower() in ['falling', 'both']:
-            ife = np.where((x_padright < thr) & (x_padleft >= thr))[0]
+    if edge.lower() in ['falling', 'both']:
+        ire = np.where((x_padright <= thr) & (x_padleft > thr))[0]
+    if edge.lower() in ['rising', 'both']:
+        ife = np.where((x_padright >= thr) & (x_padleft < thr))[0]
     ind = np.unique(np.hstack((ine, ire, ife))) - 1
     return ind
 
 
-def getFixedPoints(x, dx, stable=True):
+def getFixedPoints(x, dx, filter='stable'):
     ''' Find fixed points in a 1D plane phase profile.
 
         :param x: variable (1D array)
         :param dx: derivative (1D array)
-        :param stable: boolean stating whether to consider only stable fixed points or not
+        :param filter: string indicating whether to consider only stable/unstable
+            fixed points or both
         :return: array of fixed points values (or None if none is found)
     '''
     fps = []
-    izc = detectCrossings(dx, edge='falling' if stable else 'both')
+    edge = {'stable': 'falling', 'unstable': 'rising', 'both': 'both'}[filter]
+    izc = detectCrossings(dx, edge=edge)
     if izc.size > 0:
         for i in izc:
             a = (dx[i + 1] - dx[i]) / (x[i + 1] - x[i])
@@ -53,7 +52,7 @@ def getFixedPoints(x, dx, stable=True):
             fps.append(-b / a)
         return np.array(fps)
     else:
-        return None
+        return np.array([])
 
 
 def getEqPoint1D(x, dx, x0):
@@ -66,8 +65,8 @@ def getEqPoint1D(x, dx, x0):
     '''
 
     # Find stable fixed points in 1D plane phase profile
-    x_SFPs = getFixedPoints(x, dx)
-    if x_SFPs is None:
+    x_SFPs = getFixedPoints(x, dx, filter='stable')
+    if x_SFPs.size == 0:
         return np.nan
 
     # Determine relevant stable fixed point from y0 sign

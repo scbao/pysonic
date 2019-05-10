@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-29 12:04:32
+# @Last Modified time: 2019-05-09 16:01:06
 
 ''' Definition of generic utility functions used in other modules '''
 
