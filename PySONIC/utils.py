@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-09 16:01:06
+# @Last Modified time: 2019-05-14 11:56:27
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -578,3 +578,42 @@ def titrate(nspikes_func, args, xbounds, dx_thr, is_excited=None):
         else:
             xbounds = (x, xbounds[1]) if is_excited[-1] else (xbounds[0], x)
         return titrate(nspikes_func, args, xbounds, dx_thr, is_excited=is_excited)
+
+
+def resolveDependencies(deps, join_items=True):
+    ''' Solve a dictionary of dependencies.
+
+        :param arg: dependency dictionary in which the values are the dependencies
+         of their respective keys.
+        :param join_items: boolean specifying whether or not to serialize output
+        :return: list of inter-dependent elements in resolved order
+    '''
+
+    # Transform input dictionary of lists into dictionary of sets,
+    # while removing circular (auto) dependencies
+    deps = dict((k, set([x for x in deps[k] if x != k])) for k in deps)
+
+    # Initialize empty list of resolved dependencies
+    resolved_deps = []
+
+    # Iterate while dependencies not entirely resolved
+    while deps:
+        # Extract latest items without dependencies (values that are not in keys
+        # and keys without value) into a set
+        nd_items = set(i for v in deps.values() for i in v) - set(deps.keys())
+        nd_items.update(k for k, v in deps.items() if not v)
+
+        # Append new set of non-dependent items to output list
+        resolved_deps.append(nd_items)
+
+        # Remove those items from remaining dependencies in input dictionary
+        deps = dict(((k, v - nd_items) for k, v in deps.items() if v))
+
+    # If specified, merge list of sets into a unique list (while preserving order)
+    if join_items:
+        tmp = []
+        for item in resolved_deps:
+            tmp += list(item)
+        resolved_deps = tmp
+
+    return resolved_deps

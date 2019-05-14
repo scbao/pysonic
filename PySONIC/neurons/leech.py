@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 02:04:20
+# @Last Modified time: 2019-05-14 19:18:39
 
 
 from functools import partialmethod
@@ -63,19 +63,10 @@ class LeechTouch(PointNeuron):
     taua_PumpNa = 0.1  # iPumpNa activation from intracellular Na+
     taua_KCa = 0.01  # iKCa activation from intracellular Ca2+
 
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_K\ kin.': ['n'],
-        'i_{Ca}\ kin.': ['s'],
-        'pools': ['C_Na_arb', 'C_Na_arb_activation', 'C_Ca_arb', 'C_Ca_arb_activation']
-    }
-
 
     def __init__(self):
-        self.states = ['m', 'h', 'n', 's', 'C_Na', 'A_Na', 'C_Ca', 'A_Ca']
-        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                            'alphas', 'betas']
+        self.states = ['m', 'h', 'n', 's', 'Nai', 'ANai', 'Cai', 'ACai']
+        self.rates = self.getRatesNames(['m', 'h', 'n', 's'])
         self.K_Na = self.K_Na_original * self.surface * self.curr_factor
         self.K_Ca = self.K_Ca_original * self.surface * self.curr_factor
 
@@ -109,7 +100,7 @@ class LeechTouch(PointNeuron):
         return (tauMax - tauMin) / (1 + np.exp((Vm - halfmax) / slope)) + tauMin
 
 
-    def _derC_ion(self, Cion, Iion, Kion, tau):
+    def _derCion(self, Cion, Iion, Kion, tau):
         ''' Generic function computing the time derivative of the concentration
             of a specific ion in its intracellular pool.
 
@@ -123,7 +114,7 @@ class LeechTouch(PointNeuron):
         return (Kion * (-Iion) - Cion) / tau
 
 
-    def _derA_ion(self, Aion, Cion, tau):
+    def _derAion(self, Aion, Cion, tau):
         ''' Generic function computing the time derivative of the concentration and time
             dependent activation function, for a specific pool-dependent ionic current.
 
@@ -175,24 +166,24 @@ class LeechTouch(PointNeuron):
     # ------------------ Pools -------------------
 
 
-    def derC_Na(self, C_Na, I_Na):
+    def derNai(self, Nai, m, h, Vm):
         ''' Derivative of Sodium concentration in intracellular pool. '''
-        return self._derC_ion(C_Na, I_Na, self.K_Na, self.taur_Na)
+        return self._derCion(Nai, self.iNa(m, h, Vm), self.K_Na, self.taur_Na)
 
 
-    def derA_Na(self, A_Na, C_Na):
+    def derANa(self, ANa, Nai):
         ''' Derivative of Sodium pool-dependent activation function for iPumpNa. '''
-        return self._derA_ion(A_Na, C_Na, self.taua_PumpNa)
+        return self._derAion(ANa, Nai, self.taua_PumpNa)
 
 
-    def derC_Ca(self, C_Ca, I_Ca):
+    def derCai(self, Cai, s, Vm):
         ''' Derivative of Calcium concentration in intracellular pool. '''
-        return self._derC_ion(C_Ca, I_Ca, self.K_Ca, self.taur_Ca)
+        return self._derCion(Cai, self.iCa(s, Vm), self.K_Ca, self.taur_Ca)
 
 
-    def derA_Ca(self, A_Ca, C_Ca):
+    def derACa(self, ACa, Cai):
         ''' Derivative of Calcium pool-dependent activation function for iKCa. '''
-        return self._derA_ion(A_Ca, C_Ca, self.taua_KCa)
+        return self._derAion(ACa, Cai, self.taua_KCa)
 
 
     # ------------------ Currents -------------------
@@ -231,24 +222,24 @@ class LeechTouch(PointNeuron):
         return self.gCabar * s * (Vm - self.ECa)
 
 
-    def iKCa(self, A_Ca, Vm):
+    def iKCa(self, ACa, Vm):
         ''' Calcium-activated Potassium current
 
-            :param A_Ca: Calcium pool-dependent gate opening
+            :param ACa: Calcium pool-dependent gate opening
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.gKCabar * A_Ca * (Vm - self.EK)
+        return self.gKCabar * ACa * (Vm - self.EK)
 
 
-    def iPumpNa(self, A_Na, Vm):
+    def iPumpNa(self, ANa, Vm):
         ''' NaK-ATPase pump current
 
-            :param A_Na: Sodium pool-dependent gate opening.
+            :param ANa: Sodium pool-dependent gate opening.
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-        return self.gPumpNa * A_Na * (Vm - self.EPumpNa)
+        return self.gPumpNa * ANa * (Vm - self.EPumpNa)
 
 
     def iLeak(self, Vm):
@@ -262,14 +253,14 @@ class LeechTouch(PointNeuron):
 
     def currents(self, Vm, states):
         ''' Overriding of abstract parent method. '''
-        m, h, n, s, _, A_Na, _, A_Ca = states
+        m, h, n, s, _, ANa, _, ACa = states
         return {
             'iNa': self.iNa(m, h, Vm),
             'iK': self.iK(n, Vm),
             'iCa': self.iCa(s, Vm),
             'iLeak': self.iLeak(Vm),
-            'iPumpNa': self.iPumpNa(A_Na, Vm),
-            'iKCa': self.iKCa(A_Ca, Vm)
+            'iPumpNa': self.iPumpNa(ANa, Vm),
+            'iKCa': self.iKCa(ACa, Vm)
         }  # mA/m2
 
 
@@ -277,104 +268,89 @@ class LeechTouch(PointNeuron):
         ''' Overriding of abstract parent method. '''
 
         # Standard gating dynamics: Solve the equation dx/dt = 0 at Vm for each x-state
-        meq = self.minf(Vm)
-        heq = self.hinf(Vm)
-        neq = self.ninf(Vm)
-        seq = self.sinf(Vm)
+        sstates = {
+            'm': self.minf(Vm),
+            'h': self.hinf(Vm),
+            'n': self.ninf(Vm),
+            's': self.sinf(Vm)
+        }
 
         # PumpNa pool concentration and activation steady-state
-        INa_eq = self.iNa(meq, heq, Vm)
-        CNa_eq = self.K_Na * (-INa_eq)
-        ANa_eq = CNa_eq
+        sstates['CNa'] = - self.K_Na * self.iNa(sstates['m'], sstates['h'], Vm)
+        sstates['ANa'] = sstates['CNa']
 
         # KCa current pool concentration and activation steady-state
-        ICa_eq = self.iCa(seq, Vm)
-        CCa_eq = self.K_Ca * (-ICa_eq)
-        ACa_eq = CCa_eq
+        sstates['CCa'] = - self.K_Ca * self.iCa(sstates['s'], Vm)
+        sstates['ACa'] = sstates['CCa']
 
-        return np.array([meq, heq, neq, seq, CNa_eq, ANa_eq, CCa_eq, ACa_eq])
+        return sstates
 
 
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
-        m, h, n, s, C_Na, A_Na, C_Ca, A_Ca = states
+        m, h, n, s, Nai, ANa, Cai, ACa = states
 
         # Standard gating states derivatives
-        dmdt = self.derM(Vm, m)
-        dhdt = self.derH(Vm, h)
-        dndt = self.derN(Vm, n)
-        dsdt = self.derS(Vm, s)
+        dstates = {
+            'm': self.derM(Vm, m),
+            'h': self.derH(Vm, h),
+            'n': self.derN(Vm, n),
+            's': self.derS(Vm, s)
+        }
 
         # PumpNa current pool concentration and activation state
-        I_Na = self.iNa(m, h, Vm)
-        dCNa_dt = self.derC_Na(C_Na, I_Na)
-        dANa_dt = self.derA_Na(A_Na, C_Na)
+        dstates['CNa'] = self.derNai(Nai, m, h, Vm)
+        dstates['ANa'] = self.derANa(ANa, Nai)
 
         # KCa current pool concentration and activation state
-        I_Ca = self.iCa(s, Vm)
-        dCCa_dt = self.derC_Ca(C_Ca, I_Ca)
-        dACa_dt = self.derA_Ca(A_Ca, C_Ca)
+        dstates['CCa'] = self.derCai(Cai, s, Vm)
+        dstates['ACa'] = self.derACa(ACa, Cai)
 
         # Pack derivatives and return
-        return [dmdt, dhdt, dndt, dsdt, dCNa_dt, dANa_dt, dCCa_dt, dACa_dt]
+        return dstates
 
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
-        # Compute average cycle value for rate constants
-        Tm = self.taum
-        minf = self.minf(Vm)
-        am_avg = np.mean(minf / Tm)
-        bm_avg = np.mean(1 / Tm) - am_avg
-
-        Th = self.tauh(Vm)
-        hinf = self.hinf(Vm)
-        ah_avg = np.mean(hinf / Th)
-        bh_avg = np.mean(1 / Th) - ah_avg
-
-        Tn = self.taun(Vm)
-        ninf = self.ninf(Vm)
-        an_avg = np.mean(ninf / Tn)
-        bn_avg = np.mean(1 / Tn) - an_avg
-
-        Ts = self.taus
-        sinf = self.sinf(Vm)
-        as_avg = np.mean(sinf / Ts)
-        bs_avg = np.mean(1 / Ts) - as_avg
-
-        # Return array of coefficients
-        return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg, as_avg, bs_avg])
+        return {
+            'alpham': np.mean(self.minf(Vm) / self.taum(Vm)),
+            'betam': np.mean((1 - self.minf(Vm)) / self.taum(Vm)),
+            'alphah': np.mean(self.hinf(Vm) / self.tauh(Vm)),
+            'betah': np.mean((1 - self.hinf(Vm)) / self.tauh(Vm)),
+            'alphan': np.mean(self.ninf(Vm) / self.taun(Vm)),
+            'betan': np.mean((1 - self.ninf(Vm)) / self.taun(Vm)),
+            'alphas': np.mean(self.sinf(Vm) / self.taus(Vm)),
+            'betas': np.mean((1 - self.sinf(Vm)) / self.taus(Vm))
+        }
 
 
-
-    def derStatesEff(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.rates])
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
-
-        m, h, n, s, C_Na, A_Na, C_Ca, A_Ca = states
+        m, h, n, s, Nai, ANa, Cai, ACa = states
 
         # Standard gating states derivatives
-        dmdt = rates[0] * (1 - m) - rates[1] * m
-        dhdt = rates[2] * (1 - h) - rates[3] * h
-        dndt = rates[4] * (1 - n) - rates[5] * n
-        dsdt = rates[6] * (1 - s) - rates[7] * s
+        dstates = {
+            'm': rates[0] * (1 - m) - rates[1] * m,
+            'h': rates[2] * (1 - h) - rates[3] * h,
+            'n': rates[4] * (1 - n) - rates[5] * n,
+            's': rates[6] * (1 - s) - rates[7] * s
+        }
 
         # PumpNa current pool concentration and activation state
-        I_Na = self.iNa(m, h, Vmeff)
-        dCNa_dt = self.derC_Na(C_Na, I_Na)
-        dANa_dt = self.derA_Na(A_Na, C_Na)
+        dstates['CNa'] = self.derNai(Nai, m, h, Vmeff)
+        dstates['ANa'] = self.derANa(ANa, Nai)
 
         # KCa current pool concentration and activation state
-        I_Ca_eff = self.iCa(s, Vmeff)
-        dCCa_dt = self.derC_Ca(C_Ca, I_Ca_eff)
-        dACa_dt = self.derA_Ca(A_Ca, C_Ca)
+        dstates['CCa'] = self.derCai(Cai, s, Vmeff)
+        dstates['ACa'] = self.derACa(ACa, Cai)
 
         # Pack derivatives and return
-        return [dmdt, dhdt, dndt, dsdt, dCNa_dt, dANa_dt, dCCa_dt, dACa_dt]
+        return dstates
 
 
 class LeechMech(PointNeuron):
@@ -397,7 +373,6 @@ class LeechMech(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: rate constant (s-1)
         '''
-
         alpha = -0.03 * (Vm + 28) / (np.exp(- (Vm + 28) / 15) - 1)  # ms-1
         return alpha * 1e3  # s-1
 
@@ -408,7 +383,6 @@ class LeechMech(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: rate constant (s-1)
         '''
-
         beta = 2.7 * np.exp(-(Vm + 53) / 18)  # ms-1
         return beta * 1e3  # s-1
 
@@ -419,7 +393,6 @@ class LeechMech(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: rate constant (s-1)
         '''
-
         alpha = 0.045 * np.exp(-(Vm + 58) / 18)  # ms-1
         return alpha * 1e3  # s-1
 
@@ -433,7 +406,6 @@ class LeechMech(PointNeuron):
             .. warning:: the original paper contains an error (multiplication) in the
             expression of this rate constant, corrected in the mod file on ModelDB (division).
         '''
-
         beta = 0.72 / (np.exp(-(Vm + 23) / 14) + 1)  # ms-1
         return beta * 1e3  # s-1
 
@@ -444,7 +416,6 @@ class LeechMech(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: rate constant (s-1)
         '''
-
         alpha = -0.024 * (Vm - 17) / (np.exp(-(Vm - 17) / 8) - 1)  # ms-1
         return alpha * 1e3  # s-1
 
@@ -455,7 +426,6 @@ class LeechMech(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: rate constant (s-1)
         '''
-
         beta = 0.2 * np.exp(-(Vm + 48) / 35)  # ms-1
         return beta * 1e3  # s-1
 
@@ -466,7 +436,6 @@ class LeechMech(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: rate constant (s-1)
         '''
-
         alpha = -1.5 * (Vm - 20) / (np.exp(-(Vm - 20) / 5) - 1)  # ms-1
         return alpha * 1e3  # s-1
 
@@ -477,19 +446,17 @@ class LeechMech(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: rate constant (s-1)
         '''
-
         beta = 1.5 * np.exp(-(Vm + 25) / 10)  # ms-1
         return beta * 1e3  # s-1
 
 
-    def alphaC(self, C_Ca_in):
+    def alphaC(self, Cai):
         ''' Compute the alpha rate for the open-probability of Calcium-dependent Potassium channels.
 
-            :param C_Ca_in: intracellular Calcium concentration (M)
+            :param Cai: intracellular Calcium concentration (M)
             :return: rate constant (s-1)
         '''
-
-        alpha = 0.1 * C_Ca_in / self.alphaC_sf  # ms-1
+        alpha = 0.1 * Cai / self.alphaC_sf  # ms-1
         return alpha * 1e3  # s-1
 
 
@@ -500,7 +467,6 @@ class LeechMech(PointNeuron):
             :param m: open-probability of Sodium channels (prob)
             :return: derivative of open-probability w.r.t. time (prob/s)
         '''
-
         return self.alpham(Vm) * (1 - m) - self.betam(Vm) * m
 
 
@@ -511,7 +477,6 @@ class LeechMech(PointNeuron):
             :param h: inactivation-probability of Sodium channels (prob)
             :return: derivative of open-probability w.r.t. time (prob/s)
         '''
-
         return self.alphah(Vm) * (1 - h) - self.betah(Vm) * h
 
 
@@ -522,7 +487,6 @@ class LeechMech(PointNeuron):
             :param n: open-probability of delayed-rectifier Potassium channels (prob)
             :return: derivative of open-probability w.r.t. time (prob/s)
         '''
-
         return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
 
 
@@ -533,33 +497,30 @@ class LeechMech(PointNeuron):
             :param s: open-probability of Calcium channels (prob)
             :return: derivative of open-probability w.r.t. time (prob/s)
         '''
-
         return self.alphas(Vm) * (1 - s) - self.betas(Vm) * s
 
 
-    def derC(self, c, C_Ca_in):
+    def derC(self, c, Cai):
         ''' Compute the evolution of the open-probability of Calcium-dependent Potassium channels.
 
             :param c: open-probability of Calcium-dependent Potassium channels (prob)
-            :param C_Ca_in: intracellular Calcium concentration (M)
+            :param Cai: intracellular Calcium concentration (M)
             :return: derivative of open-probability w.r.t. time (prob/s)
         '''
+        return self.alphaC(Cai) * (1 - c) - self.betaC * c
 
-        return self.alphaC(C_Ca_in) * (1 - c) - self.betaC * c
 
-
-    def iNa(self, m, h, Vm, C_Na_in):
+    def iNa(self, m, h, Vm, Nai):
         ''' Sodium current
 
             :param m: open-probability of m-gate
             :param h: open-probability of Sodium channels
             :param Vm: membrane potential (mV)
-            :param C_Na_in: intracellular Sodium concentration (M)
+            :param Nai: intracellular Sodium concentration (M)
             :return: current per unit area (mA/m2)
         '''
-
         GNa = self.gNabar * m**4 * h
-        ENa = self.nernst(Z_Na, C_Na_in, self.C_Na_out, self.T)  # mV
+        ENa = self.nernst(Z_Na, Nai, self.C_Na_out, self.T)  # mV
         return GNa * (Vm - ENa)
 
 
@@ -570,22 +531,20 @@ class LeechMech(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
         GK = self.gKbar * n**2
         return GK * (Vm - self.EK)
 
 
-    def iCa(self, s, Vm, C_Ca_in):
+    def iCa(self, s, Vm, Cai):
         ''' Calcium current
 
             :param s: open-probability of s-gate
             :param Vm: membrane potential (mV)
-            :param C_Ca_in: intracellular Calcium concentration (M)
+            :param Cai: intracellular Calcium concentration (M)
             :return: current per unit area (mA/m2)
         '''
-
         GCa = self.gCabar * s
-        ECa = self.nernst(Z_Ca, C_Ca_in, self.C_Ca_out, self.T)  # mV
+        ECa = self.nernst(Z_Ca, Cai, self.C_Ca_out, self.T)  # mV
         return GCa * (Vm - ECa)
 
 
@@ -596,7 +555,6 @@ class LeechMech(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
         GKCa = self.gKCabar * c
         return GKCa * (Vm - self.EK)
 
@@ -607,7 +565,6 @@ class LeechMech(PointNeuron):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
         return self.gLeak * (Vm - self.ELeak)
 
 
@@ -629,8 +586,8 @@ class LeechPressure(LeechMech):
 
     C_Na_out = 0.11  # Sodium extracellular concentration (M)
     C_Ca_out = 1.8e-3  # Calcium extracellular concentration (M)
-    C_Na_in0 = 0.01  # Initial Sodium intracellular concentration (M)
-    C_Ca_in0 = 1e-7  # Initial Calcium intracellular concentration (M)
+    Nai0 = 0.01  # Initial Sodium intracellular concentration (M)
+    Cai0 = 1e-7  # Initial Calcium intracellular concentration (M)
 
     # ENa = 60  # Sodium Nernst potential, from MOD file on ModelDB (mV)
     # ECa = 125  # Calcium Nernst potential, from MOD file on ModelDB (mV)
@@ -649,16 +606,6 @@ class LeechPressure(LeechMech):
     diam = 50e-6  # Cell soma diameter (m)
 
 
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_K\ kin.': ['n'],
-        'i_{Ca}\ kin.': ['s'],
-        'i_{KCa}\ kin.': ['c'],
-        'pools': ['C_Na', 'C_Ca']
-    }
-
-
     def __init__(self):
         ''' Constructor of the class. '''
 
@@ -670,129 +617,105 @@ class LeechPressure(LeechMech):
         self.K_Ca = SV_ratio / (Z_Ca * FARADAY) * 1e-6  # Calcium (M/s)
 
         # Names and initial states of the channels state probabilities
-        self.states = ['m', 'h', 'n', 's', 'c', 'C_Na', 'C_Ca']
+        self.states = ['m', 'h', 'n', 's', 'c', 'Nai', 'Cai']
 
         # Names of the channels effective coefficients
-        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                      'alphas', 'betas']
+        self.rates = self.getRatesNames(['m', 'h', 'n', 's'])
 
 
-    def iPumpNa(self, C_Na_in):
+    def iPumpNa(self, Nai):
         ''' NaK-ATPase pump current
 
-            :param C_Na_in: intracellular Sodium concentration (M)
+            :param Nai: intracellular Sodium concentration (M)
             :return: current per unit area (mA/m2)
         '''
+        return self.INaPmax / (1 + np.exp((self.khalf_Na - Nai) / self.ksteep_Na))
 
-        return self.INaPmax / (1 + np.exp((self.khalf_Na - C_Na_in) / self.ksteep_Na))
 
-
-    def iPumpCa(self, C_Ca_in):
+    def iPumpCa(self, Cai):
         ''' Calcium pump current
 
-            :param C_Ca_in: intracellular Calcium concentration (M)
+            :param Cai: intracellular Calcium concentration (M)
             :return: current per unit area (mA/m2)
         '''
-
-        return self.iCaS * (C_Ca_in - self.C_Ca_in0) / 1.5
+        return self.iCaS * (Cai - self.Cai0) / 1.5
 
 
     def currents(self, Vm, states):
         ''' Overriding of abstract parent method. '''
-
-        m, h, n, s, c, C_Na_in, C_Ca_in = states
+        m, h, n, s, c, Nai, Cai = states
         return {
-            'iNa': self.iNa(m, h, Vm, C_Na_in),
+            'iNa': self.iNa(m, h, Vm, Nai),
             'iK': self.iK(n, Vm),
-            'iCa': self.iCa(s, Vm, C_Ca_in),
+            'iCa': self.iCa(s, Vm, Cai),
             'iKCa': self.iKCa(c, Vm),
             'iLeak': self.iLeak(Vm),
-            'iPumpNa': self.iPumpNa(C_Na_in) / 3.,
-            'iPumpCa': self.iPumpCa(C_Ca_in)
+            'iPumpNa': self.iPumpNa(Nai) / 3.,
+            'iPumpCa': self.iPumpCa(Cai)
         }  # mA/m2
 
 
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
-
-        # Intracellular concentrations
-        C_Na_eq = self.C_Na_in0
-        C_Ca_eq = self.C_Ca_in0
-
-        # Standard gating dynamics: Solve the equation dx/dt = 0 at Vm for each x-state
-        meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
-        heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
-        neq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
-        seq = self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm))
-        ceq = self.alphaC(C_Ca_eq) / (self.alphaC(C_Ca_eq) + self.betaC)
-
-        return np.array([meq, heq, neq, seq, ceq, C_Na_eq, C_Ca_eq])
+        sstates = {
+            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
+            's': self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm)),
+            'Nai': self.Nai0,
+            'Cai': self.Cai0
+        }
+        sstates['c'] = self.alphaC(sstates['Cai']) / (self.alphaC(sstates['Cai']) + self.betaC)
+        return sstates
 
 
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
-
-        # Unpack states
-        m, h, n, s, c, C_Na_in, C_Ca_in = states
-
-        # Standard gating states derivatives
-        dmdt = self.derM(Vm, m)
-        dhdt = self.derH(Vm, h)
-        dndt = self.derN(Vm, n)
-        dsdt = self.derS(Vm, s)
-        dcdt = self.derC(c, C_Ca_in)
-
-        # Intracellular concentrations
-        dCNa_dt = - (self.iNa(m, h, Vm, C_Na_in) + self.iPumpNa(C_Na_in)) * self.K_Na  # M/s
-        dCCa_dt = -(self.iCa(s, Vm, C_Ca_in) + self.iPumpCa(C_Ca_in)) * self.K_Ca  # M/s
-
-        # Pack derivatives and return
-        return [dmdt, dhdt, dndt, dsdt, dcdt, dCNa_dt, dCCa_dt]
+        m, h, n, s, c, Nai, Cai = states
+        return {
+            'm': self.derM(Vm, m),
+            'h': self.derH(Vm, h),
+            'n': self.derN(Vm, n),
+            's': self.derS(Vm, s),
+            'c': self.derC(c, Cai),
+            'Nai': -(self.iNa(m, h, Vm, Nai) + self.iPumpNa(Nai)) * self.K_Na,  # M/s
+            'Cai': -(self.iCa(s, Vm, Cai) + self.iPumpCa(Cai)) * self.K_Ca  # M/s'
+        }
 
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
-        am_avg = np.mean(self.alpham(Vm))
-        bm_avg = np.mean(self.betam(Vm))
-        ah_avg = np.mean(self.alphah(Vm))
-        bh_avg = np.mean(self.betah(Vm))
-        an_avg = np.mean(self.alphan(Vm))
-        bn_avg = np.mean(self.betan(Vm))
-        as_avg = np.mean(self.alphas(Vm))
-        bs_avg = np.mean(self.betas(Vm))
-
-        # Return array of coefficients
-        return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg, as_avg, bs_avg])
-
+        return {
+            'alpham': np.mean(self.alpham(Vm)),
+            'betam': np.mean(self.betam(Vm)),
+            'alphah': np.mean(self.alphah(Vm)),
+            'betah': np.mean(self.betah(Vm)),
+            'alphan': np.mean(self.alphan(Vm)),
+            'betan': np.mean(self.betan(Vm)),
+            'alphas': np.mean(self.alphas(Vm)),
+            'betas': np.mean(self.betas(Vm))
+        }
 
 
-    def derStatesEff(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.rates])
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
+        m, h, n, s, c, Nai, Cai = states
 
-        # Unpack states
-        m, h, n, s, c, C_Na_in, C_Ca_in = states
-
-        # Standard gating states derivatives
-        dmdt = rates[0] * (1 - m) - rates[1] * m
-        dhdt = rates[2] * (1 - h) - rates[3] * h
-        dndt = rates[4] * (1 - n) - rates[5] * n
-        dsdt = rates[6] * (1 - s) - rates[7] * s
-
-        # KCa current gating state derivative
-        dcdt = self.derC(c, C_Ca_in)
-
-        # Intracellular concentrations
-        dCNa_dt = - (self.iNa(m, h, Vmeff, C_Na_in) + self.iPumpNa(C_Na_in)) * self.K_Na  # M/s
-        dCCa_dt = -(self.iCa(s, Vmeff, C_Ca_in) + self.iPumpCa(C_Ca_in)) * self.K_Ca  # M/s
-
-        # Pack derivatives and return
-        return [dmdt, dhdt, dndt, dsdt, dcdt, dCNa_dt, dCCa_dt]
+        return {
+            'm': rates[0] * (1 - m) - rates[1] * m,
+            'h': rates[2] * (1 - h) - rates[3] * h,
+            'n': rates[4] * (1 - n) - rates[5] * n,
+            's': rates[6] * (1 - s) - rates[7] * s,
+            'c': self.derC(c, Cai),
+            'Nai': -(self.iNa(m, h, Vmeff, Nai) + self.iPumpNa(Nai)) * self.K_Na,  # M/s
+            'Cai': -(self.iCa(s, Vmeff, Cai) + self.iPumpCa(Cai)) * self.K_Ca  # M/s
+        }
 
 
 class LeechRetzius(LeechMech):
@@ -826,29 +749,13 @@ class LeechRetzius(LeechMech):
 
     Vhalf = -73.1  # mV
 
-    C_Ca_in = 5e-8  # Calcium intracellular concentration, from retztemp.ses file (M)
-
-
-    # Default plotting scheme
-    pltvars_scheme = {
-        'i_{Na}\ kin.': ['m', 'h'],
-        'i_K\ kin.': ['n'],
-        'i_A\ kin.': ['a', 'b'],
-        'i_{Ca}\ kin.': ['s'],
-        'i_{KCa}\ kin.': ['c']
-    }
+    Cai = 5e-8  # Calcium intracellular concentration, from retztemp.ses file (M)
 
 
     def __init__(self):
         ''' Constructor of the class. '''
-
-        # Names and initial states of the channels state probabilities
         self.states = ['m', 'h', 'n', 's', 'c', 'a', 'b']
-
-        # Names of the channels effective coefficients
-        self.rates = ['alpham', 'betam', 'alphah', 'betah', 'alphan', 'betan',
-                      'alphas', 'betas', 'alphac', 'betac', 'alphaa', 'betaa'
-                      'alphab', 'betab']
+        self.rates = self.getRatesNames([self.states])
 
 
     def ainf(self, Vm):
@@ -862,7 +769,6 @@ class LeechRetzius(LeechMech):
             :param Vm: membrane potential (mV)
             :return: time constant (s)
         '''
-
         Vth = -55.0  # mV
         return 0 if Vm <= Vth else min(1, 2 * (Vm - Vth)**3 / ((11 - Vth)**3 + (Vm - Vth)**3))
 
@@ -878,7 +784,6 @@ class LeechRetzius(LeechMech):
             :param Vm: membrane potential (mV)
             :return: time constant (s)
         '''
-
         x = -1.5 * (Vm - self.Vhalf) * 1e-3 * FARADAY / (Rg * self.T)  # [-]
         alpha = np.exp(x)  # ms-1
         beta = np.exp(0.7 * x)  # ms-1
@@ -896,7 +801,6 @@ class LeechRetzius(LeechMech):
             :param Vm: membrane potential (mV)
             :return: time constant (s)
         '''
-
         return 1. / (1 + np.exp((self.Vhalf - Vm) / -6.3))
 
 
@@ -911,7 +815,6 @@ class LeechRetzius(LeechMech):
             :param Vm: membrane potential (mV)
             :return: time constant (s)
         '''
-
         x = 2 * (Vm - self.Vhalf) * 1e-3 * FARADAY / (Rg * self.T)
         alpha = np.exp(x)
         beta = np.exp(0.65 * x)
@@ -925,7 +828,6 @@ class LeechRetzius(LeechMech):
             :param a: activation-probability of transient Potassium channels (prob)
             :return: derivative of open-probability w.r.t. time (prob/s)
         '''
-
         return (self.ainf(Vm) - a) / self.taua(Vm)
 
 
@@ -936,7 +838,6 @@ class LeechRetzius(LeechMech):
             :param b: inactivation-probability of transient Potassium channels (prob)
             :return: derivative of open-probability w.r.t. time (prob/s)
         '''
-
         return (self.binf(Vm) - b) / self.taub(Vm)
 
 
@@ -948,14 +849,12 @@ class LeechRetzius(LeechMech):
             :param Vm: membrane potential (mV)
             :return: current per unit area (mA/m2)
         '''
-
         GK = self.GAMax * a * b
         return GK * (Vm - self.EK)
 
 
     def currents(self, Vm, states):
         ''' Overriding of abstract parent method. '''
-
         m, h, n, s, c, a, b = states
         return {
             'iNa': self.iNa(m, h, Vm),
@@ -969,86 +868,66 @@ class LeechRetzius(LeechMech):
 
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
-
-        # Standard gating dynamics: Solve the equation dx/dt = 0 at Vm for each x-state
-        meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
-        heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
-        neq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
-        seq = self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm))
-        ceq = self.alphaC(self.C_Ca_in) / (self.alphaC(self.C_Ca_in) + self.betaC)
-        aeq = self.ainf(Vm)
-        beq = self.binf(Vm)
-
-        return np.array([meq, heq, neq, seq, ceq, aeq, beq])
+        return {
+            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
+            's': self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm)),
+            'c': self.alphaC(self.Cai) / (self.alphaC(self.Cai) + self.betaC),
+            'a': self.ainf(Vm),
+            'b': self.binf(Vm)
+        }
 
 
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
-
-        # Unpack states
         m, h, n, s, c, a, b = states
 
-        # Standard gating states derivatives
-        dmdt = self.derM(Vm, m)
-        dhdt = self.derH(Vm, h)
-        dndt = self.derN(Vm, n)
-        dsdt = self.derS(Vm, s)
-        dcdt = self.derC(c, self.C_Ca_in)
-        dadt = self.derA(Vm, a)
-        dbdt = self.derB(Vm, b)
-
-        # Pack derivatives and return
-        return [dmdt, dhdt, dndt, dsdt, dcdt, dadt, dbdt]
+        return {
+            'm': self.derM(Vm, m),
+            'h': self.derH(Vm, h),
+            'n': self.derN(Vm, n),
+            's': self.derS(Vm, s),
+            'c': self.derC(c, self.Cai),
+            'a': self.derA(Vm, a),
+            'b': self.derB(Vm, b)
+        }
 
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
-        am_avg = np.mean(self.alpham(Vm))
-        bm_avg = np.mean(self.betam(Vm))
-        ah_avg = np.mean(self.alphah(Vm))
-        bh_avg = np.mean(self.betah(Vm))
-        an_avg = np.mean(self.alphan(Vm))
-        bn_avg = np.mean(self.betan(Vm))
-        as_avg = np.mean(self.alphas(Vm))
-        bs_avg = np.mean(self.betas(Vm))
-
-        Ta = self.taua(Vm)
-        ainf = self.ainf(Vm)
-        aa_avg = np.mean(ainf / Ta)
-        ba_avg = np.mean(1 / Ta) - aa_avg
-
-        Tb = self.taub(Vm)
-        binf = self.binf(Vm)
-        ab_avg = np.mean(binf / Tb)
-        bb_avg = np.mean(1 / Tb) - ab_avg
-
-        # Return array of coefficients
-        return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg, as_avg, bs_avg,
-                         aa_avg, ba_avg, ab_avg, bb_avg])
+        return {
+            'alpham': np.mean(self.alpham(Vm)),
+            'betam': np.mean(self.betam(Vm)),
+            'alphah': np.mean(self.alphah(Vm)),
+            'betah': np.mean(self.betah(Vm)),
+            'alphan': np.mean(self.alphan(Vm)),
+            'betan': np.mean(self.betan(Vm)),
+            'alphas': np.mean(self.alphas(Vm)),
+            'betas': np.mean(self.betas(Vm)),
+            'alphaa': np.mean(self.ainf(Vm) / self.taua(Vm)),
+            'betaa': np.mean((1 - self.ainf(Vm)) / self.taua(Vm)),
+            'alphab': np.mean(self.binf(Vm) / self.taub(Vm)),
+            'betab': np.mean((1 - self.binf(Vm)) / self.taub(Vm))
+        }
 
 
-
-    def derStatesEff(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
         rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
                           for rn in self.rates])
-
-        # Unpack states
         m, h, n, s, c, a, b = states
 
         # Standard gating states derivatives
-        dmdt = rates[0] * (1 - m) - rates[1] * m
-        dhdt = rates[2] * (1 - h) - rates[3] * h
-        dndt = rates[4] * (1 - n) - rates[5] * n
-        dsdt = rates[6] * (1 - s) - rates[7] * s
-        dadt = rates[8] * (1 - a) - rates[9] * a
-        dbdt = rates[10] * (1 - b) - rates[11] * b
-
-        # KCa current gating state derivative
-        dcdt = self.derC(c, self.C_Ca_in)
-
-        # Pack derivatives and return
-        return [dmdt, dhdt, dndt, dsdt, dcdt, dadt, dbdt]
+        return {
+            'm': rates[0] * (1 - m) - rates[1] * m,
+            'h': rates[2] * (1 - h) - rates[3] * h,
+            'n': rates[4] * (1 - n) - rates[5] * n,
+            's': rates[6] * (1 - s) - rates[7] * s,
+            'a': rates[8] * (1 - a) - rates[9] * a,
+            'b': rates[10] * (1 - b) - rates[11] * b,
+            'c': self.derC(c, self.Cai)
+        }

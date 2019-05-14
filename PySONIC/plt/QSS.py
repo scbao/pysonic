@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm, colors
 from matplotlib.colors import ListedColormap
+from scipy.interpolate import interp1d, interp2d
 
 from ..postpro import getFixedPoints
 from ..core import NeuronalBilayerSonophore
@@ -395,6 +396,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
             # Plot charge SFPs and UFPs for each  acoustic amplitude
             A_SFPs, A_UFPs, Q_SFPs, Q_UFPs = [], [], [], []
             for k, Adrive in enumerate(amps):
+
                 dQ_profile = dQdt[k, :, j]
                 sfp = getFixedPoints(Qref, dQ_profile, filter='stable').tolist()
                 ufp = getFixedPoints(Qref, dQ_profile, filter='unstable').tolist()
@@ -402,6 +404,38 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                 A_SFPs += [Adrive] * len(sfp)
                 Q_UFPs += ufp
                 A_UFPs += [Adrive] * len(ufp)
+
+                # if len(sfp) > 0:
+                #     QS_states_sfp = interp1d(Qref, QS_states[:, k, :, j], axis=1)(sfp)
+                #     Vmeff_sfp = interp1d(Qref, Vmeff[k, :, j], axis=0)(sfp)
+                #     for ipoint, Qpoint in enumerate(sfp):
+                #         print('Q-point at {:.2f} nC/cm2'.format(Qpoint * 1e5))
+                #         print('--- Vmeff = {:.2f} mV'.format(Vmeff_sfp[ipoint]))
+                #         print('states: {}'.format(QS_states_sfp[:, ipoint]))
+                #         for istate, state in enumerate(neuron.states):
+
+                #             derx_func = getattr(neuron, 'der{}'.format(state.upper()))
+                #             derx_args = inspect.getargspec(derx_func)[0][1:]
+
+                #             print(derx_args)
+
+                #             iVm = -1
+                #             if 'Vm' in derx_args:
+                #                 iVm = derx_args.index('Vm')
+                #                 derx_args.remove('Vm')
+                #             i_derx_args = [neuron.states.index(arg) for arg in derx_args]
+                #             derx_inputs = QS_states_sfp[i_derx_args, ipoint]
+
+                #             if iVm > -1:
+                #                 derx_inputs = np.insert(derx_inputs, iVm, Vmeff_sfp[ipoint], axis=0)
+
+                #             print(derx_inputs)
+
+                #             derx = derx_func(*derx_inputs)
+
+                #             print('--- {0} = {1}, d{0}/dt = {2}'.format(
+                #                 state, QS_states_sfp[istate, ipoint], derx))
+
             ax.plot(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5, 'o', c=color, markersize=3,
                     label='{} neuron - SFPs @ {:.0f} % DC'.format(neuron.name, DC * 1e2))
             ax.plot(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5, 'x', c=color, markersize=3,

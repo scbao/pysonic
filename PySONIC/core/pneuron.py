@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-09 16:15:17
+# @Last Modified time: 2019-05-14 18:15:26
 
 import os
 import time
@@ -18,39 +18,13 @@ import pandas as pd
 
 from ..postpro import findPeaks
 from ..constants import *
-from ..utils import si_format, logger, ESTIM_filecode, titrate
+from ..utils import si_format, logger, ESTIM_filecode, titrate, resolveDependencies
 from ..batches import xlslog
 
 
 class PointNeuron(metaclass=abc.ABCMeta):
     ''' Abstract class defining the common API (i.e. mandatory attributes and methods) of all
         subclasses implementing the channels mechanisms of specific point neurons.
-
-        The mandatory attributes are:
-            - **name**: a string defining the name of the mechanism.
-            - **Cm0**: a float defining the membrane resting capacitance (in F/m2)
-            - **Vm0**: a float defining the membrane resting potential (in mV)
-            - **states**: a list of strings defining the names of the different state
-              probabilities governing the channels behaviour (i.e. the differential HH variables).
-            - **rates**: a list of strings defining the names of the different coefficients
-              to be used in effective simulations.
-
-        The mandatory methods are:
-            - **iNet**: compute the net ionic current density (in mA/m2) across the membrane,
-              given a specific membrane potential (in mV) and channel states.
-            - **steadyStates**: compute the channels steady-state values for a specific membrane
-              potential value (in mV).
-            - **derStates**: compute the derivatives of channel states, given a specific membrane
-              potential (in mV) and channel states. This method must return a list of derivatives
-              ordered identically as in the steadyStates output.
-            - **getEffRates**: get the effective rate constants of ion channels to be used in
-              effective simulations. This method must return an array of effective rates ordered
-              identically as in the rates attribute.
-            - **derStatesEff**: compute the effective derivatives of channel states, based on
-              1-dimensional linear interpolators of "effective" coefficients. This method must
-              return a list of derivatives ordered identically as in the steadyStates output.
-            - **steadyStates**: compute the steady-state values of all internal states
-              for a given membrane potential.
     '''
 
     tscale = 'ms'  # relevant temporal scale of the model
@@ -265,6 +239,25 @@ class PointNeuron(metaclass=abc.ABCMeta):
         ''' Return the resting charge density (in C/m2). '''
         return self.Cm0 * self.Vm0 * 1e-3  # C/cm2
 
+    def getStatesDependencies(self):
+        ''' Return dictionary of states inter-dependencies. '''
+        deps = {}
+        for state in self.states:
+            func = getattr(self, '{}inf'.format(state))
+            # func = getattr(self, 'der{}{}'.format(state[0].upper(), state[1:]))
+            args = inspect.getargspec(func)[0][1:]
+            args.remove(state)
+            deps[state] = args
+        return deps
+
+    def getOrderedStates(self):
+        ''' Return list of states ordered in such a way to allow their derivative to be computed
+            without breaking dependencies. '''
+        ordered_states = resolveDependencies(self.getStatesDependencies())
+        ordered_states.remove('Vm')
+        return ordered_states
+
+
     @abc.abstractmethod
     def steadyStates(self, Vm):
         ''' Compute the steady-state values for a specific membrane potential value.
@@ -293,7 +286,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         '''
 
     @abc.abstractmethod
-    def derStatesEff(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, interp_data):
         ''' Compute the effective derivatives of channel states, based on
             1-dimensional linear interpolation of "effective" coefficients
             that summarize the system's behaviour over an acoustic cycle.
@@ -357,7 +350,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         Iionic = self.iNet(Vm, states)  # mA/m2
         dVmdt = (- Iionic + Iinj) / self.Cm0  # mV/s
         dstates = self.derStates(Vm, states)
-        return [dVmdt, *dstates]
+        return [dVmdt, *[dstates[k] for k in self.states]]
 
     def Qderivatives(self, y, t, Cm=None):
         ''' Compute the derivatives of the n-ODE HH system variables,
@@ -370,12 +363,11 @@ class PointNeuron(metaclass=abc.ABCMeta):
         '''
         if Cm is None:
             Cm = self.Cm0
-
         Qm, *states = y
         Vm = Qm / Cm * 1e3  # mV
-        dQm = - self.iNet(Vm, states) * 1e-3  # A/m2
+        dQmdt = - self.iNet(Vm, states) * 1e-3  # A/m2
         dstates = self.derStates(Vm, states)
-        return [dQm, *dstates]
+        return [dQmdt, *[dstates[k] for k in self.states]]
 
     def checkInputs(self, Astim, tstim, toffset, PRF, DC):
         ''' Check validity of electrical stimulation parameters.
@@ -449,7 +441,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
         n_off = int(np.round(toffset / dt))
 
         # Set initial conditions
-        y0 = [self.Vm0, *self.steadyStates(self.Vm0)]
+        steady_states = self.steadyStates(self.Vm0)
+        y0 = [self.Vm0, *[steady_states[k] for k in self.states]]
         nvar = len(y0)
 
         # Initialize global arrays
@@ -573,7 +566,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         nspikes = ipeaks.size
         lat = t[ipeaks[0]] if nspikes > 0 else 'N/A'
         outstr = '{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else '')
-        logger.debug('completed in %s, %s', si_format(tcomp, 1), outstr)
+        logger.debug('completed in %ss, %s', si_format(tcomp, 1), outstr)
         sr = np.mean(1 / np.diff(t[ipeaks])) if nspikes > 1 else None
 
         # Store dataframe and metadata
@@ -626,19 +619,3 @@ class PointNeuron(metaclass=abc.ABCMeta):
             logger.error('log export to "%s" aborted', self.logpath)
 
         return outpath
-
-
-    def findRheobaseAmps(self, DCs, Vthr):
-        ''' Find the rheobase amplitudes (i.e. threshold amplitudes of infinite duration
-            that would result in excitation) of a specific neuron for various stimulation duty cycles.
-
-            :param DCs: duty cycles vector (-)
-            :param Vthr: threshold membrane potential above which the neuron necessarily fires (mV)
-            :return: rheobase amplitudes vector (mA/m2)
-        '''
-
-        # Compute the pulse average net (or leakage) current along the amplitude space
-        iNet = self.iNet(Vthr, self.steadyStates(Vthr))
-
-        # Compute rheobase amplitudes
-        return iNet / np.array(DCs)

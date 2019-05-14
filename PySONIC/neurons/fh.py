@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 18:22:50
+# @Last Modified time: 2019-05-14 18:32:47
 
 import numpy as np
 from ..core import PointNeuron
@@ -233,50 +233,50 @@ class FrankenhaeuserHuxley(PointNeuron):
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
         # Solve the equation dx/dt = 0 at Vm for each x-state
-        meq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
-        heq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
-        neq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
-        peq = self.alphap(Vm) / (self.alphap(Vm) + self.betap(Vm))
-        return np.array([meq, heq, neq, peq])
+        return {
+            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
+            'p': self.alphap(Vm) / (self.alphap(Vm) + self.betap(Vm))
+        }
 
 
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
         m, h, n, p = states
-        dmdt = self.derM(Vm, m)
-        dhdt = self.derH(Vm, h)
-        dndt = self.derN(Vm, n)
-        dpdt = self.derP(Vm, p)
-        return [dmdt, dhdt, dndt, dpdt]
+        return {
+            'm': self.derM(Vm, m),
+            'h': self.derH(Vm, h),
+            'n': self.derN(Vm, n),
+            'p': self.derP(Vm, p)
+        }
 
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
-        am_avg = np.mean(self.alpham(Vm))
-        bm_avg = np.mean(self.betam(Vm))
-        ah_avg = np.mean(self.alphah(Vm))
-        bh_avg = np.mean(self.betah(Vm))
-        an_avg = np.mean(self.alphan(Vm))
-        bn_avg = np.mean(self.betan(Vm))
-        ap_avg = np.mean(self.alphap(Vm))
-        bp_avg = np.mean(self.betap(Vm))
+        return {
+            'alpham': np.mean(self.alpham(Vm)),
+            'betam': np.mean(self.betam(Vm)),
+            'alphah': np.mean(self.alphah(Vm)),
+            'betah': np.mean(self.betah(Vm)),
+            'alphan': np.mean(self.alphan(Vm)),
+            'betan': np.mean(self.betan(Vm)),
+            'alphap': np.mean(self.alphap(Vm)),
+            'betap': np.mean(self.betap(Vm))
+        }
 
-        # Return array of coefficients
-        return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg, ap_avg, bp_avg])
 
-
-    def derStatesEff(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
         rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
-
         m, h, n, p = states
 
-        dmdt = rates['alpham'] * (1 - m) - rates['betam'] * m
-        dhdt = rates['alphah'] * (1 - h) - rates['betah'] * h
-        dndt = rates['alphan'] * (1 - n) - rates['betan'] * n
-        dpdt = rates['alphap'] * (1 - p) - rates['betap'] * p
-
-        return [dmdt, dhdt, dndt, dpdt]
+        return {
+            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
+            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
+            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
+            'p': rates['alphap'] * (1 - p) - rates['betap'] * p
+        }

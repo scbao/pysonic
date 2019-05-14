@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-30 13:30:14
+# @Last Modified time: 2019-05-14 18:24:31
 
 import numpy as np
 from ..core import PointNeuron
@@ -208,57 +208,48 @@ class Cortical(PointNeuron):
 
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
-
-        # Voltage-gated steady-states
-        m_eq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
-        h_eq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
-        n_eq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
-        p_eq = self.pinf(Vm)
-
-        return np.array([m_eq, h_eq, n_eq, p_eq])
+        return {
+            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
+            'p': self.pinf(Vm)
+        }
 
 
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
-
         m, h, n, p = states
-        dmdt = self.derM(Vm, m)
-        dhdt = self.derH(Vm, h)
-        dndt = self.derN(Vm, n)
-        dpdt = self.derP(Vm, p)
-
-        return [dmdt, dhdt, dndt, dpdt]
-
+        return {
+            'm': self.derM(Vm, m),
+            'h': self.derH(Vm, h),
+            'n': self.derN(Vm, n),
+            'p': self.derP(Vm, p)
+        }
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
-        am_avg = np.mean(self.alpham(Vm))
-        bm_avg = np.mean(self.betam(Vm))
-        ah_avg = np.mean(self.alphah(Vm))
-        bh_avg = np.mean(self.betah(Vm))
-        an_avg = np.mean(self.alphan(Vm))
-        bn_avg = np.mean(self.betan(Vm))
-        Tp = self.taup(Vm)
-        pinf = self.pinf(Vm)
-        ap_avg = np.mean(pinf / Tp)
-        bp_avg = np.mean(1 / Tp) - ap_avg
-
-        return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg, ap_avg, bp_avg])
+        return {
+            'alpham': np.mean(self.alpham(Vm)),
+            'betam': np.mean(self.betam(Vm)),
+            'alphah': np.mean(self.alphah(Vm)),
+            'betah': np.mean(self.betah(Vm)),
+            'alphan': np.mean(self.alphan(Vm)),
+            'betan': np.mean(self.betan(Vm)),
+            'alphap': np.mean(self.pinf(Vm) / self.taup(Vm)),
+            'betap': np.mean((1 - self.pinf(Vm)) / self.taup(Vm))
+        }
 
 
-    def derStatesEff(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
-
         rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
-
         m, h, n, p = states
-
-        dmdt = rates['alpham'] * (1 - m) - rates['betam'] * m
-        dhdt = rates['alphah'] * (1 - h) - rates['betah'] * h
-        dndt = rates['alphan'] * (1 - n) - rates['betan'] * n
-        dpdt = rates['alphap'] * (1 - p) - rates['betap'] * p
-
-        return [dmdt, dhdt, dndt, dpdt]
+        return {
+            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
+            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
+            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
+            'p': rates['alphap'] * (1 - p) - rates['betap'] * p
+        }
 
 
 class CorticalRS(Cortical):
@@ -431,10 +422,10 @@ class CorticalLTS(Cortical):
         ''' Overriding of abstract parent method. '''
 
         # Voltage-gated steady-states
-        NaK_eq = super().steadyStates(Vm)
-        Ca_eq = np.array([self.sinf(Vm), self.uinf(Vm)])
-
-        return np.concatenate((NaK_eq, Ca_eq))
+        sstates = super().steadyStates(Vm)
+        sstates['s'] = self.sinf(Vm)
+        sstates['u'] = self.uinf(Vm)
+        return sstates
 
 
     def derStates(self, Vm, states):
@@ -444,51 +435,46 @@ class CorticalLTS(Cortical):
         *NaK_states, s, u = states
 
         # Call parent method to compute Sodium and Potassium channels states derivatives
-        NaK_derstates = super().derStates(Vm, NaK_states)
+        dstates = super().derStates(Vm, NaK_states)
 
         # Compute Calcium channels states derivatives
-        dsdt = self.derS(Vm, s)
-        dudt = self.derU(Vm, u)
+        dstates['s'] = self.derS(Vm, s)
+        dstates['u'] = self.derU(Vm, u)
 
-        # Merge all states derivatives and return
-        return NaK_derstates + [dsdt, dudt]
+        return dstates
 
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Call parent method to compute Sodium and Potassium effective rate constants
-        NaK_rates = super().getEffRates(Vm)
+        effrates = super().getEffRates(Vm)
 
         # Compute Calcium effective rate constants
-        Ts = self.taus(Vm)
-        as_avg = np.mean(self.sinf(Vm) / Ts)
-        bs_avg = np.mean(1 / Ts) - as_avg
-        Tu = np.array([self.tauu(v) for v in Vm])
-        au_avg = np.mean(self.uinf(Vm) / Tu)
-        bu_avg = np.mean(1 / Tu) - au_avg
-        Ca_rates = np.array([as_avg, bs_avg, au_avg, bu_avg])
+        effrates['alphas'] = np.mean(self.sinf(Vm) / self.taus(Vm))
+        effrates['betas'] = np.mean((1 - self.sinf(Vm)) / self.taus(Vm))
+        effrates['alphau'] = np.mean(self.uinf(Vm) / self.tauu(Vm))
+        effrates['betau'] = np.mean((1 - self.uinf(Vm)) / self.tauu(Vm))
 
-        # Merge all rates and return
-        return np.concatenate((NaK_rates, Ca_rates))
+        return effrates
 
 
-    def derStatesEff(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
         # Unpack input states
         *NaK_states, s, u = states
 
         # Call parent method to compute Sodium and Potassium channels states derivatives
-        NaK_dstates = super().derStatesEff(Qm, NaK_states, interp_data)
+        dstates = super().derEffStates(Qm, NaK_states, interp_data)
 
         # Compute Calcium channels states derivatives
         Ca_rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates[8:]}
-        dsdt = Ca_rates['alphas'] * (1 - s) - Ca_rates['betas'] * s
-        dudt = Ca_rates['alphau'] * (1 - u) - Ca_rates['betau'] * u
+        dstates['s'] = Ca_rates['alphas'] * (1 - s) - Ca_rates['betas'] * s
+        dstates['u'] = Ca_rates['alphau'] * (1 - u) - Ca_rates['betau'] * u
 
         # Merge all states derivatives and return
-        return NaK_dstates + [dsdt, dudt]
+        return dstates
 
 
 class CorticalIB(Cortical):
@@ -610,12 +596,10 @@ class CorticalIB(Cortical):
         ''' Overriding of abstract parent method. '''
 
         # Voltage-gated steady-states
-        NaK_eq = super().steadyStates(Vm)
-        q_eq = self.alphaq(Vm) / (self.alphaq(Vm) + self.betaq(Vm))
-        r_eq = self.alphar(Vm) / (self.alphar(Vm) + self.betar(Vm))
-        CaL_eq = np.array([q_eq, r_eq])
-
-        return np.concatenate((NaK_eq, CaL_eq))
+        sstates = super().steadyStates(Vm)
+        sstates['q'] = self.alphaq(Vm) / (self.alphaq(Vm) + self.betaq(Vm))
+        sstates['r'] = self.alphar(Vm) / (self.alphar(Vm) + self.betar(Vm))
+        return sstates
 
 
     def derStates(self, Vm, states):
@@ -625,46 +609,44 @@ class CorticalIB(Cortical):
         *NaK_states, q, r = states
 
         # Call parent method to compute Sodium and Potassium channels states derivatives
-        NaK_derstates = super().derStates(Vm, NaK_states)
+        dstates = super().derStates(Vm, NaK_states)
 
         # Compute L-type Calcium channels states derivatives
-        dqdt = self.derQ(Vm, q)
-        drdt = self.derR(Vm, r)
+        dstates['q'] = self.derQ(Vm, q)
+        dstates['r'] = self.derR(Vm, r)
 
         # Merge all states derivatives and return
-        return NaK_derstates + [dqdt, drdt]
+        return dstates
 
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Call parent method to compute Sodium and Potassium effective rate constants
-        NaK_rates = super().getEffRates(Vm)
+        effrates = super().getEffRates(Vm)
 
         # Compute Calcium effective rate constants
-        aq_avg = np.mean(self.alphaq(Vm))
-        bq_avg = np.mean(self.betaq(Vm))
-        ar_avg = np.mean(self.alphar(Vm))
-        br_avg = np.mean(self.betar(Vm))
-        CaL_rates = np.array([aq_avg, bq_avg, ar_avg, br_avg])
+        effrates['alphaq'] = np.mean(self.alphaq(Vm))
+        effrates['betaq'] = np.mean(self.betaq(Vm))
+        effrates['alphar'] = np.mean(self.alphar(Vm))
+        effrates['betar'] = np.mean(self.betar(Vm))
 
-        # Merge all rates and return
-        return np.concatenate((NaK_rates, CaL_rates))
+        return effrates
 
 
-    def derStatesEff(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
         # Unpack input states
         *NaK_states, q, r = states
 
         # Call parent method to compute Sodium and Potassium channels states derivatives
-        NaK_dstates = super().derStatesEff(Qm, NaK_states, interp_data)
+        dstates = super().derEffStates(Qm, NaK_states, interp_data)
 
         # Compute Calcium channels states derivatives
         Ca_rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates[8:]}
-        dqdt = Ca_rates['alphaq'] * (1 - q) - Ca_rates['betaq'] * q
-        drdt = Ca_rates['alphar'] * (1 - r) - Ca_rates['betar'] * r
+        dstates['q'] = Ca_rates['alphaq'] * (1 - q) - Ca_rates['betaq'] * q
+        dstates['r'] = Ca_rates['alphar'] * (1 - r) - Ca_rates['betar'] * r
 
         # Merge all states derivatives and return
-        return NaK_dstates + [dqdt, drdt]
+        return dstates

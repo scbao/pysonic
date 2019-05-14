@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-30 13:29:32
+# @Last Modified time: 2019-05-14 18:30:06
 
 import numpy as np
 from ..core import PointNeuron
@@ -187,60 +187,57 @@ class Thalamic(PointNeuron):
         ''' Overriding of abstract parent method. '''
 
         # Voltage-gated steady-states
-        m_eq = self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm))
-        h_eq = self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm))
-        n_eq = self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
-        s_eq = self.sinf(Vm)
-        u_eq = self.uinf(Vm)
+        return {
+            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
+            's': self.sinf(Vm),
+            'u': self.uinf(Vm)
+        }
 
-        return np.array([m_eq, h_eq, n_eq, s_eq, u_eq])
 
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
-
         m, h, n, s, u = states
-        dmdt = self.derM(Vm, m)
-        dhdt = self.derH(Vm, h)
-        dndt = self.derN(Vm, n)
-        dsdt = self.derS(Vm, s)
-        dudt = self.derU(Vm, u)
+        return {
+            'm': self.derM(Vm, m),
+            'h': self.derH(Vm, h),
+            'n': self.derN(Vm, n),
+            's': self.derS(Vm, s),
+            'u': self.derU(Vm, u)
+        }
 
-        return [dmdt, dhdt, dndt, dsdt, dudt]
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
-        am_avg = np.mean(self.alpham(Vm))
-        bm_avg = np.mean(self.betam(Vm))
-        ah_avg = np.mean(self.alphah(Vm))
-        bh_avg = np.mean(self.betah(Vm))
-        an_avg = np.mean(self.alphan(Vm))
-        bn_avg = np.mean(self.betan(Vm))
-        Ts = self.taus(Vm)
-        as_avg = np.mean(self.sinf(Vm) / Ts)
-        bs_avg = np.mean(1 / Ts) - as_avg
-        Tu = np.array([self.tauu(v) for v in Vm])
-        au_avg = np.mean(self.uinf(Vm) / Tu)
-        bu_avg = np.mean(1 / Tu) - au_avg
+        return {
+            'alpham': np.mean(self.alpham(Vm)),
+            'betam': np.mean(self.betam(Vm)),
+            'alphah': np.mean(self.alphah(Vm)),
+            'betah': np.mean(self.betah(Vm)),
+            'alphan': np.mean(self.alphan(Vm)),
+            'betan': np.mean(self.betan(Vm)),
+            'alphas': np.mean(self.sinf(Vm) / self.taus(Vm)),
+            'betas': np.mean((1 - self.sinf(Vm)) / self.taus(Vm)),
+            'alphau': np.mean(self.uinf(Vm) / self.tauu(Vm)),
+            'betau': np.mean((1 - self.uinf(Vm)) / self.tauu(Vm))
+        }
 
-        # Return array of coefficients
-        return np.array([am_avg, bm_avg, ah_avg, bh_avg, an_avg, bn_avg,
-                         as_avg, bs_avg, au_avg, bu_avg])
 
-    def derStatesEff(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
         rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
-
         m, h, n, s, u = states
-        dmdt = rates['alpham'] * (1 - m) - rates['betam'] * m
-        dhdt = rates['alphah'] * (1 - h) - rates['betah'] * h
-        dndt = rates['alphan'] * (1 - n) - rates['betan'] * n
-        dsdt = rates['alphas'] * (1 - s) - rates['betas'] * s
-        dudt = rates['alphau'] * (1 - u) - rates['betau'] * u
-
-        return [dmdt, dhdt, dndt, dsdt, dudt]
+        return {
+            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
+            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
+            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
+            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
+            'u': rates['alphau'] * (1 - u) - rates['betau'] * u
+        }
 
 
 class ThalamicRE(Thalamic):
@@ -593,19 +590,16 @@ class ThalamoCortical(Thalamic):
         ''' Overriding of abstract parent method. '''
 
         # Voltage-gated steady-states
-        NaKCa_eq = super().steadyStates(Vm)
-        seq = NaKCa_eq[3]
-        ueq = NaKCa_eq[4]
+        sstates = super().steadyStates(Vm)
 
         # Other steady-states
-        Cai_eq = self.Caiinf(Vm, seq, ueq)
-        P0_eq = self.P0inf(Cai_eq)
-        O_eq = self.Oinf(Cai_eq, Vm)
-        C_eq = self.Cinf(Cai_eq, Vm)
+        sstates['Cai'] = self.Caiinf(Vm, sstates['s'], sstates['u'])
+        sstates['P0'] = self.P0inf(sstates['Cai'])
+        sstates['O'] = self.Oinf(sstates['Cai'], Vm)
+        sstates['C'] = self.Cinf(sstates['Cai'], Vm)
 
-        kin_eq = np.array([O_eq, C_eq, P0_eq, Cai_eq])
+        return sstates
 
-        return np.concatenate((NaKCa_eq, kin_eq))
 
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
@@ -613,30 +607,29 @@ class ThalamoCortical(Thalamic):
         m, h, n, s, u, O, C, P0, Cai = states
 
         NaKCa_states = [m, h, n, s, u]
-        NaKCa_derstates = super().derStates(Vm, NaKCa_states)
+        dstates = super().derStates(Vm, NaKCa_states)
 
-        dOdt = self.derO(C, O, P0, Vm)
-        dCdt = self.derC(C, O, Vm)
-        dP0dt = self.derP0(P0, Cai)
-        dCaidt = self.derCai(Cai, s, u, Vm)
+        dstates['O'] = self.derO(C, O, P0, Vm)
+        dstates['C'] = self.derC(C, O, Vm)
+        dstates['P0'] = self.derP0(P0, Cai)
+        dstates['Cai'] = self.derCai(Cai, s, u, Vm)
 
-        return NaKCa_derstates + [dOdt, dCdt, dP0dt, dCaidt]
+        return dstates
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute effective coefficients for Sodium, Potassium and Calcium conductances
-        NaKCa_effrates = super().getEffRates(Vm)
+        effrates = super().getEffRates(Vm)
 
         # Compute effective coefficients for Ih conductance
-        ao_avg = np.mean(self.alphao(Vm))
-        bo_avg = np.mean(self.betao(Vm))
-        iH_effrates = np.array([ao_avg, bo_avg])
+        effrates['alphao'] = np.mean(self.alphao(Vm))
+        effrates['betao'] = np.mean(self.betao(Vm))
 
-        # Return array of coefficients
-        return np.concatenate((NaKCa_effrates, iH_effrates))
+        return effrates
 
-    def derStatesEff(self, Qm, states, interp_data):
+
+    def derEffStates(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
         rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
@@ -646,17 +639,19 @@ class ThalamoCortical(Thalamic):
         m, h, n, s, u, O, C, P0, Cai = states
 
         # INa, IK, iCaT effective states derivatives
-        dmdt = rates['alpham'] * (1 - m) - rates['betam'] * m
-        dhdt = rates['alphah'] * (1 - h) - rates['betah'] * h
-        dndt = rates['alphan'] * (1 - n) - rates['betan'] * n
-        dsdt = rates['alphas'] * (1 - s) - rates['betas'] * s
-        dudt = rates['alphau'] * (1 - u) - rates['betau'] * u
+        dstates = {
+            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
+            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
+            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
+            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
+            'u': rates['alphau'] * (1 - u) - rates['betau'] * u
+        }
 
         # Ih effective states derivatives
-        dCdt = rates['betao'] * O - rates['alphao'] * C
-        dOdt = - dCdt - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
-        dP0dt = self.derP0(P0, Cai)
-        dCaidt = self.derCai(Cai, s, u, Vmeff)
+        dstates['C'] = rates['betao'] * O - rates['alphao'] * C
+        dstates['O'] = - dstates['C'] - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
+        dstates['P0'] = self.derP0(P0, Cai)
+        dstates['Cai'] = self.derCai(Cai, s, u, Vmeff)
 
         # Merge derivatives and return
-        return [dmdt, dhdt, dndt, dsdt, dudt, dOdt, dCdt, dP0dt, dCaidt]
+        return dstates

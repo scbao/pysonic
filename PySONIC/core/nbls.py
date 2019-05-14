@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-09 16:05:45
+# @Last Modified time: 2019-05-14 18:15:17
 
 import os
 import inspect
@@ -102,10 +102,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Compute charge and channel states variation
         Vm = np.interp(Qm, interp_data['Q'], interp_data['V'])  # mV
         dQmdt = - self.neuron.iNet(Vm, states) * 1e-3
-        dstates = self.neuron.derStatesEff(Qm, states, interp_data)
+        dstates = self.neuron.derEffStates(Qm, states, interp_data)
 
         # Return derivatives vector
-        return [dQmdt, *dstates]
+        return [dQmdt, *[dstates[k] for k in self.neuron.states]]
 
 
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
@@ -153,7 +153,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         stimstate = np.array([1, 1])
         t = np.array([0., dt])
         y_membrane = np.array([[0., (Z1 - Z0) / dt], [Z0, Z1], [ng0, ng0], [Qm0, Qm0]])
-        y_channels = np.tile(self.neuron.steadyStates(self.neuron.Vm0), (2, 1)).T
+        steady_states = self.neuron.steadyStates(self.neuron.Vm0)
+        y_channels = np.tile(np.array([steady_states[k] for k in self.neuron.states]), (2, 1)).T
         y = np.vstack((y_membrane, y_channels))
         nvar = y.shape[0]
 
@@ -285,7 +286,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Initialize global arrays
         stimstate = np.array([1])
         t = np.array([0.0])
-        y = np.atleast_2d(np.insert(self.neuron.steadyStates(self.neuron.Vm0), 0, self.Qm0)).T
+
+        steady_states = self.neuron.steadyStates(self.neuron.Vm0)
+        y = np.atleast_2d(np.insert(
+            np.array([steady_states[k] for k in self.neuron.states]), 0, self.Qm0)).T
         nvar = y.shape[0]
 
         # Initializing accurate pulse time vector
@@ -408,7 +412,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         stimstate = np.array([1, 1])
         t = np.array([0., dt_full])
         y_membrane = np.array([[0., (Z1 - Z0) / dt_full], [Z0, Z1], [ng0, ng0], [Qm0, Qm0]])
-        y_channels = np.tile(self.neuron.steadyStates(self.neuron.Vm0), (2, 1)).T
+        steady_states = self.neuron.steadyStates(self.neuron.Vm0)
+        y_channels = np.tile(np.array([steady_states[k] for k in self.neuron.states]), (2, 1)).T
         y = np.vstack((y_membrane, y_channels))
         nvar = y.shape[0]
 
@@ -776,6 +781,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 Vmeff_avg[iA, :, iDC] = Vmeff_on[iA, :] * DC + Vmeff_off * (1 - DC)
 
         # Compute QSS states
+        print(self.neuron.getOrderedStates())
+
         QS_states = np.empty((len(self.neuron.states), nA, nQ, nDC))
         is_computed = np.zeros(len(self.neuron.states), dtype=int)
         while is_computed.sum() < len(self.neuron.states):
@@ -874,8 +881,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         return Arheobase, Aref
 
-
-    def computeEffVars(self, Fdrive, Adrive, Qm, fs=None, phi=np.pi):
+    def computeEffVars(self, Fdrive, Adrive, Qm, fs):
         ''' Compute "effective" coefficients of the HH system for a specific
             combination of stimulus frequency, stimulus amplitude and charge density.
 
@@ -886,42 +892,37 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
             :param Qm: imposed charge density (C/m2)
-            :param phi: acoustic drive phase (rad)
-            :param fs: sonophore membrane coverage fraction
-            :return: list with computation time and effective variables
+            :param fs: list of sonophore membrane coverage fractions
+            :return: list with computation time and a list of dictionaries of effective variables
         '''
-
-        if fs is None:
-            fs = 1.
-            logfs = False
-        else:
-            logfs = True
 
         tstart = time.time()
 
         # Run simulation and retrieve deflection and gas content vectors from last cycle
-        _, [Z, ng], _ = BilayerSonophore.simulate(self, Fdrive, Adrive, Qm, phi)
+        _, [Z, ng], _ = BilayerSonophore.simulate(self, Fdrive, Adrive, Qm)
         Z_last = Z[-NPC_FULL:]  # m
+        Cm_last = self.v_Capct(Z_last)  # F/m2
 
-        # Compute membrane capacitance profile (taking into account partial coverage)
-        Cm = fs * self.v_Capct(Z_last) + (1 - fs) * self.Cm0  # F/m2
+        # For each coverage fraction
+        effvars = []
+        for x in fs:
+            # Compute membrane capacitance and membrane potential vectors
+            Cm = x * Cm_last + (1 - x) * self.Cm0  # F/m2
+            Vm = Qm / Cm * 1e3  # mV
 
-        # Compute membrane potential vector
-        Vm = Qm / Cm * 1e3  # mV
-
-        # Compute average cycle value for membrane potential and rate constants
-        Vm_eff = np.mean(Vm)  # mV
-        rates_eff = self.neuron.getEffRates(Vm)
-
-        # Take final cycle value for gas content
-        ng_eff = ng[-1]  # mole
+            # Compute average cycle value for membrane potential and rate constants
+            effvars.append({'V': np.mean(Vm)})
+            effvars[-1].update(self.neuron.getEffRates(Vm))
 
         tcomp = time.time() - tstart
 
-        logger.info(
-            '%s: lookups @ %sHz, %sPa, %.2f nC/cm2%s: tcomp = %f s',
-            self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5,
-            ', fs = {:.0f}%'.format(fs * 1e2) if logfs is True else '', tcomp)
+        # Log process
+        log = '{}: lookups @ {}Hz, {}Pa, {:.2f} nC/cm2'.format(
+            self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5)
+        if len(fs) > 1:
+            log += ', fs = {:.0f} - {:.0f}%'.format(fs.min() * 1e2, fs.max() * 1e2)
+        log += ', tcomp = {:.3f} s'.format(tcomp)
+        logger.info(log)
 
         # Return effective coefficients
-        return [tcomp, Vm_eff, ng_eff, *rates_eff]
+        return [tcomp, effvars]

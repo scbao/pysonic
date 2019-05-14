@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 20:54:45
+# @Last Modified time: 2019-05-14 18:48:31
 
 
 import numpy as np
@@ -516,115 +516,92 @@ class OtsukaSTN(PointNeuron):
 
     def steadyStates(self, Vm):
         ''' Overriding of abstract parent method. '''
-        aeq = self.ainf(Vm)
-        beq = self.binf(Vm)
-        ceq = self.cinf(Vm)
-        d1eq = self.d1inf(Vm)
-        meq = self.minf(Vm)
-        heq = self.hinf(Vm)
-        neq = self.ninf(Vm)
-        peq = self.pinf(Vm)
-        qeq = self.qinf(Vm)
-        Cai_eq = self.Caiinf(Vm, peq, qeq, ceq, d1eq)
-        d2eq = self.d2inf(Cai_eq)
-        req = self.rinf(Cai_eq)
 
-        return np.array([aeq, beq, ceq, d1eq, d2eq, meq, heq, neq, peq, qeq, req, Cai_eq])
+        # voltage-gated steady states
+        sstates = {
+            'a': self.ainf(Vm),
+            'b': self.binf(Vm),
+            'c': self.cinf(Vm),
+            'd1': self.d1inf(Vm),
+            'm': self.minf(Vm),
+            'h': self.hinf(Vm),
+            'n': self.ninf(Vm),
+            'p': self.pinf(Vm),
+            'q': self.qinf(Vm)
+        }
+        sstates['Cai'] = self.Caiinf(Vm, sstates['p'], sstates['q'], sstates['c'], sstates['d1'])
+        sstates['d2'] = self.d2inf(sstates['Cai'])
+        sstates['r'] = self.rinf(sstates['Cai'])
+
+        return sstates
 
 
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
         a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
 
-        dadt = self.derA(Vm, a)
-        dbdt = self.derB(Vm, b)
-        dcdt = self.derC(Vm, c)
-        dd1dt = self.derD1(Vm, d1)
-        dd2dt = self.derD2(Cai, d2)
-        dmdt = self.derM(Vm, m)
-        dhdt = self.derH(Vm, h)
-        dndt = self.derN(Vm, n)
-        dpdt = self.derP(Vm, p)
-        dqdt = self.derQ(Vm, q)
-        drdt = self.derR(Cai, r)
-        dCaidt = self.derCai(p, q, c, d1, d2, Cai, Vm)
+        return {
+            'a': self.derA(Vm, a),
+            'b': self.derB(Vm, b),
+            'c': self.derC(Vm, c),
+            'd1': self.derD1(Vm, d1),
+            'd2': self.derD2(Cai, d2),
+            'm': self.derM(Vm, m),
+            'h': self.derH(Vm, h),
+            'n': self.derN(Vm, n),
+            'p': self.derP(Vm, p),
+            'q': self.derQ(Vm, q),
+            'r': self.derR(Cai, r),
+            'Cai': self.derCai(p, q, c, d1, d2, Cai, Vm),
+        }
 
-        return [dadt, dbdt, dcdt, dd1dt, dd2dt, dmdt, dhdt, dndt, dpdt, dqdt, drdt, dCaidt]
 
 
     def getEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
-        Ta = self.taua(Vm)
-        alphaa_avg = np.mean(self.ainf(Vm) / Ta)
-        betaa_avg = np.mean(1 / Ta) - alphaa_avg
-
-        Tb = self.taub(Vm)
-        alphab_avg = np.mean(self.binf(Vm) / Tb)
-        betab_avg = np.mean(1 / Tb) - alphab_avg
-
-        Tc = self.tauc(Vm)
-        alphac_avg = np.mean(self.cinf(Vm) / Tc)
-        betac_avg = np.mean(1 / Tc) - alphac_avg
-
-        Td1 = self.taud1(Vm)
-        alphad1_avg = np.mean(self.d1inf(Vm) / Td1)
-        betad1_avg = np.mean(1 / Td1) - alphad1_avg
-
-        Tm = self.taum(Vm)
-        alpham_avg = np.mean(self.minf(Vm) / Tm)
-        betam_avg = np.mean(1 / Tm) - alpham_avg
-
-        Th = self.tauh(Vm)
-        alphah_avg = np.mean(self.hinf(Vm) / Th)
-        betah_avg = np.mean(1 / Th) - alphah_avg
-
-        Tn = self.taun(Vm)
-        alphan_avg = np.mean(self.ninf(Vm) / Tn)
-        betan_avg = np.mean(1 / Tn) - alphan_avg
-
-        Tp = self.taup(Vm)
-        alphap_avg = np.mean(self.pinf(Vm) / Tp)
-        betap_avg = np.mean(1 / Tp) - alphap_avg
-
-        Tq = self.tauq(Vm)
-        alphaq_avg = np.mean(self.qinf(Vm) / Tq)
-        betaq_avg = np.mean(1 / Tq) - alphaq_avg
-
-        # Return array of coefficients
-        return np.array([
-            alphaa_avg, betaa_avg,
-            alphab_avg, betab_avg,
-            alphac_avg, betac_avg,
-            alphad1_avg, betad1_avg,
-            alpham_avg, betam_avg,
-            alphah_avg, betah_avg,
-            alphan_avg, betan_avg,
-            alphap_avg, betap_avg,
-            alphaq_avg, betaq_avg
-        ])
+        return {
+            'alphaa': np.mean(self.ainf(Vm) / self.taua(Vm)),
+            'betaa': np.mean((1 - self.ainf(Vm)) / self.taua(Vm)),
+            'alphab': np.mean(self.binf(Vm) / self.taub(Vm)),
+            'betab': np.mean((1 - self.binf(Vm)) / self.taub(Vm)),
+            'alphac': np.mean(self.cinf(Vm) / self.tauc(Vm)),
+            'betac': np.mean((1 - self.cinf(Vm)) / self.tauc(Vm)),
+            'alphad1': np.mean(self.d1inf(Vm) / self.taud1(Vm)),
+            'betad1': np.mean((1 - self.d1inf(Vm)) / self.taud1(Vm)),
+            'alpham': np.mean(self.minf(Vm) / self.taum(Vm)),
+            'betam': np.mean((1 - self.minf(Vm)) / self.taum(Vm)),
+            'alphah': np.mean(self.hinf(Vm) / self.tauh(Vm)),
+            'betah': np.mean((1 - self.hinf(Vm)) / self.tauh(Vm)),
+            'alphan': np.mean(self.ninf(Vm) / self.taun(Vm)),
+            'betan': np.mean((1 - self.ninf(Vm)) / self.taun(Vm)),
+            'alphap': np.mean(self.pinf(Vm) / self.taup(Vm)),
+            'betap': np.mean((1 - self.pinf(Vm)) / self.taup(Vm)),
+            'alphaq': np.mean(self.qinf(Vm) / self.tauq(Vm)),
+            'betaq': np.mean((1 - self.qinf(Vm)) / self.tauq(Vm))
+        }
 
 
-    def derStatesEff(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, interp_data):
         ''' Overriding of abstract parent method. '''
 
         rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
         Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
-
         a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
 
-        dadt = rates['alphaa'] * (1 - a) - rates['betaa'] * a
-        dbdt = rates['alphab'] * (1 - b) - rates['betab'] * b
-        dcdt = rates['alphac'] * (1 - c) - rates['betac'] * c
-        dd1dt = rates['alphad1'] * (1 - d1) - rates['betad1'] * d1
-        dd2dt = self.derD2(Cai, d2)
-        dmdt = rates['alpham'] * (1 - m) - rates['betam'] * m
-        dhdt = rates['alphah'] * (1 - h) - rates['betah'] * h
-        dndt = rates['alphan'] * (1 - n) - rates['betan'] * n
-        dpdt = rates['alphap'] * (1 - p) - rates['betap'] * p
-        dqdt = rates['alphaq'] * (1 - q) - rates['betaq'] * q
-        drdt = self.derR(Cai, r)
-        dCaidt = self.derCai(p, q, c, d1, d2, Cai, Vmeff)
+        return {
+            'a': rates['alphaa'] * (1 - a) - rates['betaa'] * a,
+            'b': rates['alphab'] * (1 - b) - rates['betab'] * b,
+            'c': rates['alphac'] * (1 - c) - rates['betac'] * c,
+            'd1': rates['alphad1'] * (1 - d1) - rates['betad1'] * d1,
+            'd2': self.derD2(Cai, d2),
+            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
+            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
+            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
+            'p': rates['alphap'] * (1 - p) - rates['betap'] * p,
+            'q': rates['alphaq'] * (1 - q) - rates['betaq'] * q,
+            'r': self.derR(Cai, r),
+            'Cai': self.derCai(p, q, c, d1, d2, Cai, Vmeff)
+        }
 
-        return [dadt, dbdt, dcdt, dd1dt, dd2dt, dmdt, dhdt, dndt, dpdt, dqdt, drdt, dCaidt]
