@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-14 18:15:26
+# @Last Modified time: 2019-05-15 13:31:55
 
 import os
 import time
@@ -239,31 +239,13 @@ class PointNeuron(metaclass=abc.ABCMeta):
         ''' Return the resting charge density (in C/m2). '''
         return self.Cm0 * self.Vm0 * 1e-3  # C/cm2
 
-    def getStatesDependencies(self):
-        ''' Return dictionary of states inter-dependencies. '''
-        deps = {}
-        for state in self.states:
-            func = getattr(self, '{}inf'.format(state))
-            # func = getattr(self, 'der{}{}'.format(state[0].upper(), state[1:]))
-            args = inspect.getargspec(func)[0][1:]
-            args.remove(state)
-            deps[state] = args
-        return deps
-
-    def getOrderedStates(self):
-        ''' Return list of states ordered in such a way to allow their derivative to be computed
-            without breaking dependencies. '''
-        ordered_states = resolveDependencies(self.getStatesDependencies())
-        ordered_states.remove('Vm')
-        return ordered_states
-
 
     @abc.abstractmethod
     def steadyStates(self, Vm):
         ''' Compute the steady-state values for a specific membrane potential value.
 
             :param Vm: membrane potential (mV)
-            :return: array of steady-states
+            :return: dictionary of steady-states
         '''
 
     @abc.abstractmethod
@@ -282,21 +264,20 @@ class PointNeuron(metaclass=abc.ABCMeta):
             for future use in effective simulations.
 
             :param Vm: array of membrane potential values for an acoustic cycle (mV)
-            :return: an array of rate average constants (s-1)
+            :return: a dictionary of rate average constants (s-1)
         '''
 
     @abc.abstractmethod
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Compute the effective derivatives of channel states, based on
             1-dimensional linear interpolation of "effective" coefficients
             that summarize the system's behaviour over an acoustic cycle.
 
             :param Qm: membrane charge density (C/m2)
             :states: state probabilities of the ion channels
-            :param interp_data: dictionary of 1D vectors of "effective" coefficients
+            :param lkp: dictionary of 1D vectors of "effective" coefficients
              over the charge domain, for specific frequency and amplitude values.
         '''
-
 
     def Qbounds(self):
         ''' Determine bounds of membrane charge physiological range for a given neuron. '''
@@ -313,6 +294,30 @@ class PointNeuron(metaclass=abc.ABCMeta):
             if self.isVoltageGated(x):
                 gates.append(x)
         return gates
+
+    def qsStates(self, lkp, states):
+        ''' Compute a collection of quasi steady states using the standard
+            xinf = ax / (ax + Bx) equation.
+
+            :param lkp: dictionary of 1D vectors of "effective" coefficients
+             over the charge domain, for specific frequency and amplitude values.
+            :return: dictionary of quasi-steady states
+        '''
+        return {
+            x: lkp['alpha{}'.format(x)] / (lkp['alpha{}'.format(x)] + lkp['beta{}'.format(x)])
+            for x in states
+        }
+
+    @abc.abstractmethod
+    def quasiSteadyStates(self, lkp):
+        ''' Compute the quasi-steady states of a neuron for a range of membrane charge densities,
+            based on 1-dimensional lookups interpolated at a given sonophore diameter, US frequency,
+            US amplitude and duty cycle.
+
+            :param lkp: dictionary of 1D vectors of "effective" coefficients
+             over the charge domain, for specific frequency and amplitude values.
+            :return: dictionary of quasi-steady states
+        '''
 
     def getRates(self, Vm):
         ''' Compute the ion channels rate constants for a given membrane potential.
@@ -336,6 +341,24 @@ class PointNeuron(metaclass=abc.ABCMeta):
             rates[alpha_str] = alphax
             rates[beta_str] = betax
         return rates
+
+    def getStatesDependencies(self):
+        ''' Return dictionary of states inter-dependencies. '''
+        deps = {}
+        for x in self.states:
+            func = getattr(self, '{}inf'.format(x))
+            args = inspect.getargspec(func)[0][1:]
+            args.remove(x)
+            deps[state] = args
+        return deps
+
+    def getOrderedStates(self):
+        ''' Return list of states ordered in such a way to allow their derivative to be computed
+            without breaking dependencies. '''
+        ordered_states = resolveDependencies(self.getStatesDependencies())
+        ordered_states.remove('Vm')
+        return ordered_states
+
 
     def Vderivatives(self, y, t, Iinj):
         ''' Compute the derivatives of a V-cast HH system for a

@@ -41,7 +41,7 @@ def plotVarDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12
     # Get dictionary of charge and amplitude dependent QSS variables
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
     _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=Adrive, charges=charges)
-    df = {k: QS_states[i] for i, k in enumerate(neuron.states)}
+    df = QS_states
     df['Vm'] = Vmeff
 
     # Create figure
@@ -111,7 +111,7 @@ def plotQSSvars(neuron, a, Fdrive, Adrive, fs=12):
     _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=Adrive)
 
     # Compute QSS currents
-    currents = neuron.currents(Vmeff, QS_states)
+    currents = neuron.currents(Vmeff, np.array([QS_states[k] for k in neuron.states]))
     iNet = sum(currents.values())
 
     # Compute fixed points in dQdt profile
@@ -121,9 +121,9 @@ def plotQSSvars(neuron, a, Fdrive, Adrive, fs=12):
 
     # Extract dimensionless states
     norm_QS_states = {}
-    for i, label in enumerate(neuron.states):
-        if 'unit' not in pltvars[label]:
-            norm_QS_states[label] = QS_states[i]
+    for x in neuron.states:
+        if 'unit' not in pltvars[x]:
+            norm_QS_states[x] = QS_states[x]
 
     # Create figure
     fig, axes = plt.subplots(3, 1, figsize=(7, 9))
@@ -208,7 +208,6 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
     Afactor = {'US': 1e-3, 'elec': 1.}[stim_type]
     Q_SFPs = []
     Q_UFPs = []
-    Qzeros = []
 
     log = 'plotting {} neuron QSS {} vs. amp for {} stimulation @ {:.0f}% DC'.format(
         neuron.name, varname, stim_type, DC * 1e2)
@@ -220,8 +219,8 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
     _, Qref, Vmeff0, QS_states0 = nbls.quasiSteadyStates(Fdrive, amps=0.)
     if stim_type == 'elec':  # if E-STIM case, compute steady states with constant capacitance
         Vmeff0 = Qref / neuron.Cm0 * 1e3
-        QS_states0 = np.array(list(map(neuron.steadyStates, Vmeff0))).T
-    df0 = {k: QS_states0[i] for i, k in enumerate(neuron.states)}
+        QS_states0 = neuron.steadyStates(Vmeff0)
+    df0 = QS_states0
     df0['Vm'] = Vmeff0
 
     # Create figure
@@ -273,7 +272,8 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
     if stim_type == 'US':
         # Get dictionary of charge and amplitude dependent QSS variables
         _, Qref, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DC)
-        df = {k: QS_states[i] for i, k in enumerate(neuron.states)}
+        QS_states0 = neuron.steadyStates(Vmeff0)
+        df = QS_states
         df['Vm'] = Vmeff
     else:
         # Repeat zero-amplitude QSS dictionary for all amplitudes
@@ -371,16 +371,15 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
         Qrange = (min(Qrange[0], Qref.min()), max(Qrange[1], Qref.max()))
         if stim_type == 'elec':  # if E-STIM case, compute steady states with constant capacitance
             Vmeff0 = Qref / neuron.Cm0 * 1e3
-            QS_states0 = np.array(list(map(neuron.steadyStates, Vmeff0))).T
-        dQdt0 = -neuron.iNet(Vmeff0, QS_states0)  # mA/m2
+            QS_states0 = neuron.steadyStates(Vmeff0)
+        dQdt0 = -neuron.iNet(Vmeff0, np.array([QS_states0[k] for k in neuron.states]))  # mA/m2
 
         # Compute 3D QSS charge variation array
         if stim_type == 'US':
             _, _, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DCs)
+            dQdt = -neuron.iNet(Vmeff, np.array([QS_states[k] for k in neuron.states]))  # mA/m2
             if DCs.size == 1:
-                QS_states = QS_states.reshape((*QS_states.shape, 1))
-                Vmeff = Vmeff.reshape((*Vmeff.shape, 1))
-            dQdt = -neuron.iNet(Vmeff, QS_states)  # mA/m2
+                dQdt = dQdt.reshape((*dQdt.shape, 1))
             Afactor = 1e-3
         else:
             Afactor = 1.

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-14 18:48:31
+# @Last Modified time: 2019-05-15 12:40:08
 
 
 import numpy as np
@@ -417,11 +417,14 @@ class OtsukaSTN(PointNeuron):
             :param d1: open-probability of d1-gate
             :return: steady-state Calcium concentration in submembrane space (M)
         '''
-        return brentq(
-            lambda x: self.derCai(p, q, c, d1, self.d2inf(x), x, Vm),
-            self.Cai0 * 1e-4, self.Cai0 * 1e3,
-            xtol=1e-16
-        )
+        if isinstance(Vm, np.ndarray):
+            return np.array([self.Caiinf(Vm[i], p[i], q[i], c[i], d1[i]) for i in range(Vm.size)])
+        else:
+            return brentq(
+                lambda x: self.derCai(p, q, c, d1, self.d2inf(x), x, Vm),
+                self.Cai0 * 1e-4, self.Cai0 * 1e3,
+                xtol=1e-16
+            )
 
 
     def iNa(self, m, h, Vm):
@@ -583,11 +586,11 @@ class OtsukaSTN(PointNeuron):
         }
 
 
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
-        Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
+        rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates}
+        Vmeff = np.interp(Qm, lkp['Q'], lkp['V'])
         a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
 
         return {
@@ -605,3 +608,12 @@ class OtsukaSTN(PointNeuron):
             'Cai': self.derCai(p, q, c, d1, d2, Cai, Vmeff)
         }
 
+
+    def quasiSteadyStates(self, lkp):
+        ''' Overriding of abstract parent method. '''
+        qsstates = self.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
+        qsstates['Cai'] = self.Caiinf(lkp['V'], qsstates['p'], qsstates['q'], qsstates['c'],
+                                      qsstates['d1'])
+        qsstates['d2'] = self.d2inf(qsstates['Cai'])
+        qsstates['r'] = self.rinf(qsstates['Cai'])
+        return qsstates

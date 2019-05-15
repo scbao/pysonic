@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-14 18:30:06
+# @Last Modified time: 2019-05-15 13:22:21
 
 import numpy as np
 from ..core import PointNeuron
@@ -226,10 +226,10 @@ class Thalamic(PointNeuron):
         }
 
 
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
+        rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates}
         m, h, n, s, u = states
         return {
             'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
@@ -238,6 +238,11 @@ class Thalamic(PointNeuron):
             's': rates['alphas'] * (1 - s) - rates['betas'] * s,
             'u': rates['alphau'] * (1 - u) - rates['betau'] * u
         }
+
+
+    def quasiSteadyStates(self, lkp):
+        ''' Overriding of abstract parent method. '''
+        return self.qsStates(lkp, ['m', 'h', 'n', 's', 'u'])
 
 
 class ThalamicRE(Thalamic):
@@ -629,11 +634,11 @@ class ThalamoCortical(Thalamic):
         return effrates
 
 
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
-        Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
+        rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates}
+        Vmeff = np.interp(Qm, lkp['Q'], lkp['V'])
 
         # Unpack states
         m, h, n, s, u, O, C, P0, Cai = states
@@ -655,3 +660,14 @@ class ThalamoCortical(Thalamic):
 
         # Merge derivatives and return
         return dstates
+
+
+    def quasiSteadyStates(self, lkp):
+        ''' Overriding of abstract parent method. '''
+        qsstates = super().quasiSteadyStates(lkp)
+        qsstates['Cai'] = self.Caiinf(lkp['V'], qsstates['s'], qsstates['u'])
+        qsstates['P0'] = self.P0inf(qsstates['Cai'])
+        qsstates['O'] = self.Oinf(qsstates['Cai'], lkp['V'])
+        qsstates['C'] = self.Cinf(qsstates['Cai'], lkp['V'])
+
+        return qsstates

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-14 18:15:17
+# @Last Modified time: 2019-05-15 12:09:48
 
 import os
 import inspect
@@ -746,6 +746,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Get lookups for specific (a, f, A) combination
         Aref, Qref, lookups2D, _ = getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)
+        if 'ng' in lookups2D:
+            lookups2D.pop('ng')
 
         # Derive inputs from lookups reference if not provided
         if amps is None:
@@ -773,70 +775,33 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         lookups_on = {key: interp1d(Aref, y2D, axis=0)(amps) for key, y2D in lookups2D.items()}
         lookups_off = {key: interp1d(Aref, y2D, axis=0)(0.0) for key, y2D in lookups2D.items()}
 
-        # Compute DC-averaged Vmeff
-        Vmeff_on, Vmeff_off = lookups_on['V'], lookups_off['V']
-        Vmeff_avg = np.empty((nA, nQ, nDC))
+        # Compute DC-averaged lookups
+        lookups_DCavg = {}
+        for key in lookups2D.keys():
+            x_on, x_off = lookups_on[key], lookups_off[key]
+            x_avg = np.empty((nA, nQ, nDC))
+            for iA, Adrive in enumerate(amps):
+                for iDC, DC in enumerate(DCs):
+                    x_avg[iA, :, iDC] = x_on[iA, :] * DC + x_off * (1 - DC)
+            lookups_DCavg[key] = x_avg
+
+        # Extract Vmeff
+        Vmeff = lookups_DCavg['V'].squeeze()
+
+        # Compute 3D QSS states
+        QS_states_3D = {k: np.empty((nA, nQ, nDC)) for k in self.neuron.states}
         for iA, Adrive in enumerate(amps):
             for iDC, DC in enumerate(DCs):
-                Vmeff_avg[iA, :, iDC] = Vmeff_on[iA, :] * DC + Vmeff_off * (1 - DC)
+                QS_states_1D = self.neuron.quasiSteadyStates(
+                    {k: v[iA, :, iDC] for k, v in lookups_DCavg.items()})
+                for k in QS_states_3D.keys():
+                    QS_states_3D[k][iA, :, iDC] = QS_states_1D[k]
 
-        # Compute QSS states
-        print(self.neuron.getOrderedStates())
-
-        QS_states = np.empty((len(self.neuron.states), nA, nQ, nDC))
-        is_computed = np.zeros(len(self.neuron.states), dtype=int)
-        while is_computed.sum() < len(self.neuron.states):
-
-            for i, x in enumerate(self.neuron.states):
-
-                # If voltage-gated state, compute DC-averaged QSS values
-                # from interpolated rate constants
-                if self.neuron.isVoltageGated(x):
-                    alpha_str, beta_str = ['{}{}'.format(s, x.lower()) for s in ['alpha', 'beta']]
-                    alphax_on, alphax_off = lookups_on[alpha_str], lookups_off[alpha_str]
-                    betax_on, betax_off = lookups_on[beta_str], lookups_off[beta_str]
-                    for iA, Adrive in enumerate(amps):
-                        for iDC, DC in enumerate(DCs):
-                            alphax = alphax_on[iA, :] * DC + alphax_off * (1 - DC)
-                            betax = betax_on[iA, :] * DC + betax_off * (1 - DC)
-                            QS_states[i, iA, :, iDC] = alphax / (alphax + betax)
-                    is_computed[i] = 1
-
-                # Otherwise, it must be a slowly evolving state -> compute QSS values using
-                # steady-state function with DC-averaged parameters (states and Vmeff)
-                else:
-                    # get xinf method and ist arguments
-                    xinf_func = getattr(self.neuron, '{}inf'.format(x))
-                    xinf_args = inspect.getargspec(xinf_func)[0][1:]
-
-                    # Check if method is Vm-dependent, and extract indexes of QSS states required
-                    # to compute method
-                    iVm = -1
-                    if 'Vm' in xinf_args:
-                        iVm = xinf_args.index('Vm')
-                        xinf_args.remove('Vm')
-                    i_xinf_args = [self.neuron.states.index(arg) for arg in xinf_args]
-
-                    # If all required QSS states are already computed -> compute this QSS state
-                    if np.sum(is_computed[i_xinf_args]) == len(i_xinf_args):
-                        # Extract QSS values of required states
-                        xinf_inputs = QS_states[i_xinf_args]
-
-                        # If method is Vm-dependent, insert DC-averaged Vmeff
-                        # to the dependencies array (at appropriate index)
-                        if iVm > -1:
-                            xinf_inputs = np.insert(xinf_inputs, iVm, Vmeff_avg, axis=0)
-
-                        # Compute QSS value for each (A, Q, DC) combination
-                        for iA, Adrive in enumerate(amps):
-                            for iDC, DC in enumerate(DCs):
-                                QS_states[i, iA, :, iDC] = np.array([
-                                    xinf_func(*xinf_inputs[:, iA, iQ, iDC]) for iQ in range(nQ)])
-
-                        is_computed[i] = 1
+        # Compress output if needed
+        QS_states = {k: v.squeeze() for k, v in QS_states_3D.items()}
 
         # Return reference inputs and output arrays
-        return amps, charges, np.squeeze(Vmeff_avg), np.squeeze(QS_states)
+        return amps, charges, Vmeff, QS_states
 
 
     def findRheobaseAmps(self, DCs, Fdrive, Vthr):

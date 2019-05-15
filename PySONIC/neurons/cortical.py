@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-14 18:24:31
+# @Last Modified time: 2019-05-15 12:27:13
 
 import numpy as np
 from ..core import PointNeuron
@@ -240,9 +240,9 @@ class Cortical(PointNeuron):
         }
 
 
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
-        rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
+        rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates}
         m, h, n, p = states
         return {
             'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
@@ -250,6 +250,11 @@ class Cortical(PointNeuron):
             'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
             'p': rates['alphap'] * (1 - p) - rates['betap'] * p
         }
+
+    def quasiSteadyStates(self, lkp):
+        ''' Overriding of abstract parent method. '''
+        return self.qsStates(lkp, ['m', 'h', 'n', 'p'])
+
 
 
 class CorticalRS(Cortical):
@@ -459,22 +464,29 @@ class CorticalLTS(Cortical):
         return effrates
 
 
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
         # Unpack input states
         *NaK_states, s, u = states
 
         # Call parent method to compute Sodium and Potassium channels states derivatives
-        dstates = super().derEffStates(Qm, NaK_states, interp_data)
+        dstates = super().derEffStates(Qm, NaK_states, lkp)
 
         # Compute Calcium channels states derivatives
-        Ca_rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates[8:]}
+        Ca_rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates[8:]}
         dstates['s'] = Ca_rates['alphas'] * (1 - s) - Ca_rates['betas'] * s
         dstates['u'] = Ca_rates['alphau'] * (1 - u) - Ca_rates['betau'] * u
 
         # Merge all states derivatives and return
         return dstates
+
+
+    def quasiSteadyStates(self, lkp):
+        ''' Overriding of abstract parent method. '''
+        qsstates = super().quasiSteadyStates(lkp)
+        qsstates.update(self.qsStates(lkp, ['s', 'u']))
+        return qsstates
 
 
 class CorticalIB(Cortical):
@@ -634,19 +646,25 @@ class CorticalIB(Cortical):
         return effrates
 
 
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
         # Unpack input states
         *NaK_states, q, r = states
 
         # Call parent method to compute Sodium and Potassium channels states derivatives
-        dstates = super().derEffStates(Qm, NaK_states, interp_data)
+        dstates = super().derEffStates(Qm, NaK_states, lkp)
 
         # Compute Calcium channels states derivatives
-        Ca_rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates[8:]}
+        Ca_rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates[8:]}
         dstates['q'] = Ca_rates['alphaq'] * (1 - q) - Ca_rates['betaq'] * q
         dstates['r'] = Ca_rates['alphar'] * (1 - r) - Ca_rates['betar'] * r
 
         # Merge all states derivatives and return
         return dstates
+
+    def quasiSteadyStates(self, lkp):
+        ''' Overriding of abstract parent method. '''
+        qsstates = super().quasiSteadyStates(lkp)
+        qsstates.update(self.qsStates(lkp, ['q', 'r']))
+        return qsstates

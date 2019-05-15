@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-14 19:18:39
+# @Last Modified time: 2019-05-15 13:46:28
 
 
 from functools import partialmethod
@@ -325,12 +325,12 @@ class LeechTouch(PointNeuron):
         }
 
 
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
+        rates = np.array([np.interp(Qm, lkp['Q'], lkp[rn])
                           for rn in self.rates])
-        Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
+        Vmeff = np.interp(Qm, lkp['Q'], lkp['V'])
         m, h, n, s, Nai, ANa, Cai, ACa = states
 
         # Standard gating states derivatives
@@ -351,6 +351,22 @@ class LeechTouch(PointNeuron):
 
         # Pack derivatives and return
         return dstates
+
+
+    def quasiSteadyStates(self, lkp):
+        ''' Overriding of abstract parent method. '''
+        qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
+
+        # PumpNa pool concentration and activation steady-state
+        qsstates['CNa'] = - self.K_Na * self.iNa(qsstates['m'], qsstates['h'], lkp['V'])
+        qsstates['ANa'] = qsstates['CNa']
+
+        # KCa current pool concentration and activation steady-state
+        qsstates['CCa'] = - self.K_Ca * self.iCa(qsstates['s'], lkp['V'])
+        qsstates['ACa'] = qsstates['CCa']
+
+        return qsstates
+
 
 
 class LeechMech(PointNeuron):
@@ -699,12 +715,12 @@ class LeechPressure(LeechMech):
         }
 
 
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
+        rates = np.array([np.interp(Qm, lkp['Q'], lkp[rn])
                           for rn in self.rates])
-        Vmeff = np.interp(Qm, interp_data['Q'], interp_data['V'])
+        Vmeff = np.interp(Qm, lkp['Q'], lkp['V'])
         m, h, n, s, c, Nai, Cai = states
 
         return {
@@ -716,6 +732,14 @@ class LeechPressure(LeechMech):
             'Nai': -(self.iNa(m, h, Vmeff, Nai) + self.iPumpNa(Nai)) * self.K_Na,  # M/s
             'Cai': -(self.iCa(s, Vmeff, Cai) + self.iPumpCa(Cai)) * self.K_Ca  # M/s
         }
+
+    def quasiSteadyStates(self, lkp):
+        ''' Overriding of abstract parent method. '''
+        qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
+        qsstates.update({'Nai': self.Nai0, 'Cai': self.Cai0})
+        qsstates['c'] = self.alphaC(qsstates['Cai']) / (self.alphaC(qsstates['Cai']) + self.betaC)
+
+        return qsstates
 
 
 class LeechRetzius(LeechMech):
@@ -914,10 +938,10 @@ class LeechRetzius(LeechMech):
         }
 
 
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = np.array([np.interp(Qm, interp_data['Q'], interp_data[rn])
+        rates = np.array([np.interp(Qm, lkp['Q'], lkp[rn])
                           for rn in self.rates])
         m, h, n, s, c, a, b = states
 
@@ -931,3 +955,11 @@ class LeechRetzius(LeechMech):
             'b': rates[10] * (1 - b) - rates[11] * b,
             'c': self.derC(c, self.Cai)
         }
+
+
+    def quasiSteadyStates(self, lkp):
+        ''' Overriding of abstract parent method. '''
+        qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's', 'a', 'b'])
+        qsstates['c'] = self.alphaC(self.Cai) / (self.alphaC(self.Cai) + self.betaC),
+
+        return qsstates

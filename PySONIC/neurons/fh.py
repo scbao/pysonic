@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-14 18:32:47
+# @Last Modified time: 2019-05-15 12:29:36
 
 import numpy as np
 from ..core import PointNeuron
@@ -268,10 +268,10 @@ class FrankenhaeuserHuxley(PointNeuron):
         }
 
 
-    def derEffStates(self, Qm, states, interp_data):
+    def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = {rn: np.interp(Qm, interp_data['Q'], interp_data[rn]) for rn in self.rates}
+        rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates}
         m, h, n, p = states
 
         return {
@@ -280,3 +280,8 @@ class FrankenhaeuserHuxley(PointNeuron):
             'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
             'p': rates['alphap'] * (1 - p) - rates['betap'] * p
         }
+
+
+    def quasiSteadyStates(self, lkp):
+        ''' Overriding of abstract parent method. '''
+        return self.qsStates(lkp, ['m', 'h', 'n', 'p'])
