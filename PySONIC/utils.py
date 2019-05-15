@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 10:53:59
+# @Last Modified time: 2019-05-15 15:31:54
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -450,6 +450,64 @@ def getLookups2Dfs(mechname, a, Fdrive, fs):
     lookups2D = {key: interp1d(fsref, y3D, axis=2)(fs) for key, y3D in lookups3D.items()}
 
     return Aref, Qref, lookups2D
+
+
+def getLookupsDCavg(mechname, a, Fdrive, amps=None, charges=None, DCs=1.0):
+    ''' Get the DC-averaged lookups of a specific neuron for a combination of US amplitudes,
+        charge densities and duty cycles, at a specific US frequency.
+
+        :param mechname: name of membrane density mechanism
+        :param a: sonophore radius (m)
+        :param Fdrive: US frequency (Hz)
+        :param amps: US amplitudes (Pa)
+        :param charges: membrane charge densities (C/m2)
+        :param DCs: duty cycle value(s)
+        :return: 4-tuple with reference values of US amplitude and charge density,
+            as well as interpolated Vmeff and QSS gating variables
+    '''
+
+    # Get lookups for specific (a, f, A) combination
+    Aref, Qref, lookups2D, _ = getLookups2D(mechname, a=a, Fdrive=Fdrive)
+    if 'ng' in lookups2D:
+        lookups2D.pop('ng')
+
+    # Derive inputs from lookups reference if not provided
+    if amps is None:
+        amps = Aref
+    if charges is None:
+        charges = Qref
+
+    # Transform inputs into arrays if single value provided
+    if isinstance(amps, float):
+        amps = np.array([amps])
+    if isinstance(charges, float):
+        charges = np.array([charges])
+    if isinstance(DCs, float):
+        DCs = np.array([DCs])
+    nA, nQ, nDC = amps.size, charges.size, DCs.size
+    cs = {True: 's', False: ''}
+    logger.debug('%u amplitude%s, %u charge%s, %u DC%s',
+                 nA, cs[nA > 1], nQ, cs[nQ > 1], nDC, cs[nDC > 1])
+
+    # Re-interpolate lookups at input charges
+    lookups2D = {key: interp1d(Qref, y2D, axis=1)(charges) for key, y2D in lookups2D.items()}
+
+    # Interpolate US-ON (for each input amplitude) and US-OFF (A = 0) lookups
+    amps = isWithin('amplitude', amps, (Aref.min(), Aref.max()))
+    lookups_on = {key: interp1d(Aref, y2D, axis=0)(amps) for key, y2D in lookups2D.items()}
+    lookups_off = {key: interp1d(Aref, y2D, axis=0)(0.0) for key, y2D in lookups2D.items()}
+
+    # Compute DC-averaged lookups
+    lookups_DCavg = {}
+    for key in lookups2D.keys():
+        x_on, x_off = lookups_on[key], lookups_off[key]
+        x_avg = np.empty((nA, nQ, nDC))
+        for iA, Adrive in enumerate(amps):
+            for iDC, DC in enumerate(DCs):
+                x_avg[iA, :, iDC] = x_on[iA, :] * DC + x_off * (1 - DC)
+        lookups_DCavg[key] = x_avg
+
+    return amps, charges, lookups_DCavg
 
 
 def isWithin(name, val, bounds, rel_tol=1e-9):

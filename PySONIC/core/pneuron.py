@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 13:31:55
+# @Last Modified time: 2019-05-15 14:01:49
 
 import os
 import time
@@ -341,23 +341,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
             rates[alpha_str] = alphax
             rates[beta_str] = betax
         return rates
-
-    def getStatesDependencies(self):
-        ''' Return dictionary of states inter-dependencies. '''
-        deps = {}
-        for x in self.states:
-            func = getattr(self, '{}inf'.format(x))
-            args = inspect.getargspec(func)[0][1:]
-            args.remove(x)
-            deps[state] = args
-        return deps
-
-    def getOrderedStates(self):
-        ''' Return list of states ordered in such a way to allow their derivative to be computed
-            without breaking dependencies. '''
-        ordered_states = resolveDependencies(self.getStatesDependencies())
-        ordered_states.remove('Vm')
-        return ordered_states
 
 
     def Vderivatives(self, y, t, Iinj):

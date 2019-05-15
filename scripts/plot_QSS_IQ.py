@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 11:59:26
+# @Last Modified time: 2019-05-15 16:32:25
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -51,7 +51,7 @@ def main():
     # US parameters
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
-    Arange = (1., 600.)  # kPa
+    Arange = (1., 60.)  # kPa
     nA = 100
     US_amps = {
         'lin': np.linspace(Arange[0], Arange[1], nA),

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 12:09:48
+# @Last Modified time: 2019-05-15 15:54:10
 
 import os
 import inspect
@@ -19,7 +19,7 @@ from scipy.interpolate import interp1d
 
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
-from ..utils import logger, si_format, downsample, rmse, ASTIM_filecode, getLookups2D, isWithin, titrate
+from ..utils import *
 from ..constants import *
 from ..postpro import findPeaks
 from ..batches import xlslog
@@ -744,64 +744,26 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 as well as interpolated Vmeff and QSS gating variables
         '''
 
-        # Get lookups for specific (a, f, A) combination
-        Aref, Qref, lookups2D, _ = getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)
-        if 'ng' in lookups2D:
-            lookups2D.pop('ng')
+        # Get DC-averaged lookups interpolated at the appropriate amplitudes and charges
+        amps, charges, lookups = getLookupsDCavg(
+            self.neuron.name, self.a, Fdrive, amps, charges, DCs)
 
-        # Derive inputs from lookups reference if not provided
-        if amps is None:
-            amps = Aref
-        if charges is None:
-            charges = Qref
+        # Compute QSS states using these lookups
+        nA, nQ, nDC = lookups['V'].shape
+        QSS = {k: np.empty((nA, nQ, nDC)) for k in self.neuron.states}
+        for iA in range(nA):
+            for iDC in range(nDC):
+                QSS_1D = self.neuron.quasiSteadyStates(
+                    {k: v[iA, :, iDC] for k, v in lookups.items()})
+                for k in QSS.keys():
+                    QSS[k][iA, :, iDC] = QSS_1D[k]
 
-        # Transform inputs into arrays if single value provided
-        if isinstance(amps, float):
-            amps = np.array([amps])
-        if isinstance(charges, float):
-            charges = np.array([charges])
-        if isinstance(DCs, float):
-            DCs = np.array([DCs])
-        nA, nQ, nDC = amps.size, charges.size, DCs.size
-        cs = {True: 's', False: ''}
-        logger.debug('%u amplitude%s, %u charge%s, %u DC%s',
-                     nA, cs[nA > 1], nQ, cs[nQ > 1], nDC, cs[nDC > 1])
+        # Compress outputs if needed
+        QSS = {k: v.squeeze() for k, v in QSS.items()}
+        lookups = {k: v.squeeze() for k, v in lookups.items()}
 
-        # Re-interpolate lookups at input charges
-        lookups2D = {key: interp1d(Qref, y2D, axis=1)(charges) for key, y2D in lookups2D.items()}
-
-        # Interpolate US-ON (for each input amplitude) and US-OFF (A = 0) lookups
-        amps = isWithin('amplitude', amps, (Aref.min(), Aref.max()))
-        lookups_on = {key: interp1d(Aref, y2D, axis=0)(amps) for key, y2D in lookups2D.items()}
-        lookups_off = {key: interp1d(Aref, y2D, axis=0)(0.0) for key, y2D in lookups2D.items()}
-
-        # Compute DC-averaged lookups
-        lookups_DCavg = {}
-        for key in lookups2D.keys():
-            x_on, x_off = lookups_on[key], lookups_off[key]
-            x_avg = np.empty((nA, nQ, nDC))
-            for iA, Adrive in enumerate(amps):
-                for iDC, DC in enumerate(DCs):
-                    x_avg[iA, :, iDC] = x_on[iA, :] * DC + x_off * (1 - DC)
-            lookups_DCavg[key] = x_avg
-
-        # Extract Vmeff
-        Vmeff = lookups_DCavg['V'].squeeze()
-
-        # Compute 3D QSS states
-        QS_states_3D = {k: np.empty((nA, nQ, nDC)) for k in self.neuron.states}
-        for iA, Adrive in enumerate(amps):
-            for iDC, DC in enumerate(DCs):
-                QS_states_1D = self.neuron.quasiSteadyStates(
-                    {k: v[iA, :, iDC] for k, v in lookups_DCavg.items()})
-                for k in QS_states_3D.keys():
-                    QS_states_3D[k][iA, :, iDC] = QS_states_1D[k]
-
-        # Compress output if needed
-        QS_states = {k: v.squeeze() for k, v in QS_states_3D.items()}
-
-        # Return reference inputs and output arrays
-        return amps, charges, Vmeff, QS_states
+        # Return reference inputs and outputs
+        return amps, charges, lookups, QSS
 
 
     def findRheobaseAmps(self, DCs, Fdrive, Vthr):
