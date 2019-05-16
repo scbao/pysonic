@@ -40,7 +40,8 @@ def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs
 
     # Get dictionary of charge and amplitude dependent QSS variables
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, Qref, lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=Adrive, charges=charges)
+    _, Qref, lookups, QSS = nbls.quasiSteadyStates(
+        Fdrive, amps=Adrive, charges=charges, squeeze_output=True)
     df = QSS
     df['Vm'] = lookups['V']
 
@@ -108,7 +109,7 @@ def plotQSSvars(neuron, a, Fdrive, Adrive, fs=12):
 
     # Compute neuron-specific charge and amplitude dependent QS states at this amplitude
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
-    _, Qref, lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=Adrive)
+    _, Qref, lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=Adrive, squeeze_output=True)
     Vmeff = lookups['V']
 
     # Compute QSS currents
@@ -217,7 +218,7 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
 
     # Get reference dictionaries for zero amplitude
-    _, Qref, lookups0, QSS0 = nbls.quasiSteadyStates(Fdrive, amps=0.)
+    _, Qref, lookups0, QSS0 = nbls.quasiSteadyStates(Fdrive, amps=0., squeeze_output=True)
     Vmeff0 = lookups0['V']
     if stim_type == 'elec':  # if E-STIM case, compute steady states with constant capacitance
         Vmeff0 = Qref / neuron.Cm0 * 1e3
@@ -273,7 +274,8 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
     # Get amplitude-dependent QSS dictionary
     if stim_type == 'US':
         # Get dictionary of charge and amplitude dependent QSS variables
-        _, Qref, lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DC)
+        _, Qref, lookups, QSS = nbls.quasiSteadyStates(
+            Fdrive, amps=amps, DCs=DC, squeeze_output=True)
         df = QSS
         df['Vm'] = lookups['V']
     else:
@@ -368,7 +370,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
         nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
 
         # Compute reference charge variation array for zero amplitude
-        _, Qref, lookups0, QSS0 = nbls.quasiSteadyStates(Fdrive, amps=0.)
+        _, Qref, lookups0, QSS0 = nbls.quasiSteadyStates(Fdrive, amps=0., squeeze_output=True)
         Qrange = (min(Qrange[0], Qref.min()), max(Qrange[1], Qref.max()))
         Vmeff0 = lookups0['V']
         if stim_type == 'elec':  # if E-STIM case, compute steady states with constant capacitance
@@ -379,9 +381,6 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
         # Compute 3D QSS charge variation array
         if stim_type == 'US':
             _, _, lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DCs)
-            if DCs.size == 1:
-                lookups = {k: v.reshape(*v.shape, 1) for k, v in lookups.items()}
-                QSS = {k: v.reshape(*v.shape, 1) for k, v in QSS.items()}
             dQdt = -neuron.iNet(lookups['V'], np.array([QSS[k] for k in neuron.states]))  # mA/m2
             Afactor = 1e-3
         else:
@@ -399,7 +398,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
             A_SFPs, A_UFPs, Q_SFPs, Q_UFPs = [], [], [], []
             for iA, Adrive in enumerate(amps):
 
-                # print('- A = {:.2f} kPa'.format(Adrive * 1e-3))
+                print('- A = {:.2f} kPa'.format(Adrive * 1e-3))
 
                 dQ_profile = dQdt[iA, :, iDC]
                 sfp = getFixedPoints(Qref, dQ_profile, filter='stable').tolist()
@@ -409,22 +408,22 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                 Q_UFPs += ufp
                 A_UFPs += [Adrive] * len(ufp)
 
-                QSS1D = {k: v[iA, :, iDC] for k, v in QSS.items()}
                 lookups1D = {k: v[iA, :, iDC] for k, v in lookups.items()}
                 lookups1D['Q'] = Qref
 
                 # Analyze real stability of selected SFPs
                 if len(sfp) > 0:
+                    # Re-compute QSS at the Q-SFPs
+                    _, _, _, QSS_sfp = nbls.quasiSteadyStates(
+                        Fdrive, amps=Adrive, charges=np.array(sfp), DCs=DC)
+                    QSS_sfp = {k: v[0, :, 0] for k, v in QSS_sfp.items()}
                     for ipoint, Qpoint in enumerate(sfp):
-                        # Interpolate QSS at the Q-SFPs and compute effective derivatives
                         print('-- Q-SFP at {:.2f} nC/cm2'.format(Qpoint * 1e5))
-                        QSS_sfp = {k: np.interp(Qpoint, Qref, v, left=np.nan, right=np.nan)
-                                   for k, v in QSS1D.items()}
-                        dQSS_sfp = neuron.derEffStates(Qpoint, QSS_sfp.values(), lookups1D)
-                        abs_ratios = {x: np.abs(dQSS_sfp[x] / QSS_sfp[x]) for x in QSS_sfp.keys()}
+                        QSS_Qpoint = {k: v[i] for k, v in QSS_sfp.items()}
+                        dQSS_Qpoint = neuron.derEffStates(Qpoint, QSS_Qpoint.values(), lookups1D)
                         for x in neuron.states:
-                            print('--- {} = {:.5f}, d{}/dt = {:.5f}, |ratio| = {:.2e}'.format(
-                                x, QSS_sfp[x], x, dQSS_sfp[x], abs_ratios[x]))
+                            print('--- {} = {}, d{}/dt = {}'.format(
+                                x, QSS_Qpoint[x], x, dQSS_Qpoint[x]))
 
             ax.plot(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5, 'o', c=color, markersize=3,
                     label='{} neuron - SFPs @ {:.0f} % DC'.format(neuron.name, DC * 1e2))

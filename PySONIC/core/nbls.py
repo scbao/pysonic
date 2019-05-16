@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-16 15:00:50
+# @Last Modified time: 2019-05-16 16:39:44
 
 import os
 import inspect
@@ -733,7 +733,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return outpath
 
 
-    def quasiSteadyStates(self, Fdrive, amps=None, charges=None, DCs=1.0):
+    def quasiSteadyStates(self, Fdrive, amps=None, charges=None, DCs=1.0, squeeze_output=False):
         ''' Compute the quasi-steady state values of the neuron's gating variables
             for a combination of US amplitudes, charge densities and duty cycles,
             at a specific US frequency.
@@ -761,8 +761,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                     QSS[k][iA, :, iDC] = QSS_1D[k]
 
         # Compress outputs if needed
-        QSS = {k: v.squeeze() for k, v in QSS.items()}
-        lookups = {k: v.squeeze() for k, v in lookups.items()}
+        if squeeze_output:
+            QSS = {k: v.squeeze() for k, v in QSS.items()}
+            lookups = {k: v.squeeze() for k, v in lookups.items()}
 
         # Return reference inputs and outputs
         return amps, charges, lookups, QSS
