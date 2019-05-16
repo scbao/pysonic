@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 13:22:21
+# @Last Modified time: 2019-05-16 15:25:21
 
 import numpy as np
 from ..core import PointNeuron
@@ -208,7 +208,7 @@ class Thalamic(PointNeuron):
         }
 
 
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
@@ -229,7 +229,7 @@ class Thalamic(PointNeuron):
     def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates}
+        rates = self.interpEffRates(Qm, lkp)
         m, h, n, s, u = states
         return {
             'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
@@ -621,11 +621,11 @@ class ThalamoCortical(Thalamic):
 
         return dstates
 
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute effective coefficients for Sodium, Potassium and Calcium conductances
-        effrates = super().getEffRates(Vm)
+        effrates = super().computeEffRates(Vm)
 
         # Compute effective coefficients for Ih conductance
         effrates['alphao'] = np.mean(self.alphao(Vm))
@@ -637,23 +637,17 @@ class ThalamoCortical(Thalamic):
     def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates}
-        Vmeff = np.interp(Qm, lkp['Q'], lkp['V'])
-
         # Unpack states
         m, h, n, s, u, O, C, P0, Cai = states
 
-        # INa, IK, iCaT effective states derivatives
-        dstates = {
-            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
-            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
-            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
-            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
-            'u': rates['alphau'] * (1 - u) - rates['betau'] * u
-        }
+        # Call parent method to compute channels states derivatives
+        dstates = super().derEffStates(Qm, [m, h, n, s, u], lkp)
+
+        iHrates = self.interpEffRates(Qm, lkp, keys=self.getRatesNames(['o']))
+        Vmeff = self.interpVmeff(Qm, lkp)
 
         # Ih effective states derivatives
-        dstates['C'] = rates['betao'] * O - rates['alphao'] * C
+        dstates['C'] = iHrates['betao'] * O - iHrates['alphao'] * C
         dstates['O'] = - dstates['C'] - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
         dstates['P0'] = self.derP0(P0, Cai)
         dstates['Cai'] = self.derCai(Cai, s, u, Vmeff)

@@ -14,7 +14,7 @@ from ..constants import TITRATION_T_OFFSET
 from ..utils import logger
 
 
-def plotVarDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):
+def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):
     ''' Plot the QSS-approximated derivative of a specific variable as function of
         the variable itself, as well as equilibrium values, for various membrane
         charge densities at a given acoustic amplitude.
@@ -399,7 +399,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
             A_SFPs, A_UFPs, Q_SFPs, Q_UFPs = [], [], [], []
             for iA, Adrive in enumerate(amps):
 
-                print('- A = {:.2f} kPa'.format(Adrive * 1e-3))
+                # print('- A = {:.2f} kPa'.format(Adrive * 1e-3))
 
                 dQ_profile = dQdt[iA, :, iDC]
                 sfp = getFixedPoints(Qref, dQ_profile, filter='stable').tolist()
@@ -418,11 +418,13 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                     for ipoint, Qpoint in enumerate(sfp):
                         # Interpolate QSS at the Q-SFPs and compute effective derivatives
                         print('-- Q-SFP at {:.2f} nC/cm2'.format(Qpoint * 1e5))
-                        states = {k: np.interp(Qpoint, Qref, v) for k, v in QSS1D.items()}
-                        dstates = neuron.derEffStates(Qpoint, states.values(), lookups1D)
+                        QSS_sfp = {k: np.interp(Qpoint, Qref, v, left=np.nan, right=np.nan)
+                                   for k, v in QSS1D.items()}
+                        dQSS_sfp = neuron.derEffStates(Qpoint, QSS_sfp.values(), lookups1D)
+                        abs_ratios = {x: np.abs(dQSS_sfp[x] / QSS_sfp[x]) for x in QSS_sfp.keys()}
                         for x in neuron.states:
-                            print('--- {} = {:.5f}, d{}/dt = {:.5f}'.format(
-                                x, states[x], x, dstates[x]))
+                            print('--- {} = {:.5f}, d{}/dt = {:.5f}, |ratio| = {:.2e}'.format(
+                                x, QSS_sfp[x], x, dQSS_sfp[x], abs_ratios[x]))
 
             ax.plot(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5, 'o', c=color, markersize=3,
                     label='{} neuron - SFPs @ {:.0f} % DC'.format(neuron.name, DC * 1e2))

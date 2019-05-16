@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 12:29:36
+# @Last Modified time: 2019-05-16 15:24:02
 
 import numpy as np
 from ..core import PointNeuron
@@ -252,7 +252,7 @@ class FrankenhaeuserHuxley(PointNeuron):
         }
 
 
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
@@ -271,7 +271,7 @@ class FrankenhaeuserHuxley(PointNeuron):
     def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates}
+        rates = self.interpEffRates(Qm, lkp)
         m, h, n, p = states
 
         return {

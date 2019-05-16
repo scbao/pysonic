@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-07 19:11:10
+# @Last Modified time: 2019-05-16 14:41:48
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -47,9 +47,13 @@ def getFixedPoints(x, dx, filter='stable'):
     izc = detectCrossings(dx, edge=edge)
     if izc.size > 0:
         for i in izc:
-            a = (dx[i + 1] - dx[i]) / (x[i + 1] - x[i])
-            b = dx[i] - a * x[i]
-            fps.append(-b / a)
+            # a = (dx[i + 1] - dx[i]) / (x[i + 1] - x[i])
+            # b = dx[i] - a * x[i]
+            # p1 = -b / a
+            p2 = np.interp(
+                0., np.sign(dx[i + 1]) * dx[i:i + 2], x[i:i + 2], left=np.nan, right=np.nan)
+            # print(x[i] * 1e5, x[i + 1] * 1e5, dx[i], dx[i + 1], p1 * 1e5, p2 * 1e5)
+            fps.append(p2)
         return np.array(fps)
     else:
         return np.array([])
@@ -70,7 +74,7 @@ def getEqPoint1D(x, dx, x0):
         return np.nan
 
     # Determine relevant stable fixed point from y0 sign
-    y0 = np.interp(x0, x, dx)
+    y0 = np.interp(x0, x, dx, left=np.nan, right=np.nan)
     inds_subset = x_SFPs >= x0
     ind_SFP = 0
     if y0 < 0:

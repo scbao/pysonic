@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 12:40:08
+# @Last Modified time: 2019-05-16 15:25:14
 
 
 import numpy as np
@@ -560,7 +560,7 @@ class OtsukaSTN(PointNeuron):
 
 
 
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
@@ -589,8 +589,8 @@ class OtsukaSTN(PointNeuron):
     def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates}
-        Vmeff = np.interp(Qm, lkp['Q'], lkp['V'])
+        rates = self.interpEffRates(Qm, lkp)
+        Vmeff = self.interpVmeff(Qm, lkp)
         a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
 
         return {

@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 12:27:13
+# @Last Modified time: 2019-05-16 15:24:03
 
 import numpy as np
 from ..core import PointNeuron
@@ -226,7 +226,7 @@ class Cortical(PointNeuron):
             'p': self.derP(Vm, p)
         }
 
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
         return {
             'alpham': np.mean(self.alpham(Vm)),
@@ -242,7 +242,7 @@ class Cortical(PointNeuron):
 
     def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
-        rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates}
+        rates = self.interpEffRates(Qm, lkp)
         m, h, n, p = states
         return {
             'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
@@ -449,11 +449,11 @@ class CorticalLTS(Cortical):
         return dstates
 
 
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Call parent method to compute Sodium and Potassium effective rate constants
-        effrates = super().getEffRates(Vm)
+        effrates = super().computeEffRates(Vm)
 
         # Compute Calcium effective rate constants
         effrates['alphas'] = np.mean(self.sinf(Vm) / self.taus(Vm))
@@ -474,7 +474,7 @@ class CorticalLTS(Cortical):
         dstates = super().derEffStates(Qm, NaK_states, lkp)
 
         # Compute Calcium channels states derivatives
-        Ca_rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates[8:]}
+        Ca_rates = self.interpEffRates(Qm, lkp, keys=self.getRatesNames(['s', 'u']))
         dstates['s'] = Ca_rates['alphas'] * (1 - s) - Ca_rates['betas'] * s
         dstates['u'] = Ca_rates['alphau'] * (1 - u) - Ca_rates['betau'] * u
 
@@ -631,11 +631,11 @@ class CorticalIB(Cortical):
         return dstates
 
 
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Call parent method to compute Sodium and Potassium effective rate constants
-        effrates = super().getEffRates(Vm)
+        effrates = super().computeEffRates(Vm)
 
         # Compute Calcium effective rate constants
         effrates['alphaq'] = np.mean(self.alphaq(Vm))
@@ -656,7 +656,7 @@ class CorticalIB(Cortical):
         dstates = super().derEffStates(Qm, NaK_states, lkp)
 
         # Compute Calcium channels states derivatives
-        Ca_rates = {rn: np.interp(Qm, lkp['Q'], lkp[rn]) for rn in self.rates[8:]}
+        Ca_rates = self.interpEffRates(Qm, lkp, keys=self.getRatesNames(['q', 'r']))
         dstates['q'] = Ca_rates['alphaq'] * (1 - q) - Ca_rates['betaq'] * q
         dstates['r'] = Ca_rates['alphar'] * (1 - r) - Ca_rates['betar'] * r
 

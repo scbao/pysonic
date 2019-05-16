@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 14:01:49
+# @Last Modified time: 2019-05-16 15:24:23
 
 import os
 import time
@@ -18,7 +18,7 @@ import pandas as pd
 
 from ..postpro import findPeaks
 from ..constants import *
-from ..utils import si_format, logger, ESTIM_filecode, titrate, resolveDependencies
+from ..utils import si_format, logger, ESTIM_filecode, titrate
 from ..batches import xlslog
 
 
@@ -259,13 +259,38 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
 
     @abc.abstractmethod
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Get the effective rate constants of ion channels, averaged along an acoustic cycle,
             for future use in effective simulations.
 
             :param Vm: array of membrane potential values for an acoustic cycle (mV)
             :return: a dictionary of rate average constants (s-1)
         '''
+
+    def interpEffRates(self, Qm, lkp, keys=None):
+        ''' Interpolate effective rate constants for a given charge density using
+            reference lookup vectors.
+
+            :param Qm: membrane charge density (C/m2)
+            :states: state probabilities of the ion channels
+            :param lkp: dictionary of 1D vectors of "effective" coefficients
+             over the charge domain, for specific frequency and amplitude values.
+            :return: dictionary of interpolated rate constants
+        '''
+        if keys is None:
+            keys = self.rates
+        return {k: np.interp(Qm, lkp['Q'], lkp[k], left=np.nan, right=np.nan) for k in keys}
+
+    def interpVmeff(self, Qm, lkp):
+        ''' Interpolate the effective membrane potential for a given charge density
+            using reference lookup vectors.
+
+            :param Qm: membrane charge density (C/m2)
+            :param lkp: dictionary of 1D vectors of "effective" coefficients
+             over the charge domain, for specific frequency and amplitude values.
+            :return: dictionary of interpolated rate constants
+        '''
+        return np.interp(Qm, lkp['Q'], lkp['V'], left=np.nan, right=np.nan)
 
     @abc.abstractmethod
     def derEffStates(self, Qm, states, lkp):

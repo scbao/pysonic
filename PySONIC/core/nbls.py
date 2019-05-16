@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 15:54:10
+# @Last Modified time: 2019-05-16 15:00:50
 
 import os
 import inspect
@@ -100,7 +100,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Qm, *states = y
 
         # Compute charge and channel states variation
-        Vm = np.interp(Qm, interp_data['Q'], interp_data['V'])  # mV
+        Vm = np.interp(Qm, interp_data['Q'], interp_data['V'], left=np.nan, right=np.nan)  # mV
         dQmdt = - self.neuron.iNet(Vm, states) * 1e-3
         dstates = self.neuron.derEffStates(Qm, states, interp_data)
 
@@ -335,18 +335,20 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Compute effective gas content vector
         ngeff = np.zeros(stimstate.size)
-        ngeff[stimstate == 0] = np.interp(
-            y[0, stimstate == 0], lookups_on['Q'], lookups_on['ng'])  # mole
-        ngeff[stimstate == 1] = np.interp(
-            y[0, stimstate == 1], lookups_off['Q'], lookups_off['ng'])  # mole
+        ngeff[stimstate == 0] = np.interp(y[0, stimstate == 0], lookups_on['Q'], lookups_on['ng'],
+                                          left=np.nan, right=np.nan)  # mole
+        ngeff[stimstate == 1] = np.interp(y[0, stimstate == 1], lookups_off['Q'], lookups_off['ng'],
+                                          left=np.nan, right=np.nan)  # mole
 
         # Compute quasi-steady deflection vector
         Zeff = np.array([self.balancedefQS(ng, Qm) for ng, Qm in zip(ngeff, y[0, :])])  # m
 
         # Compute membrane potential vector (in mV)
         Vm = np.zeros(stimstate.size)
-        Vm[stimstate == 1] = np.interp(y[0, stimstate == 1], lookups_on['Q'], lookups_on['V'])  # mV
-        Vm[stimstate == 0] = np.interp(y[0, stimstate == 0], lookups_off['Q'], lookups_off['V'])  # mV
+        Vm[stimstate == 1] = np.interp(y[0, stimstate == 1], lookups_on['Q'], lookups_on['V'],
+                                       left=np.nan, right=np.nan)  # mV
+        Vm[stimstate == 0] = np.interp(y[0, stimstate == 0], lookups_off['Q'], lookups_off['V'],
+                                       left=np.nan, right=np.nan)  # mV
 
         # Add Zeff, ngeff and Vm to solution matrix
         y = np.vstack([Zeff, ngeff, y[0, :], Vm, y[1:, :]])
@@ -839,7 +841,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
             # Compute average cycle value for membrane potential and rate constants
             effvars.append({'V': np.mean(Vm)})
-            effvars[-1].update(self.neuron.getEffRates(Vm))
+            effvars[-1].update(self.neuron.computeEffRates(Vm))
 
         tcomp = time.time() - tstart
 

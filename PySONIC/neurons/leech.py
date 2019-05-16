@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-15 13:46:28
+# @Last Modified time: 2019-05-16 15:25:06
 
 
 from functools import partialmethod
@@ -310,7 +310,7 @@ class LeechTouch(PointNeuron):
         return dstates
 
 
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         return {
@@ -328,17 +328,16 @@ class LeechTouch(PointNeuron):
     def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = np.array([np.interp(Qm, lkp['Q'], lkp[rn])
-                          for rn in self.rates])
-        Vmeff = np.interp(Qm, lkp['Q'], lkp['V'])
+        rates = self.interpEffRates(Qm, lkp)
+        Vmeff = self.interpVmeff(Qm, lkp)
         m, h, n, s, Nai, ANa, Cai, ACa = states
 
         # Standard gating states derivatives
         dstates = {
-            'm': rates[0] * (1 - m) - rates[1] * m,
-            'h': rates[2] * (1 - h) - rates[3] * h,
-            'n': rates[4] * (1 - n) - rates[5] * n,
-            's': rates[6] * (1 - s) - rates[7] * s
+            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
+            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
+            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
+            's': rates['alphas'] * (1 - s) - rates['betas'] * s
         }
 
         # PumpNa current pool concentration and activation state
@@ -699,7 +698,7 @@ class LeechPressure(LeechMech):
         }
 
 
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
@@ -718,16 +717,15 @@ class LeechPressure(LeechMech):
     def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = np.array([np.interp(Qm, lkp['Q'], lkp[rn])
-                          for rn in self.rates])
-        Vmeff = np.interp(Qm, lkp['Q'], lkp['V'])
+        rates = self.interpEffRates(Qm, lkp)
+        Vmeff = self.interpVmeff(Qm, lkp)
         m, h, n, s, c, Nai, Cai = states
 
         return {
-            'm': rates[0] * (1 - m) - rates[1] * m,
-            'h': rates[2] * (1 - h) - rates[3] * h,
-            'n': rates[4] * (1 - n) - rates[5] * n,
-            's': rates[6] * (1 - s) - rates[7] * s,
+            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
+            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
+            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
+            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
             'c': self.derC(c, Cai),
             'Nai': -(self.iNa(m, h, Vmeff, Nai) + self.iPumpNa(Nai)) * self.K_Na,  # M/s
             'Cai': -(self.iCa(s, Vmeff, Cai) + self.iPumpCa(Cai)) * self.K_Ca  # M/s
@@ -918,7 +916,7 @@ class LeechRetzius(LeechMech):
         }
 
 
-    def getEffRates(self, Vm):
+    def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
 
         # Compute average cycle value for rate constants
@@ -941,18 +939,17 @@ class LeechRetzius(LeechMech):
     def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
-        rates = np.array([np.interp(Qm, lkp['Q'], lkp[rn])
-                          for rn in self.rates])
+        rates = self.interpEffRates(Qm, lkp)
         m, h, n, s, c, a, b = states
 
         # Standard gating states derivatives
         return {
-            'm': rates[0] * (1 - m) - rates[1] * m,
-            'h': rates[2] * (1 - h) - rates[3] * h,
-            'n': rates[4] * (1 - n) - rates[5] * n,
-            's': rates[6] * (1 - s) - rates[7] * s,
-            'a': rates[8] * (1 - a) - rates[9] * a,
-            'b': rates[10] * (1 - b) - rates[11] * b,
+            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
+            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
+            'n': rates['alpham'] * (1 - n) - rates['betam'] * n,
+            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
+            'a': rates['alphaa'] * (1 - a) - rates['betaa'] * a,
+            'b': rates['alphab'] * (1 - b) - rates['betab'] * b,
             'c': self.derC(c, self.Cai)
         }
 
