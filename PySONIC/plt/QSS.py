@@ -396,59 +396,73 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
         for iDC, DC in enumerate(DCs):
             color = 'k' if len(neurons) * len(DCs) == 1 else 'C{}'.format(icolor)
 
-            # Plot charge SFPs and UFPs for each  acoustic amplitude
-            A_SFPs, A_UFPs, Q_SFPs, Q_UFPs = [], [], [], []
-            colors_SFPs = []
+            # Initialize containers for stable and unstable fixed points
+            SFPs = []
+            UFPs = []
+
+            # For each acoustic amplitude
             for iA, Adrive in enumerate(amps):
+                print('-- A = {:.2f} kPa'.format(Adrive * 1e-3))
 
-                print('- A = {:.2f} kPa'.format(Adrive * 1e-3))
-
+                # Extract stable and unstable fixed points from QSS charge variation profile
                 dQ_profile = dQdt[iA, :, iDC]
                 sfp = getFixedPoints(Qref, dQ_profile, filter='stable').tolist()
                 ufp = getFixedPoints(Qref, dQ_profile, filter='unstable').tolist()
-                Q_SFPs += sfp
-                A_SFPs += [Adrive] * len(sfp)
-                Q_UFPs += ufp
-                A_UFPs += [Adrive] * len(ufp)
+                for Qpoint in ufp:
+                    UFPs.append((Adrive, Qpoint))
 
+                # Re-compute QSS and corresponding derivatives at the stable Q-points
                 lookups1D = {k: v[iA, :, iDC] for k, v in lookups.items()}
                 lookups1D['Q'] = Qref
-
-                # Re-compute QSS at the Q-SFPs
                 _, _, _, QSS_sfp = nbls.quasiSteadyStates(
                     Fdrive, amps=Adrive, charges=np.array(sfp), DCs=DC)
                 QSS_sfp = {k: v[0, :, 0] for k, v in QSS_sfp.items()}
-
-                # Check that QSS derivatives at Q-SFPs are indeed zero (or relatively close)
                 dQSS_sfp = neuron.derEffStates(sfp, QSS_sfp.values(), lookups1D)
-                rel_tol = 1e-9
-                normdQSS_sfp = {k: np.abs(v / QSS_sfp[k]) for k, v in dQSS_sfp.items()}
-                nullQSS_sfp = np.all(np.array(list(normdQSS_sfp.values())) < rel_tol, axis=0)
-                for ipoint, Qpoint in enumerate(sfp):
-                    print('--- Q-SFP at {:.2f} nC/cm2'.format(Qpoint * 1e5))
-                    assert nullQSS_sfp[ipoint], 'non-zero derivatives'
-                    for k in neuron.states:
-                        is_stable = np.abs(dQSS_sfp[k][ipoint] / QSS_sfp[k][ipoint]) < rel_tol
-                        print('----- {0} = {1}, d{0}/dt = {2} ({3}stable)'.format(
-                            k, QSS_sfp[k][ipoint], dQSS_sfp[k][ipoint],
-                            {True: '', False: 'un'}[is_stable]))
 
-                    # Perturb QSS states 1 by 1 and recompute derivatives
+                # For each stable Q-point
+                for ipoint, Qpoint in enumerate(sfp):
+                    print('---- Q-SFP = {:.2f} nC/cm2'.format(Qpoint * 1e5))
+
+                    # Check that QSS derivatives are indeed zero (or close enough)
+                    abs_tol = 1e-9
+                    for k, v in dQSS_sfp.items():
+                        if np.abs(v[ipoint] >= abs_tol):
+                            raise ValueError(
+                                'non-zero {0} derivative (d{0}/dt = {1})'.format(k, v[ipoint]))
+
+                    # For each QSS
                     factor = 2
+                    is_stable = []
                     for x in neuron.states:
+                        # Perturb state by adding small offset
                         QSS_Qpoint = {k: v[ipoint] for k, v in QSS_sfp.items()}
                         QSS_perturbed = deepcopy(QSS_Qpoint)
                         QSS_perturbed[x] = min(max(QSS_perturbed[x] * factor, 0.), 1.)
-                        print('perturbing {} from {} to {}'.format(
+                        print('------ {}: {} -> {}'.format(
                             x, QSS_Qpoint[x], QSS_perturbed[x]))
+
+                        # Recompute all states derivatives (some are inter-dependent)
                         dQSS_perturbed = neuron.derEffStates(
                             Qpoint, QSS_perturbed.values(), lookups1D)
-                        for k, v in dQSS_perturbed.items():
-                            # only if derivative was affected by offset
-                            if v != dQSS_sfp[k][ipoint]:
-                                print('------------ d{}/dt = {} -> {}stable'.format(
-                                    k, v, '' if v < rel_tol else 'un'))
 
+                        # Print states whose derivatives have changed, and their stability
+                        for k, v in dQSS_perturbed.items():
+                            if v != dQSS_sfp[k][ipoint]:
+                                print('-------- d{}/dt = {} -> {}stable'.format(
+                                    k, v, '' if v < abs_tol else 'un'))
+
+                        # Check that all states derivatives show stability (i.e. <= 0 for delta > 0)
+                        is_stable.append(np.all(np.array(list(dQSS_perturbed.values())) < abs_tol))
+
+                    # Classify fixed as stable only if all states show stability
+                    if np.all(is_stable):
+                        SFPs.append((Adrive, Qpoint))
+                    else:
+                        UFPs.append((Adrive, Qpoint))
+
+            # Plot charge SFPs and UFPs for each acoustic amplitude
+            A_SFPs, Q_SFPs = np.array(SFPs).T
+            A_UFPs, Q_UFPs = np.array(UFPs).T
             ax.plot(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5, 'o', c=color, markersize=3,
                     label='{} neuron - SFPs @ {:.0f} % DC'.format(neuron.name, DC * 1e2))
             ax.plot(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5, 'x', c=color, markersize=3,
