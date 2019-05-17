@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:45:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-03 20:58:08
+# @Last Modified time: 2019-05-17 16:16:27
 
 import os
 import numpy as np
@@ -23,7 +23,7 @@ def getCWtitrations_vs_Fdrive(neurons, a, freqs, tstim, toffset, fpath):
     else:
         df = pd.DataFrame(index=freqs * 1e-3)
     for neuron in neurons:
-        if neuron not in df:
+        if neuron not in df and neuron.isTitratable():
             neuronobj = getNeuronsDict()[neuron]()
             nbls = NeuronalBilayerSonophore(a, neuronobj)
             for i, Fdrive in enumerate(freqs):
@@ -44,7 +44,7 @@ def getCWtitrations_vs_radius(neurons, radii, Fdrive, tstim, toffset, fpath):
     else:
         df = pd.DataFrame(index=radii * 1e9)
     for neuron in neurons:
-        if neuron not in df:
+        if neuron not in df and neuron.isTitratable():
             neuronobj = getNeuronsDict()[neuron]()
             for a in radii:
                 nbls = NeuronalBilayerSonophore(a, neuronobj)

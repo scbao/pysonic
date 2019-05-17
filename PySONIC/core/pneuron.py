@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-16 15:24:23
+# @Last Modified time: 2019-05-17 16:14:20
 
 import os
 import time
@@ -77,6 +77,10 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :return: variation rate (mA/m2)
         '''
         return -self.iNet(Vm, states)
+
+    def isTitratable(self):
+        ''' Simple method returning whether the neuron can be titrated (defaults to True). '''
+        return True
 
     def currentToConcentrationRate(self, z_ion, depth):
         ''' Compute the conversion factor from a specific ionic current (in mA/m2)

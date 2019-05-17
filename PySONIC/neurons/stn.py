@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-16 15:25:14
+# @Last Modified time: 2019-05-17 16:15:22
 
 
 import numpy as np
@@ -160,6 +160,11 @@ class OtsukaSTN(PointNeuron):
             'factor': 1e6
         }
         return pltvars
+
+
+    def isTitratable(self):
+        ''' Overriding parent method to False, since this neuron has spontaneous activity. '''
+        return False
 
 
     def getEffectiveDepth(self, Cai, Vm):

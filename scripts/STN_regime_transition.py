@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-29 19:03:20
+# @Last Modified time: 2019-05-17 16:19:29
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -130,7 +130,6 @@ def main():
     ap = ArgumentParser()
 
     # Stimulation parameters
-    ap.add_argument('-n', '--neuron', type=str, default='STN', help='Neuron type')
     ap.add_argument('-i', '--inputdir', type=str, default=None, help='Input directory')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
     ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
@@ -147,18 +146,19 @@ def main():
     if figset == 'all':
         figset = ['a', 'b', 'c']
 
-    neuron = getNeuronsDict()[args.neuron]()
+    neuron = OtsukaSTN()
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
     intensities = getLowIntensitiesSTN()  # W/m2
     amps = Intensity2Pressure(intensities)  # Pa
+    amps_regimes = np.array([5.7, 18.6, 19.9, 21.4]) * 1e3  # Pa
     tstim = 3.0  # s
     Cai_range = np.logspace(np.log10(neuron.Cai0 * 1e-4), np.log10(neuron.Cai0 * 1e3), 100)
     charges = np.array([neuron.Qbounds()[1], neuron.Vm0 * neuron.Cm0 * 1e-3])
 
     figs = []
     if 'a' in figset:
-        for Adrive in [21.35e3]:  # [amps[0], amps[amps.size // 2], amps[-1]]:
+        for Adrive in amps_regimes:
             figs += [
                 plotVarsQSS(neuron, a, Fdrive, Adrive),
                 plotVarDynamics(neuron, a, Fdrive, Adrive, charges, 'Cai', Cai_range)
