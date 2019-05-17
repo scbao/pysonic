@@ -412,6 +412,11 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                     UFPs.append((Adrive, Qpoint))
 
                 # Re-compute QSS and corresponding derivatives at the stable Q-points
+                # !!! -------------------------- Warning -------------------------- !!!
+                # : QSS cannot be predicted accurately from linear interpolation
+                # along any dimension, since they are non-linear functions of the lookups.
+                # Hence, they must be re-computed for each new point in the parameter space
+                # !!! ------------------------------------------------------------- !!!
                 lookups1D = {k: v[iA, :, iDC] for k, v in lookups.items()}
                 lookups1D['Q'] = Qref
                 _, _, _, QSS_sfp = nbls.quasiSteadyStates(
