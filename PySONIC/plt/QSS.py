@@ -391,7 +391,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                     dQdt[iA, :, iDC] = dQdt0 + A * DC
 
         # Stability parameters
-        rel_dx = .5
+        rel_dx = .05
         Q_conv_thr = 1e-8  # C/m2
         Q_div_thr = 3e-5  # C/m2
         tint = 1e-3   # s
@@ -451,7 +451,11 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                                 # Perturb state with small offset
                                 QSS_perturbed = deepcopy(QSS_Qpoint)
                                 QSS_perturbed[x] *= (1 + sign * rel_dx)
-                                QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
+
+                                # If gating state, bound within [0., 1.]
+                                if nbls.neuron.isVoltageGated(x):
+                                    QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
+
                                 logger.debug('----- {}: {:.5f} -> {:.5f}'.format(
                                     x, QSS_Qpoint[x], QSS_perturbed[x]))
 
