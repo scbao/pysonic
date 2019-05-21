@@ -4,17 +4,16 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-16 16:39:44
+# @Last Modified time: 2019-05-21 17:59:33
 
 import os
-import inspect
 import time
 import logging
 import pickle
 import progressbar as pb
 import numpy as np
 import pandas as pd
-from scipy.integrate import ode, odeint
+from scipy.integrate import ode, odeint, solve_ivp
 from scipy.interpolate import interp1d
 
 from .bls import BilayerSonophore
@@ -84,14 +83,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return dydt_mech + dydt_elec
 
 
-    def effDerivatives(self, y, t, interp_data):
+    def effDerivatives(self, y, t, lkp):
         ''' Compute the derivatives of the n-ODE effective HH system variables,
             based on 1-dimensional linear interpolation of "effective" coefficients
             that summarize the system's behaviour over an acoustic cycle.
 
             :param y: vector of HH system variables at time t
             :param t: specific instant in time (s)
-            :param interp_data: dictionary of 1D data points of "effective" coefficients
+            :param lkp: dictionary of 1D data points of "effective" coefficients
              over the charge domain, for specific frequency and amplitude values.
             :return: vector of effective system derivatives at time t
         '''
@@ -100,12 +99,60 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Qm, *states = y
 
         # Compute charge and channel states variation
-        Vm = np.interp(Qm, interp_data['Q'], interp_data['V'], left=np.nan, right=np.nan)  # mV
-        dQmdt = - self.neuron.iNet(Vm, states) * 1e-3
-        dstates = self.neuron.derEffStates(Qm, states, interp_data)
+        Vmeff = self.neuron.interpVmeff(Qm, lkp)
+        dQmdt = - self.neuron.iNet(Vmeff, states) * 1e-3
+        dstates = self.neuron.derEffStates(Qm, states, lkp)
 
         # Return derivatives vector
         return [dQmdt, *[dstates[k] for k in self.neuron.states]]
+
+
+    def evaluateStability(self, tint, Qm0, states0, lkp, Q_conv_thr, Q_div_thr):
+        ''' Integrate the effective differential system from a given starting point,
+            until clear convergence or clear divergence is found.
+
+            :param tint: iterative integration interval (s)
+            :param Qm0: initial membrane charge density (C/m2)
+            :param states0: dictionary of initial states values
+            :param lkp: dictionary of 1D data points of "effective" coefficients
+             over the charge domain, for specific frequency and amplitude values.
+            :param Q_conv_thr: membrane charge density difference within an interval span
+             below which convergence is assumed
+            :param Q_div_thr: membrane charge density difference from initial value
+             above which divergence is assumed
+            :return: 2-tuple with convergence state and final charge density value
+        '''
+
+        # Initialize y0 vector
+        yf = np.array([Qm0] + list(states0.values()))
+        tf = 0.
+        conv = False
+        div = False
+
+        # As long as there is no clear convergence or clear divergence w.r.t. Qm
+        while not conv and not div:
+
+            # Re-initialize start time and initial states with previous end points
+            t0, y0 = tf, yf
+
+            # Integrate system for small interval and retrieve results
+            sol = solve_ivp(lambda t, y: self.effDerivatives(y, t, lkp), [t0, t0 + tint], y0)
+            tf, yf = sol.t[-1], sol.y[:, -1]
+            Qmf = yf[0]
+
+            # If charge deviation within last interval is small enough -> convergence
+            if np.abs(Qmf - sol.y[0, 0]) < Q_conv_thr:
+                conv = True
+
+            # If charge deviation from the beginning is too large -> divergence
+            dQ = Qmf - Qm0
+            if np.abs(dQ) > Q_div_thr:
+                div = True
+
+        logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
+            {True: 'con', False: 'di'}[conv], tf * 1e3, dQ * 1e5))
+
+        return Qmf, conv
 
 
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):

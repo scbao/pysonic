@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-20 16:36:04
+# @Last Modified time: 2019-05-21 18:03:57
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -96,10 +96,14 @@ def main():
 
     # Plot equilibrium charge as a function of amplitude for each neuron
     if amps.size > 1 and 'dQdt' in args.vars:
-        figs.append(
-            plotEqChargeVsAmp(
-                neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs,
-                xscale=args.Ascale, titrate=args.titrate))
+        try:
+            figs.append(
+                plotEqChargeVsAmp(
+                    neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs,
+                    xscale=args.Ascale, titrate=args.titrate))
+        except ValueError as err:
+            logger.error(err)
+            quit()
 
     if args.save:
         outputdir = args.outputdir if args.outputdir is not None else selectDirDialog()

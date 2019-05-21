@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-17 16:14:20
+# @Last Modified time: 2019-05-21 14:13:22
 
 import os
 import time
@@ -403,6 +403,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         dQmdt = - self.iNet(Vm, states) * 1e-3  # A/m2
         dstates = self.derStates(Vm, states)
         return [dQmdt, *[dstates[k] for k in self.states]]
+
 
     def checkInputs(self, Astim, tstim, toffset, PRF, DC):
         ''' Check validity of electrical stimulation parameters.

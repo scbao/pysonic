@@ -390,6 +390,12 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                 for iDC, DC in enumerate(DCs):
                     dQdt[iA, :, iDC] = dQdt0 + A * DC
 
+        # Stability parameters
+        rel_dx = .5
+        Q_conv_thr = 1e-8  # C/m2
+        Q_div_thr = 3e-5  # C/m2
+        tint = 1e-3   # s
+
         # For each duty cycle
         for iDC, DC in enumerate(DCs):
             color = 'k' if len(neurons) * len(DCs) == 1 else 'C{}'.format(icolor)
@@ -409,7 +415,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                 for Qpoint in ufp:
                     UFPs.append((Adrive, Qpoint))
 
-                # Re-compute QSS and corresponding derivatives at the stable Q-points
+                # Re-compute QSS at the stable Q-points
                 # !!! -------------------------- Warning -------------------------- !!!
                 # : QSS cannot be predicted accurately from linear interpolation
                 # along any dimension, since they are non-linear functions of the lookups.
@@ -420,63 +426,54 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                 _, _, _, QSS_sfp = nbls.quasiSteadyStates(
                     Fdrive, amps=Adrive, charges=np.array(sfp), DCs=DC)
                 QSS_sfp = {k: v[0, :, 0] for k, v in QSS_sfp.items()}
-                dQSS_sfp = neuron.derEffStates(sfp, QSS_sfp.values(), lookups1D)
 
                 # For each stable Q-point
                 for ipoint, Qpoint in enumerate(sfp):
                     logger.debug('---- Q-SFP = {:.2f} nC/cm2'.format(Qpoint * 1e5))
+                    QSS_Qpoint = {k: v[ipoint] for k, v in QSS_sfp.items()}
 
-                    # Check that QSS derivatives are indeed zero (or close enough)
-                    abs_tol = 1e-9
-                    for k, v in dQSS_sfp.items():
-                        if np.abs(v[ipoint] >= abs_tol):
-                            raise ValueError(
-                                'non-zero {0} derivative (d{0}/dt = {1})'.format(k, v[ipoint]))
-
-                    # For each QSS
-                    rel_dx = .5
-                    is_stable = []
-                    for x in neuron.states:
-                        is_stable_state = []
-                        for sign, operator in zip([-1, +1], [np.greater, np.less]):
-
-                            # Perturb state with small offset
-                            QSS_Qpoint = {k: v[ipoint] for k, v in QSS_sfp.items()}
-                            QSS_perturbed = deepcopy(QSS_Qpoint)
-                            QSS_perturbed[x] *= (1 + sign * rel_dx)
-                            QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
-                            logger.debug('------ {}: {} -> {}'.format(
-                                x, QSS_Qpoint[x], QSS_perturbed[x]))
-
-                            # Recompute all states derivatives (some are inter-dependent)
-                            dQSS_perturbed = neuron.derEffStates(
-                                Qpoint, QSS_perturbed.values(), lookups1D)
-
-                            # Define stability threshold
-                            st_thr = sign * abs_tol
-
-                            # Print states whose derivatives have changed, and their stability
-                            for k, v in dQSS_perturbed.items():
-                                if v != dQSS_sfp[k][ipoint]:
-                                    logger.debug('-------- d{}/dt = {} -> {}stable'.format(
-                                        k, v, '' if operator(v, st_thr) else 'un'))
-
-                            # Check if all states show stability upon x-state perturbation
-                            # (i.e. negative derivative for positive offset and vice-versa)
-                            is_stable_state.append(
-                                np.all(operator(list(dQSS_perturbed.values()), st_thr)))
-
-                        # Check if all states show stability upon x-state perturbation
-                        # in both directions
-                        is_stable.append(np.all(is_stable_state))
-
-                    # Classify fixed point as stable only if all states show stability
-                    if np.all(is_stable):
-                        SFPs.append((Adrive, Qpoint))
-                    else:
-                        logger.warning('Unstable fixed-point at ({:.2f} kPa, {:.2f} nC.cm2)'.format(
-                            Adrive * 1e-3, Qpoint * 1e5))
+                    # Simulate from unperturbed QSS and evaluate stability
+                    Qmf, conv = nbls.evaluateStability(
+                        tint, Qpoint, QSS_Qpoint, lookups1D, Q_conv_thr, Q_div_thr)
+                    if not conv:
+                        logger.warning(
+                            'diverging system at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
+                                Adrive * 1e-3, Qpoint * 1e5))
                         UFPs.append((Adrive, Qpoint))
+                    else:
+
+                        # For each state
+                        is_stable_state = []
+                        for x in neuron.states:
+                            is_stable_direction = []
+                            for sign in [-1, +1]:
+
+                                # Perturb state with small offset
+                                QSS_perturbed = deepcopy(QSS_Qpoint)
+                                QSS_perturbed[x] *= (1 + sign * rel_dx)
+                                QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
+                                logger.debug('----- {}: {:.5f} -> {:.5f}'.format(
+                                    x, QSS_Qpoint[x], QSS_perturbed[x]))
+
+                                # Simulate from perturbed QSS and evaluate stability
+                                Qmf, conv = nbls.evaluateStability(
+                                    tint, Qpoint, QSS_perturbed, lookups1D, Q_conv_thr, Q_div_thr)
+                                is_stable_direction.append(conv)
+
+                            # Check if system shows stability upon x-state perturbation
+                            # in both directions
+                            is_stable_state.append(np.all(is_stable_direction))
+
+                        # Check if system shows stability upon perturbation of all states
+                        is_stable_fixed_point = np.all(is_stable_state)
+                        logger.info('{}stable fixed-point at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
+                            '' if is_stable_fixed_point else 'un', Adrive * 1e-3, Qpoint * 1e5))
+
+                        # Classify fixed point as stable only if all states show stability
+                        if np.all(is_stable_state):
+                            SFPs.append((Adrive, Qpoint))
+                        else:
+                            UFPs.append((Adrive, Qpoint))
 
             # Plot charge SFPs and UFPs for each acoustic amplitude
             A_SFPs, Q_SFPs = np.array(SFPs).T
