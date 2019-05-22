@@ -10,7 +10,7 @@ from matplotlib.colors import ListedColormap
 from ..postpro import getFixedPoints
 from ..core import NeuronalBilayerSonophore
 from .pltutils import *
-from ..constants import TITRATION_T_OFFSET
+from ..constants import TITRATION_T_OFFSET, QSS_REL_OFFSET
 from ..utils import logger
 
 
@@ -390,12 +390,6 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                 for iDC, DC in enumerate(DCs):
                     dQdt[iA, :, iDC] = dQdt0 + A * DC
 
-        # Stability parameters
-        rel_dx = .05
-        Q_conv_thr = 1e-8  # C/m2
-        Q_div_thr = 3e-5  # C/m2
-        tint = 1e-3   # s
-
         # For each duty cycle
         for iDC, DC in enumerate(DCs):
             color = 'k' if len(neurons) * len(DCs) == 1 else 'C{}'.format(icolor)
@@ -408,10 +402,15 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
             for iA, Adrive in enumerate(amps):
                 logger.debug('-- A = {:.2f} kPa'.format(Adrive * 1e-3))
 
+                lookups1D = {k: v[iA, :, iDC] for k, v in lookups.items()}
+                lookups1D['Q'] = Qref
+
                 # Extract stable and unstable fixed points from QSS charge variation profile
                 dQ_profile = dQdt[iA, :, iDC]
-                sfp = getFixedPoints(Qref, dQ_profile, filter='stable').tolist()
-                ufp = getFixedPoints(Qref, dQ_profile, filter='unstable').tolist()
+
+                dfunc = lambda Qm: - nbls.quasiSteadyStateiNet(Qm, Fdrive, Adrive, DC)
+                sfp = getFixedPoints(Qref, dQ_profile, filter='stable', der_func=dfunc).tolist()
+                ufp = getFixedPoints(Qref, dQ_profile, filter='unstable', der_func=dfunc).tolist()
                 for Qpoint in ufp:
                     UFPs.append((Adrive, Qpoint))
 
@@ -421,8 +420,6 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                 # along any dimension, since they are non-linear functions of the lookups.
                 # Hence, they must be re-computed for each new point in the parameter space
                 # !!! ------------------------------------------------------------- !!!
-                lookups1D = {k: v[iA, :, iDC] for k, v in lookups.items()}
-                lookups1D['Q'] = Qref
                 _, _, _, QSS_sfp = nbls.quasiSteadyStates(
                     Fdrive, amps=Adrive, charges=np.array(sfp), DCs=DC)
                 QSS_sfp = {k: v[0, :, 0] for k, v in QSS_sfp.items()}
@@ -433,8 +430,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                     QSS_Qpoint = {k: v[ipoint] for k, v in QSS_sfp.items()}
 
                     # Simulate from unperturbed QSS and evaluate stability
-                    Qmf, conv = nbls.evaluateStability(
-                        tint, Qpoint, QSS_Qpoint, lookups1D, Q_conv_thr, Q_div_thr)
+                    Qmf, conv = nbls.evaluateStability(Qpoint, QSS_Qpoint, lookups1D)
                     if not conv:
                         logger.warning(
                             'diverging system at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
@@ -450,7 +446,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
 
                                 # Perturb state with small offset
                                 QSS_perturbed = deepcopy(QSS_Qpoint)
-                                QSS_perturbed[x] *= (1 + sign * rel_dx)
+                                QSS_perturbed[x] *= (1 + sign * QSS_REL_OFFSET)
 
                                 # If gating state, bound within [0., 1.]
                                 if nbls.neuron.isVoltageGated(x):
@@ -460,8 +456,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                                     x, QSS_Qpoint[x], QSS_perturbed[x]))
 
                                 # Simulate from perturbed QSS and evaluate stability
-                                Qmf, conv = nbls.evaluateStability(
-                                    tint, Qpoint, QSS_perturbed, lookups1D, Q_conv_thr, Q_div_thr)
+                                Qmf, conv = nbls.evaluateStability(Qpoint, QSS_perturbed, lookups1D)
                                 is_stable_direction.append(conv)
 
                             # Check if system shows stability upon x-state perturbation

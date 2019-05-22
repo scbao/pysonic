@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-21 16:23:32
+# @Last Modified time: 2019-05-22 08:28:22
 
 ''' Algorithmic constants used in the package. '''
 
@@ -53,3 +53,10 @@ TITRATION_T_OFFSET = 200e-3  # offset period for titration procedures (s)
 TITRATION_ASTIM_DA_MAX = 1e2  # acoustic pressure search range threshold for titration (Pa)
 TITRATION_ESTIM_A_MAX = 50.0  # initial current density upper bound for titration (mA/m2)
 TITRATION_ESTIM_DA_MAX = 0.1  # current density search range threshold for titration (mA/m2)
+
+
+# QSS Stability analysis
+QSS_REL_OFFSET = .05
+QSS_Q_CONV_THR = 1e-8  # C/m2
+QSS_Q_DIV_THR = 3e-5  # C/m2
+QSS_INTEGRATION_INTERVAL = 1e-3  # s

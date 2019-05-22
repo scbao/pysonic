@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-21 17:59:33
+# @Last Modified time: 2019-05-22 09:33:48
 
 import os
 import time
@@ -107,15 +107,16 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return [dQmdt, *[dstates[k] for k in self.neuron.states]]
 
 
-    def evaluateStability(self, tint, Qm0, states0, lkp, Q_conv_thr, Q_div_thr):
+    def evaluateStability(self, Qm0, states0, lkp, tint=QSS_INTEGRATION_INTERVAL,
+                          Q_conv_thr=QSS_Q_CONV_THR, Q_div_thr=QSS_Q_DIV_THR):
         ''' Integrate the effective differential system from a given starting point,
             until clear convergence or clear divergence is found.
 
-            :param tint: iterative integration interval (s)
             :param Qm0: initial membrane charge density (C/m2)
             :param states0: dictionary of initial states values
             :param lkp: dictionary of 1D data points of "effective" coefficients
              over the charge domain, for specific frequency and amplitude values.
+            :param tint: iterative integration interval (s)
             :param Q_conv_thr: membrane charge density difference within an interval span
              below which convergence is assumed
             :param Q_div_thr: membrane charge density difference from initial value
@@ -814,6 +815,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Return reference inputs and outputs
         return amps, charges, lookups, QSS
+
+
+    def quasiSteadyStateiNet(self, Qm, Fdrive, Adrive, DC):
+        _, _, lookups, QSS = self.quasiSteadyStates(
+            Fdrive, amps=Adrive, charges=Qm, DCs=DC, squeeze_output=True)
+        return self.neuron.iNet(lookups['V'], np.array(list(QSS.values())))  # mA/m2
 
 
     def findRheobaseAmps(self, DCs, Fdrive, Vthr):

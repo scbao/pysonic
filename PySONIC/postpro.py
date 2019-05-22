@@ -2,13 +2,14 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-16 16:24:54
+# @Last Modified time: 2019-05-22 08:53:26
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
 import pickle
 import numpy as np
 import pandas as pd
+from scipy.optimize import brentq
 
 from .constants import *
 from .utils import logger
@@ -33,13 +34,14 @@ def detectCrossings(x, thr=0.0, edge='both'):
     return ind
 
 
-def getFixedPoints(x, dx, filter='stable'):
+def getFixedPoints(x, dx, filter='stable', der_func=None):
     ''' Find fixed points in a 1D plane phase profile.
 
         :param x: variable (1D array)
         :param dx: derivative (1D array)
         :param filter: string indicating whether to consider only stable/unstable
             fixed points or both
+        :param: der_func: derivative function
         :return: array of fixed points values (or None if none is found)
     '''
     fps = []
@@ -47,7 +49,13 @@ def getFixedPoints(x, dx, filter='stable'):
     izc = detectCrossings(dx, edge=edge)
     if izc.size > 0:
         for i in izc:
-            fps.append(x[i] - dx[i] * (x[i + 1] - x[i]) / (dx[i + 1] - dx[i]))
+            # If derivative function is provided, find root using iterative Brent method
+            if der_func is not None:
+                fps.append(brentq(der_func, x[i], x[i + 1], xtol=1e-16))
+
+            # Otherwise, approximate root by linear interpolation
+            else:
+                fps.append(x[i] - dx[i] * (x[i + 1] - x[i]) / (dx[i + 1] - dx[i]))
         return np.array(fps)
     else:
         return np.array([])
