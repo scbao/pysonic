@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 10:01:53
+# @Last Modified time: 2019-05-22 11:26:45
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -44,6 +44,7 @@ def main():
     ap.add_argument('--nA', type=float, default=100, help='Number of amplitude values')
     ap.add_argument('--stim', type=str, default='US', help='Stimulation type ("US" or "elec")')
     ap.add_argument('--vars', type=str, nargs='+', default=None, help='Variables to plot')
+    ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
 
     # Parse arguments
     args = ap.parse_args()
@@ -113,7 +114,7 @@ def main():
             figs.append(
                 plotEqChargeVsAmp(
                     neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs,
-                    xscale=args.Ascale, titrate=args.titrate))
+                    xscale=args.Ascale, titrate=args.titrate, mpi=args.mpi))
         except ValueError as err:
             logger.error(err)
             quit()

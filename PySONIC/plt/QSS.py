@@ -1,6 +1,5 @@
 
 import inspect
-from copy import deepcopy
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,8 +9,9 @@ from matplotlib.colors import ListedColormap
 from ..postpro import getFixedPoints
 from ..core import NeuronalBilayerSonophore
 from .pltutils import *
-from ..constants import TITRATION_T_OFFSET, QSS_REL_OFFSET
+from ..constants import TITRATION_T_OFFSET
 from ..utils import logger
+from ..batches import runBatch
 
 
 def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):
@@ -208,8 +208,8 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
     pltvar = neuron.getPltVars()[varname]
     Qvar = neuron.getPltVars()['Qm']
     Afactor = {'US': 1e-3, 'elec': 1.}[stim_type]
-    Q_SFPs = []
-    Q_UFPs = []
+    # Q_SFPs = []
+    # Q_UFPs = []
 
     log = 'plotting {} neuron QSS {} vs. amp for {} stimulation @ {:.0f}% DC'.format(
         neuron.name, varname, stim_type, DC * 1e2)
@@ -257,9 +257,9 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
         neuron, pltvar, pd.DataFrame({k: df0[k] for k in df0.keys()}), name=varname)
     ax.plot(Qref * Qvar['factor'], var0, '--', c='k', zorder=1,
             label='$\\rm A_{{{}}}=0$'.format(stim_type))
-    if varname == 'dQdt':
-        Q_SFPs += getFixedPoints(Qref, var0, filter='stable').tolist()
-        Q_UFPs += getFixedPoints(Qref, var0, filter='unstable').tolist()
+    # if varname == 'dQdt':
+    #     Q_SFPs += getFixedPoints(Qref, var0, filter='stable').tolist()
+    #     Q_UFPs += getFixedPoints(Qref, var0, filter='unstable').tolist()
 
     # Define color code
     mymap = plt.get_cmap(cmap)
@@ -289,18 +289,18 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
         if varname == 'dQdt' and stim_type == 'elec':
             var += A * DC * pltvar['factor']
         ax.plot(Qref * Qvar['factor'], var, c=sm.to_rgba(A * Afactor), zorder=0)
-        if varname == 'dQdt':
-            # mark eq. point if starting point provided, otherwise mark all FPs
-            Q_SFPs += getFixedPoints(Qref, var, filter='stable').tolist()
-            Q_UFPs += getFixedPoints(Qref, var, filter='unstable').tolist()
+        # if varname == 'dQdt':
+        #     # mark eq. point if starting point provided, otherwise mark all FPs
+        #     Q_SFPs += getFixedPoints(Qref, var, filter='stable').tolist()
+        #     Q_UFPs += getFixedPoints(Qref, var, filter='unstable').tolist()
 
-    # Plot fixed-points, if any
-    if len(Q_SFPs) > 0:
-        ax.plot(np.array(Q_SFPs) * Qvar['factor'], np.zeros(len(Q_SFPs)), 'o', c='k',
-                markersize=5, zorder=2)
-    if len(Q_UFPs) > 0:
-        ax.plot(np.array(Q_UFPs) * Qvar['factor'], np.zeros(len(Q_UFPs)), 'x', c='k',
-                markersize=5, zorder=2)
+    # # Plot fixed-points, if any
+    # if len(Q_SFPs) > 0:
+    #     ax.plot(np.array(Q_SFPs) * Qvar['factor'], np.zeros(len(Q_SFPs)), 'o', c='k',
+    #             markersize=5, zorder=2)
+    # if len(Q_UFPs) > 0:
+    #     ax.plot(np.array(Q_UFPs) * Qvar['factor'], np.zeros(len(Q_UFPs)), 'x', c='k',
+    #             markersize=5, zorder=2)
 
     # Add legend and adjust layout
     ax.legend(frameon=False, fontsize=fs)
@@ -327,7 +327,7 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
 
 
 def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
-                      DCs=[1.], fs=12, xscale='lin', titrate=False):
+                      DCs=[1.], fs=12, xscale='lin', titrate=False, mpi=False):
     ''' Plot the equilibrium membrane charge density as a function of acoustic amplitude,
         given an initial value of membrane charge density.
 
@@ -398,81 +398,20 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
             SFPs = []
             UFPs = []
 
-            # For each acoustic amplitude
+            # Generate batch queue
+            queue = []
             for iA, Adrive in enumerate(amps):
-                logger.debug('-- A = {:.2f} kPa'.format(Adrive * 1e-3))
-
                 lookups1D = {k: v[iA, :, iDC] for k, v in lookups.items()}
                 lookups1D['Q'] = Qref
+                queue.append([Fdrive, Adrive, DC, lookups1D, dQdt[iA, :, iDC]])
 
-                # Extract stable and unstable fixed points from QSS charge variation profile
-                dQ_profile = dQdt[iA, :, iDC]
+            # Run batch to find stable and unstable fixed points at each amplitude
+            out = runBatch(nbls, 'quasiSteadyStateFixedPoints', queue, mpi=mpi)
 
-                dfunc = lambda Qm: - nbls.quasiSteadyStateiNet(Qm, Fdrive, Adrive, DC)
-                sfp = getFixedPoints(Qref, dQ_profile, filter='stable', der_func=dfunc).tolist()
-                ufp = getFixedPoints(Qref, dQ_profile, filter='unstable', der_func=dfunc).tolist()
-                for Qpoint in ufp:
-                    UFPs.append((Adrive, Qpoint))
-
-                # Re-compute QSS at the stable Q-points
-                # !!! -------------------------- Warning -------------------------- !!!
-                # : QSS cannot be predicted accurately from linear interpolation
-                # along any dimension, since they are non-linear functions of the lookups.
-                # Hence, they must be re-computed for each new point in the parameter space
-                # !!! ------------------------------------------------------------- !!!
-                _, _, _, QSS_sfp = nbls.quasiSteadyStates(
-                    Fdrive, amps=Adrive, charges=np.array(sfp), DCs=DC)
-                QSS_sfp = {k: v[0, :, 0] for k, v in QSS_sfp.items()}
-
-                # For each stable Q-point
-                for ipoint, Qpoint in enumerate(sfp):
-                    logger.debug('---- Q-SFP = {:.2f} nC/cm2'.format(Qpoint * 1e5))
-                    QSS_Qpoint = {k: v[ipoint] for k, v in QSS_sfp.items()}
-
-                    # Simulate from unperturbed QSS and evaluate stability
-                    Qmf, conv = nbls.evaluateStability(Qpoint, QSS_Qpoint, lookups1D)
-                    if not conv:
-                        logger.warning(
-                            'diverging system at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
-                                Adrive * 1e-3, Qpoint * 1e5))
-                        UFPs.append((Adrive, Qpoint))
-                    else:
-
-                        # For each state
-                        is_stable_state = []
-                        for x in neuron.states:
-                            is_stable_direction = []
-                            for sign in [-1, +1]:
-
-                                # Perturb state with small offset
-                                QSS_perturbed = deepcopy(QSS_Qpoint)
-                                QSS_perturbed[x] *= (1 + sign * QSS_REL_OFFSET)
-
-                                # If gating state, bound within [0., 1.]
-                                if nbls.neuron.isVoltageGated(x):
-                                    QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
-
-                                logger.debug('----- {}: {:.5f} -> {:.5f}'.format(
-                                    x, QSS_Qpoint[x], QSS_perturbed[x]))
-
-                                # Simulate from perturbed QSS and evaluate stability
-                                Qmf, conv = nbls.evaluateStability(Qpoint, QSS_perturbed, lookups1D)
-                                is_stable_direction.append(conv)
-
-                            # Check if system shows stability upon x-state perturbation
-                            # in both directions
-                            is_stable_state.append(np.all(is_stable_direction))
-
-                        # Check if system shows stability upon perturbation of all states
-                        is_stable_fixed_point = np.all(is_stable_state)
-                        logger.info('{}stable fixed-point at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
-                            '' if is_stable_fixed_point else 'un', Adrive * 1e-3, Qpoint * 1e5))
-
-                        # Classify fixed point as stable only if all states show stability
-                        if np.all(is_stable_state):
-                            SFPs.append((Adrive, Qpoint))
-                        else:
-                            UFPs.append((Adrive, Qpoint))
+            # Retrieve batch output
+            for i, Adrive in enumerate(amps):
+                SFPs += [(Adrive, Qm) for Qm in out[i][0]]
+                UFPs += [(Adrive, Qm) for Qm in out[i][1]]
 
             # Plot charge SFPs and UFPs for each acoustic amplitude
             A_SFPs, Q_SFPs = np.array(SFPs).T

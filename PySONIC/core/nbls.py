@@ -4,9 +4,10 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 09:33:48
+# @Last Modified time: 2019-05-22 11:35:47
 
 import os
+from copy import deepcopy
 import time
 import logging
 import pickle
@@ -20,7 +21,7 @@ from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from ..utils import *
 from ..constants import *
-from ..postpro import findPeaks
+from ..postpro import findPeaks, getFixedPoints
 from ..batches import xlslog
 
 
@@ -121,7 +122,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
              below which convergence is assumed
             :param Q_div_thr: membrane charge density difference from initial value
              above which divergence is assumed
-            :return: 2-tuple with convergence state and final charge density value
+            :return: boolean indicating convergence state
         '''
 
         # Initialize y0 vector
@@ -153,7 +154,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
             {True: 'con', False: 'di'}[conv], tf * 1e3, dQ * 1e5))
 
-        return Qmf, conv
+        return conv
 
 
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
@@ -818,9 +819,86 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
 
     def quasiSteadyStateiNet(self, Qm, Fdrive, Adrive, DC):
+        ''' Compute quasi-steady state net membrane current for a given combination
+            of US parameters and a given membrane charge density.
+
+            :param Qm: membrane charge density (C/m2)
+            :param Fdrive: US frequency (Hz)
+            :param Adrive: US amplitude (Pa)
+            :param DC: duty cycle (-)
+            :return: net membrane current (mA/m2)
+        '''
         _, _, lookups, QSS = self.quasiSteadyStates(
             Fdrive, amps=Adrive, charges=Qm, DCs=DC, squeeze_output=True)
         return self.neuron.iNet(lookups['V'], np.array(list(QSS.values())))  # mA/m2
+
+
+    def quasiSteadyStateFixedPoints(self, Fdrive, Adrive, DC, lkp, dQdt):
+        ''' Compute QSS fixed points along the charge dimension for a given combination
+            of US parameters, and determine their stability.
+
+            :param Fdrive: US frequency (Hz)
+            :param Adrive: US amplitude (Pa)
+            :param DC: duty cycle (-)
+            :param lkp: lookup dictionary for effective variables along charge dimension
+            :param dQdt: charge derivative profile along charge dimension
+            :return: 2-tuple with values of stable and unstable fixed points
+        '''
+
+        logger.debug('A = {:.2f} kPa, DC = {:.0f}%'.format(Adrive * 1e-3, DC * 1e2))
+
+        # Extract stable and unstable fixed points from QSS charge variation profile
+        dfunc = lambda Qm: - self.quasiSteadyStateiNet(Qm, Fdrive, Adrive, DC)
+        SFP_candidates = getFixedPoints(lkp['Q'], dQdt, filter='stable', der_func=dfunc).tolist()
+        UFPs = getFixedPoints(lkp['Q'], dQdt, filter='unstable', der_func=dfunc).tolist()
+        SFPs = []
+
+        # For each candidate SFP
+        for i, Qm in enumerate(SFP_candidates):
+
+            logger.debug('Q-SFP = {:.2f} nC/cm2'.format(Qm * 1e5))
+
+            # Re-compute QSS
+            *_, QSS_FP = self.quasiSteadyStates(Fdrive, amps=Adrive, charges=Qm, DCs=DC,
+                                                squeeze_output=True)
+
+            # Simulate from unperturbed QSS and evaluate stability
+            if not self.evaluateStability(Qm, QSS_FP, lkp):
+                logger.warning('diverging system at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
+                    Adrive * 1e-3, Qm * 1e5))
+                UFPs.append(Qm)
+            else:
+                # For each state
+                is_stable_state = []
+                for x in self.neuron.states:
+                    is_stable_direction = []
+                    for sign in [-1, +1]:
+                        # Perturb state with small offset
+                        QSS_perturbed = deepcopy(QSS_FP)
+                        QSS_perturbed[x] *= (1 + sign * QSS_REL_OFFSET)
+
+                        # If gating state, bound within [0., 1.]
+                        if self.neuron.isVoltageGated(x):
+                            QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
+
+                        logger.debug('{}: {:.5f} -> {:.5f}'.format(
+                            x, QSS_FP[x], QSS_perturbed[x]))
+
+                        # Simulate from perturbed QSS and evaluate stability
+                        is_stable_direction.append(
+                            self.evaluateStability(Qm, QSS_perturbed, lkp))
+
+                    # Check if system shows stability upon x-state perturbation
+                    # in both directions
+                    is_stable_state.append(np.all(is_stable_direction))
+
+                # Classify fixed point as stable only if all states show stability
+                is_stable_FP = np.all(is_stable_state)
+                {True: SFPs, False: UFPs}[is_stable_FP].append(Qm)
+                logger.info('{}stable fixed-point at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
+                    '' if is_stable_FP else 'un', Adrive * 1e-3, Qm * 1e5))
+
+            return SFPs, UFPs
 
 
     def findRheobaseAmps(self, DCs, Fdrive, Vthr):
