@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 15:40:28
+# @Last Modified time: 2019-05-22 19:05:57
 
 import os
 from copy import deepcopy
@@ -575,8 +575,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             return self.runHybrid(Fdrive, Adrive, tstim, toffset)
 
 
-    def nSpikes(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method):
-        ''' Run a simulation and determine number of spikes in the response.
+    def isExcited(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method):
+        ''' Run a simulation and determine if neuron is excited.
 
             :param Adrive: acoustic amplitude (Pa)
             :param Fdrive: US frequency (Hz)
@@ -584,7 +584,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param toffset: duration of the offset (s)
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
-            :return: number of spikes found in response
+            :return: boolean stating whether neuron is excited or not
         '''
         t, y, _ = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
         dt = t[1] - t[0]
@@ -594,7 +594,35 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         logger.debug('A = %sPa ---> %s spike%s detected',
                      si_format(Adrive, 2, space=' '),
                      nspikes, "s" if nspikes > 1 else "")
-        return nspikes
+        return nspikes > 0
+
+
+    def isSilenced(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method):
+        ''' Run a simulation and determine if neuron is silenced.
+
+            :param Adrive: acoustic amplitude (Pa)
+            :param Fdrive: US frequency (Hz)
+            :param tstim: duration of US stimulation (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: pulse duty cycle (-)
+            :return: boolean stating whether neuron is silenced or not
+        '''
+        if tstim <= TMIN_STABILIZATION:
+            raise ValueError(
+                'stimulus duration must be greater than {:.0f} ms'.format(TMIN_STABILIZATION * 1e3))
+
+        # Simulate model without offset
+        t, y, _ = self.simulate(Fdrive, Adrive, tstim, 0., PRF, DC, method=method)
+
+        # Extract charge signal posterior to observation window
+        Qm = y[2, t > TMIN_STABILIZATION]
+
+        # Compute variation range
+        Qm_range = np.ptp(Qm)
+        logger.debug('A = %sPa ---> %.2f nC/cm2 variation range over the last %.0f ms',
+                     si_format(Adrive, 2, space=' '), Qm_range * 1e5, TMIN_STABILIZATION * 1e3)
+
+        return np.ptp(Qm) < QSS_Q_DIV_THR
 
 
     def titrate(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Arange=None, method='sonic'):
@@ -614,8 +642,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         if Arange is None:
             Arange = (0, getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max())
 
+        # Determine output function
+        if self.neuron.isTitratable():
+            xfunc = self.isExcited
+        else:
+            xfunc = self.isSilenced
+
         # Titrate
-        return titrate(self.nSpikes, (Fdrive, tstim, toffset, PRF, DC, method),
+        return titrate(xfunc, (Fdrive, tstim, toffset, PRF, DC, method),
                        Arange, TITRATION_ASTIM_DA_MAX)
 
 

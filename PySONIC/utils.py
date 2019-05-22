@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 15:12:09
+# @Last Modified time: 2019-05-22 17:17:28
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -583,43 +583,40 @@ def getIndex(container, value):
         return container.index(value)
 
 
-def titrate(nspikes_func, args, xbounds, dx_thr, is_excited=None):
-    ''' Use a binary search to determine an excitation threshold
+def titrate(xfunc, xargs, xbounds, dx_thr, history=None):
+    ''' Use a binary search to determine the threshold satisfying a given condition
         within a specific search interval.
 
-        :param nspikes_func: function returning the number of spikes for a given condition
-        :param args: list of function arguments other than refined value
+        :param xfunc: boolean function returning whether condition is satisfied
+        :param xargs: list of function arguments other than refined value
         :param xbounds: search interval for threshold (progressively refined)
         :param dx_thr: accuracy criterion for threshold
         :return: excitation threshold
     '''
 
-    if is_excited is None:
-        is_excited = []
+    # Assign empty history if first function call
+    if history is None:
+        history = []
 
+    # Compute function output at interval mid-point
     x = (xbounds[0] + xbounds[1]) / 2
-    nspikes = nspikes_func(x, *args)
-    is_excited.append(nspikes > 0)
-    conv = False
+    history.append(xfunc(x, *xargs))
 
-    # When titration interval becomes small enough
+    # If titration interval is small enough
+    conv = False
     if (xbounds[1] - xbounds[0]) <= dx_thr:
         logger.debug('titration interval smaller than defined threshold')
 
-        # If exactly one spike, convergence is achieved -> return
-        if nspikes == 1:
-            logger.debug('exactly one spike -> convergence')
-            conv = True
-
         # If both conditions have been encountered during titration process,
         # we're going towards convergence
-        elif (0 in is_excited and 1 in is_excited):
+        if (0 in history and 1 in history):
             logger.debug('converging around threshold')
 
-            # if current condition yields excitation, convergence is achieved
-            if is_excited[-1]:
-                logger.debug('currently above threshold -> convergence')
-                conv = True
+            # If current value satisfies condition, convergence is achieved
+            # -> return threshold
+            if history[-1]:
+                logger.debug('currently satisfying condition -> convergence')
+                return x
 
         # If only one condition has been encountered during titration process,
         # then no titration is impossible within the defined interval -> return NaN
@@ -632,10 +629,10 @@ def titrate(nspikes_func, args, xbounds, dx_thr, is_excited=None):
         return x
     else:
         if x > 0.:
-            xbounds = (xbounds[0], x) if is_excited[-1] else (x, xbounds[1])
+            xbounds = (xbounds[0], x) if history[-1] else (x, xbounds[1])
         else:
-            xbounds = (x, xbounds[1]) if is_excited[-1] else (xbounds[0], x)
-        return titrate(nspikes_func, args, xbounds, dx_thr, is_excited=is_excited)
+            xbounds = (x, xbounds[1]) if history[-1] else (xbounds[0], x)
+        return titrate(xfunc, xargs, xbounds, dx_thr, history=history)
 
 
 def resolveDependencies(deps, join_items=True):

@@ -441,11 +441,6 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
 
             icolor += 1
 
-        # if len(neurons) * len(DCs) == 1:
-        #     dQdt_sign = np.sign(np.squeeze(dQdt))
-        #     cmap = ListedColormap(plt.get_cmap('Pastel2').colors[:2])
-        #     ax.contourf(amps * Afactor, Qref * 1e5, dQdt_sign.T, cmap=cmap)
-
     # Post-process figure
     ax.set_ylim(np.array([Qrange[0], 0]) * 1e5)
     ax.legend(frameon=False, fontsize=fs)

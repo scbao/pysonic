@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 15:40:45
+# @Last Modified time: 2019-05-22 17:39:04
 
 ''' Algorithmic constants used in the package. '''
 
@@ -61,3 +61,4 @@ QSS_INTEGRATION_INTERVAL = 1e-3  # iterative integration interval (s)
 QSS_MAX_INTEGRATION_DURATION = 100e-3  # iterative integration interval (s)
 QSS_Q_CONV_THR = 1e-8  # max. charge diff. across integration interval to infer convergence (C/m2)
 QSS_Q_DIV_THR = 1e-5  # min. charge diff. across entire integration to infer divergence (C/m2)
+TMIN_STABILIZATION = 500e-3

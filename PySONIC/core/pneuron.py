@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-21 14:13:22
+# @Last Modified time: 2019-05-22 17:24:55
 
 import os
 import time
@@ -526,15 +526,15 @@ class PointNeuron(metaclass=abc.ABCMeta):
         # Return output variables
         return (t, y, stimstate)
 
-    def nSpikes(self, Astim, tstim, toffset, PRF, DC):
-        ''' Run a simulation and determine number of spikes in the response.
+    def isExcited(self, Astim, tstim, toffset, PRF, DC):
+        ''' Run a simulation and determine if neuron is excited.
 
             :param Astim: current amplitude (mA/m2)
             :param tstim: duration of US stimulation (s)
             :param toffset: duration of the offset (s)
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
-            :return: number of spikes found in response
+            :return: boolean stating whether neuron is excited or not
         '''
         t, y, _ = self.simulate(Astim, tstim, toffset, PRF, DC)
         dt = t[1] - t[0]
@@ -544,9 +544,10 @@ class PointNeuron(metaclass=abc.ABCMeta):
         logger.debug('A = %sA/m2 ---> %s spike%s detected',
                      si_format(Astim * 1e-3, 2, space=' '),
                      nspikes, "s" if nspikes > 1 else "")
-        return nspikes
+        return nspikes > 0
 
-    def titrate(self, tstim, toffset, PRF=None, DC=1.0, Arange=(0., 2 * TITRATION_ESTIM_A_MAX)):
+    def titrate(self, tstim, toffset, PRF=None, DC=1.0, Arange=(0., 2 * TITRATION_ESTIM_A_MAX),
+                xfunc=None):
         ''' Use a binary search to determine the threshold amplitude needed
             to obtain neural excitation for a given duration, PRF and duty cycle.
 
@@ -557,7 +558,10 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :param Arange: search interval for Astim, iteratively refined
             :return: excitation threshold amplitude (mA/m2)
         '''
-        return titrate(self.nSpikes, (tstim, toffset, PRF, DC), Arange, TITRATION_ESTIM_DA_MAX)
+        # Determine output function
+        if xfunc is None:
+            xfunc = self.isExcited
+        return titrate(xfunc, (tstim, toffset, PRF, DC), Arange, TITRATION_ESTIM_DA_MAX)
 
     def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
         ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
