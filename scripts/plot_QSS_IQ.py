@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-21 18:39:22
+# @Last Modified time: 2019-05-22 10:01:53
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -39,6 +39,8 @@ def main():
     ap.add_argument('--DC', type=float, nargs='+', default=None, help='Duty cycle (%)')
     ap.add_argument('--Ascale', type=str, default='lin',
                     help='Scale type for acoustic amplitude ("lin" or "log")')
+    ap.add_argument('--Amin', type=float, default=None, help='Amplitude lower bound (kPa or mA/m2)')
+    ap.add_argument('--Amax', type=float, default=None, help='Amplitude upper bound (kPa or mA/m2)')
     ap.add_argument('--nA', type=float, default=100, help='Number of amplitude values')
     ap.add_argument('--stim', type=str, default='US', help='Stimulation type ("US" or "elec")')
     ap.add_argument('--vars', type=str, nargs='+', default=None, help='Variables to plot')
@@ -52,10 +54,10 @@ def main():
     # US parameters
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
-    Arange = (1., 600.)  # kPa
+    AUS_range = (1., 600.)  # kPa
 
     # E-STIM parameters
-    Irange = (-20., 20.)  # mA/m2
+    Aelec_range = (-20., 20.)  # mA/m2
 
     # Pulsing parameters
     tstim = args.tstim * 1e-3  # s
@@ -67,6 +69,10 @@ def main():
         if args.amp is not None:
             amps = np.array([args.amp * 1e3])
         else:
+            Arange = list(AUS_range)
+            for i, val in enumerate([args.Amin, args.Amax]):
+                if val is not None:
+                    Arange[i] = val
             amps = {
                 'lin': np.linspace(Arange[0], Arange[1], args.nA),
                 'log': np.logspace(np.log10(Arange[0]), np.log10(Arange[1]), args.nA)
@@ -78,7 +84,11 @@ def main():
         if args.amp is not None:
             amps = np.array([args.amp])  # mA/m2
         else:
-            amps = np.linspace(Irange[0], Irange[1], args.nA)  # mA/m2
+            Arange = list(Aelec_range)
+            for i, val in enumerate([args.Amin, args.Amax]):
+                if val is not None:
+                    Arange[i] = val
+            amps = np.linspace(Arange[0], Arange[1], args.nA)  # mA/m2
         cmap = 'RdBu_r'
 
     if args.vars is None:
