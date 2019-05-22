@@ -414,12 +414,16 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
                 UFPs += [(Adrive, Qm) for Qm in out[i][1]]
 
             # Plot charge SFPs and UFPs for each acoustic amplitude
-            A_SFPs, Q_SFPs = np.array(SFPs).T
-            A_UFPs, Q_UFPs = np.array(UFPs).T
-            ax.plot(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5, 'o', c=color, markersize=3,
-                    label='{} neuron - SFPs @ {:.0f} % DC'.format(neuron.name, DC * 1e2))
-            ax.plot(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5, 'x', c=color, markersize=3,
-                    label='{} neuron - UFPs @ {:.0f} % DC'.format(neuron.name, DC * 1e2))
+            lbl = '{} neuron - {{}}stable fixed points @ {:.0f} % DC'.format(
+                neuron.name, DC * 1e2)
+            if len(SFPs) > 0:
+                A_SFPs, Q_SFPs = np.array(SFPs).T
+                ax.plot(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5, 'o', c=color,
+                        markersize=3, label=lbl.format(''))
+            if len(UFPs) > 0:
+                A_UFPs, Q_UFPs = np.array(UFPs).T
+                ax.plot(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5, 'x', c=color,
+                        markersize=3, label=lbl.format('un'))
 
             # If specified, compute and plot the threshold excitation amplitude
             if titrate:
@@ -437,15 +441,10 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
 
             icolor += 1
 
-        if len(neurons) * len(DCs) == 1:
-            dQdt_sign = np.sign(np.squeeze(dQdt))
-            cmap = ListedColormap(plt.get_cmap('Pastel2').colors[:2])
-            # x = computeMeshEdges(amps, scale=xscale) * Afactor
-            # y = computeMeshEdges(Qref) * 1e5
-            # xx, yy = np.meshgrid(x, y)
-            # print(xx.shape, yy.shape)
-            # ax.pcolormesh(xx.T, yy.T, dQdt_sign, cmap=cmap)
-            ax.contourf(amps * Afactor, Qref * 1e5, dQdt_sign.T, cmap=cmap)
+        # if len(neurons) * len(DCs) == 1:
+        #     dQdt_sign = np.sign(np.squeeze(dQdt))
+        #     cmap = ListedColormap(plt.get_cmap('Pastel2').colors[:2])
+        #     ax.contourf(amps * Afactor, Qref * 1e5, dQdt_sign.T, cmap=cmap)
 
     # Post-process figure
     ax.set_ylim(np.array([Qrange[0], 0]) * 1e5)

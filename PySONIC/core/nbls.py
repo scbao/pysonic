@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 11:35:47
+# @Last Modified time: 2019-05-22 15:40:28
 
 import os
 from copy import deepcopy
@@ -106,55 +106,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Return derivatives vector
         return [dQmdt, *[dstates[k] for k in self.neuron.states]]
-
-
-    def evaluateStability(self, Qm0, states0, lkp, tint=QSS_INTEGRATION_INTERVAL,
-                          Q_conv_thr=QSS_Q_CONV_THR, Q_div_thr=QSS_Q_DIV_THR):
-        ''' Integrate the effective differential system from a given starting point,
-            until clear convergence or clear divergence is found.
-
-            :param Qm0: initial membrane charge density (C/m2)
-            :param states0: dictionary of initial states values
-            :param lkp: dictionary of 1D data points of "effective" coefficients
-             over the charge domain, for specific frequency and amplitude values.
-            :param tint: iterative integration interval (s)
-            :param Q_conv_thr: membrane charge density difference within an interval span
-             below which convergence is assumed
-            :param Q_div_thr: membrane charge density difference from initial value
-             above which divergence is assumed
-            :return: boolean indicating convergence state
-        '''
-
-        # Initialize y0 vector
-        yf = np.array([Qm0] + list(states0.values()))
-        tf = 0.
-        conv = False
-        div = False
-
-        # As long as there is no clear convergence or clear divergence w.r.t. Qm
-        while not conv and not div:
-
-            # Re-initialize start time and initial states with previous end points
-            t0, y0 = tf, yf
-
-            # Integrate system for small interval and retrieve results
-            sol = solve_ivp(lambda t, y: self.effDerivatives(y, t, lkp), [t0, t0 + tint], y0)
-            tf, yf = sol.t[-1], sol.y[:, -1]
-            Qmf = yf[0]
-
-            # If charge deviation within last interval is small enough -> convergence
-            if np.abs(Qmf - sol.y[0, 0]) < Q_conv_thr:
-                conv = True
-
-            # If charge deviation from the beginning is too large -> divergence
-            dQ = Qmf - Qm0
-            if np.abs(dQ) > Q_div_thr:
-                div = True
-
-        logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
-            {True: 'con', False: 'di'}[conv], tf * 1e3, dQ * 1e5))
-
-        return conv
 
 
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
@@ -833,6 +784,58 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return self.neuron.iNet(lookups['V'], np.array(list(QSS.values())))  # mA/m2
 
 
+    def evaluateStability(self, Qm0, states0, lkp):
+        ''' Integrate the effective differential system from a given starting point,
+            until clear convergence or clear divergence is found.
+
+            :param Qm0: initial membrane charge density (C/m2)
+            :param states0: dictionary of initial states values
+            :param lkp: dictionary of 1D data points of "effective" coefficients
+             over the charge domain, for specific frequency and amplitude values.
+            :return: boolean indicating convergence state
+        '''
+
+        # Initialize y0 vector
+        yf = np.array([Qm0] + list(states0.values()))
+        tf = 0.
+        conv = False
+        div = False
+
+        # As long as there is no clear convergence or clear divergence w.r.t. Qm
+        while not conv and not div:
+
+            # Re-initialize start time and initial states with previous end points
+            t0, y0 = tf, yf
+
+            # Integrate system for small interval and retrieve results
+            sol = solve_ivp(
+                lambda t, y: self.effDerivatives(y, t, lkp),
+                [t0, t0 + QSS_INTEGRATION_INTERVAL],
+                y0
+            )
+            tf, yf = sol.t[-1], sol.y[:, -1]
+            Qmf = yf[0]
+
+            # If charge deviation within last interval is small enough -> convergence
+            if np.abs(Qmf - sol.y[0, 0]) < QSS_Q_CONV_THR:
+                conv = True
+
+            # If max integration duration is been reached but charge is still evolving
+            # within divergence threshold -> convergence
+            if tf > QSS_MAX_INTEGRATION_DURATION:
+                conv = True
+
+            # If charge deviation from the beginning is too large -> divergence
+            dQ = Qmf - Qm0
+            if np.abs(dQ) > QSS_Q_DIV_THR:
+                div = True
+
+        logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
+            {True: 'con', False: 'di'}[conv], tf * 1e3, dQ * 1e5))
+
+        return conv
+
+
     def quasiSteadyStateFixedPoints(self, Fdrive, Adrive, DC, lkp, dQdt):
         ''' Compute QSS fixed points along the charge dimension for a given combination
             of US parameters, and determine their stability.
@@ -853,6 +856,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         UFPs = getFixedPoints(lkp['Q'], dQdt, filter='unstable', der_func=dfunc).tolist()
         SFPs = []
 
+        pltvars = self.getPltVars()
+
         # For each candidate SFP
         for i, Qm in enumerate(SFP_candidates):
 
@@ -871,6 +876,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 # For each state
                 is_stable_state = []
                 for x in self.neuron.states:
+                    pltvar = pltvars[x]
+                    unit_str = pltvar.get('unit', '')
+                    factor = pltvar.get('factor', 1)
                     is_stable_direction = []
                     for sign in [-1, +1]:
                         # Perturb state with small offset
@@ -881,8 +889,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                         if self.neuron.isVoltageGated(x):
                             QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
 
-                        logger.debug('{}: {:.5f} -> {:.5f}'.format(
-                            x, QSS_FP[x], QSS_perturbed[x]))
+                        logger.debug('{}: {:.5f} -> {:.5f} {}'.format(
+                            x, QSS_FP[x] * factor, QSS_perturbed[x] * factor, unit_str))
 
                         # Simulate from perturbed QSS and evaluate stability
                         is_stable_direction.append(

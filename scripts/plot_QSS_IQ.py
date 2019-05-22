@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 11:26:45
+# @Last Modified time: 2019-05-22 14:57:31
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -31,7 +31,8 @@ def main():
                     help='Save output figures')
     ap.add_argument('--titrate', default=False, action='store_true',
                     help='Titrate excitation threshold')
-    ap.add_argument('-A', '--amp', type=float, default=None, help='Amplitude (kPa or mA/m2)')
+    ap.add_argument('-A', '--amp', nargs='+', type=float, default=None,
+                    help='Amplitude (kPa or mA/m2)')
     ap.add_argument('--tstim', type=float, default=500.,
                     help='Stimulus duration for titration (ms)')
     ap.add_argument('--PRF', type=float, default=100.,
@@ -68,7 +69,7 @@ def main():
 
     if args.stim == 'US':
         if args.amp is not None:
-            amps = np.array([args.amp * 1e3])
+            amps = np.array(args.amp) * 1e3
         else:
             Arange = list(AUS_range)
             for i, val in enumerate([args.Amin, args.Amax]):
@@ -83,7 +84,7 @@ def main():
         a = None
         Fdrive = None
         if args.amp is not None:
-            amps = np.array([args.amp])  # mA/m2
+            amps = np.array(args.amp)  # mA/m2
         else:
             Arange = list(Aelec_range)
             for i, val in enumerate([args.Amin, args.Amax]):
@@ -110,14 +111,10 @@ def main():
 
     # Plot equilibrium charge as a function of amplitude for each neuron
     if amps.size > 1 and 'dQdt' in args.vars:
-        try:
-            figs.append(
-                plotEqChargeVsAmp(
-                    neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs,
-                    xscale=args.Ascale, titrate=args.titrate, mpi=args.mpi))
-        except ValueError as err:
-            logger.error(err)
-            quit()
+        figs.append(
+            plotEqChargeVsAmp(
+                neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs,
+                xscale=args.Ascale, titrate=args.titrate, mpi=args.mpi))
 
     if args.save:
         outputdir = args.outputdir if args.outputdir is not None else selectDirDialog()

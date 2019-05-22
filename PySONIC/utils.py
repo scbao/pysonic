@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-20 16:05:45
+# @Last Modified time: 2019-05-22 15:12:09
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -321,7 +321,7 @@ def getLookups4D(mechname):
         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 
     # Load lookups dictionary
-    logger.debug('Loading %s lookup table', mechname)
+    # logger.debug('Loading %s lookup table', mechname)
     with open(lookup_path, 'rb') as fh:
         df = pickle.load(fh)
         inputs = df['input']
@@ -401,9 +401,9 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
         var3 = var_a
 
     # Perform 2D projection in appropriate dimensions
-    logger.debug('Interpolating lookups at (%s = %s%s, %s = %s%s)',
-                 var1['name'], si_format(var1['val'], space=' '), var1['unit'],
-                 var2['name'], si_format(var2['val'], space=' '), var2['unit'])
+    # logger.debug('Interpolating lookups at (%s = %s%s, %s = %s%s)',
+    #              var1['name'], si_format(var1['val'], space=' '), var1['unit'],
+    #              var2['name'], si_format(var2['val'], space=' '), var2['unit'])
     lookups3D = {key: interp1d(var1['ref'], y4D, axis=var1['axis'])(var1['val'])
                  for key, y4D in lookups4D.items()}
     if var2['axis'] > var1['axis']:
@@ -486,8 +486,8 @@ def getLookupsDCavg(mechname, a, Fdrive, amps=None, charges=None, DCs=1.0):
         DCs = np.array([DCs])
     nA, nQ, nDC = amps.size, charges.size, DCs.size
     cs = {True: 's', False: ''}
-    logger.debug('%u amplitude%s, %u charge%s, %u DC%s',
-                 nA, cs[nA > 1], nQ, cs[nQ > 1], nDC, cs[nDC > 1])
+    # logger.debug('%u amplitude%s, %u charge%s, %u DC%s',
+    #              nA, cs[nA > 1], nQ, cs[nQ > 1], nDC, cs[nDC > 1])
 
     # Re-interpolate lookups at input charges
     lookups2D = {key: interp1d(Qref, y2D, axis=1)(charges) for key, y2D in lookups2D.items()}
