@@ -326,7 +326,7 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
     return fig
 
 
-def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
+def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3, PRF=100.0,
                       DCs=[1.], fs=12, xscale='lin', titrate=False, mpi=False):
     ''' Plot the equilibrium membrane charge density as a function of acoustic amplitude,
         given an initial value of membrane charge density.
@@ -428,17 +428,12 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, PRF=100.0,
             # If specified, compute and plot the threshold excitation amplitude
             if titrate:
                 if stim_type == 'US':
-                    Athr = nbls.titrate(Fdrive, tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
-                                        Arange=(amps.min(), amps.max()))  # Pa
+                    Athr = nbls.titrate(Fdrive, tstim, toffset, PRF=PRF, DC=DC)
                     ax.axvline(Athr * Afactor, c=color, linestyle='--')
                 else:
-                    Athr_pos = neuron.titrate(tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
-                                              Arange=(0., amps.max()))  # mA/m2
-                    ax.axvline(Athr_pos * Afactor, c=color, linestyle='--')
-                    Athr_neg = neuron.titrate(tstim, TITRATION_T_OFFSET, PRF=PRF, DC=DC,
-                                              Arange=(amps.min(), 0.))  # mA/m2
-                    ax.axvline(Athr_neg * Afactor, c=color, linestyle='-.')
-
+                    for Arange, ls in zip([(0., amps.max(amps.min(), 0.)), ()], ['--', '-.']):
+                        Athr = neuron.titrate(tstim, toffset, PRF=PRF, DC=DC, Arange=Arange)
+                        ax.axvline(Athr * Afactor, c=color, linestyle=ls)
             icolor += 1
 
     # Post-process figure

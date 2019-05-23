@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 17:39:04
+# @Last Modified time: 2019-05-23 18:43:43
 
 ''' Algorithmic constants used in the package. '''
 
@@ -54,11 +54,11 @@ TITRATION_ASTIM_DA_MAX = 1e2  # acoustic pressure search range threshold for tit
 TITRATION_ESTIM_A_MAX = 50.0  # initial current density upper bound for titration (mA/m2)
 TITRATION_ESTIM_DA_MAX = 0.1  # current density search range threshold for titration (mA/m2)
 
-
-# QSS Stability analysis
+# QSS stability analysis
 QSS_REL_OFFSET = .05
+QSS_HISTORY_INTERVAL = 30e-3  # recent history interval (s)
 QSS_INTEGRATION_INTERVAL = 1e-3  # iterative integration interval (s)
-QSS_MAX_INTEGRATION_DURATION = 100e-3  # iterative integration interval (s)
-QSS_Q_CONV_THR = 1e-8  # max. charge diff. across integration interval to infer convergence (C/m2)
-QSS_Q_DIV_THR = 1e-5  # min. charge diff. across entire integration to infer divergence (C/m2)
-TMIN_STABILIZATION = 500e-3
+QSS_MAX_INTEGRATION_DURATION = 1000e-3  # iterative integration interval (s)
+QSS_Q_CONV_THR = 1e-7  # max. charge deviation to infer convergence (C/m2)
+QSS_Q_DIV_THR = 1e-4  # min. charge deviation to infer divergence (C/m2)
+TMIN_STABILIZATION = 500e-3  # time window for stabilization analysis (s)

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 14:57:31
+# @Last Modified time: 2019-05-23 18:55:37
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -35,6 +35,8 @@ def main():
                     help='Amplitude (kPa or mA/m2)')
     ap.add_argument('--tstim', type=float, default=500.,
                     help='Stimulus duration for titration (ms)')
+    ap.add_argument('--toffset', type=float, default=500.,
+                    help='Offset duration for titration (ms)')
     ap.add_argument('--PRF', type=float, default=100.,
                     help='Pulse-repetition-frequency for titration (Hz)')
     ap.add_argument('--DC', type=float, nargs='+', default=None, help='Duty cycle (%)')
@@ -63,6 +65,7 @@ def main():
 
     # Pulsing parameters
     tstim = args.tstim * 1e-3  # s
+    toffset = args.toffset * 1e-3  # s
     PRF = args.PRF  # Hz
     DCs = [100.] if args.DC is None else args.DC  # %
     DCs = np.array(DCs) * 1e-2  # (-)
@@ -113,7 +116,7 @@ def main():
     if amps.size > 1 and 'dQdt' in args.vars:
         figs.append(
             plotEqChargeVsAmp(
-                neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs,
+                neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs, toffset=toffset,
                 xscale=args.Ascale, titrate=args.titrate, mpi=args.mpi))
 
     if args.save:

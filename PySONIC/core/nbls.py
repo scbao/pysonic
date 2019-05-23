@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 19:05:57
+# @Last Modified time: 2019-05-23 18:56:23
 
 import os
 from copy import deepcopy
@@ -830,42 +830,47 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
 
         # Initialize y0 vector
-        yf = np.array([Qm0] + list(states0.values()))
-        tf = 0.
-        conv = False
-        div = False
+        t0 = 0.
+        y0 = np.array([Qm0] + list(states0.values()))
 
-        # As long as there is no clear convergence or clear divergence w.r.t. Qm
+        # Initializing empty list to record evolution of charge deviation
+        n = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)  # size of history
+        dQ = []
+
+        # As long as there is no clear charge convergence or divergence
+        conv, div = False, False
+        tf, yf = t0, y0
         while not conv and not div:
 
-            # Re-initialize start time and initial states with previous end points
+            # Integrate system for small interval and retrieve final charge deviation
             t0, y0 = tf, yf
-
-            # Integrate system for small interval and retrieve results
             sol = solve_ivp(
                 lambda t, y: self.effDerivatives(y, t, lkp),
-                [t0, t0 + QSS_INTEGRATION_INTERVAL],
-                y0
+                [t0, t0 + QSS_INTEGRATION_INTERVAL], y0,
+                method='LSODA'
             )
             tf, yf = sol.t[-1], sol.y[:, -1]
-            Qmf = yf[0]
+            dQ.append(yf[0] - Qm0)
 
-            # If charge deviation within last interval is small enough -> convergence
-            if np.abs(Qmf - sol.y[0, 0]) < QSS_Q_CONV_THR:
-                conv = True
+            # logger.debug('{:.0f} ms: dQ = {:.5f} nC/cm2, avg dQ = {:.5f} nC/cm2'.format(
+            #     tf * 1e3, dQ[-1] * 1e5, np.mean(dQ[-n:]) * 1e5))
 
-            # If max integration duration is been reached but charge is still evolving
-            # within divergence threshold -> convergence
-            if tf > QSS_MAX_INTEGRATION_DURATION:
-                conv = True
-
-            # If charge deviation from the beginning is too large -> divergence
-            dQ = Qmf - Qm0
-            if np.abs(dQ) > QSS_Q_DIV_THR:
+            # If last charge deviation is too large -> divergence
+            if np.abs(dQ[-1]) > QSS_Q_DIV_THR:
                 div = True
 
+            # If last charge deviation or average deviation in recent history
+            # is small enough -> convergence
+            for x in [dQ[-1], np.mean(dQ[-n:])]:
+                if np.abs(x) < QSS_Q_CONV_THR:
+                    conv = True
+
+            # If max integration duration is been reached -> error
+            if tf > QSS_MAX_INTEGRATION_DURATION:
+                raise ValueError('too many iterations')
+
         logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
-            {True: 'con', False: 'di'}[conv], tf * 1e3, dQ * 1e5))
+            {True: 'con', False: 'di'}[conv], tf * 1e3, dQ[-1] * 1e5))
 
         return conv
 
@@ -908,7 +913,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 UFPs.append(Qm)
             else:
                 # For each state
-                is_stable_state = []
+                unstable_states = []
                 for x in self.neuron.states:
                     pltvar = pltvars[x]
                     unit_str = pltvar.get('unit', '')
@@ -932,13 +937,15 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
                     # Check if system shows stability upon x-state perturbation
                     # in both directions
-                    is_stable_state.append(np.all(is_stable_direction))
+                    if not np.all(is_stable_direction):
+                        unstable_states.append(x)
 
                 # Classify fixed point as stable only if all states show stability
-                is_stable_FP = np.all(is_stable_state)
+                is_stable_FP = len(unstable_states) == 0
                 {True: SFPs, False: UFPs}[is_stable_FP].append(Qm)
-                logger.info('{}stable fixed-point at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
-                    '' if is_stable_FP else 'un', Adrive * 1e-3, Qm * 1e5))
+                logger.info('{}stable fixed-point at ({:.2f} kPa, {:.2f} nC/cm2){}'.format(
+                    '' if is_stable_FP else 'un', Adrive * 1e-3, Qm * 1e5,
+                    '' if is_stable_FP else ', caused by {} states'.format(unstable_states)))
 
             return SFPs, UFPs
 
