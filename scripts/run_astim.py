@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-24 16:25:11
+# @Last Modified time: 2019-05-24 16:36:02
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -73,7 +73,7 @@ def main():
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('-p', '--plot', type=str, default='Q', help='Variables to plot')
+    ap.add_argument('-p', '--plot', type=str, nargs='+', help='Variables to plot')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
     ap.add_argument('-t', '--titrate', default=False, action='store_true', help='Perform titration')
     ap.add_argument('-m', '--method', type=str, default=defaults['method'],
@@ -159,12 +159,11 @@ def main():
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    if args['plot']:
-        pltscheme = {
-            'Q': {'Q_m': ['Qm']},
-            'V': {'V_m': ['Vm']},
-            'all': None
-        }[args['plot']]
+    if 'plot' in args:
+        if args['plot'] == ['all']:
+            pltscheme = None
+        else:
+            pltscheme = {x: [x] for x in args['plot']}
         plotBatch(pkl_filepaths, pltscheme=pltscheme)
         plt.show()
 
