@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-23 20:59:04
+# @Last Modified time: 2019-05-24 13:12:50
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -584,39 +584,52 @@ def getIndex(container, value):
         return container.index(value)
 
 
-def titrate(xfunc, xargs, xbounds, dx_thr):
-    ''' Interface to titrate2 function with caching
-        (original function cannot be cached directly since recursive)
+def args2str(args):
+    ''' Translate a list of arguments of different types into a unique string identifier.
+
+        :param args: list or args of variable types (int, float, bool, objects, iterables)
+        :return: string identifier
     '''
-    fpath = os.path.join(os.path.split(__file__)[0], 'neurons', 'titrations.log')
-    args_str = ' '.join([
-        xfunc.__str__(),
-        '({})'.format(', '.join(list(map(str, xargs)))),
-        '({})'.format(', '.join(list(map(str, xbounds)))),
-        str(dx_thr)
-    ])
-
-    # If entry present in log, return corresponding output
-    delimiter = '\t'
-    if os.path.isfile(fpath):
-        with open(fpath, 'r', newline='') as f:
-            reader = csv.reader(f, delimiter=delimiter)
-            for row in reader:
-                args_in = row[0]
-                if args_in == args_str:
-                    logger.info('entry found in log')
-                    return float(row[1])
-
-    # Otherwise, compute result and log into file
-    out = titrate2(xfunc, xargs, xbounds, dx_thr)
-    with open(fpath, 'a', newline='') as csvfile:
-        writer = csv.writer(csvfile, delimiter=delimiter)
-        writer.writerow([args_str, str(out)])
-
-    return out
+    args_list = []
+    for arg in args:
+        if isinstance(arg, (list, tuple, np.ndarray)):
+            arg_str = '({})'.format(', '.join(list(map(str, arg))))
+        else:
+            arg_str = str(arg)
+        args_list.append(arg_str)
+    return ' '.join(args_list)
 
 
-def titrate2(xfunc, xargs, xbounds, dx_thr, history=None):
+def csvcache(fpath, delimiter='\t', out_type=float):
+    ''' Add an extra IO memoization functionality to a function using CSV file caching,
+        to avoid repetitions of tedious computations with identical inputs.
+    '''
+    def wrapper_with_args(func):
+        def wrapper(*args, **kwargs):
+            # Translate function arguments into string identifier entry
+            entry = args2str(args)
+
+            # If entry present in log, return corresponding output
+            if os.path.isfile(fpath):
+                with open(fpath, 'r', newline='') as f:
+                    reader = csv.reader(f, delimiter=delimiter)
+                    for row in reader:
+                        if row[0] == entry:
+                            logger.info('entry found in "{}"'.format(os.path.basename(fpath)))
+                            return out_type(row[1])
+
+            # Otherwise, compute output and log it into file before returning
+            out = func(*args, **kwargs)
+            with open(fpath, 'a', newline='') as csvfile:
+                writer = csv.writer(csvfile, delimiter=delimiter)
+                writer.writerow([entry, str(out)])
+            return out
+        return wrapper
+    return wrapper_with_args
+
+
+@csvcache(os.path.join(os.path.split(__file__)[0], 'neurons', 'titrations.log'))
+def titrate(xfunc, xargs, xbounds, dx_thr, history=None):
     ''' Use a binary search to determine the threshold satisfying a given condition
         within a specific search interval.
 
@@ -665,7 +678,7 @@ def titrate2(xfunc, xargs, xbounds, dx_thr, history=None):
             xbounds = (xbounds[0], x) if history[-1] else (x, xbounds[1])
         else:
             xbounds = (x, xbounds[1]) if history[-1] else (xbounds[0], x)
-        return titrate2(xfunc, xargs, xbounds, dx_thr, history=history)
+        return titrate(xfunc, xargs, xbounds, dx_thr, history=history)
 
 
 def resolveDependencies(deps, join_items=True):
