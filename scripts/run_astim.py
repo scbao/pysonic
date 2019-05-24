@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-03 20:44:16
+# @Last Modified time: 2019-05-24 16:25:11
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -85,9 +85,10 @@ def main():
     ap.add_argument('-a', '--radius', nargs='+', type=float, help='Sonophore radius (nm)')
     ap.add_argument('-f', '--freq', nargs='+', type=float, help='US frequency (kHz)')
     ap.add_argument('-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('--Arange', type=str, nargs='+', help='Amplitude range [scale min max n] (kPa)')
     ap.add_argument('-I', '--intensity', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
-    ap.add_argument('--spanI', default=False, action='store_true',
-                    help='Span acoustic intensities from 10 to 140 W/m2')
+    ap.add_argument('--Irange', type=str, nargs='+',
+                    help='Intensity range [scale min max n] (W/cm2)')
     ap.add_argument('-d', '--duration', nargs='+', type=float, help='Stimulus duration (ms)')
     ap.add_argument('--offset', nargs='+', type=float, help='Offset duration (ms)')
     ap.add_argument('--PRF', nargs='+', type=float, help='PRF (Hz)')
@@ -108,8 +109,20 @@ def main():
     neuron_str = args['neuron']
     radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
 
-    if args['spanI']:
-        amps = Intensity2Pressure(getLowIntensitiesSTN())  # Pa
+    if 'Arange' in args:
+        Ascale = args['Arange'][0]
+        Amin, Amax, nA = [float(x) for x in args['Arange'][1:]]
+        amps = {
+            'lin': np.linspace(Amin, Amax, nA),
+            'log': np.logspace(np.log10(Amin), np.log10(Amax), nA)
+        }[Ascale] * 1e3  # Pa
+    elif 'Irange' in args:
+        Iscale = args['Irange'][0]
+        Imin, Imax, nI = [float(x) for x in args['Irange'][1:]]
+        amps = Intensity2Pressure({
+            'lin': np.linspace(Imin, Imax, nI),
+            'log': np.logspace(np.log10(Imin), np.log10(Imax), nI)
+        }[Iscale] * 1e4)  # Pa
     elif 'amp' in args:
         amps = np.array(args['amp']) * 1e3  # Pa
     elif 'intensity' in args:
