@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 16:33:46
+# @Last Modified time: 2019-05-27 20:05:26
 
 from enum import Enum
 import time
@@ -781,13 +781,12 @@ class BilayerSonophore:
         return (t, y[1:, :], stimstate)
 
 
-    def runAndSave(self, outdir, Fdrive, Adrive, Qm):
-        ''' Simulate mechanical system and save results in a PKL file.
+    def run(self, Fdrive, Adrive, Qm):
+        ''' Simulate mechanical system and return output data and metadata in a dictionary.
 
-            :param outdir: full path to output directory
             :param Fdrive: US frequency (Hz)
             :param Adrive: acoustic pressure amplitude (Pa)
-            :param Qm: applided membrane charge density (C/m2)
+            :param Qm: applied membrane charge density (C/m2)
         '''
 
         logger.info('%s: simulation @ f = %sHz, A = %sPa, Q = %sC/cm2',
@@ -820,7 +819,18 @@ class BilayerSonophore:
             'tcomp': tcomp
         }
 
-        # Export into to PKL file
+        return data, meta
+
+
+    def runAndSave(self, outdir, Fdrive, Adrive, Qm):
+        ''' Simulate mechanical system and save results in a PKL file.
+
+            :param outdir: full path to output directory
+            :param Fdrive: US frequency (Hz)
+            :param Adrive: acoustic pressure amplitude (Pa)
+            :param Qm: applied membrane charge density (C/m2)
+        '''
+        data, meta = self.run(Fdrive, Adrive, Qm)
         simcode = self.filecode(Fdrive, Adrive, Qm)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:

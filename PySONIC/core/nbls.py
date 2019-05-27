@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 19:47:36
+# @Last Modified time: 2019-05-27 20:12:03
 
 import os
 from copy import deepcopy
@@ -667,13 +667,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return titrate(xfunc, (Fdrive, tstim, toffset, PRF, DC, method),
                        Arange, TITRATION_ASTIM_DA_MAX)
 
-
-    def runAndSave(self, outdir, Fdrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None,
-                   method='sonic'):
+    def run(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None, method='sonic'):
         ''' Run a simulation of the full electro-mechanical system for a given neuron type
-            with specific parameters, and save the results in a PKL file.
+            with specific parameters, and return output data and metadata.
 
-            :param outdir: full path to output directory
             :param Fdrive: US frequency (Hz)
             :param tstim: stimulus duration (s)
             :param toffset: stimulus offset (s)
@@ -733,16 +730,31 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             'method': method
         }
 
-        # Export into to PKL file
+        # Log number of detected spikes
+        self.neuron.logNSpikes(data)
+
+        return data, meta
+
+    def runAndSave(self, outdir, Fdrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None,
+                   method='sonic'):
+        ''' Run a simulation of the full electro-mechanical system for a given neuron type
+            with specific parameters, and save the results in a PKL file.
+
+            :param outdir: full path to output directory
+            :param Fdrive: US frequency (Hz)
+            :param tstim: stimulus duration (s)
+            :param toffset: stimulus offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: stimulus duty cycle (-)
+            :param Adrive: acoustic pressure amplitude (Pa)
+            :param method: integration method
+        '''
+        data, meta = self.run(Fdrive, tstim, toffset, PRF, DC, Adrive, method)
         simcode = self.filecode(Fdrive, Adrive, tstim, PRF, DC, method)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': data}, fh)
         logger.debug('simulation data exported to "%s"', outpath)
-
-        # Log number of detected spikes
-        self.neuron.logNSpikes(data)
-
         return outpath
 
 

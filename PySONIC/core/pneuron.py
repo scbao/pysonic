@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 16:47:34
+# @Last Modified time: 2019-05-27 20:11:58
 
 import os
 import time
@@ -19,7 +19,6 @@ import pandas as pd
 from ..postpro import findPeaks
 from ..constants import *
 from ..utils import si_format, logger, titrate
-from ..batches import xlslog
 
 
 class PointNeuron(metaclass=abc.ABCMeta):
@@ -583,11 +582,10 @@ class PointNeuron(metaclass=abc.ABCMeta):
         logger.debug('{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else ''))
 
 
-    def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
+    def run(self, tstim, toffset, PRF=None, DC=1.0, Astim=None):
         ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
-            and save the results in a PKL file.
+            and return output data and metadata.
 
-            :param outdir: full path to output directory
             :param tstim: stimulus duration (s)
             :param toffset: stimulus offset (s)
             :param PRF: pulse repetition frequency (Hz)
@@ -637,14 +635,26 @@ class PointNeuron(metaclass=abc.ABCMeta):
             'tcomp': tcomp
         }
 
-        # Export into to PKL file
+        # Log number of detected spikes
+        self.logNSpikes(data)
+
+        return data, meta
+
+    def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
+        ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
+            and save the results in a PKL file.
+
+            :param outdir: full path to output directory
+            :param tstim: stimulus duration (s)
+            :param toffset: stimulus offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: stimulus duty cycle (-)
+            :param Astim: stimulus amplitude (mA/m2)
+        '''
+        data, meta = self.run(tstim, toffset, PRF, DC, Astim)
         simcode = self.filecode(Astim, tstim, PRF, DC)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': data}, fh)
         logger.debug('simulation data exported to "%s"', outpath)
-
-        # Log number of detected spikes
-        self.logNSpikes(data)
-
         return outpath
