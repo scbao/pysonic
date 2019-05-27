@@ -4,11 +4,12 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-24 13:12:50
+# @Last Modified time: 2019-05-27 12:04:45
 
 ''' Definition of generic utility functions used in other modules '''
 
 import csv
+from functools import wraps
 import operator
 import os
 import math
@@ -43,6 +44,8 @@ def setLogger():
 
 
 logger = setLogger()
+
+titrations_logfile = os.path.join(os.path.split(__file__)[0], 'neurons', 'titrations.log')
 
 
 # File naming conventions
@@ -584,37 +587,43 @@ def getIndex(container, value):
         return container.index(value)
 
 
-def args2str(args):
-    ''' Translate a list of arguments of different types into a unique string identifier.
-
-        :param args: list or args of variable types (int, float, bool, objects, iterables)
-        :return: string identifier
-    '''
-    args_list = []
-    for arg in args:
-        if isinstance(arg, (list, tuple, np.ndarray)):
-            arg_str = '({})'.format(', '.join(list(map(str, arg))))
-        else:
-            arg_str = str(arg)
-        args_list.append(arg_str)
-    return ' '.join(args_list)
+def debug(func):
+    ''' Print the function signature and return value. '''
+    @wraps(func)
+    def wrapper_debug(*args, **kwargs):
+        args_repr = [repr(a) for a in args]
+        kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+        signature = '{}({})'.format(func.__name__, ', '.join(args_repr + kwargs_repr))
+        print('Calling {}'.format(signature))
+        value = func(*args, **kwargs)
+        print(f"{func.__name__!r} returned {value!r}")
+        return value
+    return wrapper_debug
 
 
-def csvcache(fpath, delimiter='\t', out_type=float):
-    ''' Add an extra IO memoization functionality to a function using CSV file caching,
+def cache(fpath, delimiter='\t', out_type=float):
+    ''' Add an extra IO memoization functionality to a function using file caching,
         to avoid repetitions of tedious computations with identical inputs.
     '''
     def wrapper_with_args(func):
+
+        @wraps(func)
         def wrapper(*args, **kwargs):
-            # Translate function arguments into string identifier entry
-            entry = args2str(args)
+            # If function has history -> do not log
+            if 'history' in kwargs:
+                return func(*args, **kwargs)
+
+            # Translate function arguments into string signature
+            args_repr = [repr(a) for a in args]
+            kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+            signature = '{}({})'.format(func.__name__, ', '.join(args_repr + kwargs_repr))
 
             # If entry present in log, return corresponding output
             if os.path.isfile(fpath):
                 with open(fpath, 'r', newline='') as f:
                     reader = csv.reader(f, delimiter=delimiter)
                     for row in reader:
-                        if row[0] == entry:
+                        if row[0] == signature:
                             logger.info('entry found in "{}"'.format(os.path.basename(fpath)))
                             return out_type(row[1])
 
@@ -622,13 +631,16 @@ def csvcache(fpath, delimiter='\t', out_type=float):
             out = func(*args, **kwargs)
             with open(fpath, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile, delimiter=delimiter)
-                writer.writerow([entry, str(out)])
+                writer.writerow([signature, str(out)])
+
             return out
+
         return wrapper
+
     return wrapper_with_args
 
 
-@csvcache(os.path.join(os.path.split(__file__)[0], 'neurons', 'titrations.log'))
+@cache(titrations_logfile)
 def titrate(xfunc, xargs, xbounds, dx_thr, history=None):
     ''' Use a binary search to determine the threshold satisfying a given condition
         within a specific search interval.
