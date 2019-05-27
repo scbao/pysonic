@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 14:42:21
+# @Last Modified time: 2019-05-27 16:33:46
 
 from enum import Enum
 import time
@@ -799,13 +799,11 @@ class BilayerSonophore:
         (Z, ng) = y
         tcomp = time.time() - tstart
         logger.debug('completed in %s', si_format(tcomp, 1))
-        U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
 
         # Store dataframe and metadata
-        df = pd.DataFrame({
+        data = pd.DataFrame({
             't': t,
             'stimstate': stimstate,
-            'U': U,
             'Z': Z,
             'ng': ng
         })
@@ -826,7 +824,7 @@ class BilayerSonophore:
         simcode = self.filecode(Fdrive, Adrive, Qm)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
-            pickle.dump({'meta': meta, 'data': df}, fh)
+            pickle.dump({'meta': meta, 'data': data}, fh)
         logger.debug('simulation data exported to "%s"', outpath)
 
         return outpath

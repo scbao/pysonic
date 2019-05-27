@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 14:43:50
+# @Last Modified time: 2019-05-27 16:34:27
 
 import os
 from copy import deepcopy
@@ -684,6 +684,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             (', PRF = {}Hz, DC = {:.2f}%'.format(
                 si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
 
+        # If no amplitude provided, perform titration
         if Adrive is None:
             Adrive = self.titrate(Fdrive, tstim, toffset, PRF, DC, method=method)
             if np.isnan(Adrive):
@@ -695,29 +696,19 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         t, y, stimstate = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
         tcomp = time.time() - tstart
         Z, ng, Qm, Vm, *channels = y
-
-        # Detect spikes on Qm signal
-        dt = t[1] - t[0]
-        ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
-                               SPIKE_MIN_QPROM)
-        nspikes = ipeaks.size
-        outstr = '{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else '')
-        logger.debug('completed in %ss, %s', si_format(tcomp, 1), outstr)
+        logger.debug('completed in %ss', si_format(tcomp, 1))
 
         # Store dataframe and metadata
-        U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
-        df = pd.DataFrame({
+        data = pd.DataFrame({
             't': t,
             'stimstate': stimstate,
-            'U': U,
             'Z': Z,
             'ng': ng,
             'Qm': Qm,
             'Vm': Vm
         })
         for j in range(len(self.neuron.states)):
-            df[self.neuron.states[j]] = channels[j]
-
+            data[self.neuron.states[j]] = channels[j]
         meta = {
             'neuron': self.neuron.name,
             'a': self.a,
@@ -737,8 +728,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         simcode = self.filecode(Fdrive, Adrive, tstim, PRF, DC, method)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
-            pickle.dump({'meta': meta, 'data': df}, fh)
+            pickle.dump({'meta': meta, 'data': data}, fh)
         logger.debug('simulation data exported to "%s"', outpath)
+
+        # Log number of detected spikes
+        self.neuron.logNSpikes(data)
 
         return outpath
 

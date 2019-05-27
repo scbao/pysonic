@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 14:43:12
+# @Last Modified time: 2019-05-27 16:36:58
 
 import os
 import time
@@ -569,6 +569,20 @@ class PointNeuron(metaclass=abc.ABCMeta):
             xfunc = self.isExcited
         return titrate(xfunc, (tstim, toffset, PRF, DC), Arange, TITRATION_ESTIM_DA_MAX)
 
+
+    def logNSpikes(self, data):
+        ''' Detect spikes on Qm signal. '''
+        dt = np.diff(data.ix[:1, 't'].values)[0]
+        ipeaks, *_ = findPeaks(
+            data['Qm'].values,
+            SPIKE_MIN_QAMP,
+            int(np.ceil(SPIKE_MIN_DT / dt)),
+            SPIKE_MIN_QPROM
+        )
+        nspikes = ipeaks.size
+        logger.debug('{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else ''))
+
+
     def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
         ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
             and save the results in a PKL file.
@@ -601,24 +615,17 @@ class PointNeuron(metaclass=abc.ABCMeta):
         t, y, stimstate = self.simulate(Astim, tstim, toffset, PRF, DC)
         Vm, *channels = y
         tcomp = time.time() - tstart
-
-        # Detect spikes on Vm signal
-        dt = t[1] - t[0]
-        ipeaks, *_ = findPeaks(Vm, SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
-                               SPIKE_MIN_VPROM)
-        nspikes = ipeaks.size
-        outstr = '{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else '')
-        logger.debug('completed in %ss, %s', si_format(tcomp, 1), outstr)
+        logger.debug('completed in %ss', si_format(tcomp, 1))
 
         # Store dataframe and metadata
-        df = pd.DataFrame({
+        data = pd.DataFrame({
             't': t,
             'stimstate': stimstate,
             'Vm': Vm,
             'Qm': Vm * self.Cm0 * 1e-3
         })
         for j in range(len(self.states)):
-            df[self.states[j]] = channels[j]
+            data[self.states[j]] = channels[j]
 
         meta = {
             'neuron': self.name,
@@ -634,7 +641,10 @@ class PointNeuron(metaclass=abc.ABCMeta):
         simcode = self.filecode(Astim, tstim, PRF, DC)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
-            pickle.dump({'meta': meta, 'data': df}, fh)
+            pickle.dump({'meta': meta, 'data': data}, fh)
         logger.debug('simulation data exported to "%s"', outpath)
+
+        # Log number of detected spikes
+        self.logNSpikes(data)
 
         return outpath

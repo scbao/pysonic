@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 08:53:26
+# @Last Modified time: 2019-05-27 16:38:12
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 

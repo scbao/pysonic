@@ -4,12 +4,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm, colors
-from matplotlib.colors import ListedColormap
 
 from ..postpro import getFixedPoints
 from ..core import NeuronalBilayerSonophore
 from .pltutils import *
-from ..constants import TITRATION_T_OFFSET
 from ..utils import logger
 from ..batches import runBatch
 

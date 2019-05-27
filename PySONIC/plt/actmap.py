@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 14:44:42
+# @Last Modified time: 2019-05-27 15:44:30
 
 import os
 import ntpath
@@ -54,6 +54,7 @@ class ActivationMap:
         nfiles = DCs.size * amps.size
         for i, A in enumerate(amps):
             for j, DC in enumerate(DCs):
+
                 fname = '{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, PRF, DC, 'sonic'))
                 fpath = os.path.join(root, fname)
 
@@ -137,7 +138,6 @@ class ActivationMap:
         with open(filepath, 'rb') as fh:
             frame = pickle.load(fh)
             df = frame['data']
-            meta = frame['meta']
         t = df['t'].values * 1e3  # ms
         Qm = df['Qm'].values * 1e5  # nC/cm2
         Vm = df['Vm'].values  # mV
