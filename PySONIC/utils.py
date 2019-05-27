@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 13:27:03
+# @Last Modified time: 2019-05-27 14:40:21
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -623,15 +623,6 @@ def cache(fpath, delimiter='\t', out_type=float):
 
 
 # def checkForFile(fpath):
-
-#     def getCWtitrations_vs_Fdrive(neurons, a, freqs, tstim, toffset, fpath):
-#     fkey = 'Fdrive (kHz)'
-#     freqs = np.array(freqs)
-#     if os.path.isfile(fpath):
-#         df = pd.read_csv(fpath, sep=',', index_col=fkey)
-#     else:
-#         df = pd.DataFrame(index=freqs * 1e-3)
-#     for neuron in neurons:
 
 #     def wrapper_with_args(func):
 
