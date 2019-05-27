@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-22 17:24:55
+# @Last Modified time: 2019-05-27 12:25:44
 
 import os
 import time
@@ -18,7 +18,7 @@ import pandas as pd
 
 from ..postpro import findPeaks
 from ..constants import *
-from ..utils import si_format, logger, ESTIM_filecode, titrate
+from ..utils import si_format, logger, titrate
 from ..batches import xlslog
 
 
@@ -35,6 +35,12 @@ class PointNeuron(metaclass=abc.ABCMeta):
 
     def pprint(self):
         return '{} neuron'.format(self.__class__.__name__)
+
+    def filecode(self, Astim, tstim, PRF, DC):
+        ''' File naming convention. '''
+        return 'ESTIM_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'.format(
+            self.name, 'CW' if DC == 1 else 'PW', Astim, tstim * 1e3,
+            '_PRF{:.2f}Hz_DC{:.2f}%'.format(PRF, DC * 1e2) if DC < 1. else '')
 
     @property
     @abc.abstractmethod
@@ -630,7 +636,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         }
 
         # Export into to PKL file
-        simcode = ESTIM_filecode(self.name, Astim, tstim, PRF, DC)
+        simcode = self.filecode(Astim, tstim, PRF, DC)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': df}, fh)

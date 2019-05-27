@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 17:23:05
+# @Last Modified time: 2019-05-27 13:23:15
 
 from enum import Enum
 import time
@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
-from ..utils import logger, rmse, si_format, MECH_filecode
+from ..utils import logger, rmse, si_format
 from ..constants import *
 from ..batches import xlslog
 
@@ -145,6 +145,10 @@ class BilayerSonophore:
     def pprint(self):
         return '{}m radius BilayerSonophore'.format(
             si_format(self.a, precision=0, space=' '))
+
+    def filecode(self, Fdrive, Adrive, Qm):
+        return 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
+            self.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
 
     def getLookupsPath(self):
         return os.path.join(os.path.split(__file__)[0], 'bls_lookups.json')
@@ -823,7 +827,7 @@ class BilayerSonophore:
         }
 
         # Export into to PKL file
-        simcode = MECH_filecode(self.a, Fdrive, Adrive, Qm)
+        simcode = self.filecode(Fdrive, Adrive, Qm)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': df}, fh)

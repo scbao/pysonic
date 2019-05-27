@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 12:04:45
+# @Last Modified time: 2019-05-27 13:27:03
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -46,24 +46,6 @@ def setLogger():
 logger = setLogger()
 
 titrations_logfile = os.path.join(os.path.split(__file__)[0], 'neurons', 'titrations.log')
-
-
-# File naming conventions
-def ESTIM_filecode(neuron, Astim, tstim, PRF, DC):
-    return 'ESTIM_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'.format(
-        neuron, 'CW' if DC == 1 else 'PW', Astim, tstim * 1e3,
-        '_PRF{:.2f}Hz_DC{:.2f}%'.format(PRF, DC * 1e2) if DC < 1. else '')
-
-
-def ASTIM_filecode(neuron, a, Fdrive, Adrive, tstim, PRF, DC, method):
-    return 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.2f}kPa_{:.0f}ms_{}{}'.format(
-        neuron, 'CW' if DC == 1 else 'PW', a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
-        'PRF{:.2f}Hz_DC{:.2f}%_'.format(PRF, DC * 1e2) if DC < 1. else '', method)
-
-
-def MECH_filecode(a, Fdrive, Adrive, Qm):
-    return 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
-        a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
 
 
 # Figure naming conventions
@@ -638,6 +620,51 @@ def cache(fpath, delimiter='\t', out_type=float):
         return wrapper
 
     return wrapper_with_args
+
+
+# def checkForFile(fpath):
+
+#     def getCWtitrations_vs_Fdrive(neurons, a, freqs, tstim, toffset, fpath):
+#     fkey = 'Fdrive (kHz)'
+#     freqs = np.array(freqs)
+#     if os.path.isfile(fpath):
+#         df = pd.read_csv(fpath, sep=',', index_col=fkey)
+#     else:
+#         df = pd.DataFrame(index=freqs * 1e-3)
+#     for neuron in neurons:
+
+#     def wrapper_with_args(func):
+
+#         @wraps(func)
+#         def wrapper(*args, **kwargs):
+
+#             # Translate function arguments into string signature
+#             args_repr = [repr(a) for a in args]
+#             kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+#             signature = '{}({})'.format(func.__name__, ', '.join(args_repr + kwargs_repr))
+
+#             # If entry present in log, return corresponding output
+#             if os.path.isfile(fpath):
+#                 with open(fpath, 'r', newline='') as f:
+#                     reader = csv.reader(f, delimiter=delimiter)
+#                     for row in reader:
+#                         if row[0] == signature:
+#                             logger.info('entry found in "{}"'.format(os.path.basename(fpath)))
+#                             return out_type(row[1])
+
+#             # Otherwise, compute output and log it into file before returning
+#             out = func(*args, **kwargs)
+#             with open(fpath, 'a', newline='') as csvfile:
+#                 writer = csv.writer(csvfile, delimiter=delimiter)
+#                 writer.writerow([signature, str(out)])
+
+#             return out
+
+#         return wrapper
+
+#     return wrapper_with_args
+
+
 
 
 @cache(titrations_logfile)

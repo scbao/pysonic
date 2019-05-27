@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-17 16:19:29
+# @Last Modified time: 2019-05-27 13:45:49
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -29,10 +29,10 @@ matplotlib.rcParams['font.family'] = 'arial'
 logger.setLevel(logging.INFO)
 
 
-def getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim, PRF=100, DC=1.0):
+def getChargeStabilizationFromSims(inputdir, nbls, Fdrive, amps, tstim, PRF=100, DC=1.0):
 
     # Get filenames
-    fnames = ['{}.pkl'.format(ASTIM_filecode(neuron.name, a, Fdrive, A, tstim, PRF, DC, 'sonic'))
+    fnames = ['{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, PRF, DC, 'sonic'))
               for A in amps]
 
     # Initialize output arrays
@@ -97,7 +97,7 @@ def compareEqChargesQSSvsSim(inputdir, neuron, a, Fdrive, amps, tstim, fs=12):
         Qeq_QSS[i] = SFPs.max() if SFPs is not None else np.nan
 
     # Get sabilization charge value in simulations
-    _, Qeq_sim, _ = getChargeStabilizationFromSims(inputdir, neuron, a, Fdrive, amps, tstim)
+    _, Qeq_sim, _ = getChargeStabilizationFromSims(inputdir, nbls, Fdrive, amps, tstim)
 
     Q_rmse = np.sqrt(np.nanmean((Qeq_sim - Qeq_QSS)**2))
     logger.info('RMSE Q = %.3f nC/cm2', Q_rmse * 1e5)

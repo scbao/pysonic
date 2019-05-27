@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-10 10:28:27
+# @Last Modified time: 2019-05-27 13:43:48
 
 import os
 import ntpath
@@ -14,14 +14,14 @@ import matplotlib
 from matplotlib.ticker import FormatStrFormatter
 
 from ..core import NeuronalBilayerSonophore
-from ..utils import logger, si_format, ASTIM_filecode
+from ..utils import logger, si_format
 from ..postpro import findPeaks
 from ..constants import *
 from ..neurons import getNeuronsDict
 from .pltutils import cm2inch, computeMeshEdges
 
 
-def getActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs):
+def getActivationMap(root, nbls, Fdrive, tstim, PRF, amps, DCs):
     ''' Compute the activation map of a neuron with specific sonophore radius
         at a given frequency and PRF, by computing the spiking metrics of simulation
         results over a 2D space (amplitude x duty cycle).
@@ -39,19 +39,19 @@ def getActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs):
 
     # Load activation map from file if it exists
     actmap_filename = 'actmap {} {}Hz PRF{}Hz {}s.csv'.format(
-        neuron, *si_format([Fdrive, PRF, tstim], space=''))
+        nbls.neuron.name, *si_format([Fdrive, PRF, tstim], space=''))
     actmap_filepath = os.path.join(root, actmap_filename)
     if os.path.isfile(actmap_filepath):
-        logger.info('Loading activation map for %s neuron', neuron)
+        logger.info('Loading activation map for %s neuron', nbls.neuron.name)
         return np.loadtxt(actmap_filepath, delimiter=',')
 
     # Otherwise generate it
-    logger.info('Generating activation map for %s neuron', neuron)
+    logger.info('Generating activation map for %s neuron', nbls.neuron.name)
     actmap = np.empty((amps.size, DCs.size))
     nfiles = DCs.size * amps.size
     for i, A in enumerate(amps):
         for j, DC in enumerate(DCs):
-            fname = '{}.pkl'.format(ASTIM_filecode(neuron, a, Fdrive, A, tstim, PRF, DC, 'sonic'))
+            fname = '{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, PRF, DC, 'sonic'))
             fpath = os.path.join(root, fname)
 
             if not os.path.isfile(fpath):
@@ -93,7 +93,7 @@ def getActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs):
     return actmap
 
 
-def onClick(event, root, neuron, a, Fdrive, tstim, PRF, amps, DCs, meshedges, tmax, Vbounds):
+def onClick(event, root, nbls, Fdrive, tstim, PRF, amps, DCs, meshedges, tmax, Vbounds):
     ''' Retrieve the specific input parameters of the x and y dimensions when the user clicks
         on a cell in the 2D map, and define filename from it.
     '''
@@ -104,7 +104,7 @@ def onClick(event, root, neuron, a, Fdrive, tstim, PRF, amps, DCs, meshedges, tm
     Adrive = amps[np.searchsorted(meshedges[1], y * 1e3) - 1]
 
     # Define filepath
-    fname = '{}.pkl'.format(ASTIM_filecode(neuron, a, Fdrive, Adrive, tstim, PRF, DC, 'sonic'))
+    fname = '{}.pkl'.format(nbls.filecode(Fdrive, Adrive, tstim, PRF, DC, 'sonic'))
     filepath = os.path.join(root, fname)
 
     # Plot Q-trace
@@ -261,8 +261,11 @@ def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='lo
         :return: 3-tuple with the handle to the generated figure and the mesh x and y coordinates
     '''
 
+    neuronobj = getNeuronsDict()[neuron]()
+    nbls = NeuronalBilayerSonophore(a, neuronobj)
+
     # Get activation map
-    actmap = getActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs)
+    actmap = getActivationMap(root, nbls, Fdrive, tstim, PRF, amps, DCs)
 
     # Check firing rate bounding
     minFR, maxFR = (actmap[actmap > 0].min(), actmap.max())
@@ -349,7 +352,7 @@ def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='lo
     if connect:
         fig.canvas.mpl_connect(
             'button_press_event',
-            lambda event: onClick(event, root, neuron, a, Fdrive, tstim, PRF, amps, DCs,
+            lambda event: onClick(event, root, nbls, Fdrive, tstim, PRF, amps, DCs,
                                   (xedges, yedges), tmax, Vbounds)
         )
 

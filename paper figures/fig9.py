@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 17:25:19
+# @Last Modified time: 2019-05-27 13:34:46
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -13,7 +13,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from PySONIC.utils import logger, selectDirDialog, ASTIM_filecode, getLowIntensitiesSTN, Intensity2Pressure
+from PySONIC.core import NeuronalBilayerSonophore
+from PySONIC.neurons import OtsukaSTN
+from PySONIC.utils import logger, selectDirDialog, getLowIntensitiesSTN, Intensity2Pressure
 from PySONIC.plt import plotFRProfile, plotBatch
 
 
@@ -50,12 +52,13 @@ def main():
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
-    neuron = 'STN'
+    neuron = OtsukaSTN()
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
     tstim = 1  # s
     PRF = 1e2
     DC = 1.
+    nbls = NeuronalBilayerSonophore(a, neuron)
 
     # Range of intensities
     intensities = getLowIntensitiesSTN()  # W/m2
@@ -65,7 +68,7 @@ def main():
 
     # convert to amplitudes and get filepaths
     amplitudes = Intensity2Pressure(intensities)  # Pa
-    fnames = ['{}.pkl'.format(ASTIM_filecode(neuron, a, Fdrive, A, tstim, PRF, DC, 'sonic'))
+    fnames = ['{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, PRF, DC, 'sonic'))
               for A in amplitudes]
     fpaths = [os.path.join(inputdir, 'STN', fn) for fn in fnames]
 

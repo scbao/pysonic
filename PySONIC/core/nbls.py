@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-23 18:56:23
+# @Last Modified time: 2019-05-27 13:35:52
 
 import os
 from copy import deepcopy
@@ -68,6 +68,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     def getPltScheme(self):
         return self.neuron.getPltScheme()
+
+    def filecode(self, Fdrive, Adrive, tstim, PRF, DC, method):
+        return 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.2f}kPa_{:.0f}ms_{}{}'.format(
+            self.neuron.name, 'CW' if DC == 1 else 'PW', self.a * 1e9,
+            Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
+            'PRF{:.2f}Hz_DC{:.2f}%_'.format(PRF, DC * 1e2) if DC < 1. else '', method)
 
     def fullDerivatives(self, y, t, Adrive, Fdrive, phi):
         ''' Compute the derivatives of the (n+3) ODE full NBLS system variables.
@@ -733,7 +739,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         }
 
         # Export into to PKL file
-        simcode = ASTIM_filecode(self.neuron.name, self.a, Fdrive, Adrive, tstim, PRF, DC, method)
+        simcode = self.filecode(Fdrive, Adrive, tstim, PRF, DC, method)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': df}, fh)
