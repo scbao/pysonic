@@ -4,3 +4,5 @@ titrate(<bound method NeuronalBilayerSonophore.isSilenced of NeuronalBilayerSono
 titrate(<bound method NeuronalBilayerSonophore.isExcited of NeuronalBilayerSonophore(32.0 nm, CorticalRS)>, (500000.0, 0.033, 0.05, 100.0, 1.0, 'sonic'), (0, 599999.9999999997), 100.0)	71887.20703124997
 titrate(<bound method NeuronalBilayerSonophore.isExcited of NeuronalBilayerSonophore(32.0 nm, CorticalRS)>, (500000.0, 0.045, 0.05, 100.0, 1.0, 'sonic'), (0, 599999.9999999997), 100.0)	54930.49621582028
 titrate(<bound method PointNeuron.isExcited of CorticalRS>, (0.045, 0.05, 100.0, 1.0), (0.0, 100.0), 0.1)	7.177734375
+titrate(<bound method NeuronalBilayerSonophore.isExcited of NeuronalBilayerSonophore(32.0 nm, CorticalRS)>, (500000.0, 0.047, 0.05, 100.0, 1.0, 'sonic'), (0, 599999.9999999997), 100.0)	53283.69140624997
+titrate(<bound method NeuronalBilayerSonophore.isExcited of NeuronalBilayerSonophore(32.0 nm, CorticalRS)>, (500000.0, 0.046, 0.05, 100.0, 1.0, 'sonic'), (0, 599999.9999999997), 100.0)	54089.35546874997

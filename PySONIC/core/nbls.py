@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 16:34:27
+# @Last Modified time: 2019-05-27 19:47:36
 
 import os
 from copy import deepcopy
@@ -581,7 +581,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             return self.runHybrid(Fdrive, Adrive, tstim, toffset)
 
 
-    def isExcited(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method):
+    def isExcited(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method, return_val=False):
         ''' Run a simulation and determine if neuron is excited.
 
             :param Adrive: acoustic amplitude (Pa)
@@ -600,10 +600,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         logger.debug('A = %sPa ---> %s spike%s detected',
                      si_format(Adrive, 2, space=' '),
                      nspikes, "s" if nspikes > 1 else "")
-        return nspikes > 0
+        cond = nspikes > 0
+        if return_val:
+            return {True: nspikes, False: np.nan}[cond]
+        else:
+            return cond
 
 
-    def isSilenced(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method):
+    def isSilenced(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method, return_val=False):
         ''' Run a simulation and determine if neuron is silenced.
 
             :param Adrive: acoustic amplitude (Pa)
@@ -628,7 +632,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         logger.debug('A = %sPa ---> %.2f nC/cm2 variation range over the last %.0f ms',
                      si_format(Adrive, 2, space=' '), Qm_range * 1e5, TMIN_STABILIZATION * 1e3)
 
-        return np.ptp(Qm) < QSS_Q_DIV_THR
+        cond = np.ptp(Qm) < QSS_Q_DIV_THR
+        if return_val:
+            return {True: Qm[-1], False: np.nan}[cond]
+        else:
+            return cond
+
 
 
     def titrate(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Arange=None, method='sonic'):

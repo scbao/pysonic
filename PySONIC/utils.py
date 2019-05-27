@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 15:25:59
+# @Last Modified time: 2019-05-27 16:39:52
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -676,42 +676,6 @@ def cache(fpath, delimiter='\t', out_type=float):
         return wrapper
 
     return wrapper_with_args
-
-
-# def checkForFile(fpath):
-
-#     def wrapper_with_args(func):
-
-#         @wraps(func)
-#         def wrapper(*args, **kwargs):
-
-#             # Translate function arguments into string signature
-#             args_repr = [repr(a) for a in args]
-#             kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
-#             signature = '{}({})'.format(func.__name__, ', '.join(args_repr + kwargs_repr))
-
-#             # If entry present in log, return corresponding output
-#             if os.path.isfile(fpath):
-#                 with open(fpath, 'r', newline='') as f:
-#                     reader = csv.reader(f, delimiter=delimiter)
-#                     for row in reader:
-#                         if row[0] == signature:
-#                             logger.info('entry found in "{}"'.format(os.path.basename(fpath)))
-#                             return out_type(row[1])
-
-#             # Otherwise, compute output and log it into file before returning
-#             out = func(*args, **kwargs)
-#             with open(fpath, 'a', newline='') as csvfile:
-#                 writer = csv.writer(csvfile, delimiter=delimiter)
-#                 writer.writerow([signature, str(out)])
-
-#             return out
-
-#         return wrapper
-
-#     return wrapper_with_args
-
-
 
 
 @cache(titrations_logfile)
