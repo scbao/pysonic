@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 12:25:44
+# @Last Modified time: 2019-05-27 14:43:12
 
 import os
 import time
@@ -581,17 +581,14 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :param Astim: stimulus amplitude (mA/m2)
         '''
 
-        # Get date and time info
-        date_str = time.strftime("%Y.%m.%d")
-        daytime_str = time.strftime("%H:%M:%S")
-
         logger.info(
             '%s: %s @ %st = %ss (%ss offset)%s',
             self,
             'titration' if Astim is None else 'simulation',
             'A = {}A/m2, '.format(si_format(Astim, 2, space=' ')) if Astim is not None else '',
             *si_format([tstim, toffset], 1, space=' '),
-            (', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
+            (', PRF = {}Hz, DC = {:.2f}%'.format(
+                si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
 
         if Astim is None:
             Astim = self.titrate(tstim, toffset, PRF, DC)
@@ -610,10 +607,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
         ipeaks, *_ = findPeaks(Vm, SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
                                SPIKE_MIN_VPROM)
         nspikes = ipeaks.size
-        lat = t[ipeaks[0]] if nspikes > 0 else 'N/A'
         outstr = '{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else '')
         logger.debug('completed in %ss, %s', si_format(tcomp, 1), outstr)
-        sr = np.mean(1 / np.diff(t[ipeaks])) if nspikes > 1 else None
 
         # Store dataframe and metadata
         df = pd.DataFrame({
@@ -641,27 +636,5 @@ class PointNeuron(metaclass=abc.ABCMeta):
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': df}, fh)
         logger.debug('simulation data exported to "%s"', outpath)
-
-        # Export key metrics to log file
-        logpath = os.path.join(outdir, 'log_ESTIM.xlsx')
-        logentry = {
-            'Date': date_str,
-            'Time': daytime_str,
-            'Neuron Type': self.name,
-            'Astim (mA/m2)': Astim,
-            'Tstim (ms)': tstim * 1e3,
-            'PRF (kHz)': PRF * 1e-3 if DC < 1 else 'N/A',
-            'Duty factor': DC,
-            '# samples': t.size,
-            'Comp. time (s)': round(tcomp, 2),
-            '# spikes': nspikes,
-            'Latency (ms)': lat * 1e3 if isinstance(lat, float) else 'N/A',
-            'Spike rate (sp/ms)': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-        }
-
-        if xlslog(logpath, logentry) == 1:
-            logger.debug('log exported to "%s"', logpath)
-        else:
-            logger.error('log export to "%s" aborted', self.logpath)
 
         return outpath

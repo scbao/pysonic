@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-24 16:36:02
+# @Last Modified time: 2019-05-27 15:22:28
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
-from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure, getLowIntensitiesSTN
+from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure, parseUSAmps
 from PySONIC.neurons import getNeuronsDict
 from PySONIC.batches import createAStimQueue, runBatch
 from PySONIC.plt import plotBatch
@@ -109,26 +109,11 @@ def main():
     neuron_str = args['neuron']
     radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
 
-    if 'Arange' in args:
-        Ascale = args['Arange'][0]
-        Amin, Amax, nA = [float(x) for x in args['Arange'][1:]]
-        amps = {
-            'lin': np.linspace(Amin, Amax, nA),
-            'log': np.logspace(np.log10(Amin), np.log10(Amax), nA)
-        }[Ascale] * 1e3  # Pa
-    elif 'Irange' in args:
-        Iscale = args['Irange'][0]
-        Imin, Imax, nI = [float(x) for x in args['Irange'][1:]]
-        amps = Intensity2Pressure({
-            'lin': np.linspace(Imin, Imax, nI),
-            'log': np.logspace(np.log10(Imin), np.log10(Imax), nI)
-        }[Iscale] * 1e4)  # Pa
-    elif 'amp' in args:
-        amps = np.array(args['amp']) * 1e3  # Pa
-    elif 'intensity' in args:
-        amps = Intensity2Pressure(np.array(args['intensity']) * 1e4)  # Pa
-    else:
-        amps = np.array(defaults['amp']) * 1e3  # Pa
+    try:
+        amps = parseUSAmps(args, defaults)
+    except ValueError as err:
+        logger.error(err)
+        quit()
 
     if args['spanDC']:
         DCs = np.arange(1, 101)  # %

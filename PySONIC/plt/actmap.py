@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 14:26:54
+# @Last Modified time: 2019-05-27 14:44:42
 
 import os
 import ntpath
@@ -91,7 +91,7 @@ class ActivationMap:
                         FRs = 1 / np.diff(t[ispikes])
                         actmap[i, j] = np.mean(FRs)
 
-    return actmap
+        return actmap
 
     def onClick(self, event, amps, DCs, meshedges, tmax, Vbounds):
         ''' Retrieve the specific input parameters of the x and y dimensions

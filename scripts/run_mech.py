@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:31:48
+# @Last Modified time: 2019-05-27 15:28:06
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.core import BilayerSonophore
-from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
+from PySONIC.utils import logger, selectDirDialog, parseUSAmps
 from PySONIC.neurons import CorticalRS
 from PySONIC.batches import createQueue, runBatch
 from PySONIC.plt import plotBatch
@@ -66,7 +66,7 @@ def main():
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('-p', '--plot', type=str, default='Z', help='Variables to plot')
+    ap.add_argument('-p', '--plot', type=str, nargs='+', help='Variables to plot')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
 
     # Stimulation parameters
@@ -78,8 +78,12 @@ def main():
     ap.add_argument('-d', '--embedding', nargs='+', type=float, help='Embedding depth (um)')
     ap.add_argument('-f', '--freq', nargs='+', type=float, help='US frequency (kHz)')
     ap.add_argument('-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('--Arange', type=str, nargs='+', help='Amplitude range [scale min max n] (kPa)')
     ap.add_argument('-I', '--intensity', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
-    ap.add_argument('-Q', '--charge', nargs='+', type=float, help='Membrane charge density (nC/cm2)')
+    ap.add_argument('--Irange', type=str, nargs='+',
+                    help='Intensity range [scale min max n] (W/cm2)')
+    ap.add_argument('-Q', '--charge', nargs='+', type=float,
+                    help='Membrane charge density (nC/cm2)')
 
     # Parse arguments
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
@@ -94,12 +98,13 @@ def main():
     Qm0 = args['Qm0'] * 1e-5  # C/m2
     radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
     embeddings = np.array(args.get('embedding', defaults['embedding'])) * 1e-6  # m
-    if 'amp' in args:
-        amps = np.array(args['amp']) * 1e3  # Pa
-    elif 'intensity' in args:
-        amps = Intensity2Pressure(np.array(args['intensity']) * 1e4)  # Pa
-    else:
-        amps = np.array(defaults['amp']) * 1e3  # Pa
+
+    try:
+        amps = parseUSAmps(args, defaults)
+    except ValueError as err:
+        logger.error(err)
+        quit()
+
     stim_params = dict(
         freqs=np.array(args.get('freq', defaults['freq'])) * 1e3,  # Hz
         amps=amps,  # Pa
@@ -115,11 +120,11 @@ def main():
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    if args['plot']:
-        pltscheme = {
-            'Z': {'Z': ['Z']},
-            'all': None
-        }[args['plot']]
+    if 'plot' in args:
+        if args['plot'] == ['all']:
+            pltscheme = None
+        else:
+            pltscheme = {x: [x] for x in args['plot']}
         plotBatch(pkl_filepaths, pltscheme=pltscheme)
         plt.show()
 

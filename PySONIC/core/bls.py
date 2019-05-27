@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 13:23:15
+# @Last Modified time: 2019-05-27 14:42:21
 
 from enum import Enum
 import time
@@ -790,10 +790,6 @@ class BilayerSonophore:
             :param Qm: applided membrane charge density (C/m2)
         '''
 
-        # Get date and time info
-        date_str = time.strftime("%Y.%m.%d")
-        daytime_str = time.strftime("%H:%M:%S")
-
         logger.info('%s: simulation @ f = %sHz, A = %sPa, Q = %sC/cm2',
                     self.pprint(), *si_format([Fdrive, Adrive, Qm * 1e-4], 2, space=' '))
 
@@ -832,41 +828,6 @@ class BilayerSonophore:
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': df}, fh)
         logger.debug('simulation data exported to "%s"', outpath)
-
-        # Compute key output metrics
-        Zmax = np.amax(Z)
-        Zmin = np.amin(Z)
-        Zabs_max = np.amax(np.abs([Zmin, Zmax]))
-        eAmax = self.arealstrain(Zabs_max)
-        Tmax = self.TEtot(Zabs_max)
-        Pmmax = self.PMavgpred(Zmin)
-        ngmax = np.amax(ng)
-        dUdtmax = np.amax(np.abs(np.diff(U) / np.diff(t)**2))
-
-        # Export key metrics to log file
-        logpath = os.path.join(outdir, 'log_MECH.xlsx')
-        logentry = {
-            'Date': date_str,
-            'Time': daytime_str,
-            'Radius (nm)': self.a * 1e9,
-            'Thickness (um)': self.d * 1e6,
-            'Fdrive (kHz)': Fdrive * 1e-3,
-            'Adrive (kPa)': Adrive * 1e-3,
-            'Charge (nC/cm2)': Qm * 1e5,
-            '# samples': t.size,
-            'Comp. time (s)': round(tcomp, 2),
-            'kA total (N/m)': self.kA + self.kA_tissue,
-            'Max Z (nm)': Zmax * 1e9,
-            'Max eA (-)': eAmax,
-            'Max Te (mN/m)': Tmax * 1e3,
-            'Max rel. ng increase (-)': (ngmax - self.ng0) / self.ng0,
-            'Max Pm (kPa)': Pmmax * 1e-3,
-            'Max acc. (m/s2)': dUdtmax
-        }
-        if xlslog(logpath, logentry) == 1:
-            logger.debug('log exported to "%s"', logpath)
-        else:
-            logger.error('log export to "%s" aborted', logpath)
 
         return outpath
 

@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 14:40:21
+# @Last Modified time: 2019-05-27 15:25:59
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -550,6 +550,62 @@ def getLowIntensitiesSTN():
         np.array([140])
     ))  # W/m2
 
+
+def getDistribution(xmin, xmax, nx, scale='lin'):
+    if scale == 'log':
+        xmin, xmax = np.log10(xmin), np.log10(xmax)
+    return {'lin': np.linspace, 'log': np.logspace}[scale](xmin, xmax, nx)
+
+
+def getDistFromList(xlist):
+    if not isinstance(xlist, list):
+        raise TypeError('Input must be a list')
+    if len(xlist) != 4:
+        raise ValueError('List must contain exactly 4 arguments ([type, min, max, n])')
+    scale = xlist[0]
+    if scale not in ('log', 'lin'):
+        raise ValueError('Unknown distribution type (must be "lin" or "log")')
+    xmin, xmax = [float(x) for x in xlist[1:-1]]
+    if xmin >= xmax:
+        raise ValueError('Specified minimum higher or equal than specified maximum')
+    nx = int(xlist[-1])
+    if nx < 2:
+        raise ValueError('Specified number must be at least 2')
+    return getDistribution(xmin, xmax, nx, scale=scale)
+
+
+def parseUSAmps(args, defaults):
+
+    # Check if several mutually exclusive arguments were provided
+    Aparams = ['Arange', 'Irange', 'amp', 'intensity']
+    if sum([x in args for x in Aparams]) > 1:
+        raise ValueError('You must provide only one of the following arguments: {}'.format(
+            ', '.join(Aparams)))
+
+    if 'Arange' in args:
+        return getDistFromList(args['Arange']) * 1e3  # Pa
+    elif 'Irange' in args:
+        return Intensity2Pressure(getDistFromList(args['Irange']) * 1e4)  # Pa
+    elif 'amp' in args:
+        return np.array(args['amp']) * 1e3  # Pa
+    elif 'intensity' in args:
+        return Intensity2Pressure(np.array(args['intensity']) * 1e4)  # Pa
+    return np.array(defaults['amp']) * 1e3  # Pa
+
+
+def parseElecAmps(args, defaults):
+
+    # Check if several mutually exclusive arguments were provided
+    Aparams = ['Arange', 'amp']
+    if sum([x in args for x in Aparams]) > 1:
+        raise ValueError('You must provide only one of the following arguments: {}'.format(
+            ', '.join(Aparams)))
+
+    if 'Arange' in args:
+        return getDistFromList(args['Arange'])  # mA/m2
+    elif 'amp' in args:
+        return np.array(args['amp'])  # mA/m2
+    return np.array(defaults['amp'])  # mA/m2
 
 
 def getIndex(container, value):

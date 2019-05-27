@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-03 20:48:09
+# @Last Modified time: 2019-05-27 15:28:27
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from PySONIC.utils import logger, selectDirDialog
+from PySONIC.utils import logger, selectDirDialog, parseElecAmps
 from PySONIC.neurons import *
 from PySONIC.batches import createEStimQueue, runBatch
 from PySONIC.plt import plotBatch
@@ -64,7 +64,7 @@ def main():
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
     ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('-p', '--plot', type=str, default='V', help='Variables to plot')
+    ap.add_argument('-p', '--plot', type=str, nargs='+', help='Variables to plot')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
     ap.add_argument('-t', '--titrate', default=False, action='store_true', help='Perform titration')
 
@@ -72,6 +72,7 @@ def main():
     ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
                     help='Neuron name (string)')
     ap.add_argument('-A', '--amp', nargs='+', type=float, help='Injected current density (mA/m2)')
+    ap.add_argument('--Arange', type=str, nargs='+', help='Amplitude range [scale min max n] (mA/m2)')
     ap.add_argument('-d', '--duration', nargs='+', type=float, help='Stimulus duration (ms)')
     ap.add_argument('--offset', nargs='+', type=float, help='Offset duration (ms)')
     ap.add_argument('--PRF', nargs='+', type=float, help='PRF (Hz)')
@@ -87,8 +88,15 @@ def main():
         quit()
     titrate = args['titrate']
     neuron_str = args['neuron']
+
+    try:
+        amps = parseElecAmps(args, defaults)
+    except ValueError as err:
+        logger.error(err)
+        quit()
+
     stim_params = dict(
-        amps=np.array(args.get('amp', defaults['amp'])),  # mA/m2
+        amps=amps,
         durations=np.array(args.get('duration', defaults['duration'])) * 1e-3,  # s
         PRFs=np.array(args.get('PRF', defaults['PRF'])),  # Hz
         DCs=np.array(args.get('DC', defaults['DC'])) * 1e-2,  # (-)
@@ -106,12 +114,11 @@ def main():
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles
-    if args['plot']:
-        pltscheme = {
-            'Q': {'Q_m': ['Qm']},
-            'V': {'V_m': ['Vm']},
-            'all': None
-        }[args['plot']]
+    if 'plot' in args:
+        if args['plot'] == ['all']:
+            pltscheme = None
+        else:
+            pltscheme = {x: [x] for x in args['plot']}
         plotBatch(pkl_filepaths, pltscheme=pltscheme)
         plt.show()
 

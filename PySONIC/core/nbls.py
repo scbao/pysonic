@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 13:35:52
+# @Last Modified time: 2019-05-27 14:43:50
 
 import os
 from copy import deepcopy
@@ -674,10 +674,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param method: integration method
         '''
 
-        # Get date and time info
-        date_str = time.strftime("%Y.%m.%d")
-        daytime_str = time.strftime("%H:%M:%S")
-
         logger.info(
             '%s: %s @ f = %sHz, %st = %ss (%ss offset)%s',
             self,
@@ -685,7 +681,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             si_format(Fdrive, 0, space=' '),
             'A = {}Pa, '.format(si_format(Adrive, 2, space=' ')) if Adrive is not None else '',
             *si_format([tstim, toffset], 1, space=' '),
-            (', PRF = {}Hz, DC = {:.2f}%'.format(si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
+            (', PRF = {}Hz, DC = {:.2f}%'.format(
+                si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
 
         if Adrive is None:
             Adrive = self.titrate(Fdrive, tstim, toffset, PRF, DC, method=method)
@@ -704,10 +701,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         ipeaks, *_ = findPeaks(Qm, SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
                                SPIKE_MIN_QPROM)
         nspikes = ipeaks.size
-        lat = t[ipeaks[0]] if nspikes > 0 else 'N/A'
         outstr = '{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else '')
         logger.debug('completed in %ss, %s', si_format(tcomp, 1), outstr)
-        sr = np.mean(1 / np.diff(t[ipeaks])) if nspikes > 1 else None
 
         # Store dataframe and metadata
         U = np.insert(np.diff(Z) / np.diff(t), 0, 0.0)
@@ -744,31 +739,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': df}, fh)
         logger.debug('simulation data exported to "%s"', outpath)
-
-        # Export key metrics to log file
-        logpath = os.path.join(outdir, 'log_ASTIM.xlsx')
-        logentry = {
-            'Date': date_str,
-            'Time': daytime_str,
-            'Neuron Type': self.neuron.name,
-            'Radius (nm)': self.a * 1e9,
-            'Thickness (um)': self.d * 1e6,
-            'Fdrive (kHz)': Fdrive * 1e-3,
-            'Adrive (kPa)': Adrive * 1e-3,
-            'Tstim (ms)': tstim * 1e3,
-            'PRF (kHz)': PRF * 1e-3 if DC < 1 else 'N/A',
-            'Duty factor': DC,
-            'Sim. Type': method,
-            '# samples': t.size,
-            'Comp. time (s)': round(tcomp, 2),
-            '# spikes': nspikes,
-            'Latency (ms)': lat * 1e3 if isinstance(lat, float) else 'N/A',
-            'Spike rate (sp/ms)': sr * 1e-3 if isinstance(sr, float) else 'N/A'
-        }
-        if xlslog(logpath, logentry) == 1:
-            logger.debug('log exported to "%s"', logpath)
-        else:
-            logger.error('log export to "%s" aborted', self.logpath)
 
         return outpath
 
