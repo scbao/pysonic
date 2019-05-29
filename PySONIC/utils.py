@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-28 14:46:14
+# @Last Modified time: 2019-05-29 18:25:53
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -14,6 +14,8 @@ import operator
 import os
 import math
 import pickle
+from tqdm import tqdm
+import logging
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
@@ -22,28 +24,49 @@ from scipy.interpolate import interp1d
 
 
 # Package logger
-def setLogger():
-    log_formatter = colorlog.ColoredFormatter(
-        '%(log_color)s %(asctime)s %(message)s',
-        datefmt='%d/%m/%Y %H:%M:%S:',
-        reset=True,
-        log_colors={
-            'DEBUG': 'green',
-            'INFO': 'white',
-            'WARNING': 'yellow',
-            'ERROR': 'red',
-            'CRITICAL': 'red,bg_white',
-        },
-        style='%'
-    )
-    log_handler = colorlog.StreamHandler()
-    log_handler.setFormatter(log_formatter)
-    color_logger = colorlog.getLogger('PySONIC')
-    color_logger.addHandler(log_handler)
-    return color_logger
+my_log_formatter = colorlog.ColoredFormatter(
+    '%(log_color)s %(asctime)s %(message)s',
+    datefmt='%d/%m/%Y %H:%M:%S:',
+    reset=True,
+    log_colors={
+        'DEBUG': 'green',
+        'INFO': 'white',
+        'WARNING': 'yellow',
+        'ERROR': 'red',
+        'CRITICAL': 'red,bg_white',
+    },
+    style='%'
+)
 
 
-logger = setLogger()
+def setHandler(logger, handler):
+    for h in logger.handlers:
+        logger.removeHandler(h)
+    logger.addHandler(handler)
+    return logger
+
+
+def setLogger(name, formatter):
+    handler = colorlog.StreamHandler()
+    handler.setFormatter(formatter)
+    logger = colorlog.getLogger(name)
+    logger.addHandler(handler)
+    return logger
+
+
+class TqdmHandler(logging.StreamHandler):
+
+    def __init__(self, formatter):
+        logging.StreamHandler.__init__(self)
+        self.setFormatter(formatter)
+
+    def emit(self, record):
+        msg = self.format(record)
+        tqdm.write(msg)
+
+
+logger = setLogger('PySONIC', my_log_formatter)
+
 
 titrations_logfile = os.path.join(os.path.split(__file__)[0], 'neurons', 'titrations.log')
 

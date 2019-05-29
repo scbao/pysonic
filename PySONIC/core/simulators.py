@@ -2,17 +2,18 @@
 # @Author: Theo Lemaire
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 16:13:05
+# @Last Modified time: 2019-05-29 18:35:10
 
+import abc
 import numpy as np
 from scipy.integrate import ode, odeint
-import progressbar as pb
+from tqdm import tqdm
 
 from ..utils import *
 from ..constants import *
 
 
-class Simulator:
+class Simulator(metaclass=abc.ABCMeta):
     ''' Generic interface to simulator object. '''
 
     def __init__(self):
@@ -39,6 +40,18 @@ class Simulator:
         stim = stim[::rf]
         return t, y, stim
 
+    def initialize(self, y0, t0=0.):
+        ''' Initialize global arrays.
+
+            :param y0: vector of initial conditions
+            :param t0: starting time
+            :return: 3-tuple with the initialized time vector, solution matrix and state vector
+        '''
+        t = np.array([t0])
+        y = np.atleast_2d(y0)
+        stim = np.array([1])
+        return t, y, stim
+
     def integrate(self, t, y, stim, tnew, func, is_on):
         ''' Integrate system for a time interval and append to preceding solution arrays.
 
@@ -57,19 +70,22 @@ class Simulator:
             stim = np.concatenate((stim, np.ones(tnew.size - 1) * is_on))
         return t, y, stim
 
+    @property
+    @abc.abstractmethod
     def compute(self):
-        pass
+        return 'Should never reach here'
+
 
 
 class PeriodicSimulator(Simulator):
 
-    def __init__(self, derf, ivars_to_check=None):
+    def __init__(self, dfunc, ivars_to_check=None):
         ''' Initialize simulator with specific derivative function
 
-            :param derf: derivative function
+            :param dfunc: derivative function
             :param ivars_to_check: solution indexes of variables to check for stability
         '''
-        self.derf = derf
+        self.dfunc = dfunc
         self.ivars_to_check = ivars_to_check
 
     def getNPerCycle(self, dt, f):
@@ -90,16 +106,16 @@ class PeriodicSimulator(Simulator):
         '''
         return np.linspace(0, 1 / f, self.getNPerCycle(dt, f))
 
-    def isPeriodicStable(self, y, ncycle, icycle):
+    def isPeriodicStable(self, y, npc, icycle):
         ''' Assess the periodic stabilization of a solution.
 
             :param y: solution matrix
-            :param ncycle: number of samples per cycle
+            :param npc: number of samples per cycle
             :param icycle: index of cycle of interest
             :return: boolean stating whether the solution is stable or not
         '''
-        y_target = y[icycle * ncycle: (icycle + 1) * ncycle, :]
-        y_prec = y[(icycle - 1) * ncycle: icycle * ncycle, :]
+        y_target = y[icycle * npc: (icycle + 1) * npc, :]
+        y_prec = y[(icycle - 1) * npc: icycle * npc, :]
         x_ratios = []
         for ivar in self.ivars_to_check:
             x_target, x_prec = y_target[:, ivar], y_prec[:, ivar]
@@ -118,12 +134,13 @@ class PeriodicSimulator(Simulator):
 
         return is_periodically_stable
 
-    def compute(self, y0, dt, f):
+    def compute(self, y0, dt, f, t0=0.):
         ''' Simulate system with a specific periodicity until stabilization.
 
             :param y0: 1D vector of initial conditions
             :param dt: integration time step (s)
             :param f: periodic frequency (Hz)
+            :param t0: starting time
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
 
@@ -135,15 +152,13 @@ class PeriodicSimulator(Simulator):
         tref = self.getTimeReference(dt, f)
 
         # Initialize global arrays
-        t = np.array([0.0])
-        y = np.atleast_2d(y0)
-        stim = np.array([1])
+        t, y, stim = self.initialize(y0, t0=t0)
 
         # Integrate system for a few cycles until stabilization
         icycle = 0
         conv = False
         while not conv and icycle < NCYCLES_MAX:
-            t, y, stim = self.integrate(t, y, stim, tref + icycle / f, self.derf, True)
+            t, y, stim = self.integrate(t, y, stim, tref + icycle / f, self.dfunc, True)
             if icycle > 0:
                 conv = self.isPeriodicStable(y, tref.size - 1, icycle)
             icycle += 1
@@ -160,14 +175,14 @@ class PeriodicSimulator(Simulator):
 
 class PWSimulator(Simulator):
 
-    def __init__(self, derf_on, derf_off):
+    def __init__(self, dfunc_on, dfunc_off):
         ''' Initialize simulator with specific derivative functions
 
-            :param derf_on: derivative function for ON periods
-            :param derf_off: derivative function for OFF periods
+            :param dfunc_on: derivative function for ON periods
+            :param dfunc_off: derivative function for OFF periods
         '''
-        self.derf_on = derf_on
-        self.derf_off = derf_off
+        self.dfunc_on = dfunc_on
+        self.dfunc_off = dfunc_off
 
     def getTimeReference(self, dt, tstim, toffset, PRF, DC):
         ''' Compute reference integration time vectors for a specific stimulus application pattern.
@@ -203,16 +218,21 @@ class PWSimulator(Simulator):
         ''' Adjust the PRF in case of continuous wave stimulus, in order to obtain the desired
             number of integration interval(s) during stimulus.
         '''
-        if DC < 1.0:
+        if DC < 1.0:  # if PW stimuli, then no change
             return PRF
-        else:
+        else:  # if CW stimuli, then divide integration according to presence of progress bar
             return {True: 100., False: 1.}[print_progress] / tstim
 
     def getNPulses(self, tstim, PRF):
-        ''' Calculate number of pulses from stimulus temporal pattern. '''
+        ''' Calculate number of pulses from stimulus temporal pattern.
+
+            :param tstim: duration of US stimulation (s)
+            :param toffset: duration of the offset (s)
+            :return: number of pulses during the stimulus
+        '''
         return int(np.round(tstim * PRF))
 
-    def compute(self, y0, dt, tstim, toffset, PRF, DC, target_dt=None, print_progress=False):
+    def compute(self, y0, dt, tstim, toffset, PRF, DC, t0=0, target_dt=None, print_progress=False):
         ''' Simulate system for a specific stimulus application pattern.
 
             :param y0: 1D vector of initial conditions
@@ -221,6 +241,7 @@ class PWSimulator(Simulator):
             :param toffset: duration of the offset (s)
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
+            :param t0: starting time
             :target_dt: target time step after resampling
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
@@ -233,20 +254,17 @@ class PWSimulator(Simulator):
         t_on, t_off, t_offset = self.getTimeReference(dt, tstim, toffset, PRF, DC)
 
         # Initialize global arrays
-        t = np.array([0.0])
-        y = np.atleast_2d(y0)
-        stim = np.array([1])
+        t, y, stim = self.initialize(y0, t0=t0)
 
         # Initialize progress bar
         if print_progress:
-            widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
-            pbar = pb.ProgressBar(widgets=widgets,
-                                  max_value=int(npulses * (toffset + tstim) / tstim))
-            pbar.start()
+            setHandler(logger, TqdmHandler(my_log_formatter))
+            ntot = int(npulses * (tstim + toffset) / tstim)
+            pbar = tqdm(total=ntot)
 
         # Integrate ON and OFF intervals of each pulse
         for i in range(npulses):
-            for j, (tref, func) in enumerate(zip([t_on, t_off], [self.derf_on, self.derf_off])):
+            for j, (tref, func) in enumerate(zip([t_on, t_off], [self.dfunc_on, self.dfunc_off])):
                 t, y, stim = self.integrate(t, y, stim, tref + i / PRF, func, j == 0)
 
             # Update progress bar
@@ -254,11 +272,12 @@ class PWSimulator(Simulator):
                 pbar.update(i)
 
         # Integrate offset interval
-        t, y, stim = self.integrate(t, y, stim, t_offset, self.derf_off, False)
+        t, y, stim = self.integrate(t, y, stim, t_offset, self.dfunc_off, False)
 
         # Terminate progress bar
         if print_progress:
-            pbar.finish()
+            pbar.update(npulses)
+            pbar.close()
 
         # Resample solution if specified
         if target_dt is not None:
@@ -270,17 +289,17 @@ class PWSimulator(Simulator):
 
 class HybridSimulator(PWSimulator):
 
-    def __init__(self, derf_on, derf_off, derf_sparse, predf_sparse,
+    def __init__(self, dfunc_on, dfunc_off, dfunc_sparse, predfunc,
                  is_dense_var=None, ivars_to_check=None):
         ''' Initialize simulator with specific derivative functions
 
-            :param derf_on: derivative function for ON periods
-            :param derf_off: derivative function for OFF periods
+            :param dfunc_on: derivative function for ON periods
+            :param dfunc_off: derivative function for OFF periods
         '''
-        PWSimulator.__init__(self, derf_on, derf_off)
-        self.sparse_solver = ode(derf_sparse)
+        PWSimulator.__init__(self, dfunc_on, dfunc_off)
+        self.sparse_solver = ode(dfunc_sparse)
         self.sparse_solver.set_integrator('dop853', nsteps=SOLVER_NSTEPS, atol=1e-12)
-        self.predf_sparse = predf_sparse
+        self.predfunc = predfunc
         self.is_dense_var = is_dense_var
         self.is_sparse_var = np.invert(is_dense_var)
         self.ivars_to_check = ivars_to_check
@@ -323,7 +342,7 @@ class HybridSimulator(PWSimulator):
                 self.sparse_solver.set_initial_value(y[-1, self.is_sparse_var], t[-1])
                 for j in range(1, tsparse.size):
                     self.sparse_solver.set_f_params(
-                        self.predf_sparse(ylast[j % npc_sparse]))
+                        self.predfunc(ylast[j % npc_sparse]))
                     self.sparse_solver.integrate(tsparse[j])
                     if not self.sparse_solver.successful():
                         raise ValueError(

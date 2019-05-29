@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 13:31:11
+# @Last Modified time: 2019-05-29 17:07:56
 
 import time
 import pickle
@@ -12,7 +12,6 @@ import abc
 import inspect
 import re
 import numpy as np
-from scipy.integrate import odeint
 import pandas as pd
 
 from ..postpro import findPeaks
