@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-21 14:53:06
+# @Last Modified time: 2019-05-29 15:59:16
 
 ''' Test the basic functionalities of the package. '''
 
@@ -175,7 +175,7 @@ def test_ASTIM_hybrid(is_profiled=False):
     # Stimulation parameters
     Fdrive = 350e3  # Hz
     Adrive = 100e3  # Pa
-    tstim = 1e-3  # s
+    tstim = 3e-3  # s
     toffset = 1e-3  # s
 
     # Run simulation

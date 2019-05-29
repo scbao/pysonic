@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 09:48:36
+# @Last Modified time: 2019-05-29 16:16:26
 
 from copy import deepcopy
 import time
@@ -16,7 +16,7 @@ import pandas as pd
 from scipy.integrate import ode, odeint, solve_ivp
 from scipy.interpolate import interp1d
 
-from .simulators import PWSimulator
+from .simulators import PWSimulator, HybridSimulator
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from ..utils import *
@@ -252,7 +252,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return t, y.T, stim
 
 
-    def runHybrid(self, Fdrive, Adrive, tstim, toffset, phi=np.pi):
+    def runHybrid(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
         ''' Compute solutions of the system for a specific set of
             US stimulation parameters, using a hybrid integration scheme.
 
@@ -279,144 +279,51 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             .. warning:: This method cannot handle pulsed stimuli
         '''
 
-        # Initialize full and HH systems solvers
-        solver_full = ode(
-            lambda t, y, Adrive, Fdrive, phi: self.fullDerivatives(y, t, Adrive, Fdrive, phi))
-        solver_full.set_f_params(Adrive, Fdrive, phi)
-        solver_full.set_integrator('lsoda', nsteps=SOLVER_NSTEPS)
-        solver_hh = ode(lambda t, y, Cm: self.neuron.Qderivatives(y, t, Cm))
-        solver_hh.set_integrator('dop853', nsteps=SOLVER_NSTEPS, atol=1e-12)
+        # Determine time step
+        dt_dense = 1 / (NPC_FULL * Fdrive)
+        dt_sparse = 1 / (NPC_HH * Fdrive)
 
-        # Determine full and HH systems time steps
-        Tdrive = 1 / Fdrive
-        dt_full = Tdrive / NPC_FULL
-        dt_hh = Tdrive / NPC_HH
-        n_full_per_hh = int(NPC_FULL / NPC_HH)
-        t_full_cycle = np.linspace(0, Tdrive - dt_full, NPC_FULL)
-        t_hh_cycle = np.linspace(0, Tdrive - dt_hh, NPC_HH)
+        # Compute non-zero deflection value for a small perturbation (solving quasi-steady equation)
+        Pac = self.Pacoustic(dt_dense, Adrive, Fdrive, phi)
+        Z0 = self.balancedefQS(self.ng0, self.Qm0, Pac)
 
-        # Determine number of samples in prediction vectors
-        npc_pred = NPC_FULL - n_full_per_hh + 1
-
-        # Solve quasi-steady equation to compute first deflection value
-        Z0 = 0.0
-        ng0 = self.ng0
-        Qm0 = self.Qm0
-        Pac1 = self.Pacoustic(dt_full, Adrive, Fdrive, phi)
-        Z1 = self.balancedefQS(ng0, Qm0, Pac1)
-
-        # Initialize global arrays
-        stimstate = np.array([1, 1])
-        t = np.array([0., dt_full])
-        y_membrane = np.array([[0., (Z1 - Z0) / dt_full], [Z0, Z1], [ng0, ng0], [Qm0, Qm0]])
+        # Set initial conditions
         steady_states = self.neuron.steadyStates(self.neuron.Vm0)
-        y_channels = np.tile(np.array([steady_states[k] for k in self.neuron.states]), (2, 1)).T
-        y = np.vstack((y_membrane, y_channels))
-        nvar = y.shape[0]
+        y0 = np.concatenate((
+            [0., Z0, self.ng0, self.Qm0],
+            [steady_states[k] for k in self.neuron.states],
+        ))
+        is_dense_var = np.array([True] * 3 + [False] * (len(self.neuron.states) + 1))
 
-        # Initialize progress bar
-        if logger.getEffectiveLevel() == logging.DEBUG:
-            widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
-            pbar = pb.ProgressBar(widgets=widgets, max_value=1000)
-            pbar.start()
-
-        # For each hybrid integration interval
-        irep = 0
-        sim_error = False
-        while not sim_error and t[-1] < tstim + toffset:
-
-            # Integrate full system for a few acoustic cycles until stabilization
-            periodic_conv = False
-            j = 0
-            ng_last = None
-            Z_last = None
-            while not sim_error and not periodic_conv:
-                if t[-1] > tstim:
-                    solver_full.set_f_params(0.0, 0.0, 0.0)
-                t_full = t_full_cycle + t[-1] + dt_full
-                y_full = np.empty((nvar, NPC_FULL))
-                y0_full = y[:, -1]
-                solver_full.set_initial_value(y0_full, t[-1])
-                k = 0
-                while solver_full.successful() and k <= NPC_FULL - 1:
-                    solver_full.integrate(t_full[k])
-                    y_full[:, k] = solver_full.y
-                    k += 1
-
-                # Compare Z and ng signals over the last 2 acoustic periods
-                if j > 0 and rmse(Z_last, y_full[1, :]) < Z_ERR_MAX \
-                   and rmse(ng_last, y_full[2, :]) < NG_ERR_MAX:
-                    periodic_conv = True
-
-                # Update last vectors for next comparison
-                Z_last = y_full[1, :]
-                ng_last = y_full[2, :]
-
-                # Concatenate time and solutions to global vectors
-                stimstate = np.concatenate([stimstate, np.ones(NPC_FULL)], axis=0)
-                t = np.concatenate([t, t_full], axis=0)
-                y = np.concatenate([y, y_full], axis=1)
-
-                # Increment loop index
-                j += 1
-
-            # Retrieve last period of the 3 mechanical variables to propagate in HH system
-            t_last = t[-npc_pred:]
-            mech_last = y[0:3, -npc_pred:]
-
-            # Downsample signals to specified HH system time step
-            (_, mech_pred) = downsample(t_last, mech_last, NPC_HH)
-
-            # Integrate HH system until certain dQ or dT is reached
-            Q0 = y[3, -1]
-            dQ = 0.0
-            t0_interval = t[-1]
-            dt_interval = 0.0
-            j = 0
-            if t[-1] < tstim:
-                tlim = tstim
-            else:
-                tlim = tstim + toffset
-            while (not sim_error and t[-1] < tlim and
-                   (np.abs(dQ) < DQ_UPDATE or dt_interval < DT_UPDATE)):
-                t_hh = t_hh_cycle + t[-1] + dt_hh
-                y_hh = np.empty((nvar - 3, NPC_HH))
-                y0_hh = y[3:, -1]
-                solver_hh.set_initial_value(y0_hh, t[-1])
-                k = 0
-                while solver_hh.successful() and k <= NPC_HH - 1:
-                    solver_hh.set_f_params(self.Capct(mech_pred[1, k]))
-                    solver_hh.integrate(t_hh[k])
-                    y_hh[:, k] = solver_hh.y
-                    k += 1
-
-                # Concatenate time and solutions to global vectors
-                stimstate = np.concatenate([stimstate, np.zeros(NPC_HH)], axis=0)
-                t = np.concatenate([t, t_hh], axis=0)
-                y = np.concatenate([y, np.concatenate([mech_pred, y_hh], axis=0)], axis=1)
-
-                # Compute charge variation from interval beginning
-                dQ = y[3, -1] - Q0
-                dt_interval = t[-1] - t0_interval
-
-                # Increment loop index
-                j += 1
-
-            # Update progress bar
-            if logger.getEffectiveLevel() == logging.DEBUG:
-                pbar.update(int(1000 * (t[-1] / (tstim + toffset))))
-
-            irep += 1
-
-        # Terminate progress bar
-        if logger.getEffectiveLevel() == logging.DEBUG:
-            pbar.finish()
+        # Initialize simulator and compute solution
+        logger.debug('Computing hybrid solution')
+        simulator = HybridSimulator(
+            lambda y, t: self.fullDerivatives(y, t, Adrive, Fdrive, phi),
+            lambda y, t: self.fullDerivatives(y, t, 0., 0., 0.),
+            lambda t, y, Cm: self.neuron.Qderivatives(y, t, Cm),
+            lambda yref: self.Capct(yref[1]),
+            is_dense_var=is_dense_var,
+            ivars_to_check=[1, 2]
+        )
+        t, y, stim = simulator.compute(
+            y0, dt_dense, dt_sparse, Fdrive, tstim, toffset, PRF, DC,
+            print_progress=False
+        )
 
         # Compute membrane potential vector (in mV)
-        Vm = y[3, :] / self.v_Capct(y[1, :]) * 1e3  # mV
+        Qm = y[:, 3]
+        Z = y[:, 1]
+        Vm = Qm / self.v_Capct(Z) * 1e3  # mV
 
-        # Return output variables with Vm
-        return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), stimstate)
+        # Add Vm to solution matrix
+        y = np.hstack((
+            y[:, 1:4],
+            np.array([Vm]).T,
+            y[:, 4:]
+        ))
+
+        # Return output variables
+        return t, y.T, stim
 
 
     def checkInputs(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method):
@@ -463,9 +370,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         elif method == 'sonic':
             return self.runSONIC(Fdrive, Adrive, tstim, toffset, PRF, DC)
         elif method == 'hybrid':
-            if DC < 1.0:
-                raise ValueError('Pulsed protocol incompatible with hybrid integration method')
-            return self.runHybrid(Fdrive, Adrive, tstim, toffset)
+            # if DC < 1.0:
+            #     raise ValueError('Pulsed protocol incompatible with hybrid integration method')
+            return self.runHybrid(Fdrive, Adrive, tstim, toffset, PRF, DC)
 
 
     def isExcited(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method, return_val=False):

@@ -2,14 +2,14 @@
 # @Author: Theo Lemaire
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 09:47:07
+# @Last Modified time: 2019-05-29 16:13:05
 
 import numpy as np
-from scipy.integrate import odeint
+from scipy.integrate import ode, odeint
 import progressbar as pb
 
 from ..utils import *
-from ..constants import MIN_SAMPLES_PER_PULSE_INT, MAX_RMSE_PTP_RATIO, NCYCLES_MAX
+from ..constants import *
 
 
 class Simulator:
@@ -17,6 +17,27 @@ class Simulator:
 
     def __init__(self):
         pass
+
+    def resample(self, t, y, stim, target_dt):
+        ''' Resample a solution to a new target time step.
+
+            :param t: time vector
+            :param y: solution matrix
+            :param stim: stimulation state vector
+            :target_dt: target time step after resampling
+            :return: 3-tuple with the resampled time vector, solution matrix and state vector
+        '''
+        dt = t[1] - t[0]
+        rf = int(np.round(target_dt / dt))
+        assert rf >= 1, 'Hyper-sampling not supported'
+        logger.debug(
+            'Downsampling output arrays by factor %u (Fs = %sHz)',
+            rf, si_format(1 / (dt * rf), 2)
+        )
+        t = t[::rf]
+        y = y[::rf, :]
+        stim = stim[::rf]
+        return t, y, stim
 
     def integrate(self, t, y, stim, tnew, func, is_on):
         ''' Integrate system for a time interval and append to preceding solution arrays.
@@ -51,14 +72,23 @@ class PeriodicSimulator(Simulator):
         self.derf = derf
         self.ivars_to_check = ivars_to_check
 
-    def getTimeVector(self, dt, f):
+    def getNPerCycle(self, dt, f):
+        ''' Compute number of samples per cycle given a time step and a specific periodicity.
+
+            :param dt: integration time step (s)
+            :param f: periodic frequency (Hz)
+            :return: number of samples per cycle
+        '''
+        return int(np.round(1 / (f * dt))) + 1
+
+    def getTimeReference(self, dt, f):
         ''' Compute reference integration time vector for a specific periodicity.
 
             :param dt: integration time step (s)
             :param f: periodic frequency (Hz)
             :return: time vector for 1 periodic cycle
         '''
-        return np.linspace(0, 1 / f, int(np.round(1 / (f * dt))) + 1)
+        return np.linspace(0, 1 / f, self.getNPerCycle(dt, f))
 
     def isPeriodicStable(self, y, ncycle, icycle):
         ''' Assess the periodic stabilization of a solution.
@@ -102,7 +132,7 @@ class PeriodicSimulator(Simulator):
             self.ivars_to_check = range(y0.size)
 
         # Get reference time vector
-        tref = self.getTimeVector(dt, f)
+        tref = self.getTimeReference(dt, f)
 
         # Initialize global arrays
         t = np.array([0.0])
@@ -139,7 +169,7 @@ class PWSimulator(Simulator):
         self.derf_on = derf_on
         self.derf_off = derf_off
 
-    def getTimeVectors(self, dt, tstim, toffset, PRF, DC):
+    def getTimeReference(self, dt, tstim, toffset, PRF, DC):
         ''' Compute reference integration time vectors for a specific stimulus application pattern.
 
             :param dt: integration time step (s)
@@ -169,26 +199,18 @@ class PWSimulator(Simulator):
 
         return t_on, t_off, t_offset
 
-    def resample(self, t, y, stim, target_dt):
-        ''' Resample a solution to a new target time step.
-
-            :param t: time vector
-            :param y: solution matrix
-            :param stim: stimulation state vector
-            :target_dt: target time step after resampling
-            :return: 3-tuple with the resampled time vector, solution matrix and state vector
+    def adjustPRF(self, tstim, PRF, DC, print_progress):
+        ''' Adjust the PRF in case of continuous wave stimulus, in order to obtain the desired
+            number of integration interval(s) during stimulus.
         '''
-        dt = t[1] - t[0]
-        rf = int(np.round(target_dt / dt))
-        assert rf >= 1, 'Hyper-sampling not supported'
-        logger.info(
-            'Downsampling output arrays by factor %u (Fs = %sHz)',
-            rf, si_format(1 / (dt * rf), 2)
-        )
-        t = t[::rf]
-        y = y[::rf, :]
-        stim = stim[::rf]
-        return t, y, stim
+        if DC < 1.0:
+            return PRF
+        else:
+            return {True: 100., False: 1.}[print_progress] / tstim
+
+    def getNPulses(self, tstim, PRF):
+        ''' Calculate number of pulses from stimulus temporal pattern. '''
+        return int(np.round(tstim * PRF))
 
     def compute(self, y0, dt, tstim, toffset, PRF, DC, target_dt=None, print_progress=False):
         ''' Simulate system for a specific stimulus application pattern.
@@ -203,16 +225,12 @@ class PWSimulator(Simulator):
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
 
-        # If CW stimulus: change PRF to have exactly one integration interval during stimulus
-        if DC == 1.0:
-            if not print_progress:
-                PRF = 1 / tstim
-            else:
-                PRF = 100 / tstim
-        npulses = int(np.round(tstim * PRF))
+        # Adjust PRF and get number of pulses
+        PRF = self.adjustPRF(tstim, PRF, DC, print_progress)
+        npulses = self.getNPulses(tstim, PRF)
 
         # Get reference time vectors
-        t_on, t_off, t_offset = self.getTimeVectors(dt, tstim, toffset, PRF, DC)
+        t_on, t_off, t_offset = self.getTimeReference(dt, tstim, toffset, PRF, DC)
 
         # Initialize global arrays
         t = np.array([0.0])
@@ -248,3 +266,86 @@ class PWSimulator(Simulator):
 
         # Return output variables
         return t, y, stim
+
+
+class HybridSimulator(PWSimulator):
+
+    def __init__(self, derf_on, derf_off, derf_sparse, predf_sparse,
+                 is_dense_var=None, ivars_to_check=None):
+        ''' Initialize simulator with specific derivative functions
+
+            :param derf_on: derivative function for ON periods
+            :param derf_off: derivative function for OFF periods
+        '''
+        PWSimulator.__init__(self, derf_on, derf_off)
+        self.sparse_solver = ode(derf_sparse)
+        self.sparse_solver.set_integrator('dop853', nsteps=SOLVER_NSTEPS, atol=1e-12)
+        self.predf_sparse = predf_sparse
+        self.is_dense_var = is_dense_var
+        self.is_sparse_var = np.invert(is_dense_var)
+        self.ivars_to_check = ivars_to_check
+
+    def integrate(self, t, y, stim, tnew, func, is_on):
+
+        if tnew.size > 0:
+
+            dt_dense = tnew[1] - tnew[0]
+
+            # Initialize periodic solver
+            dense_solver = PeriodicSimulator(func, self.ivars_to_check)
+            npc_dense = dense_solver.getNPerCycle(dt_dense, self.f)
+
+            # Until final integration time is reached
+            while t[-1] < tnew[-1]:
+                logger.debug('t = {:.5f} ms: starting new hybrid integration'.format(t[-1] * 1e3))
+
+                # Integrate dense system until convergence
+                tdense, ydense, stimdense = dense_solver.compute(y[-1], dt_dense, self.f)
+                tdense += t[-1]
+                t = np.concatenate((t, tdense[1:]))
+                y = np.concatenate((y, ydense[1:]), axis=0)
+                stim = np.concatenate((stim, np.ones(tdense.size - 1) * is_on))
+
+                # Resample signals over last acoustic cycle to match sparse time step
+                tlast, ylast, stimlast = self.resample(
+                    tdense[-npc_dense:], ydense[-npc_dense:], stimdense[-npc_dense:],
+                    self.dt_sparse
+                )
+                npc_sparse = tlast.size
+
+                # Integrate until either the rest of the interval or max update interval is reached
+                t0 = tdense[-1]
+                tf = min(tnew[-1], tdense[0] + DT_UPDATE)
+                nsparse = int(np.round((tf - t0) / self.dt_sparse))
+                tsparse = np.linspace(t0, tf, nsparse)
+                ysparse = np.empty((nsparse, y.shape[1]))
+                ysparse[0] = y[-1]
+                self.sparse_solver.set_initial_value(y[-1, self.is_sparse_var], t[-1])
+                for j in range(1, tsparse.size):
+                    self.sparse_solver.set_f_params(
+                        self.predf_sparse(ylast[j % npc_sparse]))
+                    self.sparse_solver.integrate(tsparse[j])
+                    if not self.sparse_solver.successful():
+                        raise ValueError(
+                            'integration error at t = {:.5f} ms'.format(tsparse[j] * 1e3))
+                    ysparse[j, self.is_dense_var] = ylast[j % npc_sparse, self.is_dense_var]
+                    ysparse[j, self.is_sparse_var] = self.sparse_solver.y
+                t = np.concatenate((t, tsparse[1:]))
+                y = np.concatenate((y, ysparse[1:]), axis=0)
+                stim = np.concatenate((stim, np.ones(tsparse.size - 1) * is_on))
+
+        return t, y, stim
+
+    def compute(self, y0, dt_dense, dt_sparse, f, tstim, toffset, PRF, DC, print_progress=False):
+
+        # Set periodicity and sparse time step
+        self.f = f
+        self.dt_sparse = dt_sparse
+
+        # Adjust dense variables
+        if self.is_dense_var is None:
+            self.is_dense_var = np.array([True] * y0.size)
+
+        return PWSimulator.compute(
+            self, y0, dt_dense, tstim, toffset, PRF, DC,
+            target_dt=None, print_progress=print_progress)
