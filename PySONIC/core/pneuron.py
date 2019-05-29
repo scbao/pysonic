@@ -4,9 +4,8 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 20:11:58
+# @Last Modified time: 2019-05-29 09:59:17
 
-import os
 import time
 import pickle
 import abc
@@ -19,6 +18,7 @@ import pandas as pd
 from ..postpro import findPeaks
 from ..constants import *
 from ..utils import si_format, logger, titrate
+from .simulators import PWSimulator
 
 
 class PointNeuron(metaclass=abc.ABCMeta):
@@ -440,7 +440,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
                 raise ValueError('Invalid PRF: {} Hz (PR interval exceeds stimulus duration)'
                                  .format(PRF))
 
-    def simulate(self, Astim, tstim, toffset, PRF=None, DC=1.0):
+    def simulate(self, Astim, tstim, toffset, PRF=None, DC=1.0, dt=DT_ESTIM):
         ''' Compute solutions of a neuron's HH system for a specific set of
             electrical stimulation parameters, using a classic integration scheme.
 
@@ -449,87 +449,27 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :param toffset: offset duration (s)
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
+            :param dt: integration time step (s)
             :return: 3-tuple with the time profile and solution matrix and a state vector
         '''
 
         # Check validity of stimulation parameters
         self.checkInputs(Astim, tstim, toffset, PRF, DC)
 
-        # Determine system time step
-        dt = DT_ESTIM
-
-        # if CW stimulus: divide integration during stimulus into single interval
-        if DC == 1.0:
-            PRF = 1 / tstim
-
-        # Compute vector sizes
-        npulses = int(np.round(PRF * tstim))
-        Tpulse_on = DC / PRF
-        Tpulse_off = (1 - DC) / PRF
-
-        # For high-PRF pulsed protocols: adapt time step to ensure minimal
-        # number of samples during TON or TOFF
-        dt_warning_msg = 'high-PRF protocol: lowering time step to %.2e s to properly integrate %s'
-        for key, Tpulse in {'TON': Tpulse_on, 'TOFF': Tpulse_off}.items():
-            if Tpulse > 0 and Tpulse / dt < MIN_SAMPLES_PER_PULSE_INT:
-                dt = Tpulse / MIN_SAMPLES_PER_PULSE_INT
-                logger.warning(dt_warning_msg, dt, key)
-
-        n_pulse_on = int(np.round(Tpulse_on / dt))
-        n_pulse_off = int(np.round(Tpulse_off / dt))
-
-        # Compute offset size
-        n_off = int(np.round(toffset / dt))
-
         # Set initial conditions
         steady_states = self.steadyStates(self.Vm0)
-        y0 = [self.Vm0, *[steady_states[k] for k in self.states]]
-        nvar = len(y0)
+        y0 = np.array([self.Vm0, *[steady_states[k] for k in self.states]])
 
-        # Initialize global arrays
-        t = np.array([0.])
-        stimstate = np.array([1])
-        y = np.array([y0]).T
-
-        # Initialize pulse time and stimstate vectors
-        t_pulse0 = np.linspace(0, Tpulse_on + Tpulse_off, n_pulse_on + n_pulse_off)
-        stimstate_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
-
-        # Loop through all pulse (ON and OFF) intervals
-        for i in range(npulses):
-
-            # Construct and initialize arrays
-            t_pulse = t_pulse0 + t[-1]
-            y_pulse = np.empty((nvar, n_pulse_on + n_pulse_off))
-
-            # Integrate ON system
-            y_pulse[:, :n_pulse_on] = odeint(
-                self.Vderivatives, y[:, -1], t_pulse[:n_pulse_on], args=(Astim,)).T
-
-            # Integrate OFF system
-            if n_pulse_off > 0:
-                y_pulse[:, n_pulse_on:] = odeint(
-                    self.Vderivatives, y_pulse[:, n_pulse_on - 1], t_pulse[n_pulse_on:],
-                    args=(0.0,)).T
-
-            # Append pulse arrays to global arrays
-            stimstate = np.concatenate([stimstate, stimstate_pulse[1:]])
-            t = np.concatenate([t, t_pulse[1:]])
-            y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
-
-        # Integrate offset interval
-        if n_off > 0:
-            t_off = np.linspace(0, toffset, n_off) + t[-1]
-            stimstate_off = np.zeros(n_off)
-            y_off = odeint(self.Vderivatives, y[:, -1], t_off, args=(0.0, )).T
-
-            # Concatenate offset arrays to global arrays
-            stimstate = np.concatenate([stimstate, stimstate_off[1:]])
-            t = np.concatenate([t, t_off[1:]])
-            y = np.concatenate([y, y_off[:, 1:]], axis=1)
+        # Initialize simulator and compute solution
+        logger.debug('Computing solution')
+        simulator = PWSimulator(
+            lambda y, t: self.Vderivatives(y, t, Astim),
+            lambda y, t: self.Vderivatives(y, t, 0.)
+        )
+        t, y, stim = simulator.compute(y0, dt, tstim, toffset, PRF, DC)
 
         # Return output variables
-        return (t, y, stimstate)
+        return t, y.T, stim
 
     def isExcited(self, Astim, tstim, toffset, PRF, DC):
         ''' Run a simulation and determine if neuron is excited.

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 03:14:08
+# @Last Modified time: 2019-05-29 09:48:36
 
 from copy import deepcopy
 import time
@@ -128,7 +128,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             Qm[stim == 1], lkp_off['Q'], lkp_off[key], left=np.nan, right=np.nan)
         return x
 
-
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
         ''' Compute solutions of the full electro-mechanical system for a specific set of
             US stimulation parameters, using a classic integration scheme.
@@ -187,10 +186,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Return output variables
         return t, y.T, stim
-
-        # # Return output variables with Vm
-        # return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), stimstate)
-
 
     def runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
         ''' Compute solutions of the system for a specific set of

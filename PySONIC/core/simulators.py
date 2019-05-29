@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 03:04:46
+# @Last Modified time: 2019-05-29 09:47:07
 
 import numpy as np
 from scipy.integrate import odeint
@@ -204,8 +204,11 @@ class PWSimulator(Simulator):
         '''
 
         # If CW stimulus: change PRF to have exactly one integration interval during stimulus
-        if not print_progress and DC == 1.0:
-            PRF = 1 / tstim
+        if DC == 1.0:
+            if not print_progress:
+                PRF = 1 / tstim
+            else:
+                PRF = 100 / tstim
         npulses = int(np.round(tstim * PRF))
 
         # Get reference time vectors
