@@ -396,20 +396,31 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3
             SFPs = []
             UFPs = []
 
-            # Generate batch queue
-            queue = []
+            stab_points = []
+
+            # Generate QSS batch queue
+            QSS_queue = []
             for iA, Adrive in enumerate(amps):
                 lookups1D = {k: v[iA, :, iDC] for k, v in lookups.items()}
                 lookups1D['Q'] = Qref
-                queue.append([Fdrive, Adrive, DC, lookups1D, dQdt[iA, :, iDC]])
+                QSS_queue.append([Fdrive, Adrive, DC, lookups1D, dQdt[iA, :, iDC]])
 
             # Run batch to find stable and unstable fixed points at each amplitude
-            out = runBatch(nbls, 'quasiSteadyStateFixedPoints', queue, mpi=mpi)
+            QSS_output = runBatch(nbls, 'quasiSteadyStateFixedPoints', QSS_queue, mpi=mpi)
+
+            # Generate simulations batch queue
+            sim_queue = createAStimQueue([Fdrive], amps, [tstim], [toffset], [PRF], [DC], method)
+
+            # Run batch to find stabilization points at each amplitude
+            sim_output = runBatch(nbls, 'runIfNone', sim_queue, extra_params=[outdir], mpi=mpi)
 
             # Retrieve batch output
             for i, Adrive in enumerate(amps):
-                SFPs += [(Adrive, Qm) for Qm in out[i][0]]
-                UFPs += [(Adrive, Qm) for Qm in out[i][1]]
+                SFPs += [(Adrive, Qm) for Qm in QSS_output[i][0]]
+                UFPs += [(Adrive, Qm) for Qm in QSS_output[i][1]]
+
+                # TODO: get stabilization point from simulation, if any
+
 
             # Plot charge SFPs and UFPs for each acoustic amplitude
             lbl = '{} neuron - {{}}stable fixed points @ {:.0f} % DC'.format(

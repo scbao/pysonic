@@ -4,7 +4,7 @@
 # @Date:   2016-11-04 13:23:31
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-23 18:43:43
+# @Last Modified time: 2019-05-29 02:45:41
 
 ''' Algorithmic constants used in the package. '''
 
@@ -22,6 +22,7 @@ PNET_EQ_MAX = 1e-1  # error threshold for net pressure at computed equilibrium p
 PMAVG_STD_ERR_MAX = 3000  # error threshold in nonlinear fit of molecular pressure (Pa)
 
 # Mechanical simulations
+MAX_RMSE_PTP_RATIO = 1e-4  # threshold RMSE / peak-to-peak ratio for periodic convergence
 Z_ERR_MAX = 1e-11  # periodic convergence threshold for deflection (m)
 NG_ERR_MAX = 1e-24  # periodic convergence threshold for gas content (mol)
 NCYCLES_MAX = 10  # max number of acoustic cycles in mechanical simulations

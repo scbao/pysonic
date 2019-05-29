@@ -4,12 +4,11 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 20:09:51
+# @Last Modified time: 2019-05-28 14:46:14
 
 ''' Definition of generic utility functions used in other modules '''
 
 import csv
-import time
 from functools import wraps
 import operator
 import os
@@ -769,3 +768,4 @@ def resolveDependencies(deps, join_items=True):
         resolved_deps = tmp
 
     return resolved_deps
+

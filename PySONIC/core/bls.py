@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 20:05:26
+# @Last Modified time: 2019-05-29 03:06:39
 
 from enum import Enum
 import time
@@ -18,7 +18,7 @@ import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
 from ..utils import logger, rmse, si_format
 from ..constants import *
-from ..batches import xlslog
+from .simulators import PeriodicSimulator
 
 
 class PmCompMethod(Enum):
@@ -652,7 +652,7 @@ class BilayerSonophore:
         '''
 
         # Split input vector explicitly
-        (U, Z, ng) = y
+        U, Z, ng = y
 
         # Correct deflection value is below critical compression
         if Z < -0.5 * self.Delta:
@@ -718,67 +718,28 @@ class BilayerSonophore:
         # Check validity of stimulation parameters
         self.checkInputs(Fdrive, Adrive, Qm, phi)
 
-        # Determine mechanical system time step
-        Tdrive = 1 / Fdrive
-        dt_mech = Tdrive / NPC_FULL
-        t_mech_cycle = np.linspace(0, Tdrive - dt_mech, NPC_FULL)
+        # Determine time step
+        dt = 1 / (NPC_FULL * Fdrive)
 
-        # Initialize system variables
-        t0 = 0.0
-        Z0 = 0.0
-        U0 = 0.0
-        ng0 = self.ng0
+        # Compute non-zero deflection value for a small perturbation (solving quasi-steady equation)
+        Pac = self.Pacoustic(dt, Adrive, Fdrive, phi)
+        Z0 = self.balancedefQS(self.ng0, Qm, Pac, Pm_comp_method)
 
-        # Solve quasi-steady equation to compute first deflection value
-        Pac1 = self.Pacoustic(t0 + dt_mech, Adrive, Fdrive, phi)
-        Z1 = self.balancedefQS(ng0, Qm, Pac1, Pm_comp_method)
-        U1 = (Z1 - Z0) / dt_mech
+        # Set initial conditions
+        y0 = np.array([0., Z0, self.ng0])
 
-        # Construct arrays to hold system variables
-        stimstate = np.array([1, 1])
-        t = np.array([t0, t0 + dt_mech])
-        y = np.array([[U0, U1], [Z0, Z1], [ng0, ng0]])
+        # Initialize simulator and compute solution
+        simulator = PeriodicSimulator(
+            lambda y, t: self.derivatives(y, t, Adrive, Fdrive, Qm, phi, Pm_comp_method),
+            ivars_to_check=[1, 2]
+        )
+        t, y, stim = simulator.compute(y0, dt, Fdrive)
 
-        # Integrate mechanical system for a few acoustic cycles until stabilization
-        j = 0
-        ng_last = None
-        Z_last = None
-        periodic_conv = False
+        # Set last stimulation state to zero
+        stim[-1] = 0
 
-        while not periodic_conv and j < NCYCLES_MAX:
-            t_mech = t_mech_cycle + t[-1] + dt_mech
-            y_mech = integrate.odeint(self.derivatives, y[:, -1], t_mech,
-                                      args=(Adrive, Fdrive, Qm, phi, Pm_comp_method)).T
-
-            # Compare Z and ng signals over the last 2 acoustic periods
-            if j > 0:
-                Z_rmse = rmse(Z_last, y_mech[1, :])
-                ng_rmse = rmse(ng_last, y_mech[2, :])
-                logger.debug('step %u: Z_rmse = %.2e m, ng_rmse = %.2e mol', j, Z_rmse, ng_rmse)
-                if Z_rmse < Z_ERR_MAX and ng_rmse < NG_ERR_MAX:
-                    periodic_conv = True
-
-            # Update last vectors for next comparison
-            Z_last = y_mech[1, :]
-            ng_last = y_mech[2, :]
-
-            # Concatenate time and solutions to global vectors
-            stimstate = np.concatenate([stimstate, np.ones(NPC_FULL)], axis=0)
-            t = np.concatenate([t, t_mech], axis=0)
-            y = np.concatenate([y, y_mech], axis=1)
-
-            # Increment loop index
-            j += 1
-
-        if j == NCYCLES_MAX:
-            logger.warning('No convergence: stopping after %u cycles', j)
-        else:
-            logger.debug('Periodic convergence after %u cycles', j)
-
-        stimstate[-1] = 0
-
-        # return output variables
-        return (t, y[1:, :], stimstate)
+        # Return output variables
+        return t, y[:, 1:].T, stim
 
 
     def run(self, Fdrive, Adrive, Qm):

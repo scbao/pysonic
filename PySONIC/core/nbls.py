@@ -4,9 +4,8 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 20:12:03
+# @Last Modified time: 2019-05-29 03:14:08
 
-import os
 from copy import deepcopy
 import time
 import logging
@@ -17,12 +16,12 @@ import pandas as pd
 from scipy.integrate import ode, odeint, solve_ivp
 from scipy.interpolate import interp1d
 
+from .simulators import PWSimulator
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from ..utils import *
 from ..constants import *
 from ..postpro import findPeaks, getFixedPoints
-from ..batches import xlslog
 
 
 class NeuronalBilayerSonophore(BilayerSonophore):
@@ -89,7 +88,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         dydt_elec = self.neuron.Qderivatives(y[3:], t, self.Capct(y[1]))
         return dydt_mech + dydt_elec
 
-
     def effDerivatives(self, y, t, lkp):
         ''' Compute the derivatives of the n-ODE effective HH system variables,
             based on 1-dimensional linear interpolation of "effective" coefficients
@@ -113,6 +111,23 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Return derivatives vector
         return [dQmdt, *[dstates[k] for k in self.neuron.states]]
 
+    def interpEffVariable(self, key, Qm, stim, lkp_on, lkp_off):
+        ''' Interpolate Q-dependent effective variable along solution.
+
+            :param key: lookup variable key
+            :param Qm: charge density solution vector
+            :param stim: stimulation state solution vector
+            :param lkp_on: lookups for ON states
+            :param lkp_off: lookups for OFF states
+            :return: interpolated effective variable vector
+        '''
+        x = np.zeros(stim.size)
+        x[stim == 0] = np.interp(
+            Qm[stim == 0], lkp_on['Q'], lkp_on[key], left=np.nan, right=np.nan)
+        x[stim == 1] = np.interp(
+            Qm[stim == 1], lkp_off['Q'], lkp_off[key], left=np.nan, right=np.nan)
+        return x
+
 
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
         ''' Compute solutions of the full electro-mechanical system for a specific set of
@@ -132,108 +147,49 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
 
-        # Determine system time step
-        Tdrive = 1 / Fdrive
-        dt = Tdrive / NPC_FULL
+        # Determine time step
+        dt = 1 / (NPC_FULL * Fdrive)
 
-        # if CW stimulus: divide integration during stimulus into 100 intervals
-        if DC == 1.0:
-            PRF = 100 / tstim
+        # Compute non-zero deflection value for a small perturbation (solving quasi-steady equation)
+        Pac = self.Pacoustic(dt, Adrive, Fdrive, phi)
+        Z0 = self.balancedefQS(self.ng0, self.Qm0, Pac)
 
-        # Compute vector sizes
-        npulses = int(np.round(PRF * tstim))
-        Tpulse_on = DC / PRF
-        Tpulse_off = (1 - DC) / PRF
-        n_pulse_on = int(np.round(Tpulse_on / dt))
-        n_pulse_off = int(np.round(Tpulse_off / dt))
-        n_off = int(np.round(toffset / dt))
-
-        # Solve quasi-steady equation to compute first deflection value
-        Z0 = 0.0
-        ng0 = self.ng0
-        Qm0 = self.Qm0
-        Pac1 = self.Pacoustic(dt, Adrive, Fdrive, phi)
-        Z1 = self.balancedefQS(ng0, Qm0, Pac1)
-
-        # Initialize global arrays
-        stimstate = np.array([1, 1])
-        t = np.array([0., dt])
-        y_membrane = np.array([[0., (Z1 - Z0) / dt], [Z0, Z1], [ng0, ng0], [Qm0, Qm0]])
+        # Set initial conditions
         steady_states = self.neuron.steadyStates(self.neuron.Vm0)
-        y_channels = np.tile(np.array([steady_states[k] for k in self.neuron.states]), (2, 1)).T
-        y = np.vstack((y_membrane, y_channels))
-        nvar = y.shape[0]
+        y0 = np.concatenate((
+            [0., Z0, self.ng0, self.Qm0],
+            [steady_states[k] for k in self.neuron.states],
+        ))
 
-        # Initialize pulse time and stimstate vectors
-        t_pulse0 = np.linspace(0, Tpulse_on + Tpulse_off, n_pulse_on + n_pulse_off)
-        stimstate_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
-
+        # Initialize simulator and compute solution
         logger.debug('Computing detailed solution')
-
-        # Initialize progress bar
-        if logger.getEffectiveLevel() <= logging.INFO:
-            widgets = ['Running: ', pb.Percentage(), ' ', pb.Bar(), ' ', pb.ETA()]
-            pbar = pb.ProgressBar(widgets=widgets,
-                                  max_value=int(npulses * (toffset + tstim) / tstim))
-            pbar.start()
-
-        # Loop through all pulse (ON and OFF) intervals
-        for i in range(npulses):
-
-            # Construct and initialize arrays
-            t_pulse = t_pulse0 + t[-1]
-            y_pulse = np.empty((nvar, n_pulse_on + n_pulse_off))
-
-            # Integrate ON system
-            y_pulse[:, :n_pulse_on] = odeint(
-                self.fullDerivatives, y[:, -1], t_pulse[:n_pulse_on],
-                args=(Adrive, Fdrive, phi)).T
-
-            # Integrate OFF system
-            if n_pulse_off > 0:
-                y_pulse[:, n_pulse_on:] = odeint(
-                    self.fullDerivatives, y_pulse[:, n_pulse_on - 1], t_pulse[n_pulse_on:],
-                    args=(0.0, 0.0, 0.0)).T
-
-            # Append pulse arrays to global arrays
-            stimstate = np.concatenate([stimstate, stimstate_pulse[1:]])
-            t = np.concatenate([t, t_pulse[1:]])
-            y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
-
-            # Update progress bar
-            if logger.getEffectiveLevel() <= logging.INFO:
-                pbar.update(i)
-
-        # Integrate offset interval
-        if n_off > 0:
-            t_off = np.linspace(0, toffset, n_off) + t[-1]
-            stimstate_off = np.zeros(n_off)
-            y_off = odeint(self.fullDerivatives, y[:, -1], t_off, args=(0.0, 0.0, 0.0)).T
-
-            # Concatenate offset arrays to global arrays
-            stimstate = np.concatenate([stimstate, stimstate_off[1:]])
-            t = np.concatenate([t, t_off[1:]])
-            y = np.concatenate([y, y_off[:, 1:]], axis=1)
-
-        # Terminate progress bar
-        if logger.getEffectiveLevel() <= logging.INFO:
-            pbar.finish()
-
-        # Downsample arrays in time-domain according to target temporal resolution
-        ds_factor = int(np.round(CLASSIC_TARGET_DT / dt))
-        if ds_factor > 1:
-            Fs = 1 / (dt * ds_factor)
-            logger.info('Downsampling output arrays by factor %u (Fs = %.2f MHz)',
-                        ds_factor, Fs * 1e-6)
-            t = t[::ds_factor]
-            y = y[:, ::ds_factor]
-            stimstate = stimstate[::ds_factor]
+        simulator = PWSimulator(
+            lambda y, t: self.fullDerivatives(y, t, Adrive, Fdrive, phi),
+            lambda y, t: self.fullDerivatives(y, t, 0., 0., 0.),
+        )
+        t, y, stim = simulator.compute(
+            y0, dt, tstim, toffset, PRF, DC,
+            print_progress=logger.getEffectiveLevel() <= logging.INFO,
+            target_dt=CLASSIC_TARGET_DT
+        )
 
         # Compute membrane potential vector (in mV)
-        Vm = y[3, :] / self.v_Capct(y[1, :]) * 1e3  # mV
+        Qm = y[:, 3]
+        Z = y[:, 1]
+        Vm = Qm / self.v_Capct(Z) * 1e3  # mV
 
-        # Return output variables with Vm
-        return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), stimstate)
+        # Add Vm to solution matrix
+        y = np.hstack((
+            y[:, 1:4],
+            np.array([Vm]).T,
+            y[:, 4:]
+        ))
+
+        # Return output variables
+        return t, y.T, stim
+
+        # # Return output variables with Vm
+        # return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), stimstate)
 
 
     def runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
@@ -266,101 +222,39 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         lookups_on['Q'] = Qref
         lookups_off['Q'] = Qref
 
-        # if CW stimulus: change PRF to have exactly one integration interval during stimulus
-        if DC == 1.0:
-            PRF = 1 / tstim
-
-        # Compute vector sizes
-        npulses = int(np.round(PRF * tstim))
-        Tpulse_on = DC / PRF
-        Tpulse_off = (1 - DC) / PRF
-
-        # For high-PRF pulsed protocols: adapt time step to ensure minimal
-        # number of samples during TON or TOFF
-        dt_warning_msg = 'high-PRF protocol: lowering time step to %.2e s to properly integrate %s'
-        for key, Tpulse in {'TON': Tpulse_on, 'TOFF': Tpulse_off}.items():
-            if Tpulse > 0 and Tpulse / dt < MIN_SAMPLES_PER_PULSE_INT:
-                dt = Tpulse / MIN_SAMPLES_PER_PULSE_INT
-                logger.warning(dt_warning_msg, dt, key)
-
-        n_pulse_on = int(np.round(Tpulse_on / dt)) + 1
-        n_pulse_off = int(np.round(Tpulse_off / dt))
-
-        # Compute offset size
-        n_off = int(np.round(toffset / dt))
-
-        # Initialize global arrays
-        stimstate = np.array([1])
-        t = np.array([0.0])
-
+        # Set initial conditions
         steady_states = self.neuron.steadyStates(self.neuron.Vm0)
-        y = np.atleast_2d(np.insert(
-            np.array([steady_states[k] for k in self.neuron.states]), 0, self.Qm0)).T
-        nvar = y.shape[0]
+        y0 = np.insert(
+            np.array([steady_states[k] for k in self.neuron.states]),
+            0, self.Qm0
+        )
 
-        # Initializing accurate pulse time vector
-        t_pulse_on = np.linspace(0, Tpulse_on, n_pulse_on)
-        t_pulse_off = np.linspace(dt, Tpulse_off, n_pulse_off) + Tpulse_on
-        t_pulse0 = np.concatenate([t_pulse_on, t_pulse_off])
-        stimstate_pulse = np.concatenate((np.ones(n_pulse_on), np.zeros(n_pulse_off)))
-
+        # Initialize simulator and compute solution
         logger.debug('Computing effective solution')
+        simulator = PWSimulator(
+            lambda y, t: self.effDerivatives(y, t, lookups_on),
+            lambda y, t: self.effDerivatives(y, t, lookups_off)
+        )
+        t, y, stim = simulator.compute(y0, dt, tstim, toffset, PRF, DC)
+        Qm = y[:, 0]
 
-        # Loop through all pulse (ON and OFF) intervals
-        for i in range(npulses):
-
-            # Construct and initialize arrays
-            t_pulse = t_pulse0 + t[-1]
-            y_pulse = np.empty((nvar, n_pulse_on + n_pulse_off))
-            y_pulse[:, 0] = y[:, -1]
-
-            # Integrate ON system
-            y_pulse[:, :n_pulse_on] = odeint(
-                self.effDerivatives, y[:, -1], t_pulse[:n_pulse_on], args=(lookups_on, )).T
-
-            # Integrate OFF system
-            if n_pulse_off > 0:
-                y_pulse[:, n_pulse_on:] = odeint(
-                    self.effDerivatives, y_pulse[:, n_pulse_on - 1], t_pulse[n_pulse_on:],
-                    args=(lookups_off, )).T
-
-            # Append pulse arrays to global arrays
-            stimstate = np.concatenate([stimstate[:-1], stimstate_pulse])
-            t = np.concatenate([t, t_pulse[1:]])
-            y = np.concatenate([y, y_pulse[:, 1:]], axis=1)
-
-        # Integrate offset interval
-        if n_off > 0:
-            t_off = np.linspace(0, toffset, n_off) + t[-1]
-            y_off = odeint(self.effDerivatives, y[:, -1], t_off, args=(lookups_off, )).T
-
-            # Concatenate offset arrays to global arrays
-            stimstate = np.concatenate([stimstate, np.zeros(n_off - 1)])
-            t = np.concatenate([t, t_off[1:]])
-            y = np.concatenate([y, y_off[:, 1:]], axis=1)
-
-        # Compute effective gas content vector
-        ngeff = np.zeros(stimstate.size)
-        ngeff[stimstate == 0] = np.interp(y[0, stimstate == 0], lookups_on['Q'], lookups_on['ng'],
-                                          left=np.nan, right=np.nan)  # mole
-        ngeff[stimstate == 1] = np.interp(y[0, stimstate == 1], lookups_off['Q'], lookups_off['ng'],
-                                          left=np.nan, right=np.nan)  # mole
+        # Compute effective gas content and membrane potential vectors
+        ng, Vm = [
+            self.interpEffVariable(key, Qm, stim, lookups_on, lookups_off)
+            for key in ['ng', 'V']
+        ]
 
         # Compute quasi-steady deflection vector
-        Zeff = np.array([self.balancedefQS(ng, Qm) for ng, Qm in zip(ngeff, y[0, :])])  # m
+        Z = np.array([self.balancedefQS(x1, x2) for x1, x2 in zip(ng, Qm)])  # m
 
-        # Compute membrane potential vector (in mV)
-        Vm = np.zeros(stimstate.size)
-        Vm[stimstate == 1] = np.interp(y[0, stimstate == 1], lookups_on['Q'], lookups_on['V'],
-                                       left=np.nan, right=np.nan)  # mV
-        Vm[stimstate == 0] = np.interp(y[0, stimstate == 0], lookups_off['Q'], lookups_off['V'],
-                                       left=np.nan, right=np.nan)  # mV
+        # Add Z, ng and Vm to solution matrix
+        y = np.hstack((
+            np.array([Z, ng, Qm, Vm]).T,
+            y[:, 1:]
+        ))
 
-        # Add Zeff, ngeff and Vm to solution matrix
-        y = np.vstack([Zeff, ngeff, y[0, :], Vm, y[1:, :]])
-
-        # return output variables
-        return (t, y, stimstate)
+        # Return output variables
+        return t, y.T, stim
 
 
     def runHybrid(self, Fdrive, Adrive, tstim, toffset, phi=np.pi):
@@ -530,8 +424,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return (t, np.vstack([y[1:4, :], Vm, y[4:, :]]), stimstate)
 
 
-    def checkInputsFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC,
-                        method):
+    def checkInputs(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method):
         ''' Check validity of simulation parameters.
 
             :param Fdrive: acoustic drive frequency (Hz)
@@ -552,8 +445,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             raise ValueError('Invalid integration method: "{}"'.format(method))
 
 
-    def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0,
-                 method='sonic'):
+    def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0, method='sonic'):
         ''' Run simulation of the system for a specific set of
             US stimulation parameters.
 
@@ -568,7 +460,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
 
         # Check validity of stimulation parameters
-        self.checkInputsFull(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
+        self.checkInputs(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
 
         # Call appropriate simulation function
         if method == 'full':
@@ -637,7 +529,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             return {True: Qm[-1], False: np.nan}[cond]
         else:
             return cond
-
 
 
     def titrate(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Arange=None, method='sonic'):
@@ -756,6 +647,48 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             pickle.dump({'meta': meta, 'data': data}, fh)
         logger.debug('simulation data exported to "%s"', outpath)
         return outpath
+
+
+    # def runIfNone(self, outdir, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None,
+    #               method='sonic'):
+    #     ''' Run a simulation of the full electro-mechanical system for a given neuron type
+    #         with specific parameters, and save the results in a PKL file,
+    #         only if file not present.
+
+    #         :param outdir: full path to output directory
+    #         :param Fdrive: US frequency (Hz)
+    #         :param tstim: stimulus duration (s)
+    #         :param toffset: stimulus offset (s)
+    #         :param PRF: pulse repetition frequency (Hz)
+    #         :param DC: stimulus duty cycle (-)
+    #         :param Adrive: acoustic pressure amplitude (Pa)
+    #         :param method: integration method
+    #     '''
+    #     fname = self.filecode(Fdrive, Adrive, tstim, PRF, DC, method)
+    #     fpath = os.path.join(outdir, fname)
+    #     if not os.path.isfile(fpath):
+    #         logger.warning('"{}"" file not found'.format(fname))
+    #         self.runAndSave(outdir=Fdrive, tstim, toffset, PRF, DC, Adrive, method)
+    #     return loadData(fpath)
+
+
+    def getStabPoints():
+        # Simulate model without offset
+        t, y, _ = self.simulate(Fdrive, Adrive, tstim, 0., PRF, DC, method=method)
+
+        # Extract charge signal posterior to observation window
+        Qm = y[2, t > TMIN_STABILIZATION]
+
+        # Compute variation range
+        Qm_range = np.ptp(Qm)
+        logger.debug('A = %sPa ---> %.2f nC/cm2 variation range over the last %.0f ms',
+                     si_format(Adrive, 2, space=' '), Qm_range * 1e5, TMIN_STABILIZATION * 1e3)
+
+        cond = np.ptp(Qm) < QSS_Q_DIV_THR
+        if return_val:
+            return {True: Qm[-1], False: np.nan}[cond]
+        else:
+            return cond
 
 
     def quasiSteadyStates(self, Fdrive, amps=None, charges=None, DCs=1.0, squeeze_output=False):
