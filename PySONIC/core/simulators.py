@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 18:35:10
+# @Last Modified time: 2019-05-30 20:44:33
 
 import abc
 import numpy as np
@@ -15,9 +15,6 @@ from ..constants import *
 
 class Simulator(metaclass=abc.ABCMeta):
     ''' Generic interface to simulator object. '''
-
-    def __init__(self):
-        pass
 
     def resample(self, t, y, stim, target_dt):
         ''' Resample a solution to a new target time step.
@@ -74,7 +71,6 @@ class Simulator(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def compute(self):
         return 'Should never reach here'
-
 
 
 class PeriodicSimulator(Simulator):
@@ -152,7 +148,7 @@ class PeriodicSimulator(Simulator):
         tref = self.getTimeReference(dt, f)
 
         # Initialize global arrays
-        t, y, stim = self.initialize(y0, t0=t0)
+        t, y, stim = self.initialize(y0)
 
         # Integrate system for a few cycles until stabilization
         icycle = 0
@@ -170,7 +166,7 @@ class PeriodicSimulator(Simulator):
             logger.debug('Periodic convergence after %u cycles', icycle)
 
         # Return output variables
-        return t, y, stim
+        return t + t0, y, stim
 
 
 class PWSimulator(Simulator):
@@ -217,6 +213,12 @@ class PWSimulator(Simulator):
     def adjustPRF(self, tstim, PRF, DC, print_progress):
         ''' Adjust the PRF in case of continuous wave stimulus, in order to obtain the desired
             number of integration interval(s) during stimulus.
+
+            :param tstim: duration of US stimulation (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: pulse duty cycle (-)
+            :param print_progress: boolean specifying whether to show a progress bar
+            :return: adjusted PRF value (Hz)
         '''
         if DC < 1.0:  # if PW stimuli, then no change
             return PRF
@@ -242,7 +244,8 @@ class PWSimulator(Simulator):
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
             :param t0: starting time
-            :target_dt: target time step after resampling
+            :param target_dt: target time step after resampling
+            :param print_progress: boolean specifying whether to show a progress bar
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
 
@@ -295,6 +298,10 @@ class HybridSimulator(PWSimulator):
 
             :param dfunc_on: derivative function for ON periods
             :param dfunc_off: derivative function for OFF periods
+            :param dfunc_sparse: derivative function for sparse integration
+            :param predfunc: function computing the extra arguments necessary for sparse integration
+            :param is_dense_var: boolean array stating for each variable if it evolves fast or not
+            :param ivars_to_check: solution indexes of variables to check for stability
         '''
         PWSimulator.__init__(self, dfunc_on, dfunc_off)
         self.sparse_solver = ode(dfunc_sparse)
@@ -305,13 +312,22 @@ class HybridSimulator(PWSimulator):
         self.ivars_to_check = ivars_to_check
 
     def integrate(self, t, y, stim, tnew, func, is_on):
+        ''' Integrate system for a time interval and append to preceding solution arrays.
+
+            :param t: preceding time vector
+            :param y: preceding solution matrix
+            :param stim: preceding stimulation state vector
+            :param tnew: integration time vector for current interval
+            :param func: derivative function for current interval
+            :param is_on: stimulation state for current interval
+            :return: 3-tuple with the appended time vector, solution matrix and state vector
+        '''
 
         if tnew.size > 0:
 
-            dt_dense = tnew[1] - tnew[0]
-
             # Initialize periodic solver
             dense_solver = PeriodicSimulator(func, self.ivars_to_check)
+            dt_dense = tnew[1] - tnew[0]
             npc_dense = dense_solver.getNPerCycle(dt_dense, self.f)
 
             # Until final integration time is reached
@@ -319,8 +335,7 @@ class HybridSimulator(PWSimulator):
                 logger.debug('t = {:.5f} ms: starting new hybrid integration'.format(t[-1] * 1e3))
 
                 # Integrate dense system until convergence
-                tdense, ydense, stimdense = dense_solver.compute(y[-1], dt_dense, self.f)
-                tdense += t[-1]
+                tdense, ydense, stimdense = dense_solver.compute(y[-1], dt_dense, self.f, t0=t[-1])
                 t = np.concatenate((t, tdense[1:]))
                 y = np.concatenate((y, ydense[1:]), axis=0)
                 stim = np.concatenate((stim, np.ones(tdense.size - 1) * is_on))
@@ -356,6 +371,19 @@ class HybridSimulator(PWSimulator):
         return t, y, stim
 
     def compute(self, y0, dt_dense, dt_sparse, f, tstim, toffset, PRF, DC, print_progress=False):
+        ''' Simulate system for a specific stimulus application pattern.
+
+            :param y0: 1D vector of initial conditions
+            :param dt_dense: dense integration time step (s)
+            :param dt_sparse: sparse integration time step (s)
+            :param f: periodic frequency (Hz)
+            :param tstim: duration of US stimulation (s)
+            :param toffset: duration of the offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: pulse duty cycle (-)
+            :param print_progress: boolean specifying whether to show a progress bar
+            :return: 3-tuple with the time profile, the effective solution matrix and a state vector
+        '''
 
         # Set periodicity and sparse time step
         self.f = f

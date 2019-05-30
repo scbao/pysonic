@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 17:25:44
+# @Last Modified time: 2019-05-30 19:33:45
 
 from copy import deepcopy
 import time
@@ -307,7 +307,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         )
         t, y, stim = simulator.compute(
             y0, dt_dense, dt_sparse, Fdrive, tstim, toffset, PRF, DC,
-            print_progress=logger.getEffectiveLevel() <= logging.INFO
+            # print_progress=logger.getEffectiveLevel() <= logging.INFO
         )
 
         # Compute membrane potential vector (in mV)
