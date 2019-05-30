@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-30 20:44:33
+# @Last Modified time: 2019-05-30 23:41:32
 
 import abc
 import numpy as np
@@ -49,6 +49,22 @@ class Simulator(metaclass=abc.ABCMeta):
         stim = np.array([1])
         return t, y, stim
 
+    def appendSolution(self, t, y, stim, tnew, ynew, is_on):
+        ''' Append to time vector, solution matrix and state vector.
+
+            :param t: preceding time vector
+            :param y: preceding solution matrix
+            :param stim: preceding stimulation state vector
+            :param tnew: integration time vector for current interval
+            :param ynew: derivative function for current interval
+            :param is_on: stimulation state for current interval
+            :return: 3-tuple with the appended time vector, solution matrix and state vector
+        '''
+        t = np.concatenate((t, tnew[1:]))
+        y = np.concatenate((y, ynew[1:]), axis=0)
+        stim = np.concatenate((stim, np.ones(tnew.size - 1) * is_on))
+        return t, y, stim
+
     def integrate(self, t, y, stim, tnew, func, is_on):
         ''' Integrate system for a time interval and append to preceding solution arrays.
 
@@ -62,10 +78,9 @@ class Simulator(metaclass=abc.ABCMeta):
         '''
         if tnew.size > 0:
             ynew = odeint(func, y[-1], tnew)
-            t = np.concatenate((t, tnew[1:]))
-            y = np.concatenate((y, ynew[1:]), axis=0)
-            stim = np.concatenate((stim, np.ones(tnew.size - 1) * is_on))
-        return t, y, stim
+        else:
+            ynew = np.array([])
+        return self.appendSolution(t, y, stim, tnew, ynew, is_on)
 
     @property
     @abc.abstractmethod
@@ -336,9 +351,7 @@ class HybridSimulator(PWSimulator):
 
                 # Integrate dense system until convergence
                 tdense, ydense, stimdense = dense_solver.compute(y[-1], dt_dense, self.f, t0=t[-1])
-                t = np.concatenate((t, tdense[1:]))
-                y = np.concatenate((y, ydense[1:]), axis=0)
-                stim = np.concatenate((stim, np.ones(tdense.size - 1) * is_on))
+                t, y, stim = self.appendSolution(t, y, stim, tdense, ydense, is_on)
 
                 # Resample signals over last acoustic cycle to match sparse time step
                 tlast, ylast, stimlast = self.resample(
@@ -364,9 +377,7 @@ class HybridSimulator(PWSimulator):
                             'integration error at t = {:.5f} ms'.format(tsparse[j] * 1e3))
                     ysparse[j, self.is_dense_var] = ylast[j % npc_sparse, self.is_dense_var]
                     ysparse[j, self.is_sparse_var] = self.sparse_solver.y
-                t = np.concatenate((t, tsparse[1:]))
-                y = np.concatenate((y, ysparse[1:]), axis=0)
-                stim = np.concatenate((stim, np.ones(tsparse.size - 1) * is_on))
+                t, y, stim = self.appendSolution(t, y, stim, tsparse, ysparse, is_on)
 
         return t, y, stim
 
