@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-30 19:33:45
+# @Last Modified time: 2019-05-31 10:45:52
 
 from copy import deepcopy
 import time
@@ -302,7 +302,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lambda y, t: self.fullDerivatives(y, t, 0., 0., 0.),
             lambda t, y, Cm: self.neuron.Qderivatives(y, t, Cm),
             lambda yref: self.Capct(yref[1]),
-            is_dense_var=is_dense_var,
+            is_dense_var,
             ivars_to_check=[1, 2]
         )
         t, y, stim = simulator.compute(
