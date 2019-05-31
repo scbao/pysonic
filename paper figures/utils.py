@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:45:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:23:57
+# @Last Modified time: 2019-05-31 17:03:40
 
 import os
 import numpy as np
@@ -11,7 +11,6 @@ import pandas as pd
 from PySONIC.utils import *
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.neurons import *
-from PySONIC.batches import runBatch
 from PySONIC.postpro import computeSpikingMetrics
 
 
@@ -69,13 +68,14 @@ def getSims(outdir, neuron, a, queue):
         fpath = os.path.join(outdir, '{}.pkl'.format(fcode))
         if not os.path.isfile(fpath):
             print(fpath, 'does not exist')
+            item.insert(0, outdir)
             updated_queue.append(item)
         fpaths.append(fpath)
     if len(updated_queue) > 0:
         print(updated_queue)
         # neuron = getNeuronsDict()[neuron]()
         # nbls = NeuronalBilayerSonophore(a, neuron)
-        # runBatch(nbls, 'runAndSave', updated_queue, extra_params=[outdir], mpi=True)
+        # runBatch(nbls.runAndSave, updated_queue, extra_params=[outdir], mpi=True)
     return fpaths
 
 

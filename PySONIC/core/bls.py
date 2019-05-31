@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:51:14
+# @Last Modified time: 2019-05-31 16:59:34
 
 from enum import Enum
 import os
@@ -15,11 +15,11 @@ import pandas as pd
 import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
 
-from ..utils import logger, si_format
-from ..batches import createQueue
-from ..constants import *
+from .batches import createQueue
 from .model import Model
 from .simulators import PeriodicSimulator
+from ..utils import logger, si_format
+from ..constants import *
 
 
 class PmCompMethod(Enum):

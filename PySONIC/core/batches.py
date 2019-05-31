@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:56:18
+# @Last Modified time: 2019-05-31 16:57:59
 
 ''' Utility functions used in simulations '''
 
@@ -13,7 +13,7 @@ import multiprocessing as mp
 import numpy as np
 import pandas as pd
 
-from .utils import logger
+from ..utils import logger
 
 
 class Consumer(mp.Process):

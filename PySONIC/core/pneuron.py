@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:52:17
+# @Last Modified time: 2019-05-31 16:59:38
 
 import abc
 import inspect
@@ -12,12 +12,12 @@ import re
 import numpy as np
 import pandas as pd
 
-from ..postpro import findPeaks
-from ..constants import *
-from ..batches import createQueue
-from ..utils import si_format, logger, titrate, plural
+from .batches import createQueue
 from .model import Model
 from .simulators import PWSimulator
+from ..postpro import findPeaks
+from ..constants import *
+from ..utils import si_format, logger, titrate, plural
 
 
 class PointNeuron(Model):

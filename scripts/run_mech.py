@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:38:17
+# @Last Modified time: 2019-05-31 17:05:15
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -14,10 +14,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from PySONIC.core import BilayerSonophore
+from PySONIC.core import BilayerSonophore, runBatch
 from PySONIC.utils import logger, selectDirDialog, parseUSAmps
 from PySONIC.neurons import CorticalRS
-from PySONIC.batches import runBatch
 from PySONIC.plt import plotBatch
 
 # Default parameters

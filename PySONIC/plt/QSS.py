@@ -6,10 +6,9 @@ import matplotlib.pyplot as plt
 from matplotlib import cm, colors
 
 from ..postpro import getFixedPoints
-from ..core import NeuronalBilayerSonophore
+from ..core import NeuronalBilayerSonophore, runBatch
 from .pltutils import *
 from ..utils import logger
-from ..batches import runBatch
 
 
 def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):

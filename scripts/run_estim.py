@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:40:22
+# @Last Modified time: 2019-05-31 17:04:40
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -12,9 +12,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
+from PySONIC.core import runBatch
 from PySONIC.utils import logger, selectDirDialog, parseElecAmps
 from PySONIC.neurons import *
-from PySONIC.batches import runBatch
 from PySONIC.plt import plotBatch
 
 # Default parameters

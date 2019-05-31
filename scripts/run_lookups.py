@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-14 17:37:03
+# @Last Modified time: 2019-05-31 17:07:01
 
 ''' Create lookup table for specific neuron. '''
 
@@ -16,9 +16,8 @@ import numpy as np
 from argparse import ArgumentParser
 
 from PySONIC.utils import logger, getNeuronLookupsFile
-from PySONIC.batches import createQueue, runBatch
 from PySONIC.neurons import getNeuronsDict
-from PySONIC.core import NeuronalBilayerSonophore
+from PySONIC.core import NeuronalBilayerSonophore, createQueue, runBatch
 
 
 # Default parameters
@@ -93,7 +92,7 @@ def computeAStimLookups(neuron, aref, fref, Aref, Qref, fsref=None,
     print(dims, ncombs)
 
     # Create simulation queue per radius
-    queue = createQueue([fref, Aref, Qref])
+    queue = createQueue(fref, Aref, Qref)
     for i in range(len(queue)):
         queue[i].append(inputs['fs'])
 
@@ -102,7 +101,7 @@ def computeAStimLookups(neuron, aref, fref, Aref, Qref, fsref=None,
     outputs = []
     for a in aref:
         nbls = NeuronalBilayerSonophore(a, neuron)
-        outputs += runBatch(nbls, 'computeEffVars', queue, mpi=mpi, loglevel=loglevel)
+        outputs += runBatch(nbls.computeEffVars, queue, mpi=mpi, loglevel=loglevel)
 
     # Split comp times and effvars from outputs
     tcomps, effvars = [list(x) for x in zip(*outputs)]

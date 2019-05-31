@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:53:05
+# @Last Modified time: 2019-05-31 17:01:35
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -14,10 +14,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from PySONIC.core import NeuronalBilayerSonophore
+from PySONIC.core import NeuronalBilayerSonophore, runBatch
 from PySONIC.utils import logger, selectDirDialog, parseUSAmps
 from PySONIC.neurons import getNeuronsDict
-from PySONIC.batches import runBatch
 from PySONIC.plt import plotBatch
 
 # Default parameters
