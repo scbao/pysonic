@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 14:51:44
+# @Last Modified time: 2019-05-31 14:59:18
 
 import pickle
 import abc
@@ -513,16 +513,16 @@ class PointNeuron(metaclass=abc.ABCMeta):
             'DC': DC
         }
 
-    def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
+    def runAndSave(self, outdir, Astim, tstim, toffset, PRF=None, DC=1.0):
         ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
             and save the results in a PKL file.
 
             :param outdir: full path to output directory
+            :param Astim: stimulus amplitude (mA/m2)
             :param tstim: stimulus duration (s)
             :param toffset: stimulus offset (s)
             :param PRF: pulse repetition frequency (Hz)
             :param DC: stimulus duty cycle (-)
-            :param Astim: stimulus amplitude (mA/m2)
         '''
         data, tcomp = self.simulate(Astim, tstim, toffset, PRF, DC)
         meta = self.meta(Astim, tstim, toffset, PRF, DC)

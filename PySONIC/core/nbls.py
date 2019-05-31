@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 14:54:58
+# @Last Modified time: 2019-05-31 14:58:57
 
 from copy import deepcopy
 import logging
@@ -409,18 +409,17 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return titrate(xfunc, (Fdrive, tstim, toffset, PRF, DC, method),
                        Arange, TITRATION_ASTIM_DA_MAX)
 
-    def runAndSave(self, outdir, Fdrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None,
-                   method='sonic'):
+    def runAndSave(self, outdir, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0, method='sonic'):
         ''' Run a simulation of the full electro-mechanical system for a given neuron type
             with specific parameters, and save the results in a PKL file.
 
             :param outdir: full path to output directory
+            :param Adrive: acoustic pressure amplitude (Pa)
             :param Fdrive: US frequency (Hz)
             :param tstim: stimulus duration (s)
             :param toffset: stimulus offset (s)
             :param PRF: pulse repetition frequency (Hz)
             :param DC: stimulus duty cycle (-)
-            :param Adrive: acoustic pressure amplitude (Pa)
             :param method: integration method
         '''
         data, tcomp = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method)

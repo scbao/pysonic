@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-03 20:47:24
+# @Last Modified time: 2019-05-31 15:03:37
 
 ''' Utility functions used in simulations '''
 
@@ -98,12 +98,12 @@ def createEStimQueue(amps, durations, offsets, PRFs, DCs):
     DCs = np.array(DCs)
     queue = []
     if 1.0 in DCs:
-        queue += createQueue((durations, offsets, min(PRFs), 1.0, amps))
+        queue += createQueue((amps, durations, offsets, min(PRFs), 1.0))
     if np.any(DCs != 1.0):
-        queue += createQueue((durations, offsets, PRFs, DCs[DCs != 1.0], amps))
+        queue += createQueue((amps, durations, offsets, PRFs, DCs[DCs != 1.0]))
     for item in queue:
-        if np.isnan(item[-1]):
-            item[-1] = None
+        if np.isnan(item[0]):
+            item[0] = None
     return queue
 
 
@@ -125,12 +125,12 @@ def createAStimQueue(freqs, amps, durations, offsets, PRFs, DCs, method):
     DCs = np.array(DCs)
     queue = []
     if 1.0 in DCs:
-        queue += createQueue((freqs, durations, offsets, min(PRFs), 1.0, amps))
+        queue += createQueue((freqs, amps, durations, offsets, min(PRFs), 1.0))
     if np.any(DCs != 1.0):
-        queue += createQueue((freqs, durations, offsets, PRFs, DCs[DCs != 1.0], amps))
+        queue += createQueue((freqs, amps, durations, offsets, PRFs, DCs[DCs != 1.0]))
     for item in queue:
-        if np.isnan(item[-1]):
-            item[-1] = None
+        if np.isnan(item[1]):
+            item[1] = None
         item.append(method)
     return queue
 
