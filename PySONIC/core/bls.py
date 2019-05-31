@@ -4,19 +4,21 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 14:52:30
+# @Last Modified time: 2019-05-31 16:51:14
 
 from enum import Enum
 import os
 import json
 import inspect
-import pickle
 import numpy as np
 import pandas as pd
 import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
+
 from ..utils import logger, si_format
+from ..batches import createQueue
 from ..constants import *
+from .model import Model
 from .simulators import PeriodicSimulator
 
 
@@ -41,7 +43,7 @@ def LennardJones(x, beta, alpha, C, m, n):
     return C * (np.power((alpha / (2 * x + beta)), m) - np.power((alpha / (2 * x + beta)), n))
 
 
-class BilayerSonophore:
+class BilayerSonophore(Model):
     ''' This class contains the geometric and mechanical parameters of the
         Bilayer Sonophore Model, as well as all the core functions needed to
         compute the dynamics (kinetics and kinematics) of the bilayer membrane
@@ -736,25 +738,16 @@ class BilayerSonophore:
             'Qm': Qm
         }
 
-    def runAndSave(self, outdir, Fdrive, Adrive, Qm):
-        ''' Simulate system and save results in a PKL file.
+    def createQueue(self, freqs, amps, charges):
+        ''' Create a serialized 2D array of all parameter combinations for a series of individual
+            parameter sweeps.
 
-            :param outdir: full path to output directory
-            :param Fdrive: US frequency (Hz)
-            :param Adrive: acoustic pressure amplitude (Pa)
-            :param Qm: applied membrane charge density (C/m2)
-            :return: full path to the data file
+            :param freqs: list (or 1D-array) of US frequencies
+            :param amps: list (or 1D-array) of acoustic amplitudes
+            :param charges: list (or 1D-array) of membrane charge densities
+            :return: list of parameters (list) for each simulation
         '''
-        data, tcomp = self.simulate(Fdrive, Adrive, Qm)
-        meta = self.meta(Fdrive, Adrive, Qm)
-        meta['tcomp'] = tcomp
-        simcode = self.filecode(Fdrive, Adrive, Qm)
-        outpath = '{}/{}.pkl'.format(outdir, simcode)
-        with open(outpath, 'wb') as fh:
-            pickle.dump({'meta': meta, 'data': data}, fh)
-        logger.debug('simulation data exported to "%s"', outpath)
-
-        return outpath
+        return createQueue(freqs, amps, charges)
 
     def getCycleProfiles(self, Fdrive, Adrive, Qm):
         ''' Simulate mechanical system and compute pressures over the last acoustic cycle

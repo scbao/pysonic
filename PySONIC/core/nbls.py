@@ -4,11 +4,10 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:24:12
+# @Last Modified time: 2019-05-31 16:52:41
 
 from copy import deepcopy
 import logging
-import pickle
 import numpy as np
 import pandas as pd
 from scipy.integrate import solve_ivp
@@ -428,37 +427,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         DCs = np.array(DCs)
         queue = []
         if 1.0 in DCs:
-            queue += createQueue((freqs, amps, durations, offsets, min(PRFs), 1.0))
+            queue += createQueue(freqs, amps, durations, offsets, min(PRFs), 1.0)
         if np.any(DCs != 1.0):
-            queue += createQueue((freqs, amps, durations, offsets, PRFs, DCs[DCs != 1.0]))
+            queue += createQueue(freqs, amps, durations, offsets, PRFs, DCs[DCs != 1.0])
         for item in queue:
             if np.isnan(item[1]):
                 item[1] = None
             item.append(method)
         return queue
-
-    def runAndSave(self, outdir, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0, method='sonic'):
-        ''' Run a simulation of the full electro-mechanical system for a given neuron type
-            with specific parameters, and save the results in a PKL file.
-
-            :param outdir: full path to output directory
-            :param Adrive: acoustic pressure amplitude (Pa)
-            :param Fdrive: US frequency (Hz)
-            :param tstim: stimulus duration (s)
-            :param toffset: stimulus offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: stimulus duty cycle (-)
-            :param method: integration method
-        '''
-        data, tcomp = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
-        meta = self.meta(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
-        meta['tcomp'] = tcomp
-        simcode = self.filecode(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
-        outpath = '{}/{}.pkl'.format(outdir, simcode)
-        with open(outpath, 'wb') as fh:
-            pickle.dump({'meta': meta, 'data': data}, fh)
-        logger.debug('simulation data exported to "%s"', outpath)
-        return outpath
 
     def quasiSteadyStates(self, Fdrive, amps=None, charges=None, DCs=1.0, squeeze_output=False):
         ''' Compute the quasi-steady state values of the neuron's gating variables

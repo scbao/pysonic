@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:08:21
+# @Last Modified time: 2019-05-31 16:40:22
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -53,9 +53,11 @@ def runEStimBatch(outdir, neuron, stim_params, mpi=False):
         stim_params['PRFs'],
         stim_params['DCs']
     )
+    for item in queue:
+        item.insert(0, outdir)
 
     # Run batch
-    return runBatch(neuron, 'runAndSave', queue, extra_params=[outdir], mpi=mpi)
+    return runBatch(neuron.runAndSave, queue, mpi=mpi)
 
 
 def main():

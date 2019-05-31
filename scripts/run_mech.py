@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 15:28:06
+# @Last Modified time: 2019-05-31 16:38:17
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 from PySONIC.core import BilayerSonophore
 from PySONIC.utils import logger, selectDirDialog, parseUSAmps
 from PySONIC.neurons import CorticalRS
-from PySONIC.batches import createQueue, runBatch
+from PySONIC.batches import runBatch
 from PySONIC.plt import plotBatch
 
 # Default parameters
@@ -56,8 +56,10 @@ def runMechBatch(outdir, bls, stim_params, mpi=False):
     charges = np.array(stim_params['charges'])
 
     # Generate simulations queue and run batch
-    queue = createQueue((freqs, amps, charges))
-    return runBatch(bls, 'runAndSave', queue, extra_params=[outdir], mpi=mpi)
+    queue = bls.createQueue(freqs, amps, charges)
+    for item in queue:
+        item.insert(0, outdir)
+    return runBatch(bls.runAndSave, queue, mpi=mpi)
 
 
 def main():

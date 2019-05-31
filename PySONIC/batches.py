@@ -2,13 +2,12 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:19:22
+# @Last Modified time: 2019-05-31 16:56:18
 
 ''' Utility functions used in simulations '''
 
 import os
 import lockfile
-import pickle
 import logging
 import multiprocessing as mp
 import numpy as np
@@ -42,30 +41,28 @@ class Consumer(mp.Process):
 
 
 class Worker():
-    ''' Generic worker class calling a specific object's method with a given set of parameters. '''
+    ''' Generic worker class calling a specific function with a given set of parameters. '''
 
-    def __init__(self, wid, obj, method_str, params, loglevel):
+    def __init__(self, wid, simfunc, params, loglevel):
         ''' Worker constructor.
 
             :param wid: worker ID
-            :param obj: object containing the method to call
-            :param method_str: name of the method to call
+            :param simfunc: function object
             :param params: list of method parameters
             :param loglevel: logging level
         '''
         self.id = wid
-        self.obj = obj
-        self.method_str = method_str
+        self.simfunc = simfunc
         self.params = params
         self.loglevel = loglevel
 
     def __call__(self):
         ''' Caller to the specific object method. '''
         logger.setLevel(self.loglevel)
-        return self.id, getattr(self.obj, self.method_str)(*self.params)
+        return self.id, self.simfunc(*self.params)
 
 
-def createQueue(dims):
+def createQueue(*dims):
     ''' Create a serialized 2D array of all parameter combinations for a series of individual
         parameter sweeps.
 
@@ -83,21 +80,8 @@ def createQueue(dims):
     return queue.tolist()
 
 
-# def runAndSave(self, outdir, obj, args):
-#     data, tcomp = obj.simulate(*args)
-#     meta = obj.meta(*args)
-#     meta['tcomp'] = tcomp
-#     simcode = obj.filecode(*args)
-#     outpath = '{}/{}.pkl'.format(outdir, simcode)
-#     with open(outpath, 'wb') as fh:
-#         pickle.dump({'meta': meta, 'data': data}, fh)
-#     logger.debug('simulation data exported to "%s"', outpath)
-#     return outpath
-
-
-def runBatch(obj, method_str, queue, extra_params=[], mpi=False,
-             loglevel=logging.INFO):
-    ''' Run batch of simulations of a given object for various combinations of stimulation parameters.
+def runBatch(simfunc, queue, mpi=False, loglevel=logging.INFO):
+    ''' Run batch of a simulation function with various combinations of parameters.
 
         :param queue: array of all stimulation parameters combinations
         :param mpi: boolean stating whether or not to use multiprocessing
@@ -106,7 +90,6 @@ def runBatch(obj, method_str, queue, extra_params=[], mpi=False,
 
     if mpi:
         mp.freeze_support()
-
         tasks = mp.JoinableQueue()
         results = mp.Queue()
         nconsumers = min(mp.cpu_count(), nsims)
@@ -116,8 +99,51 @@ def runBatch(obj, method_str, queue, extra_params=[], mpi=False,
 
     # Run simulations
     outputs = []
-    for i, stim_params in enumerate(queue):
-        params = extra_params + stim_params
+    for i, params in enumerate(queue):
+        if mpi:
+            worker = Worker(i, simfunc, params, loglevel)
+            tasks.put(worker, block=False)
+        else:
+            outputs.append(simfunc(*params))
+
+    if mpi:
+        for i in range(nconsumers):
+            tasks.put(None, block=False)
+        tasks.join()
+        idxs = []
+        for i in range(nsims):
+            wid, out = results.get()
+            outputs.append(out)
+            idxs.append(wid)
+        outputs = [x for _, x in sorted(zip(idxs, outputs))]
+
+        # Close tasks and results queues
+        tasks.close()
+        results.close()
+
+    return outputs
+
+
+def runBatch2(obj, method_str, queue, mpi=False, loglevel=logging.INFO):
+    ''' Run batch of simulations of a model object for various combinations of parameters.
+
+        :param queue: array of all stimulation parameters combinations
+        :param mpi: boolean stating whether or not to use multiprocessing
+    '''
+    nsims = len(queue)
+
+    if mpi:
+        mp.freeze_support()
+        tasks = mp.JoinableQueue()
+        results = mp.Queue()
+        nconsumers = min(mp.cpu_count(), nsims)
+        consumers = [Consumer(tasks, results) for i in range(nconsumers)]
+        for w in consumers:
+            w.start()
+
+    # Run simulations
+    outputs = []
+    for i, params in enumerate(queue):
         if mpi:
             worker = Worker(i, obj, method_str, params, loglevel)
             tasks.put(worker, block=False)

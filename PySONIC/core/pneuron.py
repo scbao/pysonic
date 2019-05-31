@@ -4,9 +4,8 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:24:22
+# @Last Modified time: 2019-05-31 16:52:17
 
-import pickle
 import abc
 import inspect
 import re
@@ -17,13 +16,12 @@ from ..postpro import findPeaks
 from ..constants import *
 from ..batches import createQueue
 from ..utils import si_format, logger, titrate, plural
+from .model import Model
 from .simulators import PWSimulator
 
 
-class PointNeuron(metaclass=abc.ABCMeta):
-    ''' Abstract class defining the common API (i.e. mandatory attributes and methods) of all
-        subclasses implementing the channels mechanisms of specific point neurons.
-    '''
+class PointNeuron(Model):
+    ''' Generic point-neuron model interface. '''
 
     tscale = 'ms'  # relevant temporal scale of the model
     defvar = 'V'  # default plot variable
@@ -34,7 +32,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
     def pprint(self):
         return '{} neuron'.format(self.__class__.__name__)
 
-    def filecode(self, Astim, tstim, PRF, DC):
+    def filecode(self, Astim, tstim, toffset, PRF, DC):
         ''' File naming convention. '''
         return 'ESTIM_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'.format(
             self.name, 'CW' if DC == 1 else 'PW', Astim, tstim * 1e3,
@@ -43,17 +41,17 @@ class PointNeuron(metaclass=abc.ABCMeta):
     @property
     @abc.abstractmethod
     def name(self):
-        return 'Should never reach here'
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def Cm0(self):
-        return 'Should never reach here'
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def Vm0(self):
-        return 'Should never reach here'
+        raise NotImplementedError
 
     @abc.abstractmethod
     def currents(self, Vm, states):
@@ -530,34 +528,13 @@ class PointNeuron(metaclass=abc.ABCMeta):
         DCs = np.array(DCs)
         queue = []
         if 1.0 in DCs:
-            queue += createQueue((amps, durations, offsets, min(PRFs), 1.0))
+            queue += createQueue(amps, durations, offsets, min(PRFs), 1.0)
         if np.any(DCs != 1.0):
-            queue += createQueue((amps, durations, offsets, PRFs, DCs[DCs != 1.0]))
+            queue += createQueue(amps, durations, offsets, PRFs, DCs[DCs != 1.0])
         for item in queue:
             if np.isnan(item[0]):
                 item[0] = None
         return queue
-
-    def runAndSave(self, outdir, Astim, tstim, toffset, PRF=None, DC=1.0):
-        ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
-            and save the results in a PKL file.
-
-            :param outdir: full path to output directory
-            :param Astim: stimulus amplitude (mA/m2)
-            :param tstim: stimulus duration (s)
-            :param toffset: stimulus offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: stimulus duty cycle (-)
-        '''
-        data, tcomp = self.simulate(Astim, tstim, toffset, PRF, DC)
-        meta = self.meta(Astim, tstim, toffset, PRF, DC)
-        meta['tcomp'] = tcomp
-        simcode = self.filecode(Astim, tstim, toffset, PRF, DC)
-        outpath = '{}/{}.pkl'.format(outdir, simcode)
-        with open(outpath, 'wb') as fh:
-            pickle.dump({'meta': meta, 'data': data}, fh)
-        logger.debug('simulation data exported to "%s"', outpath)
-        return outpath
 
     def getNSpikes(self, data):
         ''' Compute number of spikes in charge profile of simulation output.
