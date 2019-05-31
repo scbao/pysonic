@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-28 14:35:34
+# @Last Modified time: 2019-05-31 15:12:30
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.utils import logger, selectDirDialog, parseUSAmps
 from PySONIC.neurons import getNeuronsDict
-from PySONIC.batches import createAStimQueue, runBatch
+from PySONIC.batches import runBatch
 from PySONIC.plt import plotBatch
 
 # Default parameters
@@ -53,7 +53,7 @@ def runAStimBatch(outdir, nbls, stim_params, method, mpi=False):
     logger.info("Starting A-STIM simulation batch")
 
     # Generate queue
-    queue = createAStimQueue(
+    queue = nbls.createQueue(
         stim_params['freqs'],
         stim_params.get('amps', None),
         stim_params['durations'],

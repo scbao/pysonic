@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 14:58:57
+# @Last Modified time: 2019-05-31 15:12:41
 
 from copy import deepcopy
 import logging
@@ -17,6 +17,7 @@ from scipy.interpolate import interp1d
 from .simulators import PWSimulator, HybridSimulator
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
+from ..batches import createQueue
 from ..utils import *
 from ..constants import *
 from ..postpro import getFixedPoints
@@ -408,6 +409,33 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Titrate
         return titrate(xfunc, (Fdrive, tstim, toffset, PRF, DC, method),
                        Arange, TITRATION_ASTIM_DA_MAX)
+
+    def createQueue(self, freqs, amps, durations, offsets, PRFs, DCs, method):
+        ''' Create a serialized 2D array of all parameter combinations for a series of individual
+            parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
+
+            :param freqs: list (or 1D-array) of US frequencies
+            :param amps: list (or 1D-array) of acoustic amplitudes
+            :param durations: list (or 1D-array) of stimulus durations
+            :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
+            :param PRFs: list (or 1D-array) of pulse-repetition frequencies
+            :param DCs: list (or 1D-array) of duty cycle values
+            :params method: integration method
+            :return: list of parameters (list) for each simulation
+        '''
+        if amps is None:
+            amps = [np.nan]
+        DCs = np.array(DCs)
+        queue = []
+        if 1.0 in DCs:
+            queue += createQueue((freqs, amps, durations, offsets, min(PRFs), 1.0))
+        if np.any(DCs != 1.0):
+            queue += createQueue((freqs, amps, durations, offsets, PRFs, DCs[DCs != 1.0]))
+        for item in queue:
+            if np.isnan(item[1]):
+                item[1] = None
+            item.append(method)
+        return queue
 
     def runAndSave(self, outdir, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0, method='sonic'):
         ''' Run a simulation of the full electro-mechanical system for a given neuron type

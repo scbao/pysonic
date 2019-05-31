@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 14:59:18
+# @Last Modified time: 2019-05-31 15:08:49
 
 import pickle
 import abc
@@ -15,6 +15,7 @@ import pandas as pd
 
 from ..postpro import findPeaks
 from ..constants import *
+from ..batches import createQueue
 from ..utils import si_format, logger, titrate, plural
 from .simulators import PWSimulator
 
@@ -512,6 +513,30 @@ class PointNeuron(metaclass=abc.ABCMeta):
             'PRF': PRF,
             'DC': DC
         }
+
+    def createQueue(self, amps, durations, offsets, PRFs, DCs):
+        ''' Create a serialized 2D array of all parameter combinations for a series of individual
+            parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
+
+            :param amps: list (or 1D-array) of acoustic amplitudes
+            :param durations: list (or 1D-array) of stimulus durations
+            :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
+            :param PRFs: list (or 1D-array) of pulse-repetition frequencies
+            :param DCs: list (or 1D-array) of duty cycle values
+            :return: list of parameters (list) for each simulation
+        '''
+        if amps is None:
+            amps = [np.nan]
+        DCs = np.array(DCs)
+        queue = []
+        if 1.0 in DCs:
+            queue += createQueue((amps, durations, offsets, min(PRFs), 1.0))
+        if np.any(DCs != 1.0):
+            queue += createQueue((amps, durations, offsets, PRFs, DCs[DCs != 1.0]))
+        for item in queue:
+            if np.isnan(item[0]):
+                item[0] = None
+        return queue
 
     def runAndSave(self, outdir, Astim, tstim, toffset, PRF=None, DC=1.0):
         ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,

@@ -409,7 +409,7 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3
             QSS_output = runBatch(nbls, 'quasiSteadyStateFixedPoints', QSS_queue, mpi=mpi)
 
             # Generate simulations batch queue
-            sim_queue = createAStimQueue([Fdrive], amps, [tstim], [toffset], [PRF], [DC], method)
+            sim_queue = nbls.createQueue([Fdrive], amps, [tstim], [toffset], [PRF], [DC], method)
 
             # Run batch to find stabilization points at each amplitude
             sim_output = runBatch(nbls, 'runIfNone', sim_queue, extra_params=[outdir], mpi=mpi)

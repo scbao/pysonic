@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 15:28:27
+# @Last Modified time: 2019-05-31 15:08:21
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -14,7 +14,7 @@ from argparse import ArgumentParser
 
 from PySONIC.utils import logger, selectDirDialog, parseElecAmps
 from PySONIC.neurons import *
-from PySONIC.batches import createEStimQueue, runBatch
+from PySONIC.batches import runBatch
 from PySONIC.plt import plotBatch
 
 # Default parameters
@@ -46,7 +46,7 @@ def runEStimBatch(outdir, neuron, stim_params, mpi=False):
     logger.info("Starting E-STIM simulation batch")
 
     # Generate simulations queue
-    queue = createEStimQueue(
+    queue = neuron.createQueue(
         stim_params.get('amps', None),
         stim_params['durations'],
         stim_params['offsets'],

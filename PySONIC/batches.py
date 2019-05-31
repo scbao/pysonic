@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:03:37
+# @Last Modified time: 2019-05-31 15:09:27
 
 ''' Utility functions used in simulations '''
 
@@ -82,57 +82,16 @@ def createQueue(dims):
     return queue.tolist()
 
 
-def createEStimQueue(amps, durations, offsets, PRFs, DCs):
-    ''' Create a serialized 2D array of all parameter combinations for a series of individual
-        parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
-
-        :param amps: list (or 1D-array) of acoustic amplitudes
-        :param durations: list (or 1D-array) of stimulus durations
-        :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
-        :param PRFs: list (or 1D-array) of pulse-repetition frequencies
-        :param DCs: list (or 1D-array) of duty cycle values
-        :return: list of parameters (list) for each simulation
-    '''
-    if amps is None:
-        amps = [np.nan]
-    DCs = np.array(DCs)
-    queue = []
-    if 1.0 in DCs:
-        queue += createQueue((amps, durations, offsets, min(PRFs), 1.0))
-    if np.any(DCs != 1.0):
-        queue += createQueue((amps, durations, offsets, PRFs, DCs[DCs != 1.0]))
-    for item in queue:
-        if np.isnan(item[0]):
-            item[0] = None
-    return queue
-
-
-def createAStimQueue(freqs, amps, durations, offsets, PRFs, DCs, method):
-    ''' Create a serialized 2D array of all parameter combinations for a series of individual
-        parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
-
-        :param freqs: list (or 1D-array) of US frequencies
-        :param amps: list (or 1D-array) of acoustic amplitudes
-        :param durations: list (or 1D-array) of stimulus durations
-        :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
-        :param PRFs: list (or 1D-array) of pulse-repetition frequencies
-        :param DCs: list (or 1D-array) of duty cycle values
-        :params method: integration method
-        :return: list of parameters (list) for each simulation
-    '''
-    if amps is None:
-        amps = [np.nan]
-    DCs = np.array(DCs)
-    queue = []
-    if 1.0 in DCs:
-        queue += createQueue((freqs, amps, durations, offsets, min(PRFs), 1.0))
-    if np.any(DCs != 1.0):
-        queue += createQueue((freqs, amps, durations, offsets, PRFs, DCs[DCs != 1.0]))
-    for item in queue:
-        if np.isnan(item[1]):
-            item[1] = None
-        item.append(method)
-    return queue
+# def runAndSave(self, outdir, Fdrive, Adrive, Qm):
+#     data, tcomp = self.simulate(Fdrive, Adrive, Qm)
+#     meta = self.meta(Fdrive, Adrive, Qm)
+#     meta['tcomp'] = tcomp
+#     simcode = self.filecode(Fdrive, Adrive, Qm)
+#     outpath = '{}/{}.pkl'.format(outdir, simcode)
+#     with open(outpath, 'wb') as fh:
+#         pickle.dump({'meta': meta, 'data': data}, fh)
+#     logger.debug('simulation data exported to "%s"', outpath)
+#     return outpath
 
 
 def runBatch(obj, method_str, queue, extra_params=[], mpi=False,
