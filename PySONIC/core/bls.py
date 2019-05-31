@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 14:40:53
+# @Last Modified time: 2019-05-31 14:52:30
 
 from enum import Enum
 import os
@@ -718,6 +718,24 @@ class BilayerSonophore:
         # Return dataframe and computation time
         return data, tcomp
 
+    def meta(self, Fdrive, Adrive, Qm):
+        ''' Return information about object and simulation parameters.
+
+            :param Fdrive: US frequency (Hz)
+            :param Adrive: acoustic pressure amplitude (Pa)
+            :param Qm: applied membrane charge density (C/m2)
+            :return: meta-data dictionary
+        '''
+        return {
+            'a': self.a,
+            'd': self.d,
+            'Cm0': self.Cm0,
+            'Qm0': self.Qm0,
+            'Fdrive': Fdrive,
+            'Adrive': Adrive,
+            'Qm': Qm
+        }
+
     def runAndSave(self, outdir, Fdrive, Adrive, Qm):
         ''' Simulate system and save results in a PKL file.
 
@@ -728,17 +746,8 @@ class BilayerSonophore:
             :return: full path to the data file
         '''
         data, tcomp = self.simulate(Fdrive, Adrive, Qm)
-        meta = {
-            'a': self.a,
-            'd': self.d,
-            'Cm0': self.Cm0,
-            'Qm0': self.Qm0,
-            'Fdrive': Fdrive,
-            'Adrive': Adrive,
-            'phi': np.pi,
-            'Qm': Qm,
-            'tcomp': tcomp
-        }
+        meta = self.meta(Fdrive, Adrive, Qm)
+        meta['tcomp'] = tcomp
         simcode = self.filecode(Fdrive, Adrive, Qm)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:

@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 14:14:54
+# @Last Modified time: 2019-05-31 14:51:44
 
 import pickle
 import abc
@@ -494,6 +494,25 @@ class PointNeuron(metaclass=abc.ABCMeta):
         # Return dataframe and computation time
         return data, tcomp
 
+    def meta(self, Astim, tstim, toffset, PRF, DC):
+        ''' Return information about object and simulation parameters.
+
+            :param Astim: stimulus amplitude (mA/m2)
+            :param tstim: stimulus duration (s)
+            :param toffset: stimulus offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: stimulus duty cycle (-)
+            :return: meta-data dictionary
+        '''
+        return {
+            'neuron': self.name,
+            'Astim': Astim,
+            'tstim': tstim,
+            'toffset': toffset,
+            'PRF': PRF,
+            'DC': DC
+        }
+
     def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
         ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
             and save the results in a PKL file.
@@ -506,15 +525,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :param Astim: stimulus amplitude (mA/m2)
         '''
         data, tcomp = self.simulate(Astim, tstim, toffset, PRF, DC)
-        meta = {
-            'neuron': self.name,
-            'Astim': Astim,
-            'tstim': tstim,
-            'toffset': toffset,
-            'PRF': PRF,
-            'DC': DC,
-            'tcomp': tcomp
-        }
+        meta = self.meta(Astim, tstim, toffset, PRF, DC)
+        meta['tcomp'] = tcomp
         simcode = self.filecode(Astim, tstim, PRF, DC)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:

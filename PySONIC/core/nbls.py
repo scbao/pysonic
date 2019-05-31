@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 14:19:12
+# @Last Modified time: 2019-05-31 14:54:58
 
 from copy import deepcopy
 import logging
@@ -357,6 +357,30 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Return dataframe and computation time
         return data, tcomp
 
+    def meta(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method):
+        ''' Return information about object and simulation parameters.
+
+            :param Fdrive: US frequency (Hz)
+            :param Adrive: acoustic drive amplitude (Pa)
+            :param tstim: stimulus duration (s)
+            :param toffset: stimulus offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: stimulus duty cycle (-)
+            :param method: integration method
+            :return: meta-data dictionary
+        '''
+        return {
+            'neuron': self.neuron.name,
+            'a': self.a,
+            'd': self.d,
+            'Fdrive': Fdrive,
+            'Adrive': Adrive,
+            'tstim': tstim,
+            'toffset': toffset,
+            'PRF': PRF,
+            'DC': DC,
+            'method': method
+        }
 
     def titrate(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Arange=None, method='sonic'):
         ''' Use a binary search to determine the threshold amplitude needed to obtain
@@ -400,20 +424,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param method: integration method
         '''
         data, tcomp = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
-        meta = {
-            'neuron': self.neuron.name,
-            'a': self.a,
-            'd': self.d,
-            'Fdrive': Fdrive,
-            'Adrive': Adrive,
-            'phi': np.pi,
-            'tstim': tstim,
-            'toffset': toffset,
-            'PRF': PRF,
-            'DC': DC,
-            'tcomp': tcomp,
-            'method': method
-        }
+        meta = self.meta(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
+        meta['tcomp'] = tcomp
         simcode = self.filecode(Fdrive, Adrive, tstim, PRF, DC, method)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
