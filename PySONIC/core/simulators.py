@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 10:50:36
+# @Last Modified time: 2019-05-31 13:32:29
 
 import abc
 import numpy as np
@@ -78,6 +78,19 @@ class Simulator(metaclass=abc.ABCMeta):
     def compute(self):
         ''' Abstract compute method. '''
         return 'Should never reach here'
+
+    def __call__(self, *args, **kwargs):
+        ''' Call and return compute method, with conditional time monitoring. '''
+        monitor_time = kwargs.pop('monitor_time')
+        if monitor_time:
+            start_time = time.perf_counter()
+        output = self.compute(*args, **kwargs)
+        if monitor_time:
+            end_time = time.perf_counter()
+            run_time = end_time - start_time
+            output = output, run_time
+        return output
+
 
 
 class PeriodicSimulator(Simulator):
@@ -244,7 +257,7 @@ class PWSimulator(Simulator):
         '''
         return int(np.round(tstim * PRF))
 
-    def compute(self, y0, dt, tstim, toffset, PRF, DC, t0=0, target_dt=None, print_progress=False):
+    def compute(self, y0, dt, tstim, toffset, PRF, DC, target_dt=None, print_progress=False):
         ''' Simulate system for a specific stimulus application pattern.
 
             :param y0: 1D vector of initial conditions
@@ -297,7 +310,7 @@ class PWSimulator(Simulator):
             t, y, stim = self.resample(t, y, stim, target_dt)
 
         # Return output variables
-        return t + t0, y, stim
+        return t, y, stim
 
 
 class HybridSimulator(PWSimulator):
@@ -322,7 +335,16 @@ class HybridSimulator(PWSimulator):
         self.ivars_to_check = ivars_to_check
 
     def integrate(self, t, y, stim, tnew, func, is_on):
-        ''' Integrate system for a time interval and append to preceding solution arrays.
+        ''' Integrate system for a time interval and append to preceding solution arrays,
+            using a hybrid scheme:
+
+            - First, the full ODE system is integrated for a few cycles with a dense time
+              granularity until it reaches a periodically stable behavior (limit cycle)
+            - Second, the profiles of all variables over the last cycle are resampled to a
+              far lower (i.e. sparse) sampling rate
+            - Third, a subset of the ODE system is integrated with a sparse time granularity,
+              for the remaining of the time interval, while the remaining variables are
+              periodically expanded from their "stabilized" (last cycle) profile.
 
             :param t: preceding time vector
             :param y: preceding solution matrix

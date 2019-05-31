@@ -4,13 +4,14 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 18:25:53
+# @Last Modified time: 2019-05-31 14:14:27
 
 ''' Definition of generic utility functions used in other modules '''
 
 import csv
 from functools import wraps
 import operator
+import time
 import os
 import math
 import pickle
@@ -662,6 +663,18 @@ def debug(func):
     return wrapper_debug
 
 
+def timer(func):
+    ''' Monitor and return the runtime of the decorated function. '''
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        value = func(*args, **kwargs)
+        end_time = time.perf_counter()
+        run_time = end_time - start_time
+        return value, run_time
+    return wrapper
+
+
 def cache(fpath, delimiter='\t', out_type=float):
     ''' Add an extra IO memoization functionality to a function using file caching,
         to avoid repetitions of tedious computations with identical inputs.
@@ -792,3 +805,11 @@ def resolveDependencies(deps, join_items=True):
 
     return resolved_deps
 
+
+def plural(n):
+    if n < 0:
+        raise ValueError('Cannot format negative integer (n = {})'.format(n))
+    if n == 0:
+        return ''
+    else:
+        return 's'

@@ -4,16 +4,14 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 10:45:52
+# @Last Modified time: 2019-05-31 14:19:12
 
 from copy import deepcopy
-import time
 import logging
 import pickle
-import progressbar as pb
 import numpy as np
 import pandas as pd
-from scipy.integrate import ode, odeint, solve_ivp
+from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 
 from .simulators import PWSimulator, HybridSimulator
@@ -21,7 +19,7 @@ from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from ..utils import *
 from ..constants import *
-from ..postpro import findPeaks, getFixedPoints
+from ..postpro import getFixedPoints
 
 
 class NeuronalBilayerSonophore(BilayerSonophore):
@@ -143,7 +141,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
             :param phi: acoustic drive phase (rad)
-            :return: 3-tuple with the time profile, the effective solution matrix and a state vector
+            :return: 2-tuple with the output dataframe and computation time.
         '''
 
         # Determine time step
@@ -157,35 +155,34 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         steady_states = self.neuron.steadyStates(self.neuron.Vm0)
         y0 = np.concatenate((
             [0., Z0, self.ng0, self.Qm0],
-            [steady_states[k] for k in self.neuron.states],
-        ))
+            [steady_states[k] for k in self.neuron.states]))
 
         # Initialize simulator and compute solution
         logger.debug('Computing detailed solution')
         simulator = PWSimulator(
             lambda y, t: self.fullDerivatives(y, t, Adrive, Fdrive, phi),
-            lambda y, t: self.fullDerivatives(y, t, 0., 0., 0.),
-        )
-        t, y, stim = simulator.compute(
+            lambda y, t: self.fullDerivatives(y, t, 0., 0., 0.))
+        (t, y, stim), tcomp = simulator(
             y0, dt, tstim, toffset, PRF, DC,
             print_progress=logger.getEffectiveLevel() <= logging.INFO,
-            target_dt=CLASSIC_TARGET_DT
-        )
+            target_dt=CLASSIC_TARGET_DT,
+            monitor_time=True)
+        logger.debug('completed in %ss', si_format(tcomp, 1))
 
-        # Compute membrane potential vector (in mV)
-        Qm = y[:, 3]
-        Z = y[:, 1]
-        Vm = Qm / self.v_Capct(Z) * 1e3  # mV
+        # Store output in dataframe
+        data = pd.DataFrame({
+            't': t,
+            'stimstate': stim,
+            'Z': y[:, 1],
+            'ng': y[:, 2],
+            'Qm': y[:, 3]
+        })
+        data['Vm'] = data['Qm'].values / self.v_Capct(data['Z'].values) * 1e3  # mV
+        for i in range(len(self.neuron.states)):
+            data[self.neuron.states[i]] = y[:, i + 4]
 
-        # Add Vm to solution matrix
-        y = np.hstack((
-            y[:, 1:4],
-            np.array([Vm]).T,
-            y[:, 4:]
-        ))
-
-        # Return output variables
-        return t, y.T, stim
+        # Return dataframe and computation time
+        return data, tcomp
 
     def runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
         ''' Compute solutions of the system for a specific set of
@@ -221,53 +218,37 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         steady_states = self.neuron.steadyStates(self.neuron.Vm0)
         y0 = np.insert(
             np.array([steady_states[k] for k in self.neuron.states]),
-            0, self.Qm0
-        )
+            0, self.Qm0)
 
         # Initialize simulator and compute solution
         logger.debug('Computing effective solution')
         simulator = PWSimulator(
             lambda y, t: self.effDerivatives(y, t, lookups_on),
-            lambda y, t: self.effDerivatives(y, t, lookups_off)
-        )
-        t, y, stim = simulator.compute(y0, dt, tstim, toffset, PRF, DC)
-        Qm = y[:, 0]
+            lambda y, t: self.effDerivatives(y, t, lookups_off))
+        (t, y, stim), tcomp = simulator(y0, dt, tstim, toffset, PRF, DC, monitor_time=True)
+        logger.debug('completed in %ss', si_format(tcomp, 1))
 
-        # Compute effective gas content and membrane potential vectors
-        ng, Vm = [
-            self.interpEffVariable(key, Qm, stim, lookups_on, lookups_off)
-            for key in ['ng', 'V']
-        ]
+        # Store output in dataframe
+        data = pd.DataFrame({
+            't': t,
+            'stimstate': stim,
+            'Qm': y[:, 0]
+        })
+        for key in ['ng', 'V']:
+            data[key] = self.interpEffVariable(
+                key, data['Qm'].values, stim, lookups_on, lookups_off)
+        data['Z'] = np.array([self.balancedefQS(ng, Qm) for ng, Qm in zip(
+            data['ng'].values, data['Qm'].values)])  # m
+        data['Vm'] = data['Qm'].values / self.v_Capct(data['Z'].values) * 1e3  # mV
+        for i in range(len(self.neuron.states)):
+            data[self.neuron.states[i]] = y[:, i + 1]
 
-        # Compute quasi-steady deflection vector
-        Z = np.array([self.balancedefQS(x1, x2) for x1, x2 in zip(ng, Qm)])  # m
-
-        # Add Z, ng and Vm to solution matrix
-        y = np.hstack((
-            np.array([Z, ng, Qm, Vm]).T,
-            y[:, 1:]
-        ))
-
-        # Return output variables
-        return t, y.T, stim
-
+        # Return dataframe and computation time
+        return data, tcomp
 
     def runHybrid(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
         ''' Compute solutions of the system for a specific set of
             US stimulation parameters, using a hybrid integration scheme.
-
-            The first iteration uses the quasi-steady simplification to compute
-            the initiation of motion from a flat leaflet configuration. Afterwards,
-            the NBLS ODE system is solved iteratively for "slices" of N-microseconds,
-            in a 2-steps scheme:
-
-            - First, the full (n+3) ODE system is integrated for a few acoustic cycles
-              until Z and ng reach a stable periodic solution (limit cycle)
-            - Second, the signals of the 3 mechanical variables over the last acoustic
-              period are selected and resampled to a far lower sampling rate
-            - Third, the HH n-ODE system is integrated for the remaining time of the
-              slice, using periodic expansion of the mechanical signals to precompute
-              the values of capacitance.
 
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
@@ -276,7 +257,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param phi: acoustic drive phase (rad)
             :return: 3-tuple with the time profile, the solution matrix and a state vector
 
-            .. warning:: This method cannot handle pulsed stimuli
         '''
 
         # Determine time step
@@ -303,31 +283,30 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lambda t, y, Cm: self.neuron.Qderivatives(y, t, Cm),
             lambda yref: self.Capct(yref[1]),
             is_dense_var,
-            ivars_to_check=[1, 2]
-        )
-        t, y, stim = simulator.compute(
+            ivars_to_check=[1, 2])
+        (t, y, stim), tcomp = simulator(
             y0, dt_dense, dt_sparse, Fdrive, tstim, toffset, PRF, DC,
-            # print_progress=logger.getEffectiveLevel() <= logging.INFO
-        )
+            monitor_time=True)
+        logger.debug('completed in %ss', si_format(tcomp, 1))
 
-        # Compute membrane potential vector (in mV)
-        Qm = y[:, 3]
-        Z = y[:, 1]
-        Vm = Qm / self.v_Capct(Z) * 1e3  # mV
+        # Store output in dataframe
+        data = pd.DataFrame({
+            't': t,
+            'stimstate': stim,
+            'Z': y[:, 1],
+            'ng': y[:, 2],
+            'Qm': y[:, 3]
+        })
+        data['Vm'] = data['Qm'].values / self.v_Capct(data['Z'].values) * 1e3  # mV
+        for i in range(len(self.neuron.states)):
+            data[self.neuron.states[i]] = y[:, i + 4]
 
-        # Add Vm to solution matrix
-        y = np.hstack((
-            y[:, 1:4],
-            np.array([Vm]).T,
-            y[:, 4:]
-        ))
+        # Return dataframe and computation time
+        return data, tcomp
 
-        # Return output variables
-        return t, y.T, stim
-
-
-    def checkInputs(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method):
-        ''' Check validity of simulation parameters.
+    def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0, method='sonic'):
+        ''' Simulate the electro-mechanical model for a specific set of US stimulation parameters,
+            and return output data in a dataframe.
 
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
@@ -336,101 +315,47 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
             :param method: selected integration method
-            :return: 3-tuple with the time profile, the solution matrix and a state vector
+            :return: 2-tuple with the output dataframe and computation time.
         '''
 
+        logger.info(
+            '%s: %s @ f = %sHz, %st = %ss (%ss offset)%s',
+            self,
+            'titration' if Adrive is None else 'simulation',
+            si_format(Fdrive, 0, space=' '),
+            'A = {}Pa, '.format(si_format(Adrive, 2, space=' ')) if Adrive is not None else '',
+            *si_format([tstim, toffset], 1, space=' '),
+            (', PRF = {}Hz, DC = {:.2f}%'.format(
+                si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
+
+        # TODO: If no amplitude provided, perform titration
+        if Adrive is None:
+            Adrive = self.titrate(Fdrive, tstim, toffset, PRF, DC, method=method)
+            if np.isnan(Adrive):
+                logger.error('Could not find threshold excitation amplitude')
+                return None
+
+        # Check validity of stimulation parameters
         BilayerSonophore.checkInputs(self, Fdrive, Adrive, 0.0, 0.0)
         self.neuron.checkInputs(Adrive, tstim, toffset, PRF, DC)
 
-        # Check validity of simulation type
-        if method not in ('full', 'hybrid', 'sonic'):
-            raise ValueError('Invalid integration method: "{}"'.format(method))
-
-
-    def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0, method='sonic'):
-        ''' Run simulation of the system for a specific set of
-            US stimulation parameters.
-
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param Adrive: acoustic drive amplitude (Pa)
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
-            :param method: selected integration method
-            :return: 3-tuple with the time profile, the solution matrix and a state vector
-        '''
-
-        # Check validity of stimulation parameters
-        self.checkInputs(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
-
         # Call appropriate simulation function
-        if method == 'full':
-            return self.runFull(Fdrive, Adrive, tstim, toffset, PRF, DC)
-        elif method == 'sonic':
-            return self.runSONIC(Fdrive, Adrive, tstim, toffset, PRF, DC)
-        elif method == 'hybrid':
-            # if DC < 1.0:
-            #     raise ValueError('Pulsed protocol incompatible with hybrid integration method')
-            return self.runHybrid(Fdrive, Adrive, tstim, toffset, PRF, DC)
+        try:
+            simfunc = {
+                'full': self.runFull,
+                'hybrid': self.runHybrid,
+                'sonic': self.runSONIC
+            }[method]
+        except KeyError:
+            raise ValueError('Invalid integration method: "{}"'.format(method))
+        data, tcomp = simfunc(Fdrive, Adrive, tstim, toffset, PRF, DC)
 
+        # Log number of detected spikes
+        nspikes = self.neuron.getNSpikes(data)
+        logger.debug('{} spike{} detected'.format(nspikes, plural(nspikes)))
 
-    def isExcited(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method, return_val=False):
-        ''' Run a simulation and determine if neuron is excited.
-
-            :param Adrive: acoustic amplitude (Pa)
-            :param Fdrive: US frequency (Hz)
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
-            :return: boolean stating whether neuron is excited or not
-        '''
-        t, y, _ = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
-        dt = t[1] - t[0]
-        ipeaks, *_ = findPeaks(y[2, :], SPIKE_MIN_QAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
-                               SPIKE_MIN_QPROM)
-        nspikes = ipeaks.size
-        logger.debug('A = %sPa ---> %s spike%s detected',
-                     si_format(Adrive, 2, space=' '),
-                     nspikes, "s" if nspikes > 1 else "")
-        cond = nspikes > 0
-        if return_val:
-            return {True: nspikes, False: np.nan}[cond]
-        else:
-            return cond
-
-
-    def isSilenced(self, Adrive, Fdrive, tstim, toffset, PRF, DC, method, return_val=False):
-        ''' Run a simulation and determine if neuron is silenced.
-
-            :param Adrive: acoustic amplitude (Pa)
-            :param Fdrive: US frequency (Hz)
-            :param tstim: duration of US stimulation (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
-            :return: boolean stating whether neuron is silenced or not
-        '''
-        if tstim <= TMIN_STABILIZATION:
-            raise ValueError(
-                'stimulus duration must be greater than {:.0f} ms'.format(TMIN_STABILIZATION * 1e3))
-
-        # Simulate model without offset
-        t, y, _ = self.simulate(Fdrive, Adrive, tstim, 0., PRF, DC, method=method)
-
-        # Extract charge signal posterior to observation window
-        Qm = y[2, t > TMIN_STABILIZATION]
-
-        # Compute variation range
-        Qm_range = np.ptp(Qm)
-        logger.debug('A = %sPa ---> %.2f nC/cm2 variation range over the last %.0f ms',
-                     si_format(Adrive, 2, space=' '), Qm_range * 1e5, TMIN_STABILIZATION * 1e3)
-
-        cond = np.ptp(Qm) < QSS_Q_DIV_THR
-        if return_val:
-            return {True: Qm[-1], False: np.nan}[cond]
-        else:
-            return cond
+        # Return dataframe and computation time
+        return data, tcomp
 
 
     def titrate(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Arange=None, method='sonic'):
@@ -460,74 +385,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return titrate(xfunc, (Fdrive, tstim, toffset, PRF, DC, method),
                        Arange, TITRATION_ASTIM_DA_MAX)
 
-    def run(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None, method='sonic'):
-        ''' Run a simulation of the full electro-mechanical system for a given neuron type
-            with specific parameters, and return output data and metadata.
-
-            :param Fdrive: US frequency (Hz)
-            :param tstim: stimulus duration (s)
-            :param toffset: stimulus offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: stimulus duty cycle (-)
-            :param Adrive: acoustic pressure amplitude (Pa)
-            :param method: integration method
-        '''
-
-        logger.info(
-            '%s: %s @ f = %sHz, %st = %ss (%ss offset)%s',
-            self,
-            'titration' if Adrive is None else 'simulation',
-            si_format(Fdrive, 0, space=' '),
-            'A = {}Pa, '.format(si_format(Adrive, 2, space=' ')) if Adrive is not None else '',
-            *si_format([tstim, toffset], 1, space=' '),
-            (', PRF = {}Hz, DC = {:.2f}%'.format(
-                si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
-
-        # If no amplitude provided, perform titration
-        if Adrive is None:
-            Adrive = self.titrate(Fdrive, tstim, toffset, PRF, DC, method=method)
-            if np.isnan(Adrive):
-                logger.error('Could not find threshold excitation amplitude')
-                return None
-
-        # Run simulation
-        tstart = time.time()
-        t, y, stimstate = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method=method)
-        tcomp = time.time() - tstart
-        Z, ng, Qm, Vm, *channels = y
-        logger.debug('completed in %ss', si_format(tcomp, 1))
-
-        # Store dataframe and metadata
-        data = pd.DataFrame({
-            't': t,
-            'stimstate': stimstate,
-            'Z': Z,
-            'ng': ng,
-            'Qm': Qm,
-            'Vm': Vm
-        })
-        for j in range(len(self.neuron.states)):
-            data[self.neuron.states[j]] = channels[j]
-        meta = {
-            'neuron': self.neuron.name,
-            'a': self.a,
-            'd': self.d,
-            'Fdrive': Fdrive,
-            'Adrive': Adrive,
-            'phi': np.pi,
-            'tstim': tstim,
-            'toffset': toffset,
-            'PRF': PRF,
-            'DC': DC,
-            'tcomp': tcomp,
-            'method': method
-        }
-
-        # Log number of detected spikes
-        self.neuron.logNSpikes(data)
-
-        return data, meta
-
     def runAndSave(self, outdir, Fdrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None,
                    method='sonic'):
         ''' Run a simulation of the full electro-mechanical system for a given neuron type
@@ -542,56 +399,27 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param Adrive: acoustic pressure amplitude (Pa)
             :param method: integration method
         '''
-        data, meta = self.run(Fdrive, tstim, toffset, PRF, DC, Adrive, method)
+        data, tcomp = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
+        meta = {
+            'neuron': self.neuron.name,
+            'a': self.a,
+            'd': self.d,
+            'Fdrive': Fdrive,
+            'Adrive': Adrive,
+            'phi': np.pi,
+            'tstim': tstim,
+            'toffset': toffset,
+            'PRF': PRF,
+            'DC': DC,
+            'tcomp': tcomp,
+            'method': method
+        }
         simcode = self.filecode(Fdrive, Adrive, tstim, PRF, DC, method)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': data}, fh)
         logger.debug('simulation data exported to "%s"', outpath)
         return outpath
-
-
-    # def runIfNone(self, outdir, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0, Adrive=None,
-    #               method='sonic'):
-    #     ''' Run a simulation of the full electro-mechanical system for a given neuron type
-    #         with specific parameters, and save the results in a PKL file,
-    #         only if file not present.
-
-    #         :param outdir: full path to output directory
-    #         :param Fdrive: US frequency (Hz)
-    #         :param tstim: stimulus duration (s)
-    #         :param toffset: stimulus offset (s)
-    #         :param PRF: pulse repetition frequency (Hz)
-    #         :param DC: stimulus duty cycle (-)
-    #         :param Adrive: acoustic pressure amplitude (Pa)
-    #         :param method: integration method
-    #     '''
-    #     fname = self.filecode(Fdrive, Adrive, tstim, PRF, DC, method)
-    #     fpath = os.path.join(outdir, fname)
-    #     if not os.path.isfile(fpath):
-    #         logger.warning('"{}"" file not found'.format(fname))
-    #         self.runAndSave(outdir=Fdrive, tstim, toffset, PRF, DC, Adrive, method)
-    #     return loadData(fpath)
-
-
-    def getStabPoints():
-        # Simulate model without offset
-        t, y, _ = self.simulate(Fdrive, Adrive, tstim, 0., PRF, DC, method=method)
-
-        # Extract charge signal posterior to observation window
-        Qm = y[2, t > TMIN_STABILIZATION]
-
-        # Compute variation range
-        Qm_range = np.ptp(Qm)
-        logger.debug('A = %sPa ---> %.2f nC/cm2 variation range over the last %.0f ms',
-                     si_format(Adrive, 2, space=' '), Qm_range * 1e5, TMIN_STABILIZATION * 1e3)
-
-        cond = np.ptp(Qm) < QSS_Q_DIV_THR
-        if return_val:
-            return {True: Qm[-1], False: np.nan}[cond]
-        else:
-            return cond
-
 
     def quasiSteadyStates(self, Fdrive, amps=None, charges=None, DCs=1.0, squeeze_output=False):
         ''' Compute the quasi-steady state values of the neuron's gating variables
@@ -833,11 +661,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: list with computation time and a list of dictionaries of effective variables
         '''
 
-        tstart = time.time()
-
         # Run simulation and retrieve deflection and gas content vectors from last cycle
-        _, [Z, ng], _ = BilayerSonophore.simulate(self, Fdrive, Adrive, Qm)
-        Z_last = Z[-NPC_FULL:]  # m
+        data, tcomp = BilayerSonophore.simulate(self, Fdrive, Adrive, Qm)
+        Z_last = data.loc[-NPC_FULL:, 'Z'].values  # m
         Cm_last = self.v_Capct(Z_last)  # F/m2
 
         # For each coverage fraction
@@ -850,8 +676,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             # Compute average cycle value for membrane potential and rate constants
             effvars.append({'V': np.mean(Vm)})
             effvars[-1].update(self.neuron.computeEffRates(Vm))
-
-        tcomp = time.time() - tstart
 
         # Log process
         log = '{}: lookups @ {}Hz, {}Pa, {:.2f} nC/cm2'.format(

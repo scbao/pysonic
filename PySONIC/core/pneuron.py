@@ -4,9 +4,8 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 17:07:56
+# @Last Modified time: 2019-05-31 14:14:54
 
-import time
 import pickle
 import abc
 import inspect
@@ -16,7 +15,7 @@ import pandas as pd
 
 from ..postpro import findPeaks
 from ..constants import *
-from ..utils import si_format, logger, titrate
+from ..utils import si_format, logger, titrate, plural
 from .simulators import PWSimulator
 
 
@@ -111,11 +110,9 @@ class PointNeuron(metaclass=abc.ABCMeta):
         ''' Generic function used to compute rate constants. '''
         return x / (np.exp(x / y) - 1)
 
-
     def efun(self, x):
         ''' Generic function used to compute rate constants. '''
         return x / (np.exp(x) - 1)
-
 
     def ghkDrive(self, Vm, Z_ion, Cion_in, Cion_out, T):
         ''' Use the Goldman-Hodgkin-Katz equation to compute the electrochemical driving force
@@ -138,7 +135,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
     def getCurrentsNames(self):
         return list(self.currents(np.nan, [np.nan] * len(self.states)).keys())
 
-
     def getPltScheme(self):
         pltscheme = {
             'Q_m': ['Qm'],
@@ -152,7 +148,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
                 pltscheme[key] = [var for var in cargs if var not in ['Vm', 'Cai']]
 
         return pltscheme
-
 
     def getPltVars(self, wrapleft='df["', wrapright='"]'):
         ''' Return a dictionary with information about all plot variables related to the neuron. '''
@@ -198,7 +193,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
             for var in cargs:
                 if var not in ['Vm', 'Cai']:
                     vfunc = getattr(self, 'der{}{}'.format(var[0].upper(), var[1:]))
-                    desc = cname + re.sub('^Evolution of', '', inspect.getdoc(vfunc).splitlines()[0])
+                    desc = cname + re.sub(
+                        '^Evolution of', '', inspect.getdoc(vfunc).splitlines()[0])
                     pltvars[var] = {
                         'desc': desc,
                         'label': var,
@@ -238,6 +234,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         return pltvars
 
     def getRatesNames(self, states):
+        ''' Return a list of names of the alpha and beta rates of the neuron. '''
         return list(sum(
             [['alpha{}'.format(x.lower()), 'beta{}'.format(x.lower())] for x in states],
             []
@@ -246,7 +243,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
     def Qm0(self):
         ''' Return the resting charge density (in C/m2). '''
         return self.Cm0 * self.Vm0 * 1e-3  # C/cm2
-
 
     @abc.abstractmethod
     def steadyStates(self, Vm):
@@ -264,7 +260,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :states: state probabilities of the ion channels
             :return: current per unit area (mA/m2)
         '''
-
 
     @abc.abstractmethod
     def computeEffRates(self, Vm):
@@ -375,7 +370,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
             rates[beta_str] = betax
         return rates
 
-
     def Vderivatives(self, y, t, Iinj):
         ''' Compute the derivatives of a V-cast HH system for a
             specific value of injected current.
@@ -408,7 +402,6 @@ class PointNeuron(metaclass=abc.ABCMeta):
         dstates = self.derStates(Vm, states)
         return [dQmdt, *[dstates[k] for k in self.states]]
 
-
     def checkInputs(self, Astim, tstim, toffset, PRF, DC):
         ''' Check validity of electrical stimulation parameters.
 
@@ -440,8 +433,8 @@ class PointNeuron(metaclass=abc.ABCMeta):
                                  .format(PRF))
 
     def simulate(self, Astim, tstim, toffset, PRF=None, DC=1.0, dt=DT_ESTIM):
-        ''' Compute solutions of a neuron's HH system for a specific set of
-            electrical stimulation parameters, using a classic integration scheme.
+        ''' Simulate a specific neuron model for a specific set of electrical parameters,
+            and return output data in a dataframe.
 
             :param Astim: pulse amplitude (mA/m2)
             :param tstim: pulse duration (s)
@@ -449,8 +442,24 @@ class PointNeuron(metaclass=abc.ABCMeta):
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
             :param dt: integration time step (s)
-            :return: 3-tuple with the time profile and solution matrix and a state vector
+            :return: 2-tuple with the output dataframe and computation time.
         '''
+
+        logger.info(
+            '%s: %s @ %st = %ss (%ss offset)%s',
+            self,
+            'titration' if Astim is None else 'simulation',
+            'A = {}A/m2, '.format(si_format(Astim, 2, space=' ')) if Astim is not None else '',
+            *si_format([tstim, toffset], 1, space=' '),
+            (', PRF = {}Hz, DC = {:.2f}%'.format(
+                si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
+
+        # TODO: If no amplitude provided, perform titration
+        if Astim is None:
+            Astim = self.titrate(tstim, toffset, PRF, DC)
+            if np.isnan(Astim):
+                logger.error('Could not find threshold excitation amplitude')
+                return None
 
         # Check validity of stimulation parameters
         self.checkInputs(Astim, tstim, toffset, PRF, DC)
@@ -463,32 +472,108 @@ class PointNeuron(metaclass=abc.ABCMeta):
         logger.debug('Computing solution')
         simulator = PWSimulator(
             lambda y, t: self.Vderivatives(y, t, Astim),
-            lambda y, t: self.Vderivatives(y, t, 0.)
-        )
-        t, y, stim = simulator.compute(y0, dt, tstim, toffset, PRF, DC)
+            lambda y, t: self.Vderivatives(y, t, 0.))
+        (t, y, stim), tcomp = simulator(y0, dt, tstim, toffset, PRF, DC, monitor_time=True)
+        logger.debug('completed in %ss', si_format(tcomp, 1))
 
-        # Return output variables
-        return t, y.T, stim
+        # Store output in dataframe
+        data = pd.DataFrame({
+            't': t,
+            'stimstate': stim,
+            'Vm': y[:, 0],
+            'Qm': y[:, 0] * self.Cm0 * 1e-3
+        })
+        data['Qm'] = data['Vm'].values * self.Cm0 * 1e-3
+        for i in range(len(self.states)):
+            data[self.states[i]] = y[:, i + 1]
 
-    def isExcited(self, Astim, tstim, toffset, PRF, DC):
-        ''' Run a simulation and determine if neuron is excited.
+        # Log number of detected spikes
+        nspikes = self.getNSpikes(data)
+        logger.debug('{} spike{} detected'.format(nspikes, plural(nspikes)))
 
-            :param Astim: current amplitude (mA/m2)
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
+        # Return dataframe and computation time
+        return data, tcomp
+
+    def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
+        ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
+            and save the results in a PKL file.
+
+            :param outdir: full path to output directory
+            :param tstim: stimulus duration (s)
+            :param toffset: stimulus offset (s)
             :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
+            :param DC: stimulus duty cycle (-)
+            :param Astim: stimulus amplitude (mA/m2)
+        '''
+        data, tcomp = self.simulate(Astim, tstim, toffset, PRF, DC)
+        meta = {
+            'neuron': self.name,
+            'Astim': Astim,
+            'tstim': tstim,
+            'toffset': toffset,
+            'PRF': PRF,
+            'DC': DC,
+            'tcomp': tcomp
+        }
+        simcode = self.filecode(Astim, tstim, PRF, DC)
+        outpath = '{}/{}.pkl'.format(outdir, simcode)
+        with open(outpath, 'wb') as fh:
+            pickle.dump({'meta': meta, 'data': data}, fh)
+        logger.debug('simulation data exported to "%s"', outpath)
+        return outpath
+
+    def getNSpikes(self, data):
+        ''' Compute number of spikes in charge profile of simulation output.
+
+            :param data: dataframe containing output time series
+            :return: number of detected spikes
+        '''
+        dt = np.diff(data.ix[:1, 't'].values)[0]
+        ipeaks, *_ = findPeaks(
+            data['Qm'].values,
+            SPIKE_MIN_QAMP,
+            int(np.ceil(SPIKE_MIN_DT / dt)),
+            SPIKE_MIN_QPROM
+        )
+        return ipeaks.size
+
+    def getStabilizationValue(self, data):
+        ''' Determine stabilization value from the charge profile of a simulation output.
+
+            :param data: dataframe containing output time series
+            :return: charge stabilization value (or np.nan if no stabilization detected)
+        '''
+
+        # Extract charge signal posterior to observation window
+        t, Qm = [data[key].values for key in ['t', 'Qm']]
+        Qm = y[2, t > TMIN_STABILIZATION]
+
+        # Compute variation range
+        Qm_range = np.ptp(Qm)
+        logger.debug('%.2f nC/cm2 variation range over the last %.0f ms',
+                     Qm_range * 1e5, TMIN_STABILIZATION * 1e3)
+
+        # Return final value only if stabilization is detected
+        if np.ptp(Qm) < QSS_Q_DIV_THR:
+            return Qm[-1]
+        else:
+            return np.nan
+
+    def isExcited(self, data):
+        ''' Determine if neuron is excited from simulation output.
+
+            :param data: dataframe containing output time series
             :return: boolean stating whether neuron is excited or not
         '''
-        t, y, _ = self.simulate(Astim, tstim, toffset, PRF, DC)
-        dt = t[1] - t[0]
-        ipeaks, *_ = findPeaks(y[0, :], SPIKE_MIN_VAMP, int(np.ceil(SPIKE_MIN_DT / dt)),
-                               SPIKE_MIN_VPROM)
-        nspikes = ipeaks.size
-        logger.debug('A = %sA/m2 ---> %s spike%s detected',
-                     si_format(Astim * 1e-3, 2, space=' '),
-                     nspikes, "s" if nspikes > 1 else "")
-        return nspikes > 0
+        return self.getNSpikes(data) > 0
+
+    def isSilenced(self, data):
+        ''' Determine if neuron is silenced from simulation output.
+
+            :param data: dataframe containing output time series
+            :return: boolean stating whether neuron is silenced or not
+        '''
+        return not np.isinan(self.getStabilizationValue(data))
 
     def titrate(self, tstim, toffset, PRF=None, DC=1.0, Arange=(0., 2 * TITRATION_ESTIM_A_MAX),
                 xfunc=None):
@@ -506,94 +591,3 @@ class PointNeuron(metaclass=abc.ABCMeta):
         if xfunc is None:
             xfunc = self.isExcited
         return titrate(xfunc, (tstim, toffset, PRF, DC), Arange, TITRATION_ESTIM_DA_MAX)
-
-
-    def logNSpikes(self, data):
-        ''' Detect spikes on Qm signal. '''
-        dt = np.diff(data.ix[:1, 't'].values)[0]
-        ipeaks, *_ = findPeaks(
-            data['Qm'].values,
-            SPIKE_MIN_QAMP,
-            int(np.ceil(SPIKE_MIN_DT / dt)),
-            SPIKE_MIN_QPROM
-        )
-        nspikes = ipeaks.size
-        logger.debug('{} spike{} detected'.format(nspikes, 's' if nspikes > 1 else ''))
-
-
-    def run(self, tstim, toffset, PRF=None, DC=1.0, Astim=None):
-        ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
-            and return output data and metadata.
-
-            :param tstim: stimulus duration (s)
-            :param toffset: stimulus offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: stimulus duty cycle (-)
-            :param Astim: stimulus amplitude (mA/m2)
-        '''
-
-        logger.info(
-            '%s: %s @ %st = %ss (%ss offset)%s',
-            self,
-            'titration' if Astim is None else 'simulation',
-            'A = {}A/m2, '.format(si_format(Astim, 2, space=' ')) if Astim is not None else '',
-            *si_format([tstim, toffset], 1, space=' '),
-            (', PRF = {}Hz, DC = {:.2f}%'.format(
-                si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
-
-        if Astim is None:
-            Astim = self.titrate(tstim, toffset, PRF, DC)
-            if np.isnan(Astim):
-                logger.error('Could not find threshold excitation amplitude')
-                return None
-
-        # Run simulation
-        tstart = time.time()
-        t, y, stimstate = self.simulate(Astim, tstim, toffset, PRF, DC)
-        Vm, *channels = y
-        tcomp = time.time() - tstart
-        logger.debug('completed in %ss', si_format(tcomp, 1))
-
-        # Store dataframe and metadata
-        data = pd.DataFrame({
-            't': t,
-            'stimstate': stimstate,
-            'Vm': Vm,
-            'Qm': Vm * self.Cm0 * 1e-3
-        })
-        for j in range(len(self.states)):
-            data[self.states[j]] = channels[j]
-
-        meta = {
-            'neuron': self.name,
-            'Astim': Astim,
-            'tstim': tstim,
-            'toffset': toffset,
-            'PRF': PRF,
-            'DC': DC,
-            'tcomp': tcomp
-        }
-
-        # Log number of detected spikes
-        self.logNSpikes(data)
-
-        return data, meta
-
-    def runAndSave(self, outdir, tstim, toffset, PRF=None, DC=1.0, Astim=None):
-        ''' Run a simulation of the point-neuron Hodgkin-Huxley system with specific parameters,
-            and save the results in a PKL file.
-
-            :param outdir: full path to output directory
-            :param tstim: stimulus duration (s)
-            :param toffset: stimulus offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: stimulus duty cycle (-)
-            :param Astim: stimulus amplitude (mA/m2)
-        '''
-        data, meta = self.run(tstim, toffset, PRF, DC, Astim)
-        simcode = self.filecode(Astim, tstim, PRF, DC)
-        outpath = '{}/{}.pkl'.format(outdir, simcode)
-        with open(outpath, 'wb') as fh:
-            pickle.dump({'meta': meta, 'data': data}, fh)
-        logger.debug('simulation data exported to "%s"', outpath)
-        return outpath

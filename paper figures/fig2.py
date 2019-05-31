@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:15:28
+# @Last Modified time: 2019-05-31 14:25:27
 
 ''' Sub-panels of the model optimization figure. '''
 
@@ -60,10 +60,10 @@ def PmApprox(bls, Z, fs=12, lw=2):
 def recasting(nbls, Fdrive, Adrive, fs=12, lw=2, ps=15):
 
     # Run effective simulation
-    t, y, states = nbls.simulate(Fdrive, Adrive, 5 / Fdrive, 0., method='full')
+    data, _ = nbls.simulate(Fdrive, Adrive, 5 / Fdrive, 0., method='full')
+    t, Qm, Vm = [data[key].values for key in ['t', 'Qm', 'Vm']]
     t *= 1e6  # us
-    Qm = y[2] * 1e5  # nC/cm2
-    Vm = y[3]  # mV
+    Qm *= 1e5  # nC/cm2
     Qrange = (Qm.min(), Qm.max())
     dQ = Qrange[1] - Qrange[0]
 
@@ -116,7 +116,8 @@ def recasting(nbls, Fdrive, Adrive, fs=12, lw=2, ps=15):
 def mechSim(bls, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
 
     # Run mechanical simulation
-    t, (Z, ng), _ = bls.simulate(Fdrive, Adrive, Qm)
+    data, _ = bls.simulate(Fdrive, Adrive, Qm)
+    t, Z, ng = [data[key].values for key in ['t', 'Z', 'ng']]
 
     # Create figure
     fig, ax = plt.subplots(figsize=cm2inch(7, 7))
@@ -162,7 +163,6 @@ def mechSim(bls, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
             horizontalalignment='left', verticalalignment='center')
     ax.scatter([t_plot[-1]], [y_plot[-1]], color=c, s=ps)
 
-
     fig.canvas.set_window_title(figbase + 'c mechsim')
     return fig
 
@@ -170,7 +170,8 @@ def mechSim(bls, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
 def cycleAveraging(bls, neuron, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
 
     # Run mechanical simulation
-    t, (Z, ng), _ = bls.simulate(Fdrive, Adrive, Qm)
+    data, _ = bls.simulate(Fdrive, Adrive, Qm)
+    t, Z, ng = [data[key].values for key in ['t', 'Z', 'ng']]
 
     # Compute variables evolution over last acoustic cycle
     t_last = t[-NPC_FULL:] * 1e6  # us
@@ -227,9 +228,10 @@ def cycleAveraging(bls, neuron, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
 def Qsolution(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC, fs=12, lw=2, ps=15):
 
     # Run effective simulation
-    t, y, states = nbls.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method='sonic')
+    data, _ = nbls.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method='sonic')
+    t, Qm, states = [data[key].values for key in ['t', 'Qm', 'stimstate']]
     t *= 1e3  # ms
-    Qm = y[2] * 1e5  # nC/cm2
+    Qm *= 1e5  # nC/cm2
     _, tpulse_on, tpulse_off = getStimPulses(t, states)
 
     # Add small onset

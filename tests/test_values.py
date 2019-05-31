@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-03 21:00:56
+# @Last Modified time: 2019-05-31 12:31:21
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -39,11 +39,10 @@ def test_MECH():
     Fdrive = 350e3  # Hz
     Adrive = 100e3  # Pa
     Qm = 50e-5  # C/m2
-    _, y, _ = bls.simulate(Fdrive, Adrive, Qm)
+    data, _ = bls.simulate(Fdrive, Adrive, Qm)
 
     # Check validity of deflection extrema
-    Z, _ = y
-    Zlast = Z[-NPC_FULL:]
+    Zlast = data.loc[-NPC_FULL:, 'Z'].values
     Zmin, Zmax = (Zlast.min(), Zlast.max())
     logger.info('Zmin = %.2f nm, Zmax = %.2f nm', Zmin * 1e9, Zmax * 1e9)
     Zmin_ref, Zmax_ref = (-0.116e-9, 5.741e-9)
@@ -71,8 +70,8 @@ def test_resting_potential():
 
         logger.info('%s neuron simulation in free conditions', neuron.name)
 
-        _, y, _ = neuron.simulate(Astim=0.0, tstim=20.0, toffset=0.0)
-        Vm_free, *_ = y
+        data, _ = neuron.simulate(Astim=0.0, tstim=20.0, toffset=0.0)
+        Vm_free = data['Vm'].values
 
         # Check membrane potential convergence
         Vm_free_last, Vm_free_beforelast = (Vm_free[-1], Vm_free[-2])

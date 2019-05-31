@@ -4,10 +4,9 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 03:06:39
+# @Last Modified time: 2019-05-31 14:40:53
 
 from enum import Enum
-import time
 import os
 import json
 import inspect
@@ -16,7 +15,7 @@ import numpy as np
 import pandas as pd
 import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
-from ..utils import logger, rmse, si_format
+from ..utils import logger, si_format
 from ..constants import *
 from .simulators import PeriodicSimulator
 
@@ -136,7 +135,6 @@ class BilayerSonophore:
         self.V0 = np.pi * self.Delta * self.a**2
         self.ng0 = self.gasPa2mol(self.P0, self.V0)
 
-
     def __repr__(self):
         return 'BilayerSonophore({}m, {}F/cm2, {}C/cm2, embedding_depth={}m'.format(
             si_format([self.a, self.Cm0 * 1e-4, self.Qm0 * 1e-4, self.embedding_depth],
@@ -165,7 +163,6 @@ class BilayerSonophore:
         with open(self.getLookupsPath(), 'w') as fh:
             json.dump(lookups, fh, indent=2)
 
-
     def pparams(self):
         s = '-------- Bilayer Sonophore --------\n'
         s += 'class attributes:\n'
@@ -175,8 +172,9 @@ class BilayerSonophore:
             s += '{} = {}\n'.format(ca[0], ca[1])
         s += 'instance attributes:\n'
         inst_attrs = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        inst_attrs = [a for a in inst_attrs if not(a[0].startswith('__') and a[0].endswith('__')) and
-                      a not in class_attrs]
+        inst_attrs = [
+            a for a in inst_attrs if not(a[0].startswith('__') and a[0].endswith('__')) and
+            a not in class_attrs]
         for ia in inst_attrs:
             s += '{} = {}\n'.format(ia[0], ia[1])
         return s
@@ -257,7 +255,6 @@ class BilayerSonophore:
             }
         }
 
-
     def curvrad(self, Z):
         ''' Leaflet curvature radius
             (signed variable)
@@ -270,11 +267,9 @@ class BilayerSonophore:
         else:
             return (self.a**2 + Z**2) / (2 * Z)
 
-
     def v_curvrad(self, Z):
         ''' Vectorized curvrad function '''
         return np.array(list(map(self.curvrad, Z)))
-
 
     def surface(self, Z):
         ''' Surface area of the stretched leaflet
@@ -284,7 +279,6 @@ class BilayerSonophore:
             :return: stretched leaflet surface (m^2)
         '''
         return np.pi * (self.a**2 + Z**2)
-
 
     def volume(self, Z):
         ''' Volume of the inter-leaflet space
@@ -296,7 +290,6 @@ class BilayerSonophore:
         return np.pi * self.a**2 * self.Delta\
             * (1 + (Z / (3 * self.Delta) * (3 + Z**2 / self.a**2)))
 
-
     def arealstrain(self, Z):
         ''' Areal strain of the stretched leaflet
             epsilon = (S - S0)/S0 = (Z/a)^2
@@ -305,7 +298,6 @@ class BilayerSonophore:
             :return: areal strain (dimensionless)
         '''
         return (Z / self.a)**2
-
 
     def Capct(self, Z):
         ''' Membrane capacitance
@@ -321,11 +313,9 @@ class BilayerSonophore:
                     (Z + (self.a**2 - Z**2 - Z * self.Delta) / (2 * Z) *
                      np.log((2 * Z + self.Delta) / self.Delta)))
 
-
     def v_Capct(self, Z):
         ''' Vectorized Capct function '''
         return np.array(list(map(self.Capct, Z)))
-
 
     def derCapct(self, Z, U):
         ''' Evolution of membrane capacitance
@@ -339,7 +329,6 @@ class BilayerSonophore:
                   ((Z**2 + self.a**2) *
                    np.log((2 * Z + self.Delta) / self.Delta)) / (2 * Z**2)))
         return dCmdZ * U
-
 
     def localdef(self, r, Z, R):
         ''' Local leaflet deflection at specific radial distance
@@ -355,7 +344,6 @@ class BilayerSonophore:
         else:
             return np.sign(Z) * (np.sqrt(R**2 - r**2) - np.abs(R) + np.abs(Z))
 
-
     def Pacoustic(self, t, Adrive, Fdrive, phi=np.pi):
         ''' Time-varying acoustic pressure
 
@@ -365,7 +353,6 @@ class BilayerSonophore:
             :param phi: acoustic drive phase (rad)
         '''
         return Adrive * np.sin(2 * np.pi * Fdrive * t - phi)
-
 
     def PMlocal(self, r, Z, R):
         ''' Local intermolecular pressure
@@ -378,7 +365,6 @@ class BilayerSonophore:
         z = self.localdef(r, Z, R)
         relgap = (2 * z + self.Delta) / self.Delta_
         return self.pDelta * ((1 / relgap)**self.m - (1 / relgap)**self.n)
-
 
     def PMavg(self, Z, R, S):
         ''' Average intermolecular pressure across the leaflet
@@ -396,11 +382,9 @@ class BilayerSonophore:
                                    0, self.a, args=(Z, R))
         return fTotal / S
 
-
     def v_PMavg(self, Z, R, S):
         ''' Vectorized PMavg function '''
         return np.array(list(map(self.PMavg, Z, R, S)))
-
 
     def LJfitPMavg(self):
         ''' Determine optimal parameters of a Lennard-Jones expression
@@ -451,7 +435,6 @@ class BilayerSonophore:
         LJ_approx = {"x0": x0_opt, "C": C_opt, "nrep": nrep_opt, "nattr": nattr_opt}
         return (LJ_approx, std_err, max_err)
 
-
     def PMavgpred(self, Z):
         ''' Approximated average intermolecular pressure
             (using nonlinearly fitted Lennard-Jones function)
@@ -461,7 +444,6 @@ class BilayerSonophore:
         '''
         return LennardJones(Z, self.Delta, self.LJ_approx['x0'], self.LJ_approx['C'],
                             self.LJ_approx['nrep'], self.LJ_approx['nattr'])
-
 
     def Pelec(self, Z, Qm):
         ''' Electrical pressure term
@@ -473,7 +455,6 @@ class BilayerSonophore:
         relS = self.S0 / self.surface(Z)
         abs_perm = self.epsilon0 * self.epsilonR  # F/m
         return - relS * Qm**2 / (2 * abs_perm)  # Pa
-
 
     def findDeltaEq(self, Qm):
         ''' Compute the Delta that cancels out the (Pm + Pec) equation at Z = 0
@@ -489,7 +470,6 @@ class BilayerSonophore:
         logger.debug('∆eq = %.2f nm', Delta_eq * 1e9)
         return (Delta_eq, f(Delta_eq))
 
-
     def gasFlux(self, Z, P):
         ''' Gas molar flux through the sonophore boundary layers
 
@@ -500,7 +480,6 @@ class BilayerSonophore:
         dC = self.C0 - P / self.kH
         return 2 * self.surface(Z) * self.Dgl * dC / self.xi
 
-
     def gasmol2Pa(self, ng, V):
         ''' Internal gas pressure for a given molar content
 
@@ -510,7 +489,6 @@ class BilayerSonophore:
         '''
         return ng * Rg * self.T / V
 
-
     def gasPa2mol(self, P, V):
         ''' Internal gas molar content for a given pressure
 
@@ -519,7 +497,6 @@ class BilayerSonophore:
             :return: internal gas molar content (mol)
         '''
         return P * V / (Rg * self.T)
-
 
     def PtotQS(self, Z, ng, Qm, Pac, Pm_comp_method):
         ''' Net quasi-steady pressure for a given acoustic pressure
@@ -538,7 +515,6 @@ class BilayerSonophore:
             Pm = self.PMavgpred(Z)
         return Pm + self.gasmol2Pa(ng, self.volume(Z)) - self.P0 - Pac + self.Pelec(Z, Qm)
 
-
     def balancedefQS(self, ng, Qm, Pac=0.0, Pm_comp_method=PmCompMethod.predict):
         ''' Quasi-steady equilibrium deflection for a given acoustic pressure
             (computed by approximating the root of quasi-steady pressure)
@@ -556,7 +532,6 @@ class BilayerSonophore:
         assert (Plb > 0 > Pub), '[%d, %d] is not a sign changing interval for PtotQS' % (lb, ub)
         return brentq(self.PtotQS, lb, ub, args=(ng, Qm, Pac, Pm_comp_method), xtol=1e-16)
 
-
     def TEleaflet(self, Z):
         ''' Elastic tension in leaflet
 
@@ -564,7 +539,6 @@ class BilayerSonophore:
             :return: circumferential elastic tension (N/m)
         '''
         return self.kA * self.arealstrain(Z)
-
 
     def TEtissue(self, Z):
         ''' Elastic tension in surrounding viscoelastic layer
@@ -574,7 +548,6 @@ class BilayerSonophore:
         '''
         return self.kA_tissue * self.arealstrain(Z)
 
-
     def TEtot(self, Z):
         ''' Total elastic tension (leaflet + surrounding viscoelastic layer)
 
@@ -582,7 +555,6 @@ class BilayerSonophore:
             :return: circumferential elastic tension (N/m)
         '''
         return self.TEleaflet(Z) + self.TEtissue(Z)
-
 
     def PEtot(self, Z, R):
         ''' Total elastic tension pressure (leaflet + surrounding viscoelastic layer)
@@ -593,7 +565,6 @@ class BilayerSonophore:
         '''
         return - self.TEtot(Z) / R
 
-
     def PVleaflet(self, U, R):
         ''' Viscous stress pressure in leaflet
 
@@ -602,7 +573,6 @@ class BilayerSonophore:
             :return: leaflet viscous stress pressure (Pa)
         '''
         return - 12 * U * self.delta0 * self.muS / R**2
-
 
     def PVfluid(self, U, R):
         ''' Viscous stress pressure in surrounding medium
@@ -613,7 +583,6 @@ class BilayerSonophore:
         '''
         return - 4 * U * self.muL / np.abs(R)
 
-
     def accP(self, Ptot, R):
         ''' Leaflet transverse acceleration resulting from pressure imbalance
 
@@ -622,7 +591,6 @@ class BilayerSonophore:
             :return: pressure-driven acceleration (m/s^2)
         '''
         return Ptot / (self.rhoL * np.abs(R))
-
 
     def accNL(self, U, R):
         ''' Leaflet transverse nonlinear acceleration
@@ -636,7 +604,6 @@ class BilayerSonophore:
             '''
         # return - (3/2 - 2*R/H) * U**2 / R
         return -(3 * U**2) / (2 * R)
-
 
     def derivatives(self, y, t, Adrive, Fdrive, Qm, phi, Pm_comp_method=PmCompMethod.predict):
         ''' Evolution of the mechanical system
@@ -679,7 +646,6 @@ class BilayerSonophore:
         # Return derivatives vector
         return [dUdt, dZdt, dngdt]
 
-
     def checkInputs(self, Fdrive, Adrive, Qm, phi):
         ''' Check validity of stimulation parameters
 
@@ -703,17 +669,20 @@ class BilayerSonophore:
             raise ValueError('Invalid US pressure phase: {:.2f} rad (must be within [0, 2 PI[ rad'
                              .format(phi))
 
-
     def simulate(self, Fdrive, Adrive, Qm, phi=np.pi, Pm_comp_method=PmCompMethod.predict):
-        ''' Simulate mechanical system until prediodic stabilization
+        ''' Simulate system until periodic stabilization for a specific set of ultrasound parameters,
+            and return output data in a dataframe.
 
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
             :param phi: acoustic drive phase (rad)
             :param Qm: imposed membrane charge density (C/m2)
             :param Pm_comp_method: type of method used to compute average intermolecular pressure
-            :return: 3-tuple with the time profile, the solution matrix and a state vector
+            :return: 2-tuple with the output dataframe and computation time.
         '''
+
+        logger.info('%s: simulation @ f = %sHz, A = %sPa, Q = %sC/cm2',
+                    self.pprint(), *si_format([Fdrive, Adrive, Qm * 1e-4], 2, space=' '))
 
         # Check validity of stimulation parameters
         self.checkInputs(Fdrive, Adrive, Qm, phi)
@@ -731,43 +700,34 @@ class BilayerSonophore:
         # Initialize simulator and compute solution
         simulator = PeriodicSimulator(
             lambda y, t: self.derivatives(y, t, Adrive, Fdrive, Qm, phi, Pm_comp_method),
-            ivars_to_check=[1, 2]
-        )
-        t, y, stim = simulator.compute(y0, dt, Fdrive)
+            ivars_to_check=[1, 2])
+        (t, y, stim), tcomp = simulator(y0, dt, Fdrive, monitor_time=True)
+        logger.debug('completed in %ss', si_format(tcomp, 1))
 
         # Set last stimulation state to zero
         stim[-1] = 0
 
-        # Return output variables
-        return t, y[:, 1:].T, stim
+        # Store output in dataframe
+        data = pd.DataFrame({
+            't': t,
+            'stimstate': stim,
+            'Z': y[:, 1],
+            'ng': y[:, 2]
+        })
 
+        # Return dataframe and computation time
+        return data, tcomp
 
-    def run(self, Fdrive, Adrive, Qm):
-        ''' Simulate mechanical system and return output data and metadata in a dictionary.
+    def runAndSave(self, outdir, Fdrive, Adrive, Qm):
+        ''' Simulate system and save results in a PKL file.
 
+            :param outdir: full path to output directory
             :param Fdrive: US frequency (Hz)
             :param Adrive: acoustic pressure amplitude (Pa)
             :param Qm: applied membrane charge density (C/m2)
+            :return: full path to the data file
         '''
-
-        logger.info('%s: simulation @ f = %sHz, A = %sPa, Q = %sC/cm2',
-                    self.pprint(), *si_format([Fdrive, Adrive, Qm * 1e-4], 2, space=' '))
-
-        # Run simulation
-        tstart = time.time()
-        (t, y, stimstate) = self.simulate(Fdrive, Adrive, Qm)
-        (Z, ng) = y
-        tcomp = time.time() - tstart
-        logger.debug('completed in %s', si_format(tcomp, 1))
-
-        # Store dataframe and metadata
-        data = pd.DataFrame({
-            't': t,
-            'stimstate': stimstate,
-            'Z': Z,
-            'ng': ng
-        })
-
+        data, tcomp = self.simulate(Fdrive, Adrive, Qm)
         meta = {
             'a': self.a,
             'd': self.d,
@@ -779,19 +739,6 @@ class BilayerSonophore:
             'Qm': Qm,
             'tcomp': tcomp
         }
-
-        return data, meta
-
-
-    def runAndSave(self, outdir, Fdrive, Adrive, Qm):
-        ''' Simulate mechanical system and save results in a PKL file.
-
-            :param outdir: full path to output directory
-            :param Fdrive: US frequency (Hz)
-            :param Adrive: acoustic pressure amplitude (Pa)
-            :param Qm: applied membrane charge density (C/m2)
-        '''
-        data, meta = self.run(Fdrive, Adrive, Qm)
         simcode = self.filecode(Fdrive, Adrive, Qm)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
@@ -812,12 +759,12 @@ class BilayerSonophore:
         # Run default simulation and compute relevant profiles
         logger.info('Running mechanical simulation (a = %sm, f = %sHz, A = %sPa)',
                     si_format(self.a, 1), si_format(Fdrive, 1), si_format(Adrive, 1))
-        t, y, _ = self.simulate(Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.direct)
-        dt = (t[-1] - t[0]) / (t.size - 1)
-        Z, ng = y[:, -NPC_FULL:]
-        t = t[-NPC_FULL:]
+        data, tcomp = self.simulate(Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.direct)
+        t, Z, ng = [data.loc[-NPC_FULL:, key].values for key in ['t', 'Z', 'ng']]
+        dt = (t[-1] - t[0]) / (NPC_FULL - 1)
         t -= t[0]
 
+        # Compute pressure cyclic profiles
         logger.info('Computing pressure cyclic profiles')
         R = self.v_curvrad(Z)
         U = np.diff(Z) / dt

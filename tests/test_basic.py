@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-29 16:18:19
+# @Last Modified time: 2019-05-31 14:39:42
 
 ''' Test the basic functionalities of the package. '''
 
@@ -19,6 +19,20 @@ from argparse import ArgumentParser
 from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 from PySONIC.utils import logger
 from PySONIC.neurons import *
+
+
+def execute(func_str, globals, locals, is_profiled):
+    ''' Execute function with or without profiling. '''
+    if is_profiled:
+        pfile = 'tmp.stats'
+        cProfile.runctx(func_str, globals, locals, pfile)
+        stats = pstats.Stats(pfile)
+        os.remove(pfile)
+        stats.strip_dirs()
+        stats.sort_stats('cumulative')
+        stats.print_stats()
+    else:
+        eval(func_str, globals, locals)
 
 
 def test_MECH(is_profiled=False):
@@ -37,17 +51,7 @@ def test_MECH(is_profiled=False):
     Qm = 50e-5  # C/m2
 
     # Run simulation
-    if is_profiled:
-        pfile = 'tmp.stats'
-        cProfile.runctx('bls.run(Fdrive, Adrive, Qm)', globals(), locals(), pfile)
-        stats = pstats.Stats(pfile)
-        os.remove(pfile)
-        stats.strip_dirs()
-        stats.sort_stats('cumulative')
-        stats.print_stats()
-    else:
-        bls.simulate(Fdrive, Adrive, Qm)
-
+    execute('bls.simulate(Fdrive, Adrive, Qm)', globals(), locals(), is_profiled)
 
 
 def test_ESTIM(is_profiled=False):
@@ -64,18 +68,7 @@ def test_ESTIM(is_profiled=False):
     toffset = 50e-3  # s
 
     # Run simulation
-    if is_profiled:
-        pfile = 'tmp.stats'
-        cProfile.runctx('solver.run(neuron, Astim, tstim, toffset)',
-                        globals(), locals(), pfile)
-        stats = pstats.Stats(pfile)
-        os.remove(pfile)
-        stats.strip_dirs()
-        stats.sort_stats('cumulative')
-        stats.print_stats()
-    else:
-        neuron.simulate(Astim, tstim, toffset)
-        neuron.simulate(Astim, tstim, toffset, PRF=100.0, DC=0.05)
+    execute('neuron.simulate(Astim, tstim, toffset)', globals(), locals(), is_profiled)
 
 
 def test_ASTIM_sonic(is_profiled=False):
@@ -93,43 +86,30 @@ def test_ASTIM_sonic(is_profiled=False):
     tstim = 50e-3  # s
     toffset = 10e-3  # s
 
-    # Run simulation
-    if is_profiled:
-        nbls = NeuronalBilayerSonophore(a, neuron)
-        pfile = 'tmp.stats'
-        cProfile.runctx("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')",
-                        globals(), locals(), pfile)
-        stats = pstats.Stats(pfile)
-        os.remove(pfile)
-        stats.strip_dirs()
-        stats.sort_stats('cumulative')
-        stats.print_stats()
-    else:
-        # test error 1: sonophore radius outside of lookup range
-        try:
-            nbls = NeuronalBilayerSonophore(100e-9, neuron)
-            nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
-        except ValueError as err:
-            logger.debug('Out of range radius: OK')
-
-        # test error 2: frequency outside of lookups range
-        try:
-            nbls = NeuronalBilayerSonophore(a, neuron)
-            nbls.simulate(10e3, Adrive, tstim, toffset, method='sonic')
-        except ValueError as err:
-            logger.debug('Out of range frequency: OK')
-
-        # test error 3: amplitude outside of lookups range
-        try:
-            nbls = NeuronalBilayerSonophore(a, neuron)
-            nbls.simulate(Fdrive, 1e6, tstim, toffset, method='sonic')
-        except ValueError as err:
-            logger.debug('Out of range amplitude: OK')
-
-        # test: normal stimulation completion (CW and PW)
-        nbls = NeuronalBilayerSonophore(a, neuron)
+    # test error 1: sonophore radius outside of lookup range
+    try:
+        nbls = NeuronalBilayerSonophore(100e-9, neuron)
         nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
-        nbls.simulate(Fdrive, Adrive, tstim, toffset, PRF=100.0, DC=0.05, method='sonic')
+    except ValueError as err:
+        logger.debug('Out of range radius: OK')
+
+    # test error 2: frequency outside of lookups range
+    try:
+        nbls = NeuronalBilayerSonophore(a, neuron)
+        nbls.simulate(10e3, Adrive, tstim, toffset, method='sonic')
+    except ValueError as err:
+        logger.debug('Out of range frequency: OK')
+
+    # test error 3: amplitude outside of lookups range
+    try:
+        nbls = NeuronalBilayerSonophore(a, neuron)
+        nbls.simulate(Fdrive, 1e6, tstim, toffset, method='sonic')
+    except ValueError as err:
+        logger.debug('Out of range amplitude: OK')
+
+    # Run simulation
+    execute("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')",
+            globals(), locals(), is_profiled)
 
 
 def test_ASTIM_full(is_profiled=False):
@@ -149,17 +129,8 @@ def test_ASTIM_full(is_profiled=False):
     toffset = 1e-6  # s
 
     # Run simulation
-    if is_profiled:
-        pfile = 'tmp.stats'
-        cProfile.runctx("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='full')",
-                        globals(), locals(), pfile)
-        stats = pstats.Stats(pfile)
-        os.remove(pfile)
-        stats.strip_dirs()
-        stats.sort_stats('cumulative')
-        stats.print_stats()
-    else:
-        nbls.simulate(Fdrive, Adrive, tstim, toffset, method='full')
+    execute("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='full')",
+            globals(), locals(), is_profiled)
 
 
 def test_ASTIM_hybrid(is_profiled=False):
@@ -179,17 +150,8 @@ def test_ASTIM_hybrid(is_profiled=False):
     toffset = 1e-3  # s
 
     # Run simulation
-    if is_profiled:
-        pfile = 'tmp.stats'
-        cProfile.runctx("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')",
-                        globals(), locals(), pfile)
-        stats = pstats.Stats(pfile)
-        os.remove(pfile)
-        stats.strip_dirs()
-        stats.sort_stats('cumulative')
-        stats.print_stats()
-    else:
-        nbls.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')
+    execute("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')",
+            globals(), locals(), is_profiled)
 
 
 def test_all():
