@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 13:34:46
+# @Last Modified time: 2019-05-31 15:23:40
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -56,6 +56,7 @@ def main():
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
     tstim = 1  # s
+    toffset = 0.  # s
     PRF = 1e2
     DC = 1.
     nbls = NeuronalBilayerSonophore(a, neuron)
@@ -68,7 +69,7 @@ def main():
 
     # convert to amplitudes and get filepaths
     amplitudes = Intensity2Pressure(intensities)  # Pa
-    fnames = ['{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, PRF, DC, 'sonic'))
+    fnames = ['{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, toffset, PRF, DC, 'sonic'))
               for A in amplitudes]
     fpaths = [os.path.join(inputdir, 'STN', fn) for fn in fnames]
 

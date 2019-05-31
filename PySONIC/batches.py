@@ -2,12 +2,13 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:09:27
+# @Last Modified time: 2019-05-31 15:19:22
 
 ''' Utility functions used in simulations '''
 
 import os
 import lockfile
+import pickle
 import logging
 import multiprocessing as mp
 import numpy as np
@@ -82,11 +83,11 @@ def createQueue(dims):
     return queue.tolist()
 
 
-# def runAndSave(self, outdir, Fdrive, Adrive, Qm):
-#     data, tcomp = self.simulate(Fdrive, Adrive, Qm)
-#     meta = self.meta(Fdrive, Adrive, Qm)
+# def runAndSave(self, outdir, obj, args):
+#     data, tcomp = obj.simulate(*args)
+#     meta = obj.meta(*args)
 #     meta['tcomp'] = tcomp
-#     simcode = self.filecode(Fdrive, Adrive, Qm)
+#     simcode = obj.filecode(*args)
 #     outpath = '{}/{}.pkl'.format(outdir, simcode)
 #     with open(outpath, 'wb') as fh:
 #         pickle.dump({'meta': meta, 'data': data}, fh)

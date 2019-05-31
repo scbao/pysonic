@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 13:41:37
+# @Last Modified time: 2019-05-31 15:22:32
 
 ''' Sub-panels of (duty-cycle x amplitude) US activation maps and related Q-V traces. '''
 
@@ -46,7 +46,7 @@ def plot_traces(inputdir, neuron, a, Fdrive, Adrive, tstim, PRF, DC, tmax, Vboun
     subdir = os.path.join(inputdir, mapcode)
     neuronobj = getNeuronsDict()[neuron]()
     nbls = NeuronalBilayerSonophore(a, neuronobj)
-    fname = '{}.pkl'.format(nbls.filecode(Fdrive, Adrive, tstim, PRF, DC, 'sonic'))
+    fname = '{}.pkl'.format(nbls.filecode(Fdrive, Adrive, tstim, 0., PRF, DC, 'sonic'))
     fpath = os.path.join(subdir, fname)
     fig = plotQVeff(fpath, tmax=tmax, ybounds=Vbounds)
     figcode = '{} VQ trace {} {:.1f}kPa {:.0f}%DC'.format(prefix, neuron, Adrive * 1e-3, DC * 1e2)

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 15:44:30
+# @Last Modified time: 2019-05-31 15:26:49
 
 import os
 import ntpath
@@ -55,7 +55,7 @@ class ActivationMap:
         for i, A in enumerate(amps):
             for j, DC in enumerate(DCs):
 
-                fname = '{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, PRF, DC, 'sonic'))
+                fname = '{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, 0., PRF, DC, 'sonic'))
                 fpath = os.path.join(root, fname)
 
                 if not os.path.isfile(fpath):
@@ -106,7 +106,7 @@ class ActivationMap:
 
         # Define filepath
         fname = '{}.pkl'.format(self.nbls.filecode(
-            self.Fdrive, Adrive, self.tstim, self.PRF, DC, 'sonic'))
+            self.Fdrive, Adrive, self.tstim, 0., self.PRF, DC, 'sonic'))
         fpath = os.path.join(self.root, fname)
 
         # Plot Q-trace
@@ -272,7 +272,7 @@ def getActivationMap(root, nbls, Fdrive, tstim, PRF, amps, DCs):
     nfiles = DCs.size * amps.size
     for i, A in enumerate(amps):
         for j, DC in enumerate(DCs):
-            fname = '{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, PRF, DC, 'sonic'))
+            fname = '{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, 0., PRF, DC, 'sonic'))
             fpath = os.path.join(root, fname)
 
             if not os.path.isfile(fpath):
@@ -325,7 +325,7 @@ def onClick(event, root, nbls, Fdrive, tstim, PRF, amps, DCs, meshedges, tmax, V
     Adrive = amps[np.searchsorted(meshedges[1], y * 1e3) - 1]
 
     # Define filepath
-    fname = '{}.pkl'.format(nbls.filecode(Fdrive, Adrive, tstim, PRF, DC, 'sonic'))
+    fname = '{}.pkl'.format(nbls.filecode(Fdrive, Adrive, tstim, 0., PRF, DC, 'sonic'))
     filepath = os.path.join(root, fname)
 
     # Plot Q-trace

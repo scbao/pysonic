@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 13:45:49
+# @Last Modified time: 2019-05-31 15:25:24
 
 ''' Script to study STN transitions between different behavioral regimesl. '''
 
@@ -32,7 +32,7 @@ logger.setLevel(logging.INFO)
 def getChargeStabilizationFromSims(inputdir, nbls, Fdrive, amps, tstim, PRF=100, DC=1.0):
 
     # Get filenames
-    fnames = ['{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, PRF, DC, 'sonic'))
+    fnames = ['{}.pkl'.format(nbls.filecode(Fdrive, A, tstim, 0., PRF, DC, 'sonic'))
               for A in amps]
 
     # Initialize output arrays

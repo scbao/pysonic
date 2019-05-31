@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:45:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 13:34:25
+# @Last Modified time: 2019-05-31 15:23:57
 
 import os
 import numpy as np
@@ -64,8 +64,8 @@ def getSims(outdir, neuron, a, queue):
     neuronobj = getNeuronsDict()[neuron]()
     nbls = NeuronalBilayerSonophore(a, neuronobj)
     for i, item in enumerate(queue):
-        Fdrive, tstim, _, PRF, DC, Adrive, method = item
-        fcode = nbls.filecode(Fdrive, Adrive, tstim, PRF, DC, method)
+        Fdrive, tstim, toffset, PRF, DC, Adrive, method = item
+        fcode = nbls.filecode(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
         fpath = os.path.join(outdir, '{}.pkl'.format(fcode))
         if not os.path.isfile(fpath):
             print(fpath, 'does not exist')

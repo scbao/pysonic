@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:12:41
+# @Last Modified time: 2019-05-31 15:24:12
 
 from copy import deepcopy
 import logging
@@ -67,7 +67,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     def getPltScheme(self):
         return self.neuron.getPltScheme()
 
-    def filecode(self, Fdrive, Adrive, tstim, PRF, DC, method):
+    def filecode(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method):
         return 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.2f}kPa_{:.0f}ms_{}{}'.format(
             self.neuron.name, 'CW' if DC == 1 else 'PW', self.a * 1e9,
             Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
@@ -453,7 +453,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         data, tcomp = self.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
         meta = self.meta(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
         meta['tcomp'] = tcomp
-        simcode = self.filecode(Fdrive, Adrive, tstim, PRF, DC, method)
+        simcode = self.filecode(Fdrive, Adrive, tstim, toffset, PRF, DC, method)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': data}, fh)

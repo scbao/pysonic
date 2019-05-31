@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:08:49
+# @Last Modified time: 2019-05-31 15:24:22
 
 import pickle
 import abc
@@ -552,7 +552,7 @@ class PointNeuron(metaclass=abc.ABCMeta):
         data, tcomp = self.simulate(Astim, tstim, toffset, PRF, DC)
         meta = self.meta(Astim, tstim, toffset, PRF, DC)
         meta['tcomp'] = tcomp
-        simcode = self.filecode(Astim, tstim, PRF, DC)
+        simcode = self.filecode(Astim, tstim, toffset, PRF, DC)
         outpath = '{}/{}.pkl'.format(outdir, simcode)
         with open(outpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': data}, fh)
