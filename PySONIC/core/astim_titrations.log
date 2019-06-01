@@ -1,0 +1,1 @@
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, 0.06, 0.05, 100.0, 1.0, 'sonic')	46270.75195312497

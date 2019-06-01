@@ -4,14 +4,14 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 16:27:32
+# @Last Modified time: 2019-06-01 16:46:31
 
 import pickle
 import abc
 import inspect
 import numpy as np
 
-from ..utils import logger, debug
+from ..utils import logger
 
 
 class Model(metaclass=abc.ABCMeta):

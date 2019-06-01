@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 16:30:07
+# @Last Modified time: 2019-06-01 16:49:00
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -713,7 +713,6 @@ def cache(fpath, delimiter='\t', out_type=float):
     return wrapper_with_args
 
 
-# @cache(titrations_logfile)
 def binarySearch(bool_func, args, ix, xbounds, dx_thr, history=None):
     ''' Use a binary search to determine the threshold satisfying a given condition
         within a continuous search interval.
