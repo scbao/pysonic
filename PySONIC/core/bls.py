@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:59:34
+# @Last Modified time: 2019-06-01 17:17:25
 
 from enum import Enum
 import os
@@ -703,7 +703,7 @@ class BilayerSonophore(Model):
         simulator = PeriodicSimulator(
             lambda y, t: self.derivatives(y, t, Adrive, Fdrive, Qm, phi, Pm_comp_method),
             ivars_to_check=[1, 2])
-        (t, y, stim), tcomp = simulator(y0, dt, Fdrive, monitor_time=True)
+        (t, y, stim), tcomp = simulator(y0, dt, 1. / Fdrive, monitor_time=True)
         logger.debug('completed in %ss', si_format(tcomp, 1))
 
         # Set last stimulation state to zero

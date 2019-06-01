@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 16:47:24
+# @Last Modified time: 2019-06-01 17:18:01
 
 from copy import deepcopy
 import logging
@@ -284,7 +284,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             is_dense_var,
             ivars_to_check=[1, 2])
         (t, y, stim), tcomp = simulator(
-            y0, dt_dense, dt_sparse, Fdrive, tstim, toffset, PRF, DC,
+            y0, dt_dense, dt_sparse, 1. / Fdrive, tstim, toffset, PRF, DC,
             monitor_time=True)
         logger.debug('completed in %ss', si_format(tcomp, 1))
 
