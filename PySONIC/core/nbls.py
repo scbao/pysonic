@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 17:18:01
+# @Last Modified time: 2019-06-01 19:51:26
 
 from copy import deepcopy
 import logging
@@ -183,6 +183,48 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Return dataframe and computation time
         return data, tcomp
+
+    def computeEffVars(self, Fdrive, Adrive, Qm, fs):
+        ''' Compute "effective" coefficients of the HH system for a specific
+            combination of stimulus frequency, stimulus amplitude and charge density.
+
+            A short mechanical simulation is run while imposing the specific charge density,
+            until periodic stabilization. The HH coefficients are then averaged over the last
+            acoustic cycle to yield "effective" coefficients.
+
+            :param Fdrive: acoustic drive frequency (Hz)
+            :param Adrive: acoustic drive amplitude (Pa)
+            :param Qm: imposed charge density (C/m2)
+            :param fs: list of sonophore membrane coverage fractions
+            :return: list with computation time and a list of dictionaries of effective variables
+        '''
+
+        # Run simulation and retrieve deflection and gas content vectors from last cycle
+        data, tcomp = BilayerSonophore.simulate(self, Fdrive, Adrive, Qm)
+        Z_last = data.loc[-NPC_FULL:, 'Z'].values  # m
+        Cm_last = self.v_Capct(Z_last)  # F/m2
+
+        # For each coverage fraction
+        effvars = []
+        for x in fs:
+            # Compute membrane capacitance and membrane potential vectors
+            Cm = x * Cm_last + (1 - x) * self.Cm0  # F/m2
+            Vm = Qm / Cm * 1e3  # mV
+
+            # Compute average cycle value for membrane potential and rate constants
+            effvars.append({'V': np.mean(Vm)})
+            effvars[-1].update(self.neuron.computeEffRates(Vm))
+
+        # Log process
+        log = '{}: lookups @ {}Hz, {}Pa, {:.2f} nC/cm2'.format(
+            self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5)
+        if len(fs) > 1:
+            log += ', fs = {:.0f} - {:.0f}%'.format(fs.min() * 1e2, fs.max() * 1e2)
+        log += ', tcomp = {:.3f} s'.format(tcomp)
+        logger.info(log)
+
+        # Return effective coefficients
+        return [tcomp, effvars]
 
     def runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC):
         ''' Compute solutions of the system for a specific set of
@@ -465,8 +507,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Return reference inputs and outputs
         return amps, charges, lookups, QSS
 
-
-    def quasiSteadyStateiNet(self, Qm, Fdrive, Adrive, DC):
+    def iNetQSS(self, Qm, Fdrive, Adrive, DC):
         ''' Compute quasi-steady state net membrane current for a given combination
             of US parameters and a given membrane charge density.
 
@@ -493,50 +534,59 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
 
         # Initialize y0 vector
-        t0 = 0.
+        # t0 = 0.
         y0 = np.array([Qm0] + list(states0.values()))
 
-        # Initializing empty list to record evolution of charge deviation
-        n = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)  # size of history
-        dQ = []
+        # Initialize simulator and compute solution
+        simulator = PeriodicSimulator(
+            lambda y, t: self.effDerivatives(y, t, lkp),
+            ivars_to_check=[0])
+        simulator.stopfunc = simulator.isAsymptoticallyStable
+        nmax = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)
+        t, y, stim = simulator.compute(y0, DT_EFF, QSS_INTEGRATION_INTERVAL, nmax=nmax)
+        logger.debug('completed in %ss', si_format(tcomp, 1))
+        conv = t[-1] < QSS_HISTORY_INTERVAL
 
-        # As long as there is no clear charge convergence or divergence
-        conv, div = False, False
-        tf, yf = t0, y0
-        while not conv and not div:
+        # # Initializing empty list to record evolution of charge deviation
+        # n = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)  # size of history
+        # dQ = []
 
-            # Integrate system for small interval and retrieve final charge deviation
-            t0, y0 = tf, yf
-            sol = solve_ivp(
-                lambda t, y: self.effDerivatives(y, t, lkp),
-                [t0, t0 + QSS_INTEGRATION_INTERVAL], y0,
-                method='LSODA'
-            )
-            tf, yf = sol.t[-1], sol.y[:, -1]
-            dQ.append(yf[0] - Qm0)
+        # # As long as there is no clear charge convergence or divergence
+        # conv, div = False, False
+        # tf, yf = t0, y0
+        # while not conv and not div:
 
-            # logger.debug('{:.0f} ms: dQ = {:.5f} nC/cm2, avg dQ = {:.5f} nC/cm2'.format(
-            #     tf * 1e3, dQ[-1] * 1e5, np.mean(dQ[-n:]) * 1e5))
+        #     # Integrate system for small interval and retrieve final charge deviation
+        #     t0, y0 = tf, yf
+        #     sol = solve_ivp(
+        #         lambda t, y: self.effDerivatives(y, t, lkp),
+        #         [t0, t0 + QSS_INTEGRATION_INTERVAL], y0,
+        #         method='LSODA'
+        #     )
+        #     tf, yf = sol.t[-1], sol.y[:, -1]
+        #     dQ.append(yf[0] - Qm0)
 
-            # If last charge deviation is too large -> divergence
-            if np.abs(dQ[-1]) > QSS_Q_DIV_THR:
-                div = True
+        #     # logger.debug('{:.0f} ms: dQ = {:.5f} nC/cm2, avg dQ = {:.5f} nC/cm2'.format(
+        #     #     tf * 1e3, dQ[-1] * 1e5, np.mean(dQ[-n:]) * 1e5))
 
-            # If last charge deviation or average deviation in recent history
-            # is small enough -> convergence
-            for x in [dQ[-1], np.mean(dQ[-n:])]:
-                if np.abs(x) < QSS_Q_CONV_THR:
-                    conv = True
+        #     # If last charge deviation is too large -> divergence
+        #     if np.abs(dQ[-1]) > QSS_Q_DIV_THR:
+        #         div = True
 
-            # If max integration duration is been reached -> error
-            if tf > QSS_MAX_INTEGRATION_DURATION:
-                raise ValueError('too many iterations')
+        #     # If last charge deviation or average deviation in recent history
+        #     # is small enough -> convergence
+        #     for x in [dQ[-1], np.mean(dQ[-n:])]:
+        #         if np.abs(x) < QSS_Q_CONV_THR:
+        #             conv = True
 
-        logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
-            {True: 'con', False: 'di'}[conv], tf * 1e3, dQ[-1] * 1e5))
+        #     # If max integration duration is been reached -> error
+        #     if tf > QSS_MAX_INTEGRATION_DURATION:
+        #         raise ValueError('too many iterations')
+
+        # logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
+        #     {True: 'con', False: 'di'}[conv], tf * 1e3, dQ[-1] * 1e5))
 
         return conv
-
 
     def quasiSteadyStateFixedPoints(self, Fdrive, Adrive, DC, lkp, dQdt):
         ''' Compute QSS fixed points along the charge dimension for a given combination
@@ -553,7 +603,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         logger.debug('A = {:.2f} kPa, DC = {:.0f}%'.format(Adrive * 1e-3, DC * 1e2))
 
         # Extract stable and unstable fixed points from QSS charge variation profile
-        dfunc = lambda Qm: - self.quasiSteadyStateiNet(Qm, Fdrive, Adrive, DC)
+        dfunc = lambda Qm: - self.iNetQSS(Qm, Fdrive, Adrive, DC)
         SFP_candidates = getFixedPoints(lkp['Q'], dQdt, filter='stable', der_func=dfunc).tolist()
         UFPs = getFixedPoints(lkp['Q'], dQdt, filter='unstable', der_func=dfunc).tolist()
         SFPs = []
@@ -611,88 +661,3 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                     '' if is_stable_FP else ', caused by {} states'.format(unstable_states)))
 
             return SFPs, UFPs
-
-
-    def findRheobaseAmps(self, DCs, Fdrive, Vthr):
-        ''' Find the rheobase amplitudes (i.e. threshold acoustic amplitudes of infinite duration
-            that would result in excitation) of a specific neuron for various duty cycles.
-
-            :param DCs: duty cycles vector (-)
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param Vthr: threshold membrane potential above which the neuron necessarily fires (mV)
-            :return: rheobase amplitudes vector (Pa)
-        '''
-
-        # Get threshold charge from neuron's spike threshold parameter
-        Qthr = self.neuron.Cm0 * Vthr * 1e-3  # C/m2
-
-        # Get QSS variables for each amplitude at threshold charge
-        Aref, _, Vmeff, QS_states = self.quasiSteadyStates(Fdrive, charges=Qthr, DCs=DCs)
-
-        if DCs.size == 1:
-            QS_states = QS_states.reshape((*QS_states.shape, 1))
-            Vmeff = Vmeff.reshape((*Vmeff.shape, 1))
-
-        # Compute 2D QSS charge variation array at Qthr
-        dQdt = -self.neuron.iNet(Vmeff, QS_states)
-
-        # Find the threshold amplitude that cancels dQdt for each duty cycle
-        Arheobase = np.array([np.interp(0, dQdt[:, i], Aref, left=0., right=np.nan)
-                              for i in range(DCs.size)])
-
-        # Check if threshold amplitude is found for all DCs
-        inan = np.where(np.isnan(Arheobase))[0]
-        if inan.size > 0:
-            if inan.size == Arheobase.size:
-                logger.error(
-                    'No rheobase amplitudes within [%s - %sPa] for the provided duty cycles',
-                    *si_format((Aref.min(), Aref.max())))
-            else:
-                minDC = DCs[inan.max() + 1]
-                logger.warning(
-                    'No rheobase amplitudes within [%s - %sPa] below %.1f%% duty cycle',
-                    *si_format((Aref.min(), Aref.max())), minDC * 1e2)
-
-        return Arheobase, Aref
-
-    def computeEffVars(self, Fdrive, Adrive, Qm, fs):
-        ''' Compute "effective" coefficients of the HH system for a specific
-            combination of stimulus frequency, stimulus amplitude and charge density.
-
-            A short mechanical simulation is run while imposing the specific charge density,
-            until periodic stabilization. The HH coefficients are then averaged over the last
-            acoustic cycle to yield "effective" coefficients.
-
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param Adrive: acoustic drive amplitude (Pa)
-            :param Qm: imposed charge density (C/m2)
-            :param fs: list of sonophore membrane coverage fractions
-            :return: list with computation time and a list of dictionaries of effective variables
-        '''
-
-        # Run simulation and retrieve deflection and gas content vectors from last cycle
-        data, tcomp = BilayerSonophore.simulate(self, Fdrive, Adrive, Qm)
-        Z_last = data.loc[-NPC_FULL:, 'Z'].values  # m
-        Cm_last = self.v_Capct(Z_last)  # F/m2
-
-        # For each coverage fraction
-        effvars = []
-        for x in fs:
-            # Compute membrane capacitance and membrane potential vectors
-            Cm = x * Cm_last + (1 - x) * self.Cm0  # F/m2
-            Vm = Qm / Cm * 1e3  # mV
-
-            # Compute average cycle value for membrane potential and rate constants
-            effvars.append({'V': np.mean(Vm)})
-            effvars[-1].update(self.neuron.computeEffRates(Vm))
-
-        # Log process
-        log = '{}: lookups @ {}Hz, {}Pa, {:.2f} nC/cm2'.format(
-            self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5)
-        if len(fs) > 1:
-            log += ', fs = {:.0f} - {:.0f}%'.format(fs.min() * 1e2, fs.max() * 1e2)
-        log += ', tcomp = {:.3f} s'.format(tcomp)
-        logger.info(log)
-
-        # Return effective coefficients
-        return [tcomp, effvars]

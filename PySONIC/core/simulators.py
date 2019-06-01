@@ -2,10 +2,11 @@
 # @Author: Theo Lemaire
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 17:16:31
+# @Last Modified time: 2019-06-01 19:45:34
 
 import abc
 import numpy as np
+import nolds
 from scipy.integrate import ode, odeint
 from tqdm import tqdm
 
@@ -22,7 +23,10 @@ class Simulator(metaclass=abc.ABCMeta):
             :param y0: vector of initial conditions
             :return: 3-tuple with the initialized time vector, solution matrix and state vector
         '''
-        return np.array([0.]), np.atleast_2d(y0), np.array([1])
+        t = np.array([0.])
+        y = np.atleast_2d(y0)
+        stim = np.array([1])
+        return t, y, stim
 
     def appendSolution(self, t, y, stim, tnew, ynew, is_on):
         ''' Append to time vector, solution matrix and state vector.
@@ -94,19 +98,19 @@ class Simulator(metaclass=abc.ABCMeta):
 
 class PeriodicSimulator(Simulator):
 
-    def __init__(self, dfunc, convfunc=None, ivars_to_check=None):
-        ''' Initialize simulator with specific derivative function
+    def __init__(self, dfunc, stopfunc=None, ivars_to_check=None):
+        ''' Initialize simulator with specific derivative and stop functions
 
             :param dfunc: derivative function
-            :param convfunc: function estimating convergence
+            :param stopfunc: function estimating stopping criterion
             :param ivars_to_check: solution indexes of variables to check for stability
         '''
         self.dfunc = dfunc
         self.ivars_to_check = ivars_to_check
-        if convfunc is not None:
-            self.convfunc = convfunc
+        if stopfunc is not None:
+            self.stopfunc = stopfunc
         else:
-            self.convfunc = self.isPeriodicStable
+            self.stopfunc = self.isPeriodicallyStable
 
     def getNPerCycle(self, dt, T):
         ''' Compute number of samples per cycle given a time step and a specific periodicity.
@@ -126,39 +130,51 @@ class PeriodicSimulator(Simulator):
         '''
         return np.linspace(0, T, self.getNPerCycle(dt, T))
 
-    def isPeriodicStable(self, y, npc, icycle):
+    def isPeriodicallyStable(self, t, y, T):
         ''' Assess the periodic stabilization of a solution, by evaluating the deviation
-            of system variables between two consecutive cycles.
+            of system variables between the last two periods.
 
+            :param t: time vector
             :param y: solution matrix
-            :param npc: number of samples per cycle
-            :param icycle: index of cycle of interest
-            :return: boolean stating whether the solution is stable or not
+            :param T: periodicity (s)
+            :return: boolean stating whether the solution is periodically stable or not
         '''
-
         # Extract the 2 cycles of interest from the solution
-        y_target = y[icycle * npc: (icycle + 1) * npc, :]
-        y_prec = y[(icycle - 1) * npc: icycle * npc, :]
+        n = self.getNPerCycle(t[1] - t[0], T) - 1
+        y_last = y[-n:, :]
+        y_prec = y[-2 * n:-n, :]
 
         # For each variable of interest, evaluate the RMSE between the two cycles, the
         # variation range over the last cycle, and the ratio of these 2 quantities
-        x_ratios = np.empty(len(self.ivars_to_check))
-        for i, ivar in enumerate(self.ivars_to_check):
-            x_target, x_prec = y_target[:, ivar], y_prec[:, ivar]
-            x_ratios[i] = rmse(x_target, x_prec) / np.ptp(x_target)
+        ratios = np.array([rmse(y_last[:, ivar], y_prec[:, ivar]) / np.ptp(y_last[:, ivar])
+                           for ivar in self.ivars_to_check])
 
-        # Classify the solution as stable only if all RMSE/PTP ratios are below critical threshold
-        is_periodically_stable = np.all(x_ratios < MAX_RMSE_PTP_RATIO)
-        logger.debug(
-            'step %u: ratios = [%s] -> %sstable',
-            icycle,
-            ', '.join(['{:.2e}'.format(r) for r in x_ratios]),
-            '' if is_periodically_stable else 'un'
-        )
+        # Classify the solution as periodically stable only if all RMSE/PTP ratios
+        # are below critical threshold
+        is_periodically_stable = np.all(ratios < MAX_RMSE_PTP_RATIO)
+        # logger.debug(
+        #     'step %u: ratios = [%s]', icycle,
+        #     ', '.join(['{:.2e}'.format(r) for r in ratios]))
         return is_periodically_stable
 
-    def compute(self, y0, dt, T, t0=0.):
-        ''' Simulate system with a specific periodicity until stabilization.
+    def isAsymptoticallyStable(self, t, y, T):
+        ''' Assess the asymptotically stabilization of a solution, by evaluating the deviation
+            of system variables from their initial values.
+
+            :param t: time vector
+            :param y: solution matrix
+            :param T: periodicity (s)
+            :return: boolean stating whether the solution is asymptotically stable or not
+        '''
+
+        # For each variable of interest, evaluate the ...
+        lyapunov_exponents = np.array([nolds.lyap_r(y[:, ivar]) for ivar in self.ivars_to_check])
+        print(lyapunov_exponents)
+        is_asyptotically_stable = np.all(lyapunov_exponents < 1e-5)
+        return is_asyptotically_stable
+
+    def compute(self, y0, dt, T, t0=0., nmax=NCYCLES_MAX):
+        ''' Simulate system with a specific periodicity until stopping criterion is met.
 
             :param y0: 1D vector of initial conditions
             :param dt: integration time step (s)
@@ -177,23 +193,25 @@ class PeriodicSimulator(Simulator):
         # Initialize global arrays
         t, y, stim = self.initialize(y0)
 
-        # Integrate system for a few cycles until stabilization
+        # Integrate system for a few cycles until stopping criterion is met
         icycle = 0
-        conv = False
-        while not conv and icycle < NCYCLES_MAX:
+        stop = False
+        while not stop and icycle < nmax:
             t, y, stim = self.integrate(t, y, stim, tref + icycle * T, self.dfunc, True)
             if icycle > 0:
-                conv = self.convfunc(y, tref.size - 1, icycle)
+                stop = self.stopfunc(t, y, T)
             icycle += 1
+        t += t0
 
         # Log stopping criterion
-        if icycle == NCYCLES_MAX:
-            logger.warning('No convergence: stopping after %u cycles', icycle)
+        t_str = 't = {:.5f} ms'.format(t[-1] * 1e3)
+        if icycle == nmax:
+            logger.warning('%s: criterion not met -> stopping after %u cycles', t_str, icycle)
         else:
-            logger.debug('Periodic convergence after %u cycles', icycle)
+            logger.debug('%s: stopping criterion met after %u cycles', t_str, icycle)
 
         # Return output variables
-        return t + t0, y, stim
+        return t, y, stim
 
 
 class PWSimulator(Simulator):
@@ -319,7 +337,7 @@ class PWSimulator(Simulator):
 class HybridSimulator(PWSimulator):
 
     def __init__(self, dfunc_on, dfunc_off, dfunc_sparse, predfunc, is_dense_var,
-                 convfunc=None, ivars_to_check=None):
+                 stopfunc=None, ivars_to_check=None):
         ''' Initialize simulator with specific derivative functions
 
             :param dfunc_on: derivative function for ON periods
@@ -327,7 +345,7 @@ class HybridSimulator(PWSimulator):
             :param dfunc_sparse: derivative function for sparse integration
             :param predfunc: function computing the extra arguments necessary for sparse integration
             :param is_dense_var: boolean array stating for each variable if it evolves fast or not
-            :param convfunc: function estimating convergence
+            :param stopfunc: function estimating stopping criterion
             :param ivars_to_check: solution indexes of variables to check for stability
         '''
         PWSimulator.__init__(self, dfunc_on, dfunc_off)
@@ -336,7 +354,7 @@ class HybridSimulator(PWSimulator):
         self.predfunc = predfunc
         self.is_dense_var = is_dense_var
         self.is_sparse_var = np.invert(is_dense_var)
-        self.convfunc = convfunc
+        self.stopfunc = stopfunc
         self.ivars_to_check = ivars_to_check
 
     def integrate(self, t, y, stim, tnew, dfunc, is_on):
@@ -344,12 +362,12 @@ class HybridSimulator(PWSimulator):
             using a hybrid scheme:
 
             - First, the full ODE system is integrated for a few cycles with a dense time
-              granularity until it reaches a periodically stable behavior (limit cycle)
+              granularity until a stopping criterion is met
             - Second, the profiles of all variables over the last cycle are resampled to a
               far lower (i.e. sparse) sampling rate
             - Third, a subset of the ODE system is integrated with a sparse time granularity,
               for the remaining of the time interval, while the remaining variables are
-              periodically expanded from their "stabilized" (last cycle) profile.
+              periodically expanded from their last cycle profile.
 
             :param t: preceding time vector
             :param y: preceding solution matrix
@@ -365,7 +383,7 @@ class HybridSimulator(PWSimulator):
 
         # Initialize periodic solver
         dense_solver = PeriodicSimulator(
-            dfunc, convfunc=self.convfunc, ivars_to_check=self.ivars_to_check)
+            dfunc, stopfunc=self.stopfunc, ivars_to_check=self.ivars_to_check)
         dt_dense = tnew[1] - tnew[0]
         npc_dense = dense_solver.getNPerCycle(dt_dense, self.T)
 
@@ -373,11 +391,11 @@ class HybridSimulator(PWSimulator):
         while t[-1] < tnew[-1]:
             logger.debug('t = {:.5f} ms: starting new hybrid integration'.format(t[-1] * 1e3))
 
-            # Integrate dense system until convergence
+            # Integrate dense system until stopping criterion is met
             tdense, ydense, stimdense = dense_solver.compute(y[-1], dt_dense, self.T, t0=t[-1])
             t, y, stim = self.appendSolution(t, y, stim, tdense, ydense, is_on)
 
-            # Resample signals over last acoustic cycle to match sparse time step
+            # Resample signals over last cycle to match sparse time step
             tlast, ylast, stimlast = self.resample(
                 tdense[-npc_dense:], ydense[-npc_dense:], stimdense[-npc_dense:],
                 self.dt_sparse)
