@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:59:17
+# @Last Modified time: 2019-06-01 16:39:15
 
 from copy import deepcopy
 import logging
@@ -184,7 +184,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Return dataframe and computation time
         return data, tcomp
 
-    def runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC, dt=DT_EFF):
+    def runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC):
         ''' Compute solutions of the system for a specific set of
             US stimulation parameters, using charge-predicted "effective"
             coefficients to solve the HH equations at each step.
@@ -195,7 +195,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param toffset: duration of the offset (s)
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
-            :param dt: integration time step (s)
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
 
@@ -225,7 +224,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         simulator = PWSimulator(
             lambda y, t: self.effDerivatives(y, t, lookups_on),
             lambda y, t: self.effDerivatives(y, t, lookups_off))
-        (t, y, stim), tcomp = simulator(y0, dt, tstim, toffset, PRF, DC, monitor_time=True)
+        (t, y, stim), tcomp = simulator(y0, DT_EFF, tstim, toffset, PRF, DC, monitor_time=True)
         logger.debug('completed in %ss', si_format(tcomp, 1))
 
         # Store output in dataframe
@@ -304,7 +303,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Return dataframe and computation time
         return data, tcomp
 
-    def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=None, DC=1.0, method='sonic'):
+    def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=100., DC=1.0, method='sonic'):
         ''' Simulate the electro-mechanical model for a specific set of US stimulation parameters,
             and return output data in a dataframe.
 
@@ -327,13 +326,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             *si_format([tstim, toffset], 1, space=' '),
             (', PRF = {}Hz, DC = {:.2f}%'.format(
                 si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
-
-        # TODO: If no amplitude provided, perform titration
-        if Adrive is None:
-            Adrive = self.titrate(Fdrive, tstim, toffset, PRF, DC, method=method)
-            if np.isnan(Adrive):
-                logger.error('Could not find threshold excitation amplitude')
-                return None
 
         # Check validity of stimulation parameters
         BilayerSonophore.checkInputs(self, Fdrive, Adrive, 0.0, 0.0)
@@ -382,7 +374,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             'method': method
         }
 
-    def titrate(self, Fdrive, tstim, toffset, PRF=None, DC=1.0, Arange=None, method='sonic'):
+    def titrate(self, Fdrive, tstim, toffset, PRF=100., DC=1., method='sonic',
+                xfunc=None, Arange=None):
         ''' Use a binary search to determine the threshold amplitude needed to obtain
             neural excitation for a given frequency, duration, PRF and duty cycle.
 
@@ -391,23 +384,23 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param toffset: duration of the offset (s)
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
+            :param method: integration method
+            :param xfunc: function determining whether condition is reached from simulation output
             :param Arange: search interval for Adrive, iteratively refined
             :return: determined threshold amplitude (Pa)
         '''
+        # Default output function
+        if xfunc is None:
+            xfunc = self.neuron.titrationFunc
 
-        # Determine amplitude interval if needed
+        # Default amplitude interval
         if Arange is None:
             Arange = (0, getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max())
 
-        # Determine output function
-        if self.neuron.isTitratable():
-            xfunc = self.isExcited
-        else:
-            xfunc = self.isSilenced
-
-        # Titrate
-        return titrate(xfunc, (Fdrive, tstim, toffset, PRF, DC, method),
-                       Arange, TITRATION_ASTIM_DA_MAX)
+        return binarySearch(
+            lambda x: xfunc(self.simulate(*x)[0]),
+            [Fdrive, tstim, toffset, PRF, DC, method], 1, Arange, TITRATION_ASTIM_DA_MAX
+        )
 
     def createQueue(self, freqs, amps, durations, offsets, PRFs, DCs, method):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual

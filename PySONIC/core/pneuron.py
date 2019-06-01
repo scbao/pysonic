@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:59:38
+# @Last Modified time: 2019-06-01 16:38:44
 
 import abc
 import inspect
@@ -17,7 +17,7 @@ from .model import Model
 from .simulators import PWSimulator
 from ..postpro import findPeaks
 from ..constants import *
-from ..utils import si_format, logger, titrate, plural
+from ..utils import si_format, logger, plural, binarySearch
 
 
 class PointNeuron(Model):
@@ -80,9 +80,9 @@ class PointNeuron(Model):
         '''
         return -self.iNet(Vm, states)
 
-    def isTitratable(self):
-        ''' Simple method returning whether the neuron can be titrated (defaults to True). '''
-        return True
+    def titrationFunc(self, *args, **kwargs):
+        ''' Default titration function. '''
+        return self.isExcited(*args, **kwargs)
 
     def currentToConcentrationRate(self, z_ion, depth):
         ''' Compute the conversion factor from a specific ionic current (in mA/m2)
@@ -431,7 +431,7 @@ class PointNeuron(Model):
                 raise ValueError('Invalid PRF: {} Hz (PR interval exceeds stimulus duration)'
                                  .format(PRF))
 
-    def simulate(self, Astim, tstim, toffset, PRF=None, DC=1.0, dt=DT_ESTIM):
+    def simulate(self, Astim, tstim, toffset, PRF=100., DC=1.0):
         ''' Simulate a specific neuron model for a specific set of electrical parameters,
             and return output data in a dataframe.
 
@@ -440,7 +440,6 @@ class PointNeuron(Model):
             :param toffset: offset duration (s)
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
-            :param dt: integration time step (s)
             :return: 2-tuple with the output dataframe and computation time.
         '''
 
@@ -452,13 +451,6 @@ class PointNeuron(Model):
             *si_format([tstim, toffset], 1, space=' '),
             (', PRF = {}Hz, DC = {:.2f}%'.format(
                 si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
-
-        # TODO: If no amplitude provided, perform titration
-        if Astim is None:
-            Astim = self.titrate(tstim, toffset, PRF, DC)
-            if np.isnan(Astim):
-                logger.error('Could not find threshold excitation amplitude')
-                return None
 
         # Check validity of stimulation parameters
         self.checkInputs(Astim, tstim, toffset, PRF, DC)
@@ -472,7 +464,7 @@ class PointNeuron(Model):
         simulator = PWSimulator(
             lambda y, t: self.Vderivatives(y, t, Astim),
             lambda y, t: self.Vderivatives(y, t, 0.))
-        (t, y, stim), tcomp = simulator(y0, dt, tstim, toffset, PRF, DC, monitor_time=True)
+        (t, y, stim), tcomp = simulator(y0, DT_ESTIM, tstim, toffset, PRF, DC, monitor_time=True)
         logger.debug('completed in %ss', si_format(tcomp, 1))
 
         # Store output in dataframe
@@ -589,8 +581,7 @@ class PointNeuron(Model):
         '''
         return not np.isinan(self.getStabilizationValue(data))
 
-    def titrate(self, tstim, toffset, PRF=None, DC=1.0, Arange=(0., 2 * TITRATION_ESTIM_A_MAX),
-                xfunc=None):
+    def titrate(self, tstim, toffset, PRF, DC, xfunc=None, Arange=(0., 2 * TITRATION_ESTIM_A_MAX)):
         ''' Use a binary search to determine the threshold amplitude needed
             to obtain neural excitation for a given duration, PRF and duty cycle.
 
@@ -598,10 +589,15 @@ class PointNeuron(Model):
             :param toffset: duration of the offset (s)
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
+            :param xfunc: function determining whether condition is reached from simulation output
             :param Arange: search interval for Astim, iteratively refined
             :return: excitation threshold amplitude (mA/m2)
         '''
-        # Determine output function
+        # Default output function
         if xfunc is None:
-            xfunc = self.isExcited
-        return titrate(xfunc, (tstim, toffset, PRF, DC), Arange, TITRATION_ESTIM_DA_MAX)
+            xfunc = self.titrationFunc
+
+        return binarySearch(
+            lambda x: xfunc(self.simulate(*x)[0]),
+            [tstim, toffset, PRF, DC], 0, Arange, TITRATION_ESTIM_DA_MAX
+        )

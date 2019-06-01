@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-17 16:15:22
+# @Last Modified time: 2019-06-01 16:37:32
 
 
 import numpy as np
@@ -137,19 +137,16 @@ class OtsukaSTN(PointNeuron):
     kx_r = -0.08 * 1e-6  # M
     tau_r = 2 * 1e-3  # s
 
-
     def __init__(self):
         self.states = ['a', 'b', 'c', 'd1', 'd2', 'm', 'h', 'n', 'p', 'q', 'r', 'Cai']
         self.rates = self.getRatesNames(['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
         self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)  # Mmol.m-1.C-1
 
-
     def getPltScheme(self):
         pltscheme = super().getPltScheme()
         pltscheme['[Ca^{2+}]_i'] = ['Cai']
         return pltscheme
-
 
     def getPltVars(self, wrapleft='df["', wrapright='"]'):
         pltvars = super().getPltVars(wrapleft, wrapright)
@@ -161,11 +158,9 @@ class OtsukaSTN(PointNeuron):
         }
         return pltvars
 
-
-    def isTitratable(self):
-        ''' Overriding parent method to False, since this neuron has spontaneous activity. '''
-        return False
-
+    def titrationFunc(self, *args, **kwargs):
+        ''' Overriding default titration function. '''
+        return self.isSilenced(*args, **kwargs)
 
     def getEffectiveDepth(self, Cai, Vm):
         ''' Compute effective depth that matches a given membrane potential
@@ -176,7 +171,6 @@ class OtsukaSTN(PointNeuron):
         iCaT = self.iCaT(self.pinf(Vm), self.qinf(Vm), Vm, Cai)  # mA/m2
         iCaL = self.iCaL(self.cinf(Vm), self.d1inf(Vm), self.d2inf(Cai), Vm, Cai)  # mA/m2
         return -(iCaT + iCaL) / (Z_Ca * FARADAY * Cai / self.taur_Cai) * 1e-6  # m
-
 
     def _xinf(self, var, theta, k):
         ''' Generic function computing the steady-state opening of a

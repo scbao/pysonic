@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 14:14:27
+# @Last Modified time: 2019-06-01 16:30:07
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -67,7 +67,6 @@ class TqdmHandler(logging.StreamHandler):
 
 
 logger = setLogger('PySONIC', my_log_formatter)
-
 
 titrations_logfile = os.path.join(os.path.split(__file__)[0], 'neurons', 'titrations.log')
 
@@ -714,13 +713,13 @@ def cache(fpath, delimiter='\t', out_type=float):
     return wrapper_with_args
 
 
-@cache(titrations_logfile)
-def titrate(xfunc, xargs, xbounds, dx_thr, history=None):
+# @cache(titrations_logfile)
+def binarySearch(bool_func, args, ix, xbounds, dx_thr, history=None):
     ''' Use a binary search to determine the threshold satisfying a given condition
-        within a specific search interval.
+        within a continuous search interval.
 
-        :param xfunc: boolean function returning whether condition is satisfied
-        :param xargs: list of function arguments other than refined value
+        :param bool_func: boolean function returning whether condition is satisfied
+        :param args: list of function arguments other than refined value
         :param xbounds: search interval for threshold (progressively refined)
         :param dx_thr: accuracy criterion for threshold
         :return: excitation threshold
@@ -732,7 +731,9 @@ def titrate(xfunc, xargs, xbounds, dx_thr, history=None):
 
     # Compute function output at interval mid-point
     x = (xbounds[0] + xbounds[1]) / 2
-    history.append(xfunc(x, *xargs))
+    sim_args = args[:]
+    sim_args.insert(ix, x)
+    history.append(bool_func(sim_args))
 
     # If titration interval is small enough
     conv = False
@@ -764,7 +765,7 @@ def titrate(xfunc, xargs, xbounds, dx_thr, history=None):
             xbounds = (xbounds[0], x) if history[-1] else (x, xbounds[1])
         else:
             xbounds = (x, xbounds[1]) if history[-1] else (xbounds[0], x)
-        return titrate(xfunc, xargs, xbounds, dx_thr, history=history)
+        return binarySearch(bool_func, args, ix, xbounds, dx_thr, history=history)
 
 
 def resolveDependencies(deps, join_items=True):

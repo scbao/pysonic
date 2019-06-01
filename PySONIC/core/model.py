@@ -4,13 +4,14 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:50:06
+# @Last Modified time: 2019-06-01 16:27:32
 
 import pickle
 import abc
 import inspect
+import numpy as np
 
-from ..utils import logger
+from ..utils import logger, debug
 
 
 class Model(metaclass=abc.ABCMeta):
@@ -72,6 +73,19 @@ class Model(metaclass=abc.ABCMeta):
 
     def runAndSave(self, outdir, *args):
         ''' Simulate system and save results in a PKL file. '''
+
+        # If no amplitude provided, perform titration to find it
+        if None in args:
+            iA = args.index(None)
+            new_args = [x for x in args if x is not None]
+            Athr = self.titrate(*new_args)
+            if np.isnan(Athr):
+                logger.error('Could not find threshold excitation amplitude')
+                return None
+            new_args.insert(iA, Athr)
+            args = new_args
+
+        # Simulate model, save inf file and return file path
         data, tcomp = self.simulate(*args)
         meta = self.meta(*args)
         meta['tcomp'] = tcomp
