@@ -4,7 +4,7 @@
 # @Date:   2017-06-13 09:40:02
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-09-23 16:44:41
+# @Last Modified time: 2019-06-02 15:44:57
 
 import os
 from setuptools import setup
@@ -45,7 +45,8 @@ setup(
         'pyyaml>=3.11',
         'pycallgraph>=1.0.1',
         'colorlog>=3.0.1',
-        'progressbar2>=3.18.1',
+        'tqdm>=4.3',
+        'nolds>=0.5',
         'lockfile>=0.1.2'
     ],
     zip_safe=False
