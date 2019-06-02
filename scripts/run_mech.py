@@ -4,11 +4,10 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 15:49:22
+# @Last Modified time: 2019-06-02 22:11:24
 
 ''' Run simulations of the NICE mechanical model. '''
 
-import os
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,40 +28,6 @@ defaults = dict(
     amp=[100.0],  # kPa
     charge=[0.]  # nC/cm2
 )
-
-
-def runMechBatch(outdir, bls, stim_params, mpi=False, loglevel=logging.INFO):
-    ''' Run batch simulations of the mechanical system with imposed values of charge density.
-
-        :param outdir: full path to output directory
-        :param bls: BilayerSonophore object
-        :param stim_params: dictionary containing sweeps for all stimulation parameters
-        :param mpi: boolean stating whether or not to use multiprocessing
-        :param loglevel: logging level
-        :return: list of full paths to the output files
-    '''
-
-    # Checking validity of stimulation parameters
-    mandatory_params = ['freqs', 'amps', 'charges']
-    for mparam in mandatory_params:
-        if mparam not in stim_params:
-            raise ValueError('Missing stimulation parameter field: "{}"'.format(mparam))
-
-    logger.info("Starting mechanical simulation batch")
-
-    # Unpack stimulation parameters
-    freqs = np.array(stim_params['freqs'])
-    amps = np.array(stim_params['amps'])
-    charges = np.array(stim_params['charges'])
-
-    # Generate simulations queue
-    queue = bls.simQueue(freqs, amps, charges)
-    for item in queue:
-        item.insert(0, outdir)
-
-    # Run simulation batch
-    batch = Batch(bls.runAndSave, queue)
-    return batch(mpi=mpi, loglevel=loglevel)
 
 
 def main():
@@ -98,32 +63,31 @@ def main():
     outdir = getInDict(args, 'outputdir', selectDirDialog)
     if outdir == '':
         logger.error('No output directory selected')
-        quit()
+        return
     mpi = args['mpi']
     Cm0 = args['Cm0'] * 1e-2  # F/m2
     Qm0 = args['Qm0'] * 1e-5  # C/m2
     radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
     embeddings = np.array(args.get('embedding', defaults['embedding'])) * 1e-6  # m
-
+    freqs = np.array(args.get('freq', defaults['freq'])) * 1e3  # Hz
     try:
         amps = parseUSAmps(args, defaults)
     except ValueError as err:
         logger.error(err)
-        quit()
-
-    stim_params = dict(
-        freqs=np.array(args.get('freq', defaults['freq'])) * 1e3,  # Hz
-        amps=amps,  # Pa
-        charges=np.array(args.get('charge', defaults['charge'])) * 1e-5  # C/m2
-    )
+        return
+    charges = np.array(args.get('charge', defaults['charge'])) * 1e-5  # C/m2
 
     # Run MECH batch
     pkl_filepaths = []
+    logger.info("Starting mechanical simulation batch")
     for a in radii:
         for d in embeddings:
             bls = BilayerSonophore(a, Cm0, Qm0, embedding_depth=d)
-            pkl_filepaths += runMechBatch(outdir, bls, stim_params, mpi=mpi, loglevel=loglevel)
-    pkl_dir, _ = os.path.split(pkl_filepaths[0])
+            queue = bls.simQueue(freqs, amps, charges)
+            for item in queue:
+                item.insert(0, outdir)
+            batch = Batch(bls.runAndSave, queue)
+            pkl_filepaths += batch(mpi=mpi, loglevel=loglevel)
 
     # Plot resulting profiles
     if 'plot' in args:

@@ -2,11 +2,10 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 15:49:00
+# @Last Modified time: 2019-06-02 22:10:34
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
-import os
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,39 +26,6 @@ defaults = dict(
     offset=[50.],  # ms
     method='sonic'
 )
-
-
-def runEStimBatch(outdir, neuron, stim_params, mpi=False, loglevel=logging.INFO):
-    ''' Run batch E-STIM simulations of the system for various neuron types and
-        stimulation parameters.
-
-        :param outdir: full path to output directory
-        :param stim_params: dictionary containing sweeps for all stimulation parameters
-        :param mpi: boolean statting wether or not to use multiprocessing
-        :param loglevel: logging level
-        :return: list of full paths to the output files
-    '''
-    mandatory_params = ['durations', 'offsets', 'PRFs', 'DCs']
-    for mparam in mandatory_params:
-        if mparam not in stim_params:
-            raise ValueError('Missing stimulation parameter field: "{}"'.format(mparam))
-
-    logger.info("Starting E-STIM simulation batch")
-
-    # Generate simulations queue
-    queue = neuron.simQueue(
-        stim_params.get('amps', None),
-        stim_params['durations'],
-        stim_params['offsets'],
-        stim_params['PRFs'],
-        stim_params['DCs']
-    )
-    for item in queue:
-        item.insert(0, outdir)
-
-    # Run batch
-    batch = Batch(neuron.runAndSave, queue)
-    return batch(mpi=mpi, loglevel=loglevel)
 
 
 def main():
@@ -88,36 +54,36 @@ def main():
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
     loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
+    mpi = args['mpi']
     outdir = getInDict(args, 'outputdir', selectDirDialog)
     if outdir == '':
         logger.error('No output directory selected')
-        quit()
+        return
     titrate = args['titrate']
     neuron_str = args['neuron']
-
-    try:
-        amps = parseElecAmps(args, defaults)
-    except ValueError as err:
-        logger.error(err)
-        quit()
-
-    stim_params = dict(
-        amps=amps,
-        durations=np.array(args.get('duration', defaults['duration'])) * 1e-3,  # s
-        PRFs=np.array(args.get('PRF', defaults['PRF'])),  # Hz
-        DCs=np.array(args.get('DC', defaults['DC'])) * 1e-2,  # (-)
-        offsets=np.array(args.get('offset', defaults['offset'])) * 1e-3  # s
-    )
-    if titrate:
-        stim_params['amps'] = None
-
-    # Run E-STIM batch
     if neuron_str not in getNeuronsDict():
         logger.error('Unknown neuron type: "%s"', neuron_str)
         return
     neuron = getNeuronsDict()[neuron_str]()
-    pkl_filepaths = runEStimBatch(outdir, neuron, stim_params, mpi=args['mpi'], loglevel=loglevel)
-    pkl_dir, _ = os.path.split(pkl_filepaths[0])
+    try:
+        amps = parseElecAmps(args, defaults)  # mA/m2
+    except ValueError as err:
+        logger.error(err)
+        return
+    if titrate:
+        amps = None
+    durations = np.array(args.get('duration', defaults['duration'])) * 1e-3  # s
+    offsets = np.array(args.get('offset', defaults['offset'])) * 1e-3  # s
+    PRFs = np.array(args.get('PRF', defaults['PRF']))  # Hz
+    DCs = np.array(args.get('DC', defaults['DC'])) * 1e-2  # (-)
+
+    # Run E-STIM batch
+    logger.info("Starting E-STIM simulation batch")
+    queue = neuron.simQueue(amps, durations, offsets, PRFs, DCs)
+    for item in queue:
+        item.insert(0, outdir)
+    batch = Batch(neuron.runAndSave, queue)
+    pkl_filepaths = batch(mpi=mpi, loglevel=loglevel)
 
     # Plot resulting profiles
     if 'plot' in args:

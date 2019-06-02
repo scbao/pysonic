@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 15:25:45
+# @Last Modified time: 2019-06-02 22:11:07
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -63,12 +63,12 @@ def main():
         indir = getInDict(args, 'inputdir', selectDirDialog)
         if indir == '':
             logger.error('no input directory')
-            quit()
+            return
     if save:
         outdir = getInDict(args, 'outputdir', selectDirDialog)
         if outdir == '':
             logger.error('no output directory')
-            quit()
+            return
 
     neurons = [getNeuronsDict()[n]() for n in args.get('neurons', ['RS', 'LTS'])]
     a = args['radius'] * 1e-9  # m
@@ -100,15 +100,11 @@ def main():
                     xscale=Ascale, compdir=indir, mpi=mpi, loglevel=loglevel))
 
     if save:
-        outdir = args['outputdir'] if 'outputdir' in args else selectDirDialog()
-        if outdir == '':
-            logger.error('no output directory')
-        else:
-            for fig in figs:
-                s = fig.canvas.get_window_title()
-                s = s.replace('(', '- ').replace('/', '_').replace(')', '')
-                figname = '{}.png'.format(s)
-                fig.savefig(os.path.join(outdir, figname), transparent=True)
+        for fig in figs:
+            s = fig.canvas.get_window_title()
+            s = s.replace('(', '- ').replace('/', '_').replace(')', '')
+            figname = '{}.png'.format(s)
+            fig.savefig(os.path.join(outdir, figname), transparent=True)
     else:
         plt.show()
 
