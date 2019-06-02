@@ -424,18 +424,21 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3,
             neuron.name, DC * 1e2)
         if len(SFPs) > 0:
             A_SFPs, Q_SFPs = np.array(SFPs).T
-            ax.plot(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5, 'o', c=color,
-                    markersize=3, label=lbl.format(''))
+            ax.scatter(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5,
+                       marker='.', s=20, facecolors=color, edgecolors='none',
+                       label=lbl.format(''))
+
         if len(UFPs) > 0:
             A_UFPs, Q_UFPs = np.array(UFPs).T
-            ax.plot(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5, 'x', c=color,
-                    markersize=3, label=lbl.format('un'))
+            ax.scatter(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5,
+                       marker='*', s=20, facecolors=color, edgecolors='none',
+                       label=lbl.format('un'))
 
         if len(stab_points) > 0:
             A_stab, Q_stab = np.array(stab_points).T
-            ax.plot(np.array(A_stab) * Afactor, np.array(Q_stab) * 1e5, '*', c=color,
-                    markersize=3, label='stabilization points')
-
+            ax.scatter(np.array(A_stab) * Afactor, np.array(Q_stab) * 1e5,
+                       marker='o', s=20, facecolors='none', edgecolors=color,
+                       label='stabilization points')
         icolor += 1
 
     # Post-process figure
