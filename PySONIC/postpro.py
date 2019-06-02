@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-27 16:38:12
+# @Last Modified time: 2019-06-02 22:21:24
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -88,7 +88,6 @@ def getEqPoint1D(x, dx, x0):
         return np.nan
 
     return x_SFPs[ind_SFP]
-
 
 
 def detectPeaks(x, mph=None, mpd=1, threshold=0, edge='rising', kpsh=False, valley=False, ax=None):
