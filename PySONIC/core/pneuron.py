@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 16:46:01
+# @Last Modified time: 2019-06-02 13:21:40
 
 import abc
 import inspect
@@ -24,13 +24,12 @@ class PointNeuron(Model):
     ''' Generic point-neuron model interface. '''
 
     tscale = 'ms'  # relevant temporal scale of the model
-    defvar = 'V'  # default plot variable
+
+    def __init__(self):
+        self.Qm0 = self.Cm0 * self.Vm0 * 1e-3  # C/cm2
 
     def __repr__(self):
         return self.__class__.__name__
-
-    def pprint(self):
-        return '{} neuron'.format(self.__class__.__name__)
 
     def filecode(self, Astim, tstim, toffset, PRF, DC):
         ''' File naming convention. '''
@@ -128,9 +127,6 @@ class PointNeuron(Model):
         eCout = Cion_out * self.efun(x)  # M
         return FARADAY * (eCin - eCout) * 1e6  # mC/m3
 
-    def getDesc(self):
-        return inspect.getdoc(self).splitlines()[0]
-
     def getCurrentsNames(self):
         return list(self.currents(np.nan, [np.nan] * len(self.states)).keys())
 
@@ -150,7 +146,6 @@ class PointNeuron(Model):
 
     def getPltVars(self, wrapleft='df["', wrapright='"]'):
         ''' Return a dictionary with information about all plot variables related to the neuron. '''
-
         pltvars = {
             'Qm': {
                 'desc': 'membrane charge density',
@@ -235,13 +230,7 @@ class PointNeuron(Model):
     def getRatesNames(self, states):
         ''' Return a list of names of the alpha and beta rates of the neuron. '''
         return list(sum(
-            [['alpha{}'.format(x.lower()), 'beta{}'.format(x.lower())] for x in states],
-            []
-        ))
-
-    def Qm0(self):
-        ''' Return the resting charge density (in C/m2). '''
-        return self.Cm0 * self.Vm0 * 1e-3  # C/cm2
+            [['alpha{}'.format(x.lower()), 'beta{}'.format(x.lower())] for x in states], []))
 
     @abc.abstractmethod
     def steadyStates(self, Vm):
@@ -431,6 +420,25 @@ class PointNeuron(Model):
                 raise ValueError('Invalid PRF: {} Hz (PR interval exceeds stimulus duration)'
                                  .format(PRF))
 
+    def meta(self, Astim, tstim, toffset, PRF, DC):
+        ''' Return information about object and simulation parameters.
+
+            :param Astim: stimulus amplitude (mA/m2)
+            :param tstim: stimulus duration (s)
+            :param toffset: stimulus offset (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: stimulus duty cycle (-)
+            :return: meta-data dictionary
+        '''
+        return {
+            'neuron': self.name,
+            'Astim': Astim,
+            'tstim': tstim,
+            'toffset': toffset,
+            'PRF': PRF,
+            'DC': DC
+        }
+
     def simulate(self, Astim, tstim, toffset, PRF=100., DC=1.0):
         ''' Simulate a specific neuron model for a specific set of electrical parameters,
             and return output data in a dataframe.
@@ -442,13 +450,9 @@ class PointNeuron(Model):
             :param DC: pulse duty cycle (-)
             :return: 2-tuple with the output dataframe and computation time.
         '''
-
         logger.info(
-            '%s: %s @ %st = %ss (%ss offset)%s',
-            self,
-            'titration' if Astim is None else 'simulation',
-            'A = {}A/m2, '.format(si_format(Astim, 2, space=' ')) if Astim is not None else '',
-            *si_format([tstim, toffset], 1, space=' '),
+            '%s: simulation @ A = %sA/m2, t = %ss (%ss offset)%s',
+            self, si_format(Astim, 2, space=' '), *si_format([tstim, toffset], 1, space=' '),
             (', PRF = {}Hz, DC = {:.2f}%'.format(
                 si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
 
@@ -485,26 +489,7 @@ class PointNeuron(Model):
         # Return dataframe and computation time
         return data, tcomp
 
-    def meta(self, Astim, tstim, toffset, PRF, DC):
-        ''' Return information about object and simulation parameters.
-
-            :param Astim: stimulus amplitude (mA/m2)
-            :param tstim: stimulus duration (s)
-            :param toffset: stimulus offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: stimulus duty cycle (-)
-            :return: meta-data dictionary
-        '''
-        return {
-            'neuron': self.name,
-            'Astim': Astim,
-            'tstim': tstim,
-            'toffset': toffset,
-            'PRF': PRF,
-            'DC': DC
-        }
-
-    def createQueue(self, amps, durations, offsets, PRFs, DCs):
+    def simQueue(self, amps, durations, offsets, PRFs, DCs):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
             parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 

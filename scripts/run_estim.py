@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 17:04:40
+# @Last Modified time: 2019-06-02 13:48:33
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from PySONIC.core import runBatch
+from PySONIC.core import Batch
 from PySONIC.utils import logger, selectDirDialog, parseElecAmps
 from PySONIC.neurons import *
 from PySONIC.plt import plotBatch
@@ -29,13 +29,14 @@ defaults = dict(
 )
 
 
-def runEStimBatch(outdir, neuron, stim_params, mpi=False):
+def runEStimBatch(outdir, neuron, stim_params, mpi=False, loglevel=logging.INFO):
     ''' Run batch E-STIM simulations of the system for various neuron types and
         stimulation parameters.
 
         :param outdir: full path to output directory
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :param mpi: boolean statting wether or not to use multiprocessing
+        :param loglevel: logging level
         :return: list of full paths to the output files
     '''
     mandatory_params = ['durations', 'offsets', 'PRFs', 'DCs']
@@ -46,7 +47,7 @@ def runEStimBatch(outdir, neuron, stim_params, mpi=False):
     logger.info("Starting E-STIM simulation batch")
 
     # Generate simulations queue
-    queue = neuron.createQueue(
+    queue = neuron.simQueue(
         stim_params.get('amps', None),
         stim_params['durations'],
         stim_params['offsets'],
@@ -57,7 +58,8 @@ def runEStimBatch(outdir, neuron, stim_params, mpi=False):
         item.insert(0, outdir)
 
     # Run batch
-    return runBatch(neuron.runAndSave, queue, mpi=mpi)
+    batch = Batch(neuron.runAndSave, queue)
+    return batch(mpi=mpi, loglevel=loglevel)
 
 
 def main():
@@ -112,7 +114,7 @@ def main():
         logger.error('Unknown neuron type: "%s"', neuron_str)
         return
     neuron = getNeuronsDict()[neuron_str]()
-    pkl_filepaths = runEStimBatch(outdir, neuron, stim_params, mpi=args['mpi'])
+    pkl_filepaths = runEStimBatch(outdir, neuron, stim_params, mpi=args['mpi'], loglevel=loglevel)
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles

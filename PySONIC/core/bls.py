@@ -4,18 +4,16 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 18:38:14
+# @Last Modified time: 2019-06-02 13:03:21
 
 from enum import Enum
 import os
 import json
-import inspect
 import numpy as np
 import pandas as pd
 import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
 
-from .batches import createQueue
 from .model import Model
 from .simulators import PeriodicSimulator
 from ..utils import logger, si_format
@@ -83,7 +81,6 @@ class BilayerSonophore(Model):
             :param Fdrive: frequency of acoustic perturbation (Hz)
             :param embedding_depth: depth of the embedding tissue around the membrane (m)
         '''
-
         # Extract resting constants and geometry
         self.Cm0 = Cm0
         self.Qm0 = Qm0
@@ -138,13 +135,10 @@ class BilayerSonophore(Model):
         self.ng0 = self.gasPa2mol(self.P0, self.V0)
 
     def __repr__(self):
-        return 'BilayerSonophore({}m, {}F/cm2, {}C/cm2, embedding_depth={}m'.format(
-            si_format([self.a, self.Cm0 * 1e-4, self.Qm0 * 1e-4, self.embedding_depth],
-                      precision=1, space=' '))
-
-    def pprint(self):
-        return '{}m radius BilayerSonophore'.format(
-            si_format(self.a, precision=0, space=' '))
+        s = '{}({:.1f} nm'.format(self.__class__.__name__, self.a * 1e9)
+        if self.d > 0.:
+            s += ', d={}m'.format(si_format(self.d, precision=1, space=' '))
+        return s + ')'
 
     def filecode(self, Fdrive, Adrive, Qm):
         return 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
@@ -164,37 +158,6 @@ class BilayerSonophore(Model):
     def saveLookups(self, lookups):
         with open(self.getLookupsPath(), 'w') as fh:
             json.dump(lookups, fh, indent=2)
-
-    def pparams(self):
-        s = '-------- Bilayer Sonophore --------\n'
-        s += 'class attributes:\n'
-        class_attrs = inspect.getmembers(self.__class__, lambda a: not(inspect.isroutine(a)))
-        class_attrs = [a for a in class_attrs if not(a[0].startswith('__') and a[0].endswith('__'))]
-        for ca in class_attrs:
-            s += '{} = {}\n'.format(ca[0], ca[1])
-        s += 'instance attributes:\n'
-        inst_attrs = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        inst_attrs = [
-            a for a in inst_attrs if not(a[0].startswith('__') and a[0].endswith('__')) and
-            a not in class_attrs]
-        for ia in inst_attrs:
-            s += '{} = {}\n'.format(ia[0], ia[1])
-        return s
-
-    def reinit(self):
-        logger.debug('Re-initializing BLS object')
-
-        # Find Delta that cancels out Pm + Pec at Z = 0 (m)
-        if self.Qm0 == 0.0:
-            D_eq = self.Delta_
-        else:
-            (D_eq, Pnet_eq) = self.findDeltaEq(self.Qm0)
-            assert Pnet_eq < PNET_EQ_MAX, 'High Pnet at Z = 0 with ∆ = %.2f nm' % (D_eq * 1e9)
-        self.Delta = D_eq
-
-        # Compute initial volume and gas content
-        self.V0 = np.pi * self.Delta * self.a**2
-        self.ng0 = self.gasPa2mol(self.P0, self.V0)
 
     def getPltScheme(self):
         return {
@@ -399,7 +362,6 @@ class BilayerSonophore(Model):
             :return: 3-tuple with optimized LJ parameters for PmAvg prediction (Map) and
                 the standard and max errors of the prediction in the fitting range (in Pascals)
         '''
-
         # Determine lower bound of deflection range: when Pm = Pmmax
         PMmax = LJFIT_PM_MAX  # Pa
         Zminlb = -0.49 * self.Delta
@@ -466,11 +428,12 @@ class BilayerSonophore(Model):
             :param Qm: membrane charge density (C/m2)
             :return: equilibrium value (m) and associated pressure (Pa)
         '''
-        f = lambda Delta: (self.pDelta * (
-            (self.Delta_ / Delta)**self.m - (self.Delta_ / Delta)**self.n) + self.Pelec(0.0, Qm))
+        def dualPressure(Delta):
+            x = (self.Delta_ / Delta)
+            return (self.pDelta * (x**self.m - x**self.n) + self.Pelec(0.0, Qm))
         Delta_eq = brentq(f, 0.1 * self.Delta_, 2.0 * self.Delta_, xtol=1e-16)
         logger.debug('∆eq = %.2f nm', Delta_eq * 1e9)
-        return (Delta_eq, f(Delta_eq))
+        return (Delta_eq, dualPressure(Delta_eq))
 
     def gasFlux(self, Z, P):
         ''' Gas molar flux through the sonophore boundary layers
@@ -619,7 +582,6 @@ class BilayerSonophore(Model):
             :param Pm_comp_method: computation method for average intermolecular pressure
             :return: vector of mechanical system derivatives at time t
         '''
-
         # Split input vector explicitly
         U, Z, ng = y
 
@@ -671,6 +633,24 @@ class BilayerSonophore(Model):
             raise ValueError('Invalid US pressure phase: {:.2f} rad (must be within [0, 2 PI[ rad'
                              .format(phi))
 
+    def meta(self, Fdrive, Adrive, Qm):
+        ''' Return information about object and simulation parameters.
+
+            :param Fdrive: US frequency (Hz)
+            :param Adrive: acoustic pressure amplitude (Pa)
+            :param Qm: applied membrane charge density (C/m2)
+            :return: meta-data dictionary
+        '''
+        return {
+            'a': self.a,
+            'd': self.d,
+            'Cm0': self.Cm0,
+            'Qm0': self.Qm0,
+            'Fdrive': Fdrive,
+            'Adrive': Adrive,
+            'Qm': Qm
+        }
+
     def simulate(self, Fdrive, Adrive, Qm, phi=np.pi, Pm_comp_method=PmCompMethod.predict):
         ''' Simulate system until periodic stabilization for a specific set of ultrasound parameters,
             and return output data in a dataframe.
@@ -682,9 +662,8 @@ class BilayerSonophore(Model):
             :param Pm_comp_method: type of method used to compute average intermolecular pressure
             :return: 2-tuple with the output dataframe and computation time.
         '''
-
         logger.info('%s: simulation @ f = %sHz, A = %sPa, Q = %sC/cm2',
-                    self.pprint(), *si_format([Fdrive, Adrive, Qm * 1e-4], 2, space=' '))
+                    self, *si_format([Fdrive, Adrive, Qm * 1e-4], 2, space=' '))
 
         # Check validity of stimulation parameters
         self.checkInputs(Fdrive, Adrive, Qm, phi)
@@ -720,35 +699,6 @@ class BilayerSonophore(Model):
         # Return dataframe and computation time
         return data, tcomp
 
-    def meta(self, Fdrive, Adrive, Qm):
-        ''' Return information about object and simulation parameters.
-
-            :param Fdrive: US frequency (Hz)
-            :param Adrive: acoustic pressure amplitude (Pa)
-            :param Qm: applied membrane charge density (C/m2)
-            :return: meta-data dictionary
-        '''
-        return {
-            'a': self.a,
-            'd': self.d,
-            'Cm0': self.Cm0,
-            'Qm0': self.Qm0,
-            'Fdrive': Fdrive,
-            'Adrive': Adrive,
-            'Qm': Qm
-        }
-
-    def createQueue(self, freqs, amps, charges):
-        ''' Create a serialized 2D array of all parameter combinations for a series of individual
-            parameter sweeps.
-
-            :param freqs: list (or 1D-array) of US frequencies
-            :param amps: list (or 1D-array) of acoustic amplitudes
-            :param charges: list (or 1D-array) of membrane charge densities
-            :return: list of parameters (list) for each simulation
-        '''
-        return createQueue(freqs, amps, charges)
-
     def getCycleProfiles(self, Fdrive, Adrive, Qm):
         ''' Simulate mechanical system and compute pressures over the last acoustic cycle
 
@@ -757,11 +707,10 @@ class BilayerSonophore(Model):
             :param Qm: imposed membrane charge density (C/m2)
             :return: dataframe with the time, kinematic and pressure profiles over the last cycle.
         '''
-
         # Run default simulation and compute relevant profiles
         logger.info('Running mechanical simulation (a = %sm, f = %sHz, A = %sPa)',
                     si_format(self.a, 1), si_format(Fdrive, 1), si_format(Adrive, 1))
-        data, tcomp = self.simulate(Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.direct)
+        data, _ = self.simulate(Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.direct)
         t, Z, ng = [data.loc[-NPC_FULL:, key].values for key in ['t', 'Z', 'ng']]
         dt = (t[-1] - t[0]) / (NPC_FULL - 1)
         t -= t[0]

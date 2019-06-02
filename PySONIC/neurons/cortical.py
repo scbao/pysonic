@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-16 15:24:03
+# @Last Modified time: 2019-06-02 12:32:10
 
 import numpy as np
 from ..core import PointNeuron
@@ -28,6 +28,7 @@ class Cortical(PointNeuron):
 
 
     def __init__(self):
+        super().__init__()
         self.states = ['m', 'h', 'n', 'p']
         self.rates = self.getRatesNames(self.states)
 

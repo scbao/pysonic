@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:57:59
+# @Last Modified time: 2019-06-02 14:20:06
 
 ''' Utility functions used in simulations '''
 
@@ -40,26 +40,94 @@ class Consumer(mp.Process):
         return
 
 
-class Worker():
+class Worker:
     ''' Generic worker class calling a specific function with a given set of parameters. '''
 
-    def __init__(self, wid, simfunc, params, loglevel):
+    def __init__(self, wid, func, params, loglevel):
         ''' Worker constructor.
 
             :param wid: worker ID
-            :param simfunc: function object
+            :param func: function object
             :param params: list of method parameters
             :param loglevel: logging level
         '''
         self.id = wid
-        self.simfunc = simfunc
+        self.func = func
         self.params = params
         self.loglevel = loglevel
 
     def __call__(self):
-        ''' Caller to the specific object method. '''
+        ''' Caller to the function with specific parameters. '''
         logger.setLevel(self.loglevel)
-        return self.id, self.simfunc(*self.params)
+        return self.id, self.func(*self.params)
+
+
+class Batch:
+    ''' Generic interface to run batches of function calls. '''
+
+    def __init__(self, func, queue):
+        ''' Batch constructor.
+
+            :param func: function object
+            :param queue: list of list of function parameters
+        '''
+        self.func = func
+        self.queue = queue
+
+    def __call__(self, *args, **kwargs):
+        ''' Call the internal run method. '''
+        return self.run(*args, **kwargs)
+
+    def getNConsumers(self):
+        ''' Determine number of consumers based on queue length and number of available CPUs. '''
+        return min(mp.cpu_count(), len(self.queue))
+
+    def start(self):
+        ''' Create tasks and results queues, and start consumers. '''
+        mp.freeze_support()
+        self.tasks = mp.JoinableQueue()
+        self.results = mp.Queue()
+        self.consumers = [Consumer(self.tasks, self.results) for i in range(self.getNConsumers())]
+        for c in self.consumers:
+            c.start()
+
+    def assign(self, loglevel):
+        ''' Assign tasks to workers. '''
+        for i, params in enumerate(self.queue):
+            worker = Worker(i, self.func, params, loglevel)
+            self.tasks.put(worker, block=False)
+
+    def join(self):
+        ''' Put all tasks to None and join the queue. '''
+        for i in range(len(self.consumers)):
+            self.tasks.put(None, block=False)
+        self.tasks.join()
+
+    def get(self):
+        ''' Extract and re-order results. '''
+        outputs, idxs = [], []
+        for i in range(len(self.queue)):
+            wid, out = self.results.get()
+            outputs.append(out)
+            idxs.append(wid)
+        return [x for _, x in sorted(zip(idxs, outputs))]
+
+    def stop(self):
+        ''' Close tasks and results queues. '''
+        self.tasks.close()
+        self.results.close()
+
+    def run(self, mpi=False, loglevel=logging.INFO):
+        ''' Run batch with or without multiprocessing. '''
+        if mpi:
+            self.start()
+            self.assign(loglevel)
+            self.join()
+            outputs = self.get()
+            self.stop()
+        else:
+            outputs = [self.func(*params) for params in self.queue]
+        return outputs
 
 
 def createQueue(*dims):
@@ -78,94 +146,6 @@ def createQueue(*dims):
     queue = np.stack(np.meshgrid(*dims_in), -1).reshape(-1, ndims)
     queue = queue[:, inds_out]
     return queue.tolist()
-
-
-def runBatch(simfunc, queue, mpi=False, loglevel=logging.INFO):
-    ''' Run batch of a simulation function with various combinations of parameters.
-
-        :param queue: array of all stimulation parameters combinations
-        :param mpi: boolean stating whether or not to use multiprocessing
-    '''
-    nsims = len(queue)
-
-    if mpi:
-        mp.freeze_support()
-        tasks = mp.JoinableQueue()
-        results = mp.Queue()
-        nconsumers = min(mp.cpu_count(), nsims)
-        consumers = [Consumer(tasks, results) for i in range(nconsumers)]
-        for w in consumers:
-            w.start()
-
-    # Run simulations
-    outputs = []
-    for i, params in enumerate(queue):
-        if mpi:
-            worker = Worker(i, simfunc, params, loglevel)
-            tasks.put(worker, block=False)
-        else:
-            outputs.append(simfunc(*params))
-
-    if mpi:
-        for i in range(nconsumers):
-            tasks.put(None, block=False)
-        tasks.join()
-        idxs = []
-        for i in range(nsims):
-            wid, out = results.get()
-            outputs.append(out)
-            idxs.append(wid)
-        outputs = [x for _, x in sorted(zip(idxs, outputs))]
-
-        # Close tasks and results queues
-        tasks.close()
-        results.close()
-
-    return outputs
-
-
-def runBatch2(obj, method_str, queue, mpi=False, loglevel=logging.INFO):
-    ''' Run batch of simulations of a model object for various combinations of parameters.
-
-        :param queue: array of all stimulation parameters combinations
-        :param mpi: boolean stating whether or not to use multiprocessing
-    '''
-    nsims = len(queue)
-
-    if mpi:
-        mp.freeze_support()
-        tasks = mp.JoinableQueue()
-        results = mp.Queue()
-        nconsumers = min(mp.cpu_count(), nsims)
-        consumers = [Consumer(tasks, results) for i in range(nconsumers)]
-        for w in consumers:
-            w.start()
-
-    # Run simulations
-    outputs = []
-    for i, params in enumerate(queue):
-        if mpi:
-            worker = Worker(i, obj, method_str, params, loglevel)
-            tasks.put(worker, block=False)
-        else:
-            outputs.append(getattr(obj, method_str)(*params))
-
-    if mpi:
-        for i in range(nconsumers):
-            tasks.put(None, block=False)
-        tasks.join()
-        idxs = []
-        for i in range(nsims):
-            wid, out = results.get()
-            outputs.append(out)
-            idxs.append(wid)
-        outputs = [x for _, x in sorted(zip(idxs, outputs))]
-
-        # Close tasks and results queues
-        tasks.close()
-        results.close()
-
-    return outputs
 
 
 def xlslog(filepath, logentry, sheetname='Data'):

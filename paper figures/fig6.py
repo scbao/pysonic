@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:15:06
+# @Last Modified time: 2019-06-02 11:53:17
 
 ''' Sub-panels of the NICE and SONIC computation times comparative figure. '''
 
@@ -38,9 +38,9 @@ def comptime_vs_amp(neuron, a, Fdrive, amps, tstim, toffset, inputdir, fs=8, lw=
     # Get filepaths
     xlabel = 'Amplitude (kPa)'
     subdir = os.path.join(inputdir, neuron)
-    sonic_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+    sonic_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'sonic'))
-    full_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+    full_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'full'))
     data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
 
@@ -94,9 +94,9 @@ def comptime_vs_freq(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir, fs=8,
     for Fdrive in freqs:
         Athr = CW_Athrs[neuron].loc[Fdrive * 1e-3]  # kPa
         Adrive = (Athr + 20.) * 1e3  # Pa
-        sonic_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        sonic_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
-        full_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        full_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
     data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
 
@@ -144,9 +144,9 @@ def comptime_vs_radius(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdir
     for a in radii:
         Athr = CW_Athrs[neuron].loc[np.round(a * 1e9, 1)]  # kPa
         Adrive = (Athr + 20.) * 1e3  # Pa
-        sonic_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        sonic_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
-        full_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        full_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
     data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
 
@@ -211,9 +211,9 @@ def comptime_vs_DC(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdi
     for i, neuron in enumerate(neurons):
         # Get filepaths
         subdir = os.path.join(inputdir, neuron)
-        sonic_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+        sonic_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [PRF], DCs, 'sonic'))
-        full_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+        full_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [PRF], DCs, 'full'))
         sonic_fpaths = sonic_fpaths[1:] + [sonic_fpaths[0]]
         full_fpaths = full_fpaths[1:] + [full_fpaths[0]]

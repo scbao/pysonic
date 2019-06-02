@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-16 15:25:21
+# @Last Modified time: 2019-06-02 12:32:41
 
 import numpy as np
 from ..core import PointNeuron
@@ -28,6 +28,7 @@ class Thalamic(PointNeuron):
     ECa = 120.0  # Calcium Nernst potential (mV)
 
     def __init__(self):
+        super().__init__()
         self.states = ['m', 'h', 'n', 's', 'u']
         self.rates = self.getRatesNames(self.states)
 

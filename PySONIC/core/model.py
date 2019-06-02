@@ -4,13 +4,14 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 16:46:31
+# @Last Modified time: 2019-06-02 13:23:59
 
 import pickle
 import abc
 import inspect
 import numpy as np
 
+from .batches import createQueue
 from ..utils import logger
 
 
@@ -28,10 +29,16 @@ class Model(metaclass=abc.ABCMeta):
     def __repr__(self):
         raise NotImplementedError
 
-    @property
-    @abc.abstractmethod
-    def pprint(self):
-        raise NotImplementedError
+    def params(self):
+        ''' Gather all model parameters in a dictionary '''
+        def toAvoid(p):
+            return (p.startswith('__') and p.endswith('__')) or p.startswith('_abc_')
+        class_attrs = inspect.getmembers(self.__class__, lambda a: not(inspect.isroutine(a)))
+        inst_attrs = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
+        class_attrs = [a for a in class_attrs if not toAvoid(a[0])]
+        inst_attrs = [a for a in inst_attrs if not toAvoid(a[0]) and a not in class_attrs]
+        params_dict = {a[0]: a[1] for a in class_attrs + inst_attrs}
+        return params_dict
 
     @property
     @abc.abstractmethod
@@ -58,18 +65,17 @@ class Model(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def simulate(self, *args, **kwargs):
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
     def meta(self, *args):
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def createQueue(self, *args):
+    def simulate(self, *args, **kwargs):
         raise NotImplementedError
+
+    def simQueue(self, *args):
+        ''' Create a simulation queue from a combination of simulation parameters. '''
+        return createQueue(*args)
 
     def runAndSave(self, outdir, *args):
         ''' Simulate system and save results in a PKL file. '''

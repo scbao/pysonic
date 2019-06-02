@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 16:37:32
+# @Last Modified time: 2019-06-02 12:33:58
 
 
 import numpy as np
@@ -138,6 +138,7 @@ class OtsukaSTN(PointNeuron):
     tau_r = 2 * 1e-3  # s
 
     def __init__(self):
+        super().__init__()
         self.states = ['a', 'b', 'c', 'd1', 'd2', 'm', 'h', 'n', 'p', 'q', 'r', 'Cai']
         self.rates = self.getRatesNames(['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
         self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m

@@ -4,11 +4,11 @@
 # @Date:   2017-06-06 13:36:00
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 16:58:23
+# @Last Modified time: 2019-06-02 13:32:37
 
 
 from .simulators import PWSimulator, PeriodicSimulator
-from .batches import *
+from .batches import Batch, createQueue
 from .model import Model
 from .pneuron import PointNeuron
 from .bls import BilayerSonophore, PmCompMethod, LennardJones

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-16 15:24:02
+# @Last Modified time: 2019-06-02 12:32:49
 
 import numpy as np
 from ..core import PointNeuron
@@ -37,6 +37,7 @@ class FrankenhaeuserHuxley(PointNeuron):
 
 
     def __init__(self):
+        super().__init__()
         self.states = ['m', 'h', 'n', 'p']
         self.rates = self.getRatesNames(self.states)
         self.q10 = 3**((self.celsius - 20) / 10)

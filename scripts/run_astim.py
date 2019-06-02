@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 17:01:35
+# @Last Modified time: 2019-06-02 13:49:52
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from PySONIC.core import NeuronalBilayerSonophore, runBatch
+from PySONIC.core import NeuronalBilayerSonophore, Batch
 from PySONIC.utils import logger, selectDirDialog, parseUSAmps
 from PySONIC.neurons import getNeuronsDict
 from PySONIC.plt import plotBatch
@@ -33,7 +33,7 @@ defaults = dict(
 )
 
 
-def runAStimBatch(outdir, nbls, stim_params, method, mpi=False):
+def runAStimBatch(outdir, nbls, stim_params, method, mpi=False, loglevel=logging.INFO):
     ''' Run batch A-STIM simulations of the system for various neuron types and
         stimulation parameters.
 
@@ -41,6 +41,7 @@ def runAStimBatch(outdir, nbls, stim_params, method, mpi=False):
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :param method: numerical integration method ("classic", "hybrid" or "sonic")
         :param mpi: boolean statting wether or not to use multiprocessing
+        :param loglevel: logging level
         :return: list of full paths to the output files
     '''
 
@@ -52,7 +53,7 @@ def runAStimBatch(outdir, nbls, stim_params, method, mpi=False):
     logger.info("Starting A-STIM simulation batch")
 
     # Generate queue
-    queue = nbls.createQueue(
+    queue = nbls.simQueue(
         stim_params['freqs'],
         stim_params.get('amps', None),
         stim_params['durations'],
@@ -65,7 +66,8 @@ def runAStimBatch(outdir, nbls, stim_params, method, mpi=False):
         item.insert(0, outdir)
 
     # Run batch
-    return runBatch(nbls.runAndSave, queue, mpi=mpi)
+    batch = Batch(nbls.runAndSave, queue)
+    return batch(mpi=mpi, loglevel=loglevel)
 
 
 def main():
@@ -141,7 +143,8 @@ def main():
     pkl_filepaths = []
     for a in radii:
         nbls = NeuronalBilayerSonophore(a, neuron)
-        pkl_filepaths += runAStimBatch(outdir, nbls, stim_params, method, mpi=mpi)
+        pkl_filepaths += runAStimBatch(outdir, nbls, stim_params, method,
+                                       mpi=mpi, loglevel=loglevel)
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles

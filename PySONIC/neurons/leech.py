@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-16 15:25:06
+# @Last Modified time: 2019-06-02 12:33:41
 
 
 from functools import partialmethod
@@ -65,6 +65,7 @@ class LeechTouch(PointNeuron):
 
 
     def __init__(self):
+        super().__init__()
         self.states = ['m', 'h', 'n', 's', 'Nai', 'ANai', 'Cai', 'ACai']
         self.rates = self.getRatesNames(['m', 'h', 'n', 's'])
         self.K_Na = self.K_Na_original * self.surface * self.curr_factor
@@ -381,6 +382,8 @@ class LeechMech(PointNeuron):
     betaC = 0.1e3  # beta rate for the open-probability of Ca2+-dependent Potassium channels (s-1)
     T = 293.15  # Room temperature (K)
 
+    def __init__(self):
+        super().__init__()
 
     def alpham(self, Vm):
         ''' Compute the alpha rate for the open-probability of Sodium channels.

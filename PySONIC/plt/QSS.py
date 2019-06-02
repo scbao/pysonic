@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm, colors
 
 from ..postpro import getFixedPoints
-from ..core import NeuronalBilayerSonophore, runBatch
+from ..core import NeuronalBilayerSonophore, Batch
 from .pltutils import *
 from ..utils import logger
 
@@ -405,13 +405,17 @@ def plotEqChargeVsAmp(neurons, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3
                 QSS_queue.append([Fdrive, Adrive, DC, lookups1D, dQdt[iA, :, iDC]])
 
             # Run batch to find stable and unstable fixed points at each amplitude
-            QSS_output = runBatch(nbls, 'quasiSteadyStateFixedPoints', QSS_queue, mpi=mpi)
+            QSS_batch = Batch(nbls.fixedPointsQSS, QSS_queue)
+            QSS_output = QSS_batch(mpi=mpi)
 
             # Generate simulations batch queue
-            sim_queue = nbls.createQueue([Fdrive], amps, [tstim], [toffset], [PRF], [DC], method)
+            sim_queue = nbls.simQueue([Fdrive], amps, [tstim], [toffset], [PRF], [DC], method)
+            for item in sim_queue:
+                item.insert(0, outdir)
 
             # Run batch to find stabilization points at each amplitude
-            sim_output = runBatch(nbls, 'runIfNone', sim_queue, extra_params=[outdir], mpi=mpi)
+            sim_batch = Batch(nbls.runIfNone, sim_queue)
+            sim_output = sim_batch(mpi=mpi)
 
             # Retrieve batch output
             for i, Adrive in enumerate(amps):

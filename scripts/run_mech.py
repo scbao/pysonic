@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 17:05:15
+# @Last Modified time: 2019-06-02 13:46:53
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from PySONIC.core import BilayerSonophore, runBatch
+from PySONIC.core import BilayerSonophore, Batch
 from PySONIC.utils import logger, selectDirDialog, parseUSAmps
 from PySONIC.neurons import CorticalRS
 from PySONIC.plt import plotBatch
@@ -31,13 +31,14 @@ defaults = dict(
 )
 
 
-def runMechBatch(outdir, bls, stim_params, mpi=False):
+def runMechBatch(outdir, bls, stim_params, mpi=False, loglevel=logging.INFO):
     ''' Run batch simulations of the mechanical system with imposed values of charge density.
 
         :param outdir: full path to output directory
         :param bls: BilayerSonophore object
         :param stim_params: dictionary containing sweeps for all stimulation parameters
         :param mpi: boolean stating whether or not to use multiprocessing
+        :param loglevel: logging level
         :return: list of full paths to the output files
     '''
 
@@ -54,11 +55,14 @@ def runMechBatch(outdir, bls, stim_params, mpi=False):
     amps = np.array(stim_params['amps'])
     charges = np.array(stim_params['charges'])
 
-    # Generate simulations queue and run batch
-    queue = bls.createQueue(freqs, amps, charges)
+    # Generate simulations queue
+    queue = bls.simQueue(freqs, amps, charges)
     for item in queue:
         item.insert(0, outdir)
-    return runBatch(bls.runAndSave, queue, mpi=mpi)
+
+    # Run simulation batch
+    batch = Batch(bls.runAndSave, queue)
+    return batch(mpi=mpi, loglevel=loglevel)
 
 
 def main():
@@ -117,7 +121,7 @@ def main():
     for a in radii:
         for d in embeddings:
             bls = BilayerSonophore(a, Cm0, Qm0, embedding_depth=d)
-            pkl_filepaths += runMechBatch(outdir, bls, stim_params, mpi=mpi)
+            pkl_filepaths += runMechBatch(outdir, bls, stim_params, mpi=mpi, loglevel=loglevel)
     pkl_dir, _ = os.path.split(pkl_filepaths[0])
 
     # Plot resulting profiles

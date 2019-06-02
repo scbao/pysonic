@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:14:48
+# @Last Modified time: 2019-06-02 11:53:17
 
 ''' Sub-panels of the NICE and SONIC accuracies comparative figure. '''
 
@@ -35,9 +35,9 @@ def Qprofiles_vs_amp(neuron, a, Fdrive, CW_Athrs, tstim, toffset, inputdir):
     Athr = CW_Athrs[neuron].loc[Fdrive * 1e-3]  # kPa
     amps = np.array([Athr - 5., Athr, Athr + 20.]) * 1e3  # Pa
     subdir = os.path.join(inputdir, neuron)
-    sonic_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+    sonic_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'sonic'))
-    full_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+    full_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'full'))
     regimes = ['AT - 5 kPa', 'AT', 'AT + 20 kPa']
     fig = plotComp(
@@ -58,9 +58,9 @@ def Qprofiles_vs_amp(neuron, a, Fdrive, CW_Athrs, tstim, toffset, inputdir):
 def spikemetrics_vs_amp(neuron, a, Fdrive, amps, tstim, toffset, inputdir):
     ''' Comparison of spiking metrics for CW stimuli at various supra-threshold amplitudes. '''
     subdir = os.path.join(inputdir, neuron)
-    sonic_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+    sonic_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'sonic'))
-    full_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+    full_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'full'))
     data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
     metrics_files = {x: '{}_spikemetrics_vs_amplitude_{}.csv'.format(neuron, x)
@@ -82,9 +82,9 @@ def Qprofiles_vs_freq(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir):
     for Fdrive in freqs:
         Athr = CW_Athrs[neuron].loc[Fdrive * 1e-3]  # kPa
         Adrive = (Athr + 20.) * 1e3  # Pa
-        sonic_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        sonic_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
-        full_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        full_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
     fig = plotComp(
         sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []),
@@ -108,9 +108,9 @@ def spikemetrics_vs_freq(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir):
     for Fdrive in freqs:
         Athr = CW_Athrs[neuron].loc[Fdrive * 1e-3]  # kPa
         Adrive = (Athr + 20.) * 1e3  # Pa
-        sonic_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        sonic_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
-        full_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        full_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
     data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
     metrics_files = {x: '{}_spikemetrics_vs_frequency_{}.csv'.format(neuron, x)
@@ -132,9 +132,9 @@ def Qprofiles_vs_radius(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdi
     for a in radii:
         Athr = CW_Athrs[neuron].loc[a * 1e9]  # kPa
         Adrive = (Athr + 20.) * 1e3  # Pa
-        sonic_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        sonic_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
-        full_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        full_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
 
     tmp = plt.get_cmap('Paired').colors
@@ -162,9 +162,9 @@ def spikemetrics_vs_radius(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inpu
     for a in radii:
         Athr = CW_Athrs[neuron].loc[np.round(a * 1e9, 1)]  # kPa
         Adrive = (Athr + 20.) * 1e3  # Pa
-        sonic_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        sonic_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
-        full_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        full_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
     data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
     metrics_files = {x: '{}_spikemetrics_vs_radius_{}.csv'.format(neuron, x)
@@ -184,9 +184,9 @@ def Qprofiles_vs_DC(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DC, inputdi
     sonic_fpaths, full_fpaths = [], []
     for neuron in neurons:
         subdir = os.path.join(inputdir, neuron)
-        sonic_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        sonic_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [PRF], [DC], 'sonic'))
-        full_fpaths += getSims(subdir, neuron, a, nbls.createQueue(
+        full_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [PRF], [DC], 'full'))
     colors = list(plt.get_cmap('Paired').colors[:6])
     del colors[2:4]
@@ -214,9 +214,9 @@ def spikemetrics_vs_DC(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inp
     colors_dict = {}
     for i, neuron in enumerate(neurons):
         subdir = os.path.join(inputdir, neuron)
-        sonic_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+        sonic_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [PRF], DCs, 'sonic'))
-        full_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+        full_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [PRF], DCs, 'full'))
         metrics_files = {x: '{}_spikemetrics_vs_DC_{}.csv'.format(neuron, x)
                          for x in ['full', 'sonic']}
@@ -236,9 +236,9 @@ def Qprofiles_vs_PRF(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inputd
     ''' Comparison of resulting charge profiles for PW stimuli at 5% duty cycle
         with different pulse repetition frequencies. '''
     subdir = os.path.join(inputdir, neuron)
-    sonic_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+    sonic_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], [Adrive], [tstim], [toffset], PRFs, [DC], 'sonic'))
-    full_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+    full_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], [Adrive], [tstim], [toffset], PRFs, [DC], 'full'))
     patches = [False, True] * len(PRFs)
     patches[-1] = False
@@ -262,9 +262,9 @@ def spikemetrics_vs_PRF(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inp
         with different pulse repetition frequencies. '''
     xlabel = 'PRF (Hz)'
     subdir = os.path.join(inputdir, neuron)
-    sonic_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+    sonic_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], [Adrive], [tstim], [toffset], PRFs, [DC], 'sonic'))
-    full_fpaths = getSims(subdir, neuron, a, nbls.createQueue(
+    full_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], [Adrive], [tstim], [toffset], PRFs, [DC], 'full'))
     data_fpaths = {'full': full_fpaths, 'sonic': sonic_fpaths}
     metrics_files = {x: '{}_spikemetrics_vs_PRF_{}.csv'.format(neuron, x)
