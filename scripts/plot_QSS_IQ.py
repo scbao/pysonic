@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-23 18:55:37
+# @Last Modified time: 2019-06-02 15:25:45
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import logging
 
-from PySONIC.utils import logger, selectDirDialog
+from PySONIC.utils import logger, selectDirDialog, parseUSAmps, getInDict
 from PySONIC.neurons import getNeuronsDict
 from PySONIC.plt import plotQSSvars, plotQSSVarVsAmp, plotEqChargeVsAmp
 
@@ -21,83 +21,63 @@ def main():
 
     ap = ArgumentParser()
 
-    # Stimulation parameters
-    ap.add_argument('-n', '--neurons', type=str, nargs='+', default=None, help='Neuron types')
-    ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
+    # Runtime options
     ap.add_argument('-c', '--cmap', type=str, default='viridis', help='Colormap name')
     ap.add_argument('-v', '--verbose', default=False, action='store_true',
                     help='Increase verbosity')
     ap.add_argument('-s', '--save', default=False, action='store_true',
                     help='Save output figures')
-    ap.add_argument('--titrate', default=False, action='store_true',
-                    help='Titrate excitation threshold')
-    ap.add_argument('-A', '--amp', nargs='+', type=float, default=None,
-                    help='Amplitude (kPa or mA/m2)')
-    ap.add_argument('--tstim', type=float, default=500.,
-                    help='Stimulus duration for titration (ms)')
-    ap.add_argument('--toffset', type=float, default=500.,
-                    help='Offset duration for titration (ms)')
-    ap.add_argument('--PRF', type=float, default=100.,
-                    help='Pulse-repetition-frequency for titration (Hz)')
-    ap.add_argument('--DC', type=float, nargs='+', default=None, help='Duty cycle (%)')
-    ap.add_argument('--Ascale', type=str, default='lin',
-                    help='Scale type for acoustic amplitude ("lin" or "log")')
-    ap.add_argument('--Amin', type=float, default=None, help='Amplitude lower bound (kPa or mA/m2)')
-    ap.add_argument('--Amax', type=float, default=None, help='Amplitude upper bound (kPa or mA/m2)')
-    ap.add_argument('--nA', type=float, default=100, help='Number of amplitude values')
-    ap.add_argument('--stim', type=str, default='US', help='Stimulation type ("US" or "elec")')
+    ap.add_argument('--comp', default=False, action='store_true',
+                    help='Compare with simulations')
     ap.add_argument('--vars', type=str, nargs='+', default=None, help='Variables to plot')
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
+    ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
+    ap.add_argument('-i', '--inputdir', type=str, default=None, help='Input directory')
+
+    # Stimulation parameters
+    ap.add_argument('-n', '--neurons', type=str, nargs='+', default=None, help='Neuron types')
+    ap.add_argument('-a', '--radius', type=float, default=32., help='Sonophore radius (nm)')
+    ap.add_argument('-f', '--freq', type=float, default=500., help='US frequency (kHz)')
+    ap.add_argument('-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('--Arange', type=str, nargs='+', help='Amplitude range [scale min max n] (kPa)')
+    ap.add_argument('-I', '--intensity', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
+    ap.add_argument('--Irange', type=str, nargs='+',
+                    help='Intensity range [scale min max n] (W/cm2)')
+    ap.add_argument('--tstim', type=float, default=1000., help='Stimulus duration (ms)')
+    ap.add_argument('--toffset', type=float, default=0., help='Offset duration (ms)')
+    ap.add_argument('--PRF', type=float, default=100., help='Pulse-repetition-frequency (Hz)')
+    ap.add_argument('--DC', type=float, nargs='+', default=None, help='Duty cycle (%)')
 
     # Parse arguments
-    args = ap.parse_args()
-    logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-    neurons = ['RS', 'LTS'] if args.neurons is None else args.neurons
-    neurons = [getNeuronsDict()[n]() for n in neurons]
+    args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
+    loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
+    logger.setLevel(loglevel)
+    mpi = args['mpi']
+    comp = args['comp']
+    save = args['save']
+    cmap = args['cmap']
+    pltvars = args.get('vars', ['dQdt'])
+    Ascale = args.get('Arange', ['lin'])[0]
 
-    # US parameters
-    a = 32e-9  # m
-    Fdrive = 500e3  # Hz
-    AUS_range = (1., 600.)  # kPa
+    if comp:
+        indir = getInDict(args, 'inputdir', selectDirDialog)
+        if indir == '':
+            logger.error('no input directory')
+            quit()
+    if save:
+        outdir = getInDict(args, 'outputdir', selectDirDialog)
+        if outdir == '':
+            logger.error('no output directory')
+            quit()
 
-    # E-STIM parameters
-    Aelec_range = (-20., 20.)  # mA/m2
-
-    # Pulsing parameters
-    tstim = args.tstim * 1e-3  # s
-    toffset = args.toffset * 1e-3  # s
-    PRF = args.PRF  # Hz
-    DCs = [100.] if args.DC is None else args.DC  # %
-    DCs = np.array(DCs) * 1e-2  # (-)
-
-    if args.stim == 'US':
-        if args.amp is not None:
-            amps = np.array(args.amp) * 1e3
-        else:
-            Arange = list(AUS_range)
-            for i, val in enumerate([args.Amin, args.Amax]):
-                if val is not None:
-                    Arange[i] = val
-            amps = {
-                'lin': np.linspace(Arange[0], Arange[1], args.nA),
-                'log': np.logspace(np.log10(Arange[0]), np.log10(Arange[1]), args.nA)
-            }[args.Ascale] * 1e3  # Pa
-        cmap = args.cmap
-    else:
-        a = None
-        Fdrive = None
-        if args.amp is not None:
-            amps = np.array(args.amp)  # mA/m2
-        else:
-            Arange = list(Aelec_range)
-            for i, val in enumerate([args.Amin, args.Amax]):
-                if val is not None:
-                    Arange[i] = val
-            amps = np.linspace(Arange[0], Arange[1], args.nA)  # mA/m2
-        cmap = 'RdBu_r'
-
-    if args.vars is None:
-        args.vars = ['dQdt']
+    neurons = [getNeuronsDict()[n]() for n in args.get('neurons', ['RS', 'LTS'])]
+    a = args['radius'] * 1e-9  # m
+    Fdrive = args['freq'] * 1e3  # Hz
+    amps = parseUSAmps(args, np.linspace(1., 600., 3) * 1e3)  # Pa
+    tstim = args['tstim'] * 1e-3  # s
+    toffset = args['toffset'] * 1e-3  # s
+    PRF = args['PRF']  # Hz
+    DCs = np.array(args.get('DC', [100.])) * 1e-2  # (-)
 
     figs = []
 
@@ -108,27 +88,27 @@ def main():
                 figs.append(
                     plotQSSvars(neuron, a, Fdrive, amps[0]))
             else:
-                for var in args.vars:
+                for var in pltvars:
                     figs.append(plotQSSVarVsAmp(
-                        neuron, a, Fdrive, var, amps=amps, DC=DC, cmap=cmap, zscale=args.Ascale))
+                        neuron, a, Fdrive, var, amps=amps, DC=DC, cmap=cmap, zscale=Ascale))
 
-    # Plot equilibrium charge as a function of amplitude for each neuron
-    if amps.size > 1 and 'dQdt' in args.vars:
-        figs.append(
-            plotEqChargeVsAmp(
-                neurons, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs, toffset=toffset,
-                xscale=args.Ascale, titrate=args.titrate, mpi=args.mpi))
+        # Plot equilibrium charge as a function of amplitude for each neuron
+        if amps.size > 1 and 'dQdt' in pltvars:
+            figs.append(
+                plotEqChargeVsAmp(
+                    neuron, a, Fdrive, amps=amps, tstim=tstim, PRF=PRF, DCs=DCs, toffset=toffset,
+                    xscale=Ascale, compdir=indir, mpi=mpi, loglevel=loglevel))
 
-    if args.save:
-        outputdir = args.outputdir if args.outputdir is not None else selectDirDialog()
-        if outputdir == '':
+    if save:
+        outdir = args['outputdir'] if 'outputdir' in args else selectDirDialog()
+        if outdir == '':
             logger.error('no output directory')
         else:
             for fig in figs:
                 s = fig.canvas.get_window_title()
                 s = s.replace('(', '- ').replace('/', '_').replace(')', '')
                 figname = '{}.png'.format(s)
-                fig.savefig(os.path.join(outputdir, figname), transparent=True)
+                fig.savefig(os.path.join(outdir, figname), transparent=True)
     else:
         plt.show()
 

@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 13:21:40
+# @Last Modified time: 2019-06-02 15:38:45
 
 import abc
 import inspect
@@ -537,12 +537,12 @@ class PointNeuron(Model):
 
         # Extract charge signal posterior to observation window
         t, Qm = [data[key].values for key in ['t', 'Qm']]
-        Qm = y[2, t > TMIN_STABILIZATION]
+        Qm = Qm[t > TMIN_STABILIZATION]
 
         # Compute variation range
         Qm_range = np.ptp(Qm)
-        logger.debug('%.2f nC/cm2 variation range over the last %.0f ms',
-                     Qm_range * 1e5, TMIN_STABILIZATION * 1e3)
+        logger.debug('%.2f nC/cm2 variation range over the last %.0f ms, Qmf = %.2f nC/cm2',
+                     Qm_range * 1e5, TMIN_STABILIZATION * 1e3, Qm[-1] * 1e5)
 
         # Return final value only if stabilization is detected
         if np.ptp(Qm) < QSS_Q_DIV_THR:

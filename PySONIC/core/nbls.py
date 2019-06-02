@@ -4,15 +4,16 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 13:22:11
+# @Last Modified time: 2019-06-02 15:27:53
 
 from copy import deepcopy
 import logging
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
+from scipy.integrate import solve_ivp
 
-from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator
+from .simulators import PWSimulator, HybridSimulator
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .batches import createQueue
@@ -64,7 +65,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     def getPltScheme(self):
         return self.neuron.getPltScheme()
 
-    def filecode(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method):
+    def filecode(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method='sonic'):
         return 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.2f}kPa_{:.0f}ms_{}{}'.format(
             self.neuron.name, 'CW' if DC == 1 else 'PW', self.a * 1e9,
             Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
@@ -517,57 +518,57 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
 
         # Initialize y0 vector
-        # t0 = 0.
+        t0 = 0.
         y0 = np.array([Qm0] + list(states0.values()))
 
-        # Initialize simulator and compute solution
-        simulator = PeriodicSimulator(
-            lambda y, t: self.effDerivatives(y, t, lkp),
-            ivars_to_check=[0])
-        simulator.stopfunc = simulator.isAsymptoticallyStable
-        nmax = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)
-        t, y, stim = simulator.compute(y0, DT_EFF, QSS_INTEGRATION_INTERVAL, nmax=nmax)
-        logger.debug('completed in %ss', si_format(tcomp, 1))
-        conv = t[-1] < QSS_HISTORY_INTERVAL
+        # # Initialize simulator and compute solution
+        # simulator = PeriodicSimulator(
+        #     lambda y, t: self.effDerivatives(y, t, lkp),
+        #     ivars_to_check=[0])
+        # simulator.stopfunc = simulator.isAsymptoticallyStable
+        # nmax = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)
+        # t, y, stim = simulator.compute(y0, DT_EFF, QSS_INTEGRATION_INTERVAL, nmax=nmax)
+        # logger.debug('completed in %ss', si_format(tcomp, 1))
+        # conv = t[-1] < QSS_HISTORY_INTERVAL
 
-        # # Initializing empty list to record evolution of charge deviation
-        # n = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)  # size of history
-        # dQ = []
+        # Initializing empty list to record evolution of charge deviation
+        n = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)  # size of history
+        dQ = []
 
-        # # As long as there is no clear charge convergence or divergence
-        # conv, div = False, False
-        # tf, yf = t0, y0
-        # while not conv and not div:
+        # As long as there is no clear charge convergence or divergence
+        conv, div = False, False
+        tf, yf = t0, y0
+        while not conv and not div:
 
-        #     # Integrate system for small interval and retrieve final charge deviation
-        #     t0, y0 = tf, yf
-        #     sol = solve_ivp(
-        #         lambda t, y: self.effDerivatives(y, t, lkp),
-        #         [t0, t0 + QSS_INTEGRATION_INTERVAL], y0,
-        #         method='LSODA'
-        #     )
-        #     tf, yf = sol.t[-1], sol.y[:, -1]
-        #     dQ.append(yf[0] - Qm0)
+            # Integrate system for small interval and retrieve final charge deviation
+            t0, y0 = tf, yf
+            sol = solve_ivp(
+                lambda t, y: self.effDerivatives(y, t, lkp),
+                [t0, t0 + QSS_INTEGRATION_INTERVAL], y0,
+                method='LSODA'
+            )
+            tf, yf = sol.t[-1], sol.y[:, -1]
+            dQ.append(yf[0] - Qm0)
 
-        #     # logger.debug('{:.0f} ms: dQ = {:.5f} nC/cm2, avg dQ = {:.5f} nC/cm2'.format(
-        #     #     tf * 1e3, dQ[-1] * 1e5, np.mean(dQ[-n:]) * 1e5))
+            # logger.debug('{:.0f} ms: dQ = {:.5f} nC/cm2, avg dQ = {:.5f} nC/cm2'.format(
+            #     tf * 1e3, dQ[-1] * 1e5, np.mean(dQ[-n:]) * 1e5))
 
-        #     # If last charge deviation is too large -> divergence
-        #     if np.abs(dQ[-1]) > QSS_Q_DIV_THR:
-        #         div = True
+            # If last charge deviation is too large -> divergence
+            if np.abs(dQ[-1]) > QSS_Q_DIV_THR:
+                div = True
 
-        #     # If last charge deviation or average deviation in recent history
-        #     # is small enough -> convergence
-        #     for x in [dQ[-1], np.mean(dQ[-n:])]:
-        #         if np.abs(x) < QSS_Q_CONV_THR:
-        #             conv = True
+            # If last charge deviation or average deviation in recent history
+            # is small enough -> convergence
+            for x in [dQ[-1], np.mean(dQ[-n:])]:
+                if np.abs(x) < QSS_Q_CONV_THR:
+                    conv = True
 
-        #     # If max integration duration is been reached -> error
-        #     if tf > QSS_MAX_INTEGRATION_DURATION:
-        #         raise ValueError('too many iterations')
+            # If max integration duration is been reached -> error
+            if tf > QSS_MAX_INTEGRATION_DURATION:
+                raise ValueError('too many iterations')
 
-        # logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
-        #     {True: 'con', False: 'di'}[conv], tf * 1e3, dQ[-1] * 1e5))
+        logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
+            {True: 'con', False: 'di'}[conv], tf * 1e3, dQ[-1] * 1e5))
 
         return conv
 

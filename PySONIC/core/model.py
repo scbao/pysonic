@@ -4,15 +4,16 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 13:23:59
+# @Last Modified time: 2019-06-02 15:34:25
 
+import os
 import pickle
 import abc
 import inspect
 import numpy as np
 
 from .batches import createQueue
-from ..utils import logger
+from ..utils import logger, loadData
 
 
 class Model(metaclass=abc.ABCMeta):
@@ -91,12 +92,25 @@ class Model(metaclass=abc.ABCMeta):
             new_args.insert(iA, Athr)
             args = new_args
 
-        # Simulate model, save inf file and return file path
+        # Simulate model, save file and return file path
         data, tcomp = self.simulate(*args)
         meta = self.meta(*args)
         meta['tcomp'] = tcomp
-        outpath = '{}/{}.pkl'.format(outdir, self.filecode(*args))
-        with open(outpath, 'wb') as fh:
+        fpath = '{}/{}.pkl'.format(outdir, self.filecode(*args))
+        with open(fpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': data}, fh)
-        logger.debug('simulation data exported to "%s"', outpath)
-        return outpath
+        logger.debug('simulation data exported to "%s"', fpath)
+        return fpath
+
+    def load(self, outdir, *args):
+        ''' Load output data for a specific parameters combination. '''
+
+        # Get file path from simulation parameters
+        fpath = '{}/{}.pkl'.format(outdir, self.filecode(*args))
+
+        # If output file does not exist, run simulation to generate it
+        if not os.path.isfile(fpath):
+            self.runAndSave(outdir, *args)
+
+        # Return data and meta-data
+        return loadData(fpath)

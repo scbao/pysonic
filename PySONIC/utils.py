@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 16:49:00
+# @Last Modified time: 2019-06-02 15:22:51
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -171,6 +171,14 @@ def rsquared(x1, x2):
     ss_res = np.sum(residuals**2)
     ss_tot = np.sum((x1 - np.mean(x1))**2)
     return 1 - (ss_res / ss_tot)
+
+
+def getInDict(d, key, func):
+    ''' Return value of specific dictionary key, or function return alias if not there. '''
+    if key in d:
+        return d[key]
+    else:
+        return func()
 
 
 def Pressure2Intensity(p, rho=1075.0, c=1515.0):
