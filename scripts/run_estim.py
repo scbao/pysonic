@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 13:48:33
+# @Last Modified time: 2019-06-02 15:49:00
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.core import Batch
-from PySONIC.utils import logger, selectDirDialog, parseElecAmps
+from PySONIC.utils import logger, selectDirDialog, parseElecAmps, getInDict
 from PySONIC.neurons import *
 from PySONIC.plt import plotBatch
 
@@ -67,7 +67,8 @@ def main():
 
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true',
+                    help='Increase verbosity')
     ap.add_argument('-p', '--plot', type=str, nargs='+', help='Variables to plot')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
     ap.add_argument('-t', '--titrate', default=False, action='store_true', help='Perform titration')
@@ -76,7 +77,8 @@ def main():
     ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
                     help='Neuron name (string)')
     ap.add_argument('-A', '--amp', nargs='+', type=float, help='Injected current density (mA/m2)')
-    ap.add_argument('--Arange', type=str, nargs='+', help='Amplitude range [scale min max n] (mA/m2)')
+    ap.add_argument('--Arange', type=str, nargs='+',
+                    help='Amplitude range [scale min max n] (mA/m2)')
     ap.add_argument('-d', '--duration', nargs='+', type=float, help='Stimulus duration (ms)')
     ap.add_argument('--offset', nargs='+', type=float, help='Offset duration (ms)')
     ap.add_argument('--PRF', nargs='+', type=float, help='PRF (Hz)')
@@ -86,7 +88,7 @@ def main():
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
     loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
-    outdir = args['outputdir'] if 'outputdir' in args else selectDirDialog()
+    outdir = getInDict(args, 'outputdir', selectDirDialog)
     if outdir == '':
         logger.error('No output directory selected')
         quit()

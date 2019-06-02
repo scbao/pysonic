@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 13:46:53
+# @Last Modified time: 2019-06-02 15:49:22
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.core import BilayerSonophore, Batch
-from PySONIC.utils import logger, selectDirDialog, parseUSAmps
+from PySONIC.utils import logger, selectDirDialog, parseUSAmps, getInDict
 from PySONIC.neurons import CorticalRS
 from PySONIC.plt import plotBatch
 
@@ -70,7 +70,8 @@ def main():
 
     # Runtime options
     ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true',
+                    help='Increase verbosity')
     ap.add_argument('-p', '--plot', type=str, nargs='+', help='Variables to plot')
     ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
 
@@ -94,7 +95,7 @@ def main():
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
     loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
-    outdir = args['outputdir'] if 'outputdir' in args else selectDirDialog()
+    outdir = getInDict(args, 'outputdir', selectDirDialog)
     if outdir == '':
         logger.error('No output directory selected')
         quit()
