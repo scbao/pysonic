@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 13:03:21
+# @Last Modified time: 2019-06-03 14:48:47
 
 from enum import Enum
 import os
@@ -431,7 +431,7 @@ class BilayerSonophore(Model):
         def dualPressure(Delta):
             x = (self.Delta_ / Delta)
             return (self.pDelta * (x**self.m - x**self.n) + self.Pelec(0.0, Qm))
-        Delta_eq = brentq(f, 0.1 * self.Delta_, 2.0 * self.Delta_, xtol=1e-16)
+        Delta_eq = brentq(dualPressure, 0.1 * self.Delta_, 2.0 * self.Delta_, xtol=1e-16)
         logger.debug('∆eq = %.2f nm', Delta_eq * 1e9)
         return (Delta_eq, dualPressure(Delta_eq))
 

@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 22:11:07
+# @Last Modified time: 2019-06-03 09:45:29
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import logging
 
-from PySONIC.utils import logger, selectDirDialog, parseUSAmps, getInDict
+from PySONIC.utils import logger, selectDirDialog, parseUSAmps, addUSAmps, getInDict
 from PySONIC.neurons import getNeuronsDict
 from PySONIC.plt import plotQSSvars, plotQSSVarVsAmp, plotEqChargeVsAmp
 

@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 15:22:51
+# @Last Modified time: 2019-06-03 09:45:15
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -623,6 +623,13 @@ def parseUSAmps(args, defaults):
         return Intensity2Pressure(np.array(args['intensity']) * 1e4)  # Pa
     return np.array(defaults['amp']) * 1e3  # Pa
 
+
+def addUSAmps(ap):
+    ap.add_argument('-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
+    ap.add_argument('--Arange', type=str, nargs='+', help='Amplitude range [scale min max n] (kPa)')
+    ap.add_argument('-I', '--intensity', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
+    ap.add_argument('--Irange', type=str, nargs='+',
+                    help='Intensity range [scale min max n] (W/cm2)')
 
 def parseElecAmps(args, defaults):
 
