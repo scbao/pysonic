@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-03 15:05:52
+# @Last Modified time: 2019-06-03 15:50:34
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -19,7 +19,10 @@ from PySONIC.parsers import AStimParser
 def main():
     # Parse command line arguments
     parser = AStimParser()
+    parser.addOutputDir()
     args = parser.parse()
+    logger.setLevel(args['loglevel'])
+    args['outputdir'] = parser.parseOutputDir(args)
 
     # Run A-STIM batch
     logger.info("Starting A-STIM simulation batch")

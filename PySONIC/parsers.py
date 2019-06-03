@@ -7,8 +7,8 @@ from .utils import Intensity2Pressure, selectDirDialog
 from .neurons import getNeuronsDict, CorticalRS
 
 
-class GenericParser(ArgumentParser):
-    ''' Generic parser interface. '''
+class SimParser(ArgumentParser):
+    ''' Generic simulation parser interface. '''
 
     dist_str = '[scale min max n]'
 
@@ -20,7 +20,6 @@ class GenericParser(ArgumentParser):
         self.addPlot()
         self.addMPI()
         self.addVerbose()
-        self.addOutputDir()
 
     def getDistribution(self, xmin, xmax, nx, scale='lin'):
         if scale == 'log':
@@ -55,6 +54,18 @@ class GenericParser(ArgumentParser):
         self.add_argument(
             '--mpi', default=False, action='store_true', help='Use multiprocessing')
 
+    def addSave(self):
+        self.add_argument(
+            '-s', '--save', default=False, action='store_true', help='Save output figures')
+
+    def addCmap(self, default='viridis'):
+        self.add_argument(
+            '-c', '--cmap', type=str, default=default, help='Colormap name')
+
+    def addInputDir(self):
+        self.add_argument(
+            '-i', '--inputdir', type=str, help='Input directory')
+
     def addOutputDir(self):
         self.add_argument(
             '-o', '--outputdir', type=str, help='Output directory')
@@ -64,6 +75,9 @@ class GenericParser(ArgumentParser):
         if directory == '':
             raise ValueError('No {} selected'.format(key))
         return directory
+
+    def parseInputDir(self, args):
+        return self.parseDir('inputdir', args)
 
     def parseOutputDir(self, args):
         return self.parseDir('outputdir', args)
@@ -88,14 +102,13 @@ class GenericParser(ArgumentParser):
     def parse(self):
         args = vars(super().parse_args())
         args['loglevel'] = self.parseLogLevel(args)
-        args['outputdir'] = self.parseOutputDir(args)
         for k, v in self.defaults.items():
             if args[k] is None:
                 args[k] = [v]
         return args
 
 
-class MechSimParser(GenericParser):
+class MechSimParser(SimParser):
     ''' Parser to run mechanical simulations from the command line. '''
 
     def __init__(self):
@@ -169,24 +182,29 @@ class MechSimParser(GenericParser):
         params = ['Irange', 'Arange', 'intensity', 'amp']
         self.restrict(args, params[:-1])
         Irange, Arange, Int, Adrive = [args.pop(k) for k in params]
+        Ascale = None
         if Irange is not None:
-            return Intensity2Pressure(self.getDistFromList(Irange) * 1e4)  # Pa
+            amps = Intensity2Pressure(self.getDistFromList(Irange) * 1e4)  # Pa
+            Ascale = Irange[0]
         elif Int is not None:
-            return Intensity2Pressure(np.array(Int) * 1e4)  # Pa
+            amps = Intensity2Pressure(np.array(Int) * 1e4)  # Pa
         elif Arange is not None:
-            return self.getDistFromList(Arange) * self.factors['amp']  # Pa
+            amps = self.getDistFromList(Arange) * self.factors['amp']  # Pa
+            Ascale = Arange[0]
         else:
-            return np.array(Adrive) * self.factors['amp']  # Pa
+            amps = np.array(Adrive) * self.factors['amp']  # Pa
+            Ascale = args.get('Arange', ['lin'])[0]
+        return amps, Ascale
 
     def parse(self):
         args = super().parse()
-        args['amp'] = self.parseAmp(args)
+        args['amp'], args['Ascale'] = self.parseAmp(args)
         for key in ['radius', 'embedding', 'Cm0', 'Qm0', 'freq', 'charge']:
             args[key] = self.parse2array(args, key, factor=self.factors[key])
         return args
 
 
-class PWStimParser(GenericParser):
+class PWSimParser(SimParser):
     ''' Generic parser interface to run PW patterned simulations from the command line. '''
 
     def __init__(self):
@@ -274,7 +292,7 @@ class PWStimParser(GenericParser):
         return args
 
 
-class EStimParser(PWStimParser):
+class EStimParser(PWSimParser):
     ''' Parser to run E-STIM simulations from the command line. '''
 
     def __init__(self):
@@ -295,23 +313,26 @@ class EStimParser(PWStimParser):
         if args.pop('titrate'):
             return None
         Arange, Astim = [args.pop(k) for k in ['Arange', 'amp']]
+        Ascale = 'lin'
         if Arange is not None:
-            return self.getDistFromList(Arange) * self.factors['amp']  # mA/m2
+            amps = self.getDistFromList(Arange) * self.factors['amp']  # mA/m2
+            Ascale = Arange[0]
         else:
-            return np.array(Astim) * self.factors['amp']  # mA/m2
+            amps = np.array(Astim) * self.factors['amp']  # mA/m2
+        return amps, Ascale
 
     def parse(self):
         args = super().parse()
-        args['amp'] = self.parseAmp(args)
+        args['amp'], args['Ascale'] = self.parseAmp(args)
         return args
 
 
-class AStimParser(PWStimParser, MechSimParser):
+class AStimParser(PWSimParser, MechSimParser):
     ''' Parser to run A-STIM simulations from the command line. '''
 
     def __init__(self):
         MechSimParser.__init__(self)
-        PWStimParser.__init__(self)
+        PWSimParser.__init__(self)
         self.defaults.update({'method': 'sonic'})
         self.allowed.update({'method': ['classic', 'hybrid', 'sonic']})
         self.addMethod()
@@ -332,7 +353,7 @@ class AStimParser(PWStimParser, MechSimParser):
         return MechSimParser.parseAmp(self, args)
 
     def parse(self):
-        args = PWStimParser.parse(self, args=MechSimParser.parse(self))
+        args = PWSimParser.parse(self, args=MechSimParser.parse(self))
         for k in ['Cm0', 'Qm0', 'embedding', 'charge']:
             del args[k]
         self.parseMethod(args)
