@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-03 15:58:17
+# @Last Modified time: 2019-06-03 16:50:56
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -26,7 +26,7 @@ def main():
         '--comp', default=False, action='store_true', help='Compare with simulations')
     args = parser.parse()
     logger.setLevel(args['loglevel'])
-    args['intputdir'] = parser.parseInputDir(args) if args['comp'] else None
+    args['inputdir'] = parser.parseInputDir(args) if args['comp'] else None
     args['outputdir'] = parser.parseOutputDir(args) if args['save'] else None
     if args['plot'] is None:
         args['plot'] = ['dQdt']

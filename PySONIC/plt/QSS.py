@@ -414,7 +414,7 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3,
             SFPs += [(Adrive, Qm) for Qm in QSS_output[i][0]]
             UFPs += [(Adrive, Qm) for Qm in QSS_output[i][1]]
 
-            # TODO: get stabilization point from simulation, if any
+            # Get stabilization point from simulation, if any
             if compdir is not None:
                 data, _ = nbls.load(compdir, Fdrive, Adrive, tstim, toffset, PRF, DC, 'sonic')
                 stab_points.append((Adrive, nbls.neuron.getStabilizationValue(data)))
@@ -425,19 +425,19 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3,
         if len(SFPs) > 0:
             A_SFPs, Q_SFPs = np.array(SFPs).T
             ax.scatter(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5,
-                       marker='.', s=20, facecolors=color, edgecolors='none',
+                       marker='.', s=20, facecolors='g', edgecolors='none',
                        label=lbl.format(''))
 
         if len(UFPs) > 0:
             A_UFPs, Q_UFPs = np.array(UFPs).T
             ax.scatter(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5,
-                       marker='*', s=20, facecolors=color, edgecolors='none',
+                       marker='.', s=20, facecolors='r', edgecolors='none',
                        label=lbl.format('un'))
 
         if len(stab_points) > 0:
             A_stab, Q_stab = np.array(stab_points).T
             ax.scatter(np.array(A_stab) * Afactor, np.array(Q_stab) * 1e5,
-                       marker='o', s=20, facecolors='none', edgecolors=color,
+                       marker='o', s=20, facecolors='none', edgecolors='k',
                        label='stabilization points')
         icolor += 1
 

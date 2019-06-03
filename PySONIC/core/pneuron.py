@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 15:38:45
+# @Last Modified time: 2019-06-03 16:55:30
 
 import abc
 import inspect
@@ -537,6 +537,8 @@ class PointNeuron(Model):
 
         # Extract charge signal posterior to observation window
         t, Qm = [data[key].values for key in ['t', 'Qm']]
+        if t.max() <= TMIN_STABILIZATION:
+            raise ValueError('solution length is too short to assess stabilization')
         Qm = Qm[t > TMIN_STABILIZATION]
 
         # Compute variation range
