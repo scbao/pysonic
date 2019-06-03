@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-03 09:45:15
+# @Last Modified time: 2019-06-03 19:50:08
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -721,6 +721,34 @@ def cache(fpath, delimiter='\t', out_type=float):
                 writer = csv.writer(csvfile, delimiter=delimiter)
                 writer.writerow([signature, str(out)])
 
+            return out
+
+        return wrapper
+
+    return wrapper_with_args
+
+
+def cachePKL(root, fcode_func):
+
+    def wrapper_with_args(func):
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Get file path from root and function arguments, using fcode function
+            fpath = os.path.join(root, '{}.pkl'.format(fcode_func(*args)))
+
+            # If file exists, load output from it
+            if os.path.isfile(fpath):
+                print('loading data from "{}"'.format(fpath))
+                with open(fpath, 'rb') as f:
+                    out = pickle.load(f)
+
+            # Otherwise, execute function and create the file to dump the output
+            else:
+                out = func(*args, **kwargs)
+                print('dumping data in "{}"'.format(fpath))
+                with open(fpath, 'wb') as f:
+                    pickle.dump(out, f)
             return out
 
         return wrapper

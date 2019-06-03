@@ -9,7 +9,10 @@ from matplotlib import cm, colors
 from ..postpro import getFixedPoints
 from ..core import NeuronalBilayerSonophore, Batch
 from .pltutils import *
-from ..utils import logger
+from ..utils import logger, cachePKL
+
+
+root = 'C:/Users/Théo/Desktop/QSS'
 
 
 def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):
@@ -324,8 +327,57 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
     return fig
 
 
+@cachePKL(
+    root,
+    lambda nbls, Fdrive, _, DC: 'FPs_vs_Adrive_{}_{:.0f}kHz_{:.0f}%DC'.format(
+        nbls.neuron.name, Fdrive * 1e-3, DC * 1e2)
+)
+def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=logging.INFO):
+
+    # Compute 2D QSS charge variation array
+    _, Qref, lookups, QSS = nbls.quasiSteadyStates(
+        Fdrive, amps=amps, DCs=DC, squeeze_output=True)
+    dQdt = -nbls.neuron.iNet(lookups['V'], np.array([QSS[k] for k in nbls.neuron.states]))  # mA/m2
+
+    # Generate batch queue
+    QSS_queue = []
+    for iA, Adrive in enumerate(amps):
+        lookups1D = {k: v[iA, :] for k, v in lookups.items()}
+        lookups1D['Q'] = Qref
+        QSS_queue.append([Fdrive, Adrive, DC, lookups1D, dQdt[iA, :]])
+
+    # Run batch to find stable and unstable fixed points at each amplitude
+    QSS_batch = Batch(nbls.fixedPointsQSS, QSS_queue)
+    QSS_output = QSS_batch(mpi=mpi, loglevel=loglevel)
+
+    # Sort points by amplitude
+    SFPs, UFPs = [], []
+    for i, Adrive in enumerate(amps):
+        SFPs += [(Adrive, Qm) for Qm in QSS_output[i][0]]
+        UFPs += [(Adrive, Qm) for Qm in QSS_output[i][1]]
+    return SFPs, UFPs
+
+
+@cachePKL(
+    root,
+    lambda nbls, Fdrive, _, tstim, toffset, PRF, DC:
+        'stab_vs_Adrive_{}_{:.0f}kHz_{:.0f}ms_{:.0f}ms_offset_{:.0f}Hz_PRF_{:.0f}%DC'.format(
+            nbls.neuron.name, Fdrive * 1e-3, tstim * 1e3, toffset * 1e3, PRF, DC * 1e2)
+)
+def getSimFixedPointsvsAdrive(nbls, Fdrive, amps, tstim, toffset, PRF, DC,
+                              outputdir=None, mpi=False, loglevel=logging.INFO):
+
+    # Get stabilization point from simulation, if any
+    stab_points = []
+    for Adrive in amps:
+        data, _ = nbls.load(outputdir, Fdrive, Adrive, tstim, toffset, PRF, DC, 'sonic')
+        stab_points.append((Adrive, nbls.neuron.getStabilizationValue(data)))
+
+    return stab_points
+
+
 def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3, PRF=100.0,
-                      DCs=[1.], fs=12, xscale='lin', compdir=None, mpi=False,
+                      DC=1., fs=12, xscale='lin', compdir=None, mpi=False,
                       loglevel=logging.INFO):
     ''' Plot the equilibrium membrane charge density as a function of acoustic amplitude,
         given an initial value of membrane charge density.
@@ -338,18 +390,12 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3,
     '''
 
     # Determine stimulation modality
-    if a is None and Fdrive is None:
-        stim_type = 'elec'
-        a = 32e-9
-        Fdrive = 500e3
-    else:
-        stim_type = 'US'
-
+    stim_type = 'US'
     logger.info('plotting equilibrium charges for %s stimulation', stim_type)
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    figname = '{} neuron - charge stability vs. amplitude'.format(neuron.name)
+    figname = '{} neuron - charge stability vs. amplitude @ {:.0f}%DC'.format(neuron.name, DC * 1e2)
     ax.set_title(figname)
     ax.set_xlabel('Amplitude ({})'.format({'US': 'kPa', 'elec': 'mA/m2'}[stim_type]),
                   fontsize=fs)
@@ -361,96 +407,44 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3,
     for item in ax.get_xticklabels() + ax.get_yticklabels():
         item.set_fontsize(fs)
 
-    Qrange = (np.inf, -np.inf)
-
-    icolor = 0
-
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    Afactor = 1e-3
 
-    # Compute reference charge variation array for zero amplitude
-    _, Qref, lookups0, QSS0 = nbls.quasiSteadyStates(Fdrive, amps=0., squeeze_output=True)
-    Qrange = (min(Qrange[0], Qref.min()), max(Qrange[1], Qref.max()))
-    Vmeff0 = lookups0['V']
-    if stim_type == 'elec':  # if E-STIM case, compute steady states with constant capacitance
-        Vmeff0 = Qref / neuron.Cm0 * 1e3
-        QSS0 = neuron.steadyStates(Vmeff0)
-    dQdt0 = -neuron.iNet(Vmeff0, np.array([QSS0[k] for k in neuron.states]))  # mA/m2
+    # Plot charge SFPs and UFPs for each acoustic amplitude
+    SFPs, UFPs = getQSSFixedPointsvsAdrive(
+        nbls, Fdrive, amps, DC, mpi=mpi, loglevel=loglevel)
+    if len(SFPs) > 0:
+        A_SFPs, Q_SFPs = np.array(SFPs).T
+        ax.scatter(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5,
+                   marker='.', s=20, facecolors='g', edgecolors='none',
+                   label='QSS stable fixed points')
+    if len(UFPs) > 0:
+        A_UFPs, Q_UFPs = np.array(UFPs).T
+        ax.scatter(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5,
+                   marker='.', s=20, facecolors='r', edgecolors='none',
+                   label='QSS unstable fixed points')
 
-    # Compute 3D QSS charge variation array
-    if stim_type == 'US':
-        _, _, lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=amps, DCs=DCs)
-        dQdt = -neuron.iNet(lookups['V'], np.array([QSS[k] for k in neuron.states]))  # mA/m2
-        Afactor = 1e-3
-    else:
-        Afactor = 1.
-        dQdt = np.empty((amps.size, Qref.size, DCs.size))
-        for iA, A in enumerate(amps):
-            for iDC, DC in enumerate(DCs):
-                dQdt[iA, :, iDC] = dQdt0 + A * DC
-
-    # For each duty cycle
-    for iDC, DC in enumerate(DCs):
-        color = 'k' if len(DCs) == 1 else 'C{}'.format(icolor)
-
-        # Initialize containers for stable and unstable fixed points
-        SFPs = []
-        UFPs = []
-
-        stab_points = []
-
-        # Generate QSS batch queue
-        QSS_queue = []
-        for iA, Adrive in enumerate(amps):
-            lookups1D = {k: v[iA, :, iDC] for k, v in lookups.items()}
-            lookups1D['Q'] = Qref
-            QSS_queue.append([Fdrive, Adrive, DC, lookups1D, dQdt[iA, :, iDC]])
-
-        # Run batch to find stable and unstable fixed points at each amplitude
-        QSS_batch = Batch(nbls.fixedPointsQSS, QSS_queue)
-        QSS_output = QSS_batch(mpi=mpi, loglevel=loglevel)
-
-        # Retrieve batch output
-        for i, Adrive in enumerate(amps):
-            SFPs += [(Adrive, Qm) for Qm in QSS_output[i][0]]
-            UFPs += [(Adrive, Qm) for Qm in QSS_output[i][1]]
-
-            # Get stabilization point from simulation, if any
-            if compdir is not None:
-                data, _ = nbls.load(compdir, Fdrive, Adrive, tstim, toffset, PRF, DC, 'sonic')
-                stab_points.append((Adrive, nbls.neuron.getStabilizationValue(data)))
-
-        # Plot charge SFPs and UFPs for each acoustic amplitude
-        lbl = '{} neuron - {{}}stable fixed points @ {:.0f} % DC'.format(
-            neuron.name, DC * 1e2)
-        if len(SFPs) > 0:
-            A_SFPs, Q_SFPs = np.array(SFPs).T
-            ax.scatter(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5,
-                       marker='.', s=20, facecolors='g', edgecolors='none',
-                       label=lbl.format(''))
-
-        if len(UFPs) > 0:
-            A_UFPs, Q_UFPs = np.array(UFPs).T
-            ax.scatter(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5,
-                       marker='.', s=20, facecolors='r', edgecolors='none',
-                       label=lbl.format('un'))
-
+    # Plot charge asymptotic stabilization points from simulations for each acoustic amplitude
+    if compdir is not None:
+        stab_points = getSimFixedPointsvsAdrive(
+            nbls, Fdrive, amps, tstim, toffset, PRF, DC,
+            outputdir=compdir, mpi=mpi, loglevel=loglevel)
         if len(stab_points) > 0:
             A_stab, Q_stab = np.array(stab_points).T
             ax.scatter(np.array(A_stab) * Afactor, np.array(Q_stab) * 1e5,
                        marker='o', s=20, facecolors='none', edgecolors='k',
-                       label='stabilization points')
-        icolor += 1
+                       label='stabilization points from simulations')
 
     # Post-process figure
-    ax.set_ylim(np.array([Qrange[0], 0]) * 1e5)
+    ax.set_ylim(np.array([neuron.Qm0 - 10e-5, 0]) * 1e5)
     ax.legend(frameon=False, fontsize=fs)
     fig.tight_layout()
 
-    fig.canvas.set_window_title('{}_QSS_Qstab_vs_{}A_{}_{}%DC{}'.format(
+    fig.canvas.set_window_title('{}_QSS_Qstab_vs_{}A_{}_{:.0f}%DC{}'.format(
         neuron.name,
         xscale,
         stim_type,
-        '_'.join(['{:.0f}'.format(DC * 1e2) for DC in DCs]),
+        DC * 1e2,
         '_with_comp' if compdir is not None else ''
     ))
 
