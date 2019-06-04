@@ -209,8 +209,6 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
     pltvar = neuron.getPltVars()[varname]
     Qvar = neuron.getPltVars()['Qm']
     Afactor = {'US': 1e-3, 'elec': 1.}[stim_type]
-    # Q_SFPs = []
-    # Q_UFPs = []
 
     log = 'plotting {} neuron QSS {} vs. amp for {} stimulation @ {:.0f}% DC'.format(
         neuron.name, varname, stim_type, DC * 1e2)
@@ -258,9 +256,6 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
         neuron, pltvar, pd.DataFrame({k: df0[k] for k in df0.keys()}), name=varname)
     ax.plot(Qref * Qvar['factor'], var0, '--', c='k', zorder=1,
             label='$\\rm A_{{{}}}=0$'.format(stim_type))
-    # if varname == 'dQdt':
-    #     Q_SFPs += getFixedPoints(Qref, var0, filter='stable').tolist()
-    #     Q_UFPs += getFixedPoints(Qref, var0, filter='unstable').tolist()
 
     # Define color code
     mymap = plt.get_cmap(cmap)
@@ -290,18 +285,6 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
         if varname == 'dQdt' and stim_type == 'elec':
             var += A * DC * pltvar['factor']
         ax.plot(Qref * Qvar['factor'], var, c=sm.to_rgba(A * Afactor), zorder=0)
-        # if varname == 'dQdt':
-        #     # mark eq. point if starting point provided, otherwise mark all FPs
-        #     Q_SFPs += getFixedPoints(Qref, var, filter='stable').tolist()
-        #     Q_UFPs += getFixedPoints(Qref, var, filter='unstable').tolist()
-
-    # # Plot fixed-points, if any
-    # if len(Q_SFPs) > 0:
-    #     ax.plot(np.array(Q_SFPs) * Qvar['factor'], np.zeros(len(Q_SFPs)), 'o', c='k',
-    #             markersize=5, zorder=2)
-    # if len(Q_UFPs) > 0:
-    #     ax.plot(np.array(Q_UFPs) * Qvar['factor'], np.zeros(len(Q_UFPs)), 'x', c='k',
-    #             markersize=5, zorder=2)
 
     # Add legend and adjust layout
     ax.legend(frameon=False, fontsize=fs)
