@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:23:40
+# @Last Modified time: 2019-06-06 18:22:09
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -16,7 +16,7 @@ from argparse import ArgumentParser
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.neurons import OtsukaSTN
 from PySONIC.utils import logger, selectDirDialog, getLowIntensitiesSTN, Intensity2Pressure
-from PySONIC.plt import plotFRProfile, plotBatch
+from PySONIC.plt import plotFRProfile, SchemePlot
 
 
 # Plot parameters
@@ -86,7 +86,7 @@ def main():
         titles = ['{:.2f} kPa ({:.0f} W/m2)'.format(A * 1e-3, I)
                   for A, I in zip(subset_amplitudes, subset_intensities)]
         print(titles)
-        figtraces = plotBatch([fpaths[i] for i in isubset], pltscheme={'Q_m': ['Qm']})
+        figtraces = SchemePlot([fpaths[i] for i in isubset], pltscheme={'Q_m': ['Qm']})()
         for fig, title in zip(figtraces, titles):
             fig.axes[0].set_title(title)
             fig.canvas.set_window_title(figbase + 'b {}'.format(title))

@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-14 23:37:42
+# @Last Modified time: 2019-06-06 15:07:26
 
 ''' Plot the voltage-dependent steady-states and time constants of activation and inactivation
     gates of the different ionic currents involved in the neuron's membrane dynamics. '''
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.utils import logger
-from PySONIC.neurons import getNeuronsDict
+from PySONIC.neurons import getPointNeuron
 
 
 # Default parameters
@@ -118,11 +118,14 @@ def main():
     args = ap.parse_args()
     neuron_str = args.neuron
 
-    # Plot gating kinetics variables
-    if neuron_str not in getNeuronsDict():
-        logger.error('Unknown neuron type: "%s"', neuron_str)
+    # Check neuron name validity
+    try:
+        neuron = getPointNeuron(neuron_str)
+    except ValueError as err:
+        logger.error(err)
         return
-    neuron = getNeuronsDict()[neuron_str]()
+
+    # Plot gating kinetics variables
     plotGatingKinetics(neuron)
     plt.show()
 

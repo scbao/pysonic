@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 15:34:25
+# @Last Modified time: 2019-06-06 15:57:58
 
 import os
 import pickle
@@ -23,6 +23,12 @@ class Model(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def tscale(self):
         ''' Relevant temporal scale of the model. '''
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def simkey(self):
+        ''' Keyword used to characterize simulations made with the model. '''
         raise NotImplementedError
 
     @property

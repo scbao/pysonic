@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-03 16:55:30
+# @Last Modified time: 2019-06-06 15:50:56
 
 import abc
 import inspect
@@ -24,6 +24,7 @@ class PointNeuron(Model):
     ''' Generic point-neuron model interface. '''
 
     tscale = 'ms'  # relevant temporal scale of the model
+    simkey = 'ESTIM'  # keyword used to characterize simulations made with this model
 
     def __init__(self):
         self.Qm0 = self.Cm0 * self.Vm0 * 1e-3  # C/cm2
@@ -33,8 +34,8 @@ class PointNeuron(Model):
 
     def filecode(self, Astim, tstim, toffset, PRF, DC):
         ''' File naming convention. '''
-        return 'ESTIM_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'.format(
-            self.name, 'CW' if DC == 1 else 'PW', Astim, tstim * 1e3,
+        return '{}_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'.format(
+            self.simkey, self.name, 'CW' if DC == 1 else 'PW', Astim, tstim * 1e3,
             '_PRF{:.2f}Hz_DC{:.2f}%'.format(PRF, DC * 1e2) if DC < 1. else '')
 
     @property

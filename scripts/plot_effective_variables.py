@@ -4,7 +4,7 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-11 14:35:27
+# @Last Modified time: 2019-06-06 15:09:23
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
@@ -14,7 +14,7 @@ from argparse import ArgumentParser
 
 from PySONIC.plt import plotEffectiveVariables
 from PySONIC.utils import logger, Intensity2Pressure, getLowIntensitiesSTN
-from PySONIC.neurons import getNeuronsDict
+from PySONIC.neurons import getPointNeuron
 
 # Set logging level
 logger.setLevel(logging.INFO)
@@ -59,11 +59,14 @@ def main():
     loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
 
-    # Plot effective variables
-    if neuron_str not in getNeuronsDict():
-        logger.error('Unknown neuron type: "%s"', neuron_str)
+    # Check neuron name validity
+    try:
+        neuron = getPointNeuron(neuron_str)
+    except ValueError as err:
+        logger.error(err)
         return
-    neuron = getNeuronsDict()[neuron_str]()
+
+    # Plot effective variables
     plotEffectiveVariables(neuron, a=a, Fdrive=Fdrive, Adrive=Adrive,
                            zscale=zscale, cmap=cmap, ncolmax=ncol)
     plt.show()

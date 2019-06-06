@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:22:32
+# @Last Modified time: 2019-06-06 15:16:34
 
 ''' Sub-panels of (duty-cycle x amplitude) US activation maps and related Q-V traces. '''
 
@@ -16,7 +16,7 @@ from argparse import ArgumentParser
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.utils import logger, selectDirDialog, si_format
 from PySONIC.plt import plotActivationMap, plotQVeff
-from PySONIC.neurons import getNeuronsDict
+from PySONIC.neurons import getPointNeuron
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -44,7 +44,7 @@ def plot_actmap(inputdir, neuron, a, Fdrive, tstim, amps, PRF, DCs, FRbounds, in
 def plot_traces(inputdir, neuron, a, Fdrive, Adrive, tstim, PRF, DC, tmax, Vbounds, prefix):
     mapcode = '{} {}Hz PRF{}Hz 1s'.format(neuron, *si_format([Fdrive, PRF, tstim], space=''))
     subdir = os.path.join(inputdir, mapcode)
-    neuronobj = getNeuronsDict()[neuron]()
+    neuronobj = getPointNeuron(neuron)
     nbls = NeuronalBilayerSonophore(a, neuronobj)
     fname = '{}.pkl'.format(nbls.filecode(Fdrive, Adrive, tstim, 0., PRF, DC, 'sonic'))
     fpath = os.path.join(subdir, fname)

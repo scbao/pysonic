@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-01 20:45:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 13:42:06
+# @Last Modified time: 2019-06-06 15:15:30
 
 import os
 import numpy as np
@@ -23,7 +23,7 @@ def getCWtitrations_vs_Fdrive(neurons, a, freqs, tstim, toffset, fpath):
         df = pd.DataFrame(index=freqs * 1e-3)
     for neuron in neurons:
         if neuron not in df:
-            neuronobj = getNeuronsDict()[neuron]()
+            neuronobj = getPointNeuron(neuron)
             nbls = NeuronalBilayerSonophore(a, neuronobj)
             for i, Fdrive in enumerate(freqs):
                 logger.info('Running CW titration for %s neuron @ %sHz',
@@ -44,7 +44,7 @@ def getCWtitrations_vs_radius(neurons, radii, Fdrive, tstim, toffset, fpath):
         df = pd.DataFrame(index=radii * 1e9)
     for neuron in neurons:
         if neuron not in df:
-            neuronobj = getNeuronsDict()[neuron]()
+            neuronobj = getPointNeuron(neuron)
             for a in radii:
                 nbls = NeuronalBilayerSonophore(a, neuronobj)
                 logger.info(
@@ -60,7 +60,7 @@ def getCWtitrations_vs_radius(neurons, radii, Fdrive, tstim, toffset, fpath):
 def getSims(outdir, neuron, a, queue):
     fpaths = []
     updated_queue = []
-    neuronobj = getNeuronsDict()[neuron]()
+    neuronobj = getPointNeurons(neuron)
     nbls = NeuronalBilayerSonophore(a, neuronobj)
     for i, item in enumerate(queue):
         Fdrive, tstim, toffset, PRF, DC, Adrive, method = item
@@ -73,7 +73,7 @@ def getSims(outdir, neuron, a, queue):
         fpaths.append(fpath)
     if len(updated_queue) > 0:
         print(updated_queue)
-        # neuron = getNeuronsDict()[neuron]()
+        # neuron = getPointNeuron(neuron)
         # nbls = NeuronalBilayerSonophore(a, neuron)
         # batch = Batch(nbls.runAndSave, updated_queue)
         # batch.run(mpi=True)

@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:11:57
+# @Last Modified time: 2019-06-06 18:13:12
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -13,7 +13,7 @@ from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 
 from PySONIC.utils import logger, OpenFilesDialog, selectDirDialog
-from PySONIC.plt import plotComp, plotBatch
+from PySONIC.plt import ComparativePlot, SchemePlot
 
 # Set logging level
 logger.setLevel(logging.INFO)
@@ -47,7 +47,8 @@ def main():
             logger.error('Plot variable must be specified')
             quit()
         try:
-            plotComp(pkl_filepaths, varname=args['plot'][0])
+            comp_plot = ComparativePlot(pkl_filepaths, args['plot'][0])
+            comp_plot.render()
         except KeyError as e:
             logger.error(e)
             quit()
@@ -55,8 +56,13 @@ def main():
         pltscheme = {key: [key] for key in args['plot']} if 'plot' in args else None
         if 'outputdir' not in args:
             args['outputdir'] = selectDirDialog() if args['save'] else None
-        plotBatch(pkl_filepaths, title=True, pltscheme=pltscheme, directory=args['outputdir'],
-                  plt_save=args['save'], ask_before_save=not args['save'])
+        scheme_plot = SchemePlot(pkl_filepaths, pltscheme=pltscheme)
+        scheme_plot.render(
+            title=True,
+            save=args['save'],
+            ask_before_save=not args['save'],
+            directory=args['outputdir']
+        )
     if not args['hide']:
         plt.show()
 

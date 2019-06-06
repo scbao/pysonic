@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-04-30 21:06:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-11-21 16:27:13
+# @Last Modified time: 2019-06-06 15:08:17
 
 ''' Plot duty-cycle dependent rheobase acoustic amplitudes of various neurons
     for a specific US frequency and PRF. '''
@@ -13,8 +13,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.utils import logger
-# from PySONIC.core import NeuronalBilayerSonophore
-from PySONIC.neurons import getNeuronsDict
+from PySONIC.neurons import getPointNeuron
 from PySONIC.plt import plotAstimRheobaseAmps, plotEstimRheobaseAmps
 
 # Set logging level
@@ -48,10 +47,11 @@ def main():
 
     # Get neurons objects from names
     neuron_str = args.get('neuron', defaults['neuron'])
-    if neuron_str not in getNeuronsDict():
-        logger.error('Invalid neuron type: "%s"', neuron_str)
+    try:
+        neuron = getPointNeuron(neuron_str)
+    except ValueError as err:
+        logger.error(err)
         return
-    neuron = getNeuronsDict()[neuron_str]()
 
     if mode == 'US':
         radii = np.array(args['radii']) * 1e-9  # m

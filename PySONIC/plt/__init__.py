@@ -4,11 +4,10 @@
 # @Date:   2017-06-06 13:36:00
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-26 15:23:16
+# @Last Modified time: 2019-06-06 18:08:23
 
 from .pltutils import *
-from .batch import plotBatch
-from .comp import plotComp
+from .timeseries import ComparativePlot, SchemePlot
 from .actmap import *
 from .QSS import *
 from .spikeutils import plotSpikingMetrics, plotPhasePlane, plotFRProfile

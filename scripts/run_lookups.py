@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 13:45:43
+# @Last Modified time: 2019-06-06 15:05:34
 
 ''' Create lookup table for specific neuron. '''
 
@@ -16,7 +16,7 @@ import numpy as np
 from argparse import ArgumentParser
 
 from PySONIC.utils import logger, getNeuronLookupsFile
-from PySONIC.neurons import getNeuronsDict
+from PySONIC.neurons import getPointNeuron
 from PySONIC.core import NeuronalBilayerSonophore, createQueue, Batch
 
 
@@ -163,10 +163,11 @@ def main():
     amps = np.array(args.get('amp', defaults['amp'])) * 1e3  # Pa
 
     # Check neuron name validity
-    if neuron_str not in getNeuronsDict():
-        logger.error('Unknown neuron type: "%s"', neuron_str)
+    try:
+        neuron = getPointNeuron(neuron_str)
+    except ValueError as err:
+        logger.error(err)
         return
-    neuron = getNeuronsDict()[neuron_str]()
 
     # Determine charge vector
     if 'charge' in args:

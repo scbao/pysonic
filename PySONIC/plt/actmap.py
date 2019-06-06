@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 16:47:18
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 15:26:49
+# @Last Modified time: 2019-06-06 15:19:44
 
 import os
 import ntpath
@@ -17,7 +17,7 @@ from ..core import NeuronalBilayerSonophore
 from ..utils import logger, si_format
 from ..postpro import findPeaks
 from ..constants import *
-from ..neurons import getNeuronsDict
+from ..neurons import getPointNeuron
 from .pltutils import cm2inch, computeMeshEdges
 
 
@@ -26,7 +26,7 @@ class ActivationMap:
 
     def __init__(self, root, neuron, a, Fdrive, tstim, PRF):
         self.root = root
-        self.neuron = getNeuronsDict()[neuron]()
+        self.neuron = getPointNeuron(neuron)
         self.a = a
         self.nbls = NeuronalBilayerSonophore(self.a, self.neuron)
         self.Fdrive = Fdrive
@@ -363,7 +363,7 @@ def plotQVeff(filepath, tonset=10, tmax=None, ybounds=None, fs=8, lw=1):
 
     # Add onset to profiles
     t = np.hstack((np.array([-tonset, t[0]]), t))
-    Vm = np.hstack((np.array([getNeuronsDict()[meta['neuron']]().Vm0] * 2), Vm))
+    Vm = np.hstack((np.array([getPointNeuron(meta['neuron']).Vm0] * 2), Vm))
     Qm = np.hstack((np.array([Qm[0]] * 2), Qm))
 
     # Determine axes bounds
@@ -482,7 +482,7 @@ def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='lo
         :return: 3-tuple with the handle to the generated figure and the mesh x and y coordinates
     '''
 
-    neuronobj = getNeuronsDict()[neuron]()
+    neuronobj = getPointNeuron(neuron)
     nbls = NeuronalBilayerSonophore(a, neuronobj)
 
     # Get activation map
@@ -552,7 +552,7 @@ def plotActivationMap(root, neuron, a, Fdrive, tstim, PRF, amps, DCs, Ascale='lo
     #     logger.info('Computing rheobase amplitudes')
     #     dDC = 0.01
     #     DCs_dense = np.arange(dDC, 100 + dDC / 2, dDC) / 1e2
-    #     neuronobj = getNeuronsDict()[neuron]()
+    #     neuronobj = getPointNeuron(neuron)
     #     nbls = NeuronalBilayerSonophore(a, neuronobj)
     #     Athrs = nbls.findRheobaseAmps(DCs_dense, Fdrive, neuronobj.VT)[0]
     #     ax.plot(DCs_dense * 1e2, Athrs * 1e-3, '-', color='#F26522', linewidth=2,

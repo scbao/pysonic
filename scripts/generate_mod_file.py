@@ -2,13 +2,13 @@
 # @Author: Theo
 # @Date:   2019-03-18 18:06:20
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-04-30 13:38:11
+# @Last Modified time: 2019-06-06 15:10:17
 
 import os
 import logging
 from argparse import ArgumentParser
 
-from PySONIC.neurons import getNeuronsDict
+from PySONIC.neurons import getPointNeuron
 from PySONIC.utils import logger, selectDirDialog
 from PySONIC.core import NmodlGenerator
 
@@ -20,7 +20,11 @@ def main():
 
     logger.setLevel(logging.INFO)
     args = ap.parse_args()
-    neuron = getNeuronsDict()[args.neuron]()
+    try:
+        neuron = getPointNeuron(args.neuron)
+    except ValueError as err:
+        logger.error(err)
+        return
     outdir = args.outputdir if args.outputdir is not None else selectDirDialog()
     if outdir == '':
         logger.error('No output directory selected')

@@ -4,7 +4,7 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-02-27 17:19:42
+# @Last Modified time: 2019-06-06 15:19:18
 
 ''' Sub-panels of the effective variables figure. '''
 
@@ -16,7 +16,7 @@ import logging
 
 from PySONIC.plt import plotEffectiveVariables
 from PySONIC.utils import logger, selectDirDialog
-from PySONIC.neurons import getNeuronsDict
+from PySONIC.neurons import getPointNeuron
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -47,8 +47,7 @@ def main():
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
-    neuron_str = 'RS'
-    neuron = getNeuronsDict()[neuron_str]()
+    neuron = getPointNeuron('RS')
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
     Adrive = 50e3  # Pa

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-03 14:48:47
+# @Last Modified time: 2019-06-06 15:56:51
 
 from enum import Enum
 import os
@@ -72,6 +72,7 @@ class BilayerSonophore(Model):
     epsilonR = 1.0  # Relative permittivity of intramembrane cavity (dimensionless)
 
     tscale = 'us'  # relevant temporal scale of the model
+    simkey = 'MECH'  # keyword used to characterize simulations made with this model
 
     def __init__(self, a, Cm0, Qm0, Fdrive=None, embedding_depth=0.0):
         ''' Constructor of the class.
@@ -141,8 +142,8 @@ class BilayerSonophore(Model):
         return s + ')'
 
     def filecode(self, Fdrive, Adrive, Qm):
-        return 'MECH_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
-            self.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
+        return '{}_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
+            self.simkey, self.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
 
     def getLookupsPath(self):
         return os.path.join(os.path.split(__file__)[0], 'bls_lookups.json')

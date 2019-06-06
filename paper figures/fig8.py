@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-27 17:57:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 00:16:21
+# @Last Modified time: 2019-06-06 15:15:59
 
 ''' Sub-panels of threshold curves for various sonophore radii and US frequencies. '''
 
@@ -14,7 +14,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from PySONIC.neurons import getNeuronsDict
+from PySONIC.neurons import getPointNeuron
 from PySONIC.utils import logger, si_format, selectDirDialog
 from PySONIC.plt import cm2inch
 
@@ -72,7 +72,7 @@ def plotThresholdAmps(root, neurons, radii, freqs, PRF, tstim, fs=10, colors=Non
     ax.set_ylim([10, 600])
     linestyles = ['-', '--']
     for neuron, ls in zip(neurons, linestyles):
-        neuron = getNeuronsDict()[neuron]()
+        neuron = getPointNeuron(neuron)
         icolor = 0
         for i, a in enumerate(radii):
             for j, Fdrive in enumerate(freqs):

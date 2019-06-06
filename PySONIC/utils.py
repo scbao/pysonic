@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-03 19:50:08
+# @Last Modified time: 2019-06-06 16:13:51
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -36,8 +36,7 @@ my_log_formatter = colorlog.ColoredFormatter(
         'ERROR': 'red',
         'CRITICAL': 'red,bg_white',
     },
-    style='%'
-)
+    style='%')
 
 
 def setHandler(logger, handler):
@@ -68,30 +67,6 @@ class TqdmHandler(logging.StreamHandler):
 
 logger = setLogger('PySONIC', my_log_formatter)
 
-titrations_logfile = os.path.join(os.path.split(__file__)[0], 'neurons', 'titrations.log')
-
-
-# Figure naming conventions
-def figtitle(meta):
-    ''' Return appropriate title based on simulation metadata. '''
-    if 'Cm0' in meta:
-        return '{:.0f}nm radius BLS structure: MECH-STIM {:.0f}kHz, {:.2f}kPa, {:.1f}nC/cm2'.format(
-            meta['a'] * 1e9, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3, meta['Qm'] * 1e5)
-    else:
-        if meta['DC'] < 1:
-            wavetype = 'PW'
-            suffix = ', {:.2f}Hz PRF, {:.0f}% DC'.format(meta['PRF'], meta['DC'] * 1e2)
-        else:
-            wavetype = 'CW'
-            suffix = ''
-        if 'Astim' in meta:
-            return '{} neuron: {} E-STIM {:.2f}mA/m2, {:.0f}ms{}'.format(
-                meta['neuron'], wavetype, meta['Astim'], meta['tstim'] * 1e3, suffix)
-        else:
-            return '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.2f}kPa, {:.0f}ms{} - {} model'.format(
-                meta['neuron'], meta['a'] * 1e9, wavetype, meta['Fdrive'] * 1e-3,
-                meta['Adrive'] * 1e-3, meta['tstim'] * 1e3, suffix, meta['method'])
-
 
 # SI units prefixes
 si_prefixes = {
@@ -115,14 +90,6 @@ si_prefixes = {
 }
 
 
-def loadData(fpath, frequency=1):
-    ''' Load dataframe and metadata dictionary from pickle file. '''
-    logger.info('Loading data from "%s"', os.path.basename(fpath))
-    with open(fpath, 'rb') as fh:
-        frame = pickle.load(fh)
-        df = frame['data'].iloc[::frequency]
-        meta = frame['meta']
-        return df, meta
 
 
 def si_format(x, precision=0, space=' '):
@@ -248,6 +215,16 @@ def SaveFileDialog(filename, dirname=None, ext=None):
     filename_out = filedialog.asksaveasfilename(
         defaultextension=ext, initialdir=dirname, initialfile=filename)
     return filename_out
+
+
+def loadData(fpath, frequency=1):
+    ''' Load dataframe and metadata dictionary from pickle file. '''
+    logger.info('Loading data from "%s"', os.path.basename(fpath))
+    with open(fpath, 'rb') as fh:
+        frame = pickle.load(fh)
+        df = frame['data'].iloc[::frequency]
+        meta = frame['meta']
+        return df, meta
 
 
 def downsample(t_dense, y, nsparse):
@@ -735,7 +712,7 @@ def cachePKL(root, fcode_func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             # Get file path from root and function arguments, using fcode function
-            fpath = os.path.join(root, '{}.pkl'.format(fcode_func(*args)))
+            fpath = os.path.join(os.path.abspath(root), '{}.pkl'.format(fcode_func(*args)))
 
             # If file exists, load output from it
             if os.path.isfile(fpath):

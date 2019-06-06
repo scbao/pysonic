@@ -12,7 +12,7 @@ from .pltutils import *
 from ..utils import logger, cachePKL
 
 
-root = 'C:/Users/Théo/Desktop/QSS'
+root = '../../../QSS analysis'
 
 
 def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):

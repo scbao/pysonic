@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-22 20:05:30
+# @Last Modified time: 2019-06-06 15:14:32
 
 ''' Subpanels of the QSS approximation figure. '''
 
@@ -16,7 +16,7 @@ from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.utils import logger, selectDirDialog
-from PySONIC.neurons import getNeuronsDict
+from PySONIC.neurons import getPointNeuron
 
 
 # Plot parameters
@@ -30,7 +30,7 @@ figbase = os.path.splitext(__file__)[0]
 
 def plotQSSvars_vs_Adrive(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', '.-'], title=None):
 
-    neuron = getNeuronsDict()[neuron]()
+    neuron = getPointNeuron(neuron)
 
     # Determine spiking threshold
     Vthr = neuron.VT  # mV
@@ -141,7 +141,7 @@ def plotQSSvars_vs_Adrive(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
 
 def plotQSSdQ_vs_Adrive(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
 
-    neuron = getNeuronsDict()[neuron]()
+    neuron = getPointNeuron(neuron)
 
     # Determine spiking threshold
     Vthr = neuron.VT  # mV
@@ -219,7 +219,7 @@ def plotQSSAthr_vs_DC(neurons, a, Fdrive, DCs_dense, DCs_sparse, fs=8, title=Non
     sm = cm.ScalarMappable(norm=norm, cmap='viridis')
     sm._A = []
     for i, neuron in enumerate(neurons):
-        neuron = getNeuronsDict()[neuron]()
+        neuron = getPointNeuron(neuron)
         nbls = NeuronalBilayerSonophore(a, neuron)
         Athrs_dense = nbls.findRheobaseAmps(DCs_dense, Fdrive, neuron.VT)[0] * 1e-3  # kPa
         Athrs_sparse = nbls.findRheobaseAmps(DCs_sparse, Fdrive, neuron.VT)[0] * 1e-3  # kPa

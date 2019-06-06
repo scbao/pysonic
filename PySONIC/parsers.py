@@ -4,7 +4,7 @@ import numpy as np
 from argparse import ArgumentParser
 
 from .utils import Intensity2Pressure, selectDirDialog
-from .neurons import getNeuronsDict, CorticalRS
+from .neurons import getPointNeuron, CorticalRS
 
 
 class SimParser(ArgumentParser):
@@ -226,7 +226,6 @@ class PWSimParser(SimParser):
         })
 
         self.allowed.update({
-            'neuron': list(getNeuronsDict().keys()),
             'DC': range(101)
         })
 
@@ -240,8 +239,7 @@ class PWSimParser(SimParser):
 
     def addNeuron(self):
         self.add_argument(
-            '-n', '--neuron', type=str, nargs='+',
-            choices=self.allowed['neuron'], help='Neuron name (string)')
+            '-n', '--neuron', type=str, nargs='+', help='Neuron name (string)')
 
     def addTstim(self):
         self.add_argument(
@@ -268,10 +266,10 @@ class PWSimParser(SimParser):
             '--titrate', default=False, action='store_true', help='Perform titration')
 
     def parseNeuron(self, args):
-        for item in args['neuron']:
-            if item not in self.allowed['neuron']:
-                raise ValueError('Unknown neuron type: "{}"'.format(item))
-        return [getNeuronsDict()[n]() for n in args['neuron']]
+        # for item in args['neuron']:
+        #     if item not in self.allowed['neuron']:
+        #         raise ValueError('Unknown neuron type: "{}"'.format(item))
+        return [getPointNeuron(n) for n in args['neuron']]
 
     def parseAmp(self, args):
         return NotImplementedError

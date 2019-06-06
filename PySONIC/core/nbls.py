@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 15:27:53
+# @Last Modified time: 2019-06-06 15:50:29
 
 from copy import deepcopy
 import logging
@@ -27,6 +27,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         at initialization, to define the electro-mechanical NICE model and its SONIC variant. '''
 
     tscale = 'ms'  # relevant temporal scale of the model
+    simkey = 'ASTIM'  # keyword used to characterize simulations made with this model
 
     def __init__(self, a, neuron, Fdrive=None, embedding_depth=0.0):
         ''' Constructor of the class.
@@ -66,8 +67,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return self.neuron.getPltScheme()
 
     def filecode(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method='sonic'):
-        return 'ASTIM_{}_{}_{:.0f}nm_{:.0f}kHz_{:.2f}kPa_{:.0f}ms_{}{}'.format(
-            self.neuron.name, 'CW' if DC == 1 else 'PW', self.a * 1e9,
+        return '{}_{}_{}_{:.0f}nm_{:.0f}kHz_{:.2f}kPa_{:.0f}ms_{}{}'.format(
+            self.simkey, self.neuron.name, 'CW' if DC == 1 else 'PW', self.a * 1e9,
             Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
             'PRF{:.2f}Hz_DC{:.2f}%_'.format(PRF, DC * 1e2) if DC < 1. else '', method)
 

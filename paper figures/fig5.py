@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 11:53:17
+# @Last Modified time: 2019-06-06 18:18:04
 
 ''' Sub-panels of the NICE and SONIC accuracies comparative figure. '''
 
@@ -16,7 +16,7 @@ from argparse import ArgumentParser
 
 from PySONIC.utils import *
 from PySONIC.neurons import *
-from PySONIC.plt import plotComp, plotSpikingMetrics, cm2inch
+from PySONIC.plt import ComparativePlot, plotSpikingMetrics, cm2inch
 
 from utils import *
 
@@ -40,13 +40,15 @@ def Qprofiles_vs_amp(neuron, a, Fdrive, CW_Athrs, tstim, toffset, inputdir):
     full_fpaths = getSims(subdir, neuron, a, nbls.simQueue(
         [Fdrive], amps, [tstim], [toffset], [None], [1.], 'full'))
     regimes = ['AT - 5 kPa', 'AT', 'AT + 20 kPa']
-    fig = plotComp(
-        sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []),
-        'Qm',
+    comp_plot = ComparativePlot(sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []), 'Qm')
+    fig = comp_plot.render(
         labels=sum([['', x] for x in regimes], []),
         lines=['-', '--'] * len(regimes),
         colors=plt.get_cmap('Paired').colors[:2 * len(regimes)],
-        fs=8, patches='one', xticks=[0, 250], yticks=[getNeuronsDict()[neuron].Vm0, 25],
+        fs=8,
+        patches='one',
+        xticks=[0, 250],
+        yticks=[getPointNeuron(neuron).Vm0, 25],
         straightlegend=True, figsize=cm2inch(12.5, 5.8)
     )
     fig.axes[0].get_xaxis().set_label_coords(0.5, -0.05)
@@ -86,12 +88,11 @@ def Qprofiles_vs_freq(neuron, a, freqs, CW_Athrs, tstim, toffset, inputdir):
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'sonic'))
         full_fpaths += getSims(subdir, neuron, a, nbls.simQueue(
             [Fdrive], [Adrive], [tstim], [toffset], [None], [1.], 'full'))
-    fig = plotComp(
-        sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []),
-        'Qm',
+    comp_plot = ComparativePlot(sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []), 'Qm')
+    fig = comp_plot.render(
         labels=sum([['', '{}Hz'.format(si_format(f))] for f in freqs], []),
         lines=['-', '--'] * len(freqs), colors=plt.get_cmap('Paired').colors[6:10], fs=8,
-        patches='one', xticks=[0, 250], yticks=[getNeuronsDict()[neuron].Vm0, 25],
+        patches='one', xticks=[0, 250], yticks=[getPointNeuron(neuron).Vm0, 25],
         straightlegend=True, figsize=cm2inch(12.5, 5.8),
         inset={'xcoords': [5, 40], 'ycoords': [-35, 45], 'xlims': [57.5, 58.5], 'ylims': [10, 35]}
     )
@@ -139,13 +140,11 @@ def Qprofiles_vs_radius(neuron, radii, Fdrive, CW_Athrs, tstim, toffset, inputdi
 
     tmp = plt.get_cmap('Paired').colors
     colors = tmp[2:4] + tmp[10:12]
-
-    fig = plotComp(
-        sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []),
-        'Qm',
+    comp_plot = ComparativePlot(sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []), 'Qm')
+    fig = comp_plot.render(
         labels=sum([['', '{:.0f} nm'.format(a * 1e9)] for a in radii], []),
         lines=['-', '--'] * len(radii), colors=colors, fs=8,
-        patches='one', xticks=[0, 250], yticks=[getNeuronsDict()[neuron].Vm0, 25],
+        patches='one', xticks=[0, 250], yticks=[getPointNeuron(neuron).Vm0, 25],
         straightlegend=True, figsize=cm2inch(12.5, 5.8)
     )
     fig.axes[0].get_xaxis().set_label_coords(0.5, -0.05)
@@ -190,12 +189,11 @@ def Qprofiles_vs_DC(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DC, inputdi
             [Fdrive], [Adrive], [tstim], [toffset], [PRF], [DC], 'full'))
     colors = list(plt.get_cmap('Paired').colors[:6])
     del colors[2:4]
-    fig = plotComp(
-        sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []),
-        'Qm',
+    comp_plot = ComparativePlot(sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []), 'Qm')
+    fig = comp_plot.render(
         labels=sum([['', '{}, {:.0f}% DC'.format(x, DC * 1e2)] for x in neurons], []),
         lines=['-', '--'] * len(neurons), colors=colors, fs=8, patches='one',
-        xticks=[0, 250], yticks=[min(getNeuronsDict()[n].Vm0 for n in neurons), 50],
+        xticks=[0, 250], yticks=[min(getPointNeuron(n).Vm0 for n in neurons), 50],
         straightlegend=True, figsize=cm2inch(12.5, 5.8)
     )
     fig.axes[0].get_xaxis().set_label_coords(0.5, -0.05)
@@ -242,13 +240,12 @@ def Qprofiles_vs_PRF(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inputd
         [Fdrive], [Adrive], [tstim], [toffset], PRFs, [DC], 'full'))
     patches = [False, True] * len(PRFs)
     patches[-1] = False
-    fig = plotComp(
-        sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []),
-        'Qm',
+    comp_plot = ComparativePlot(sum([[x, y] for x, y in zip(full_fpaths, sonic_fpaths)], []), 'Qm')
+    fig = comp_plot.render(
         labels=sum([['', '{}Hz PRF'.format(si_format(PRF, space=' '))] for PRF in PRFs], []),
         lines=['-', '--'] * len(PRFs), colors=plt.get_cmap('Paired').colors[4:12], fs=8,
         patches=patches,
-        xticks=[0, 250], yticks=[getNeuronsDict()[neuron].Vm0, 50],
+        xticks=[0, 250], yticks=[getPointNeuron(neuron).Vm0, 50],
         straightlegend=True, figsize=cm2inch(12.5, 5.8)
     )
     fig.axes[0].get_xaxis().set_label_coords(0.5, -0.05)
