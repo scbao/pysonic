@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-15 01:21:22
+# @Last Modified time: 2019-06-06 21:23:03
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib
 
-from PySONIC.utils import logger, si_prefixes, isWithin, getLookups2D, getLookupsOff
+from PySONIC.utils import logger, si_prefixes, isWithin
+from PySONIC.neurons import getLookups2D, getLookupsOff
 from PySONIC.core import NeuronalBilayerSonophore
 
 

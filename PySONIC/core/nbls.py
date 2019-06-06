@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 18:53:20
+# @Last Modified time: 2019-06-06 21:22:13
 
 from copy import deepcopy
 import logging
@@ -17,6 +17,7 @@ from .simulators import PWSimulator, HybridSimulator
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .batches import createQueue
+from ..neurons import getLookups2D, getLookupsDCavg
 from ..utils import *
 from ..constants import *
 from ..postpro import getFixedPoints
