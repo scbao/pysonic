@@ -9,7 +9,7 @@ from matplotlib import cm, colors
 from ..postpro import getFixedPoints
 from ..core import NeuronalBilayerSonophore, Batch
 from .pltutils import *
-from ..utils import logger, cachePKL
+from ..utils import logger, fileCache
 
 
 root = '../../../QSS analysis'
@@ -310,7 +310,7 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
     return fig
 
 
-@cachePKL(
+@fileCache(
     root,
     lambda nbls, Fdrive, _, DC: 'FPs_vs_Adrive_{}_{:.0f}kHz_{:.0f}%DC'.format(
         nbls.neuron.name, Fdrive * 1e-3, DC * 1e2)
@@ -341,7 +341,7 @@ def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=loggin
     return SFPs, UFPs
 
 
-@cachePKL(
+@fileCache(
     root,
     lambda nbls, Fdrive, _, tstim, toffset, PRF, DC:
         'stab_vs_Adrive_{}_{:.0f}kHz_{:.0f}ms_{:.0f}ms_offset_{:.0f}Hz_PRF_{:.0f}%DC'.format(

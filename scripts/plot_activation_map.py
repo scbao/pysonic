@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-14 18:14:29
+# @Last Modified time: 2019-06-06 20:58:41
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -12,7 +12,9 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
-from PySONIC.plt import plotActivationMap
+from PySONIC.plt import ActivationMap
+from PySONIC.neurons import getPointNeuron
+
 
 # Default parameters
 defaults = dict(
@@ -35,11 +37,14 @@ def main():
     ap = ArgumentParser()
 
     # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true',
+                    help='Increase verbosity')
     ap.add_argument('-i', '--inputdir', type=str, default=None, help='Input directory')
+
     ap.add_argument('-r', '--threshold', default=False, action='store_true',
                     help='Show threshold amplitudes')
-    ap.add_argument('-c', '--connect', default=False, action='store_true',
+
+    ap.add_argument('--interactive', default=False, action='store_true',
                     help='Show traces on click')
 
     # Stimulation parameters
@@ -80,7 +85,7 @@ def main():
         return
 
     # Parameters
-    neuron = args['neuron']
+    neuron = getPointNeuron(args['neuron'])
     a = args['radius'] * 1e-9  # m
     Fdrive = args['freq'] * 1e3  # Hz
     tstim = args['duration'] * 1e-3  # s
@@ -96,18 +101,18 @@ def main():
     # Plot options
     for item in ['Ascale', 'FRscale']:
         assert args[item] in ('lin', 'log'), 'Unknown {}'.format(item)
-    Ascale = args['Ascale']
-    FRscale = args['FRscale']
-    tmax = args['tmax']  # ms
-    Vbounds = args['Vbounds']  # mV
-    FRbounds = args['FRbounds']  # Hz
 
     # Plot activation map
-    plotActivationMap(
-        inputdir, neuron, a, Fdrive, tstim, PRF, amps, DCs,
-        Ascale=Ascale, FRscale=FRscale, FRbounds=FRbounds,
-        thrs=args['threshold'], connect=args['connect'],
-        tmax=tmax, Vbounds=Vbounds)
+    actmap = ActivationMap(inputdir, neuron, a, Fdrive, tstim, PRF, amps, DCs)
+    actmap.render(
+        Ascale=args['Ascale'],
+        FRscale=args['FRscale'],
+        FRbounds=args['FRbounds'],
+        interactive=args['interactive'],
+        Vbounds=args['Vbounds'],
+        tmax=args['tmax'],
+        thresholds=args['threshold']
+    )
 
     plt.show()
 

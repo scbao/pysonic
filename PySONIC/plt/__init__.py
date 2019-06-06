@@ -4,7 +4,7 @@
 # @Date:   2017-06-06 13:36:00
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 18:08:23
+# @Last Modified time: 2019-06-06 20:41:35
 
 from .pltutils import *
 from .timeseries import ComparativePlot, SchemePlot

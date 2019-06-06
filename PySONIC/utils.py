@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 16:13:51
+# @Last Modified time: 2019-06-06 19:02:42
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -666,7 +666,7 @@ def timer(func):
     return wrapper
 
 
-def cache(fpath, delimiter='\t', out_type=float):
+def logCache(fpath, delimiter='\t', out_type=float):
     ''' Add an extra IO memoization functionality to a function using file caching,
         to avoid repetitions of tedious computations with identical inputs.
     '''
@@ -705,7 +705,7 @@ def cache(fpath, delimiter='\t', out_type=float):
     return wrapper_with_args
 
 
-def cachePKL(root, fcode_func):
+def fileCache(root, fcode_func, load_func=pickle.load, dump_func=pickle.dump):
 
     def wrapper_with_args(func):
 
@@ -718,14 +718,14 @@ def cachePKL(root, fcode_func):
             if os.path.isfile(fpath):
                 print('loading data from "{}"'.format(fpath))
                 with open(fpath, 'rb') as f:
-                    out = pickle.load(f)
+                    out = load_func(f)
 
             # Otherwise, execute function and create the file to dump the output
             else:
                 out = func(*args, **kwargs)
                 print('dumping data in "{}"'.format(fpath))
                 with open(fpath, 'wb') as f:
-                    pickle.dump(out, f)
+                    dump_func(out, f)
             return out
 
         return wrapper

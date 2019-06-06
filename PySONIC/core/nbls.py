@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:50:29
+# @Last Modified time: 2019-06-06 18:53:20
 
 from copy import deepcopy
 import logging
@@ -402,7 +402,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Return dataframe and computation time
         return data, tcomp
 
-    @cache(os.path.join(os.path.split(__file__)[0], 'astim_titrations.log'))
+    @logCache(os.path.join(os.path.split(__file__)[0], 'astim_titrations.log'))
     def titrate(self, Fdrive, tstim, toffset, PRF=100., DC=1., method='sonic',
                 xfunc=None, Arange=None):
         ''' Use a binary search to determine the threshold amplitude needed to obtain
