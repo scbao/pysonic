@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 21:20:41
+# @Last Modified time: 2019-06-06 21:28:44
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -261,18 +261,6 @@ def isWithin(name, val, bounds, rel_tol=1e-9):
     else:
         raise ValueError('{} value ({}) out of [{}, {}] interval'.format(
             name, val, bounds[0], bounds[1]))
-
-
-def getLowIntensitiesSTN():
-    ''' Return an array of acoustic intensities (W/m2) used to study the STN neuron in
-        Tarnaud, T., Joseph, W., Martens, L., and Tanghe, E. (2018). Computational Modeling
-        of Ultrasonic Subthalamic Nucleus Stimulation. IEEE Trans Biomed Eng.
-    '''
-    return np.hstack((
-        np.arange(10, 101, 10),
-        np.arange(101, 131, 1),
-        np.array([140])
-    ))  # W/m2
 
 
 def getDistribution(xmin, xmax, nx, scale='lin'):

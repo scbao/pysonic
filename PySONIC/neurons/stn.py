@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 12:33:58
+# @Last Modified time: 2019-06-06 21:29:29
 
 
 import numpy as np
@@ -538,7 +538,6 @@ class OtsukaSTN(PointNeuron):
 
         return sstates
 
-
     def derStates(self, Vm, states):
         ''' Overriding of abstract parent method. '''
         a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
@@ -557,8 +556,6 @@ class OtsukaSTN(PointNeuron):
             'r': self.derR(Cai, r),
             'Cai': self.derCai(p, q, c, d1, d2, Cai, Vm),
         }
-
-
 
     def computeEffRates(self, Vm):
         ''' Overriding of abstract parent method. '''
@@ -585,7 +582,6 @@ class OtsukaSTN(PointNeuron):
             'betaq': np.mean((1 - self.qinf(Vm)) / self.tauq(Vm))
         }
 
-
     def derEffStates(self, Qm, states, lkp):
         ''' Overriding of abstract parent method. '''
 
@@ -608,7 +604,6 @@ class OtsukaSTN(PointNeuron):
             'Cai': self.derCai(p, q, c, d1, d2, Cai, Vmeff)
         }
 
-
     def quasiSteadyStates(self, lkp):
         ''' Overriding of abstract parent method. '''
         qsstates = self.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
@@ -617,3 +612,14 @@ class OtsukaSTN(PointNeuron):
         qsstates['d2'] = self.d2inf(qsstates['Cai'])
         qsstates['r'] = self.rinf(qsstates['Cai'])
         return qsstates
+
+    def getLowIntensities(self):
+        ''' Return an array of acoustic intensities (W/m2) used to study the STN neuron in
+            Tarnaud, T., Joseph, W., Martens, L., and Tanghe, E. (2018). Computational Modeling
+            of Ultrasonic Subthalamic Nucleus Stimulation. IEEE Trans Biomed Eng.
+        '''
+        return np.hstack((
+            np.arange(10, 101, 10),
+            np.arange(101, 131, 1),
+            np.array([140])
+        ))  # W/m2

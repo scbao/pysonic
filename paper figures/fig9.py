@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 18:22:09
+# @Last Modified time: 2019-06-06 21:29:48
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -15,7 +15,7 @@ from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.neurons import OtsukaSTN
-from PySONIC.utils import logger, selectDirDialog, getLowIntensitiesSTN, Intensity2Pressure
+from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
 from PySONIC.plt import plotFRProfile, SchemePlot
 
 
@@ -32,7 +32,8 @@ def main():
     ap = ArgumentParser()
 
     # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true',
+                    help='Increase verbosity')
     ap.add_argument('-i', '--inputdir', type=str, help='Input directory')
     ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
     ap.add_argument('-s', '--save', default=False, action='store_true',
@@ -62,7 +63,7 @@ def main():
     nbls = NeuronalBilayerSonophore(a, neuron)
 
     # Range of intensities
-    intensities = getLowIntensitiesSTN()  # W/m2
+    intensities = neuron.getLowIntensities()  # W/m2
 
     # Levels depicted with individual traces
     subset_intensities = [112, 114, 123]  # W/m2

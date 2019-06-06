@@ -4,7 +4,7 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:09:23
+# @Last Modified time: 2019-06-06 21:27:19
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.plt import plotEffectiveVariables
-from PySONIC.utils import logger, Intensity2Pressure, getLowIntensitiesSTN
+from PySONIC.utils import logger
 from PySONIC.neurons import getPointNeuron
 
 # Set logging level
@@ -38,7 +38,8 @@ def main():
                     help='Colormap name')
     ap.add_argument('--ncol', type=int, default=1,
                     help='Number of columns in figure')
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true',
+                    help='Increase verbosity')
 
     # Parse arguments
     args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
@@ -46,12 +47,6 @@ def main():
     a = args['radius'] * 1e-9 if 'radius' in args else None  # m
     Fdrive = args['freq'] * 1e3 if 'freq' in args else None  # Hz
     Adrive = args['amp'] * 1e3 if 'amp' in args else None  # Pa
-
-    # Range of intensities
-    if neuron_str == 'STN':
-        intensities = getLowIntensitiesSTN()  # W/m2
-        Adrive = Intensity2Pressure(intensities)  # Pa
-
     zscale = 'log' if args['log'] else 'lin'
     cmap = args.get('cmap', None)
     ncol = args['ncol']
