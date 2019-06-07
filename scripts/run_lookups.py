@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:05:34
+# @Last Modified time: 2019-06-07 15:41:10
 
 ''' Create lookup table for specific neuron. '''
 
@@ -15,7 +15,7 @@ import logging
 import numpy as np
 from argparse import ArgumentParser
 
-from PySONIC.utils import logger, getNeuronLookupsFile
+from PySONIC.utils import logger, getNeuronLookupsFile, isIterable
 from PySONIC.neurons import getPointNeuron
 from PySONIC.core import NeuronalBilayerSonophore, createQueue, Batch
 
@@ -73,7 +73,7 @@ def computeAStimLookups(neuron, aref, fref, Aref, Qref, fsref=None,
 
     # Check validity of input parameters
     for key, values in inputs.items():
-        if not (isinstance(values, list) or isinstance(values, np.ndarray)):
+        if not isIterable(values):
             raise TypeError(
                 'Invalid {} (must be provided as list or numpy array)'.format(descs[key]))
         if not all(isinstance(x, float) for x in values):

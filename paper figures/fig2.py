@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 18:26:24
+# @Last Modified time: 2019-06-07 13:54:14
 
 ''' Sub-panels of the model optimization figure. '''
 
@@ -232,7 +232,7 @@ def Qsolution(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC, fs=12, lw=2, ps=15)
     t, Qm, states = [data[key].values for key in ['t', 'Qm', 'stimstate']]
     t *= 1e3  # ms
     Qm *= 1e5  # nC/cm2
-    _, tpulse_on, tpulse_off = SchemePlot.getStimPulses(t, states)
+    _, tpulse_on, tpulse_off = SchemePlot.getStimPulses(_, t, states)
 
     # Add small onset
     t = np.insert(t, 0, -5.0)

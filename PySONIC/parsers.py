@@ -3,12 +3,12 @@ import logging
 import numpy as np
 from argparse import ArgumentParser
 
-from .utils import Intensity2Pressure, selectDirDialog
+from .utils import Intensity2Pressure, selectDirDialog, isIterable
 from .neurons import getPointNeuron, CorticalRS
 
 
-class SimParser(ArgumentParser):
-    ''' Generic simulation parser interface. '''
+class Parser(ArgumentParser):
+    ''' Generic parser interface. '''
 
     dist_str = '[scale min max n]'
 
@@ -18,7 +18,6 @@ class SimParser(ArgumentParser):
         self.allowed = {}
         self.factors = {}
         self.addPlot()
-        self.addMPI()
         self.addVerbose()
 
     def getDistribution(self, xmin, xmax, nx, scale='lin'):
@@ -56,31 +55,47 @@ class SimParser(ArgumentParser):
 
     def addSave(self):
         self.add_argument(
-            '-s', '--save', default=False, action='store_true', help='Save output figures')
+            '-s', '--save', default=False, action='store_true', help='Save output figure(s)')
+
+    def addCompare(self, desc='Comparative graph'):
+        self.add_argument(
+            '--compare', default=False, action='store_true', help=desc)
+
+    def addSamplingRate(self):
+        self.add_argument(
+            '--sr', type=int, default=1, help='Sampling rate for plot')
+
+    def addHideOutput(self):
+        self.add_argument(
+            '--hide', default=False, action='store_true', help='Hide output')
 
     def addCmap(self, default='viridis'):
         self.add_argument(
-            '-c', '--cmap', type=str, default=default, help='Colormap name')
+            '--cmap', type=str, default=default, help='Colormap name')
 
-    def addInputDir(self):
+    def addInputDir(self, dep_key=None):
+        self.inputdir_dep_key = dep_key
         self.add_argument(
             '-i', '--inputdir', type=str, help='Input directory')
 
-    def addOutputDir(self):
+    def addOutputDir(self, dep_key=None):
+        self.outputdir_dep_key = dep_key
         self.add_argument(
             '-o', '--outputdir', type=str, help='Output directory')
 
-    def parseDir(self, key, args):
-        directory = args[key] if args[key] is not None else selectDirDialog()
+    def parseDir(self, key, args, title, dep_key=None):
+        if dep_key is not None and args[dep_key] is False:
+            return None
+        directory = args[key] if args[key] is not None else selectDirDialog(title=title)
         if directory == '':
             raise ValueError('No {} selected'.format(key))
         return directory
 
     def parseInputDir(self, args):
-        return self.parseDir('inputdir', args)
+        return self.parseDir('inputdir', args, 'Select input directory', self.inputdir_dep_key)
 
     def parseOutputDir(self, args):
-        return self.parseDir('outputdir', args)
+        return self.parseDir('outputdir', args, 'Select output directory', self.outputdir_dep_key)
 
     def parseLogLevel(self, args):
         return logging.DEBUG if args.pop('verbose') else logging.INFO
@@ -104,7 +119,21 @@ class SimParser(ArgumentParser):
         args['loglevel'] = self.parseLogLevel(args)
         for k, v in self.defaults.items():
             if args[k] is None:
-                args[k] = [v]
+                args[k] = v if isIterable(v) else [v]
+        return args
+
+
+class SimParser(Parser):
+    ''' Generic simulation parser interface. '''
+
+    def __init__(self):
+        super().__init__()
+        self.addMPI()
+        self.addOutputDir()
+
+    def parse(self):
+        args = super().parse()
+        args['outputdir'] = self.parseOutputDir(args)
         return args
 
 
@@ -174,6 +203,11 @@ class MechSimParser(SimParser):
             '--Irange', type=str, nargs='+',
             help='Intensity range {} (W/cm2)'.format(self.dist_str))
 
+    def addAscale(self, default='lin'):
+        self.add_argument(
+            '--Ascale', type=str, choices=('lin', 'log'), default=default,
+            help='Amplitude scale for plot ("lin" or "log")')
+
     def addCharge(self):
         self.add_argument(
             '-Q', '--charge', nargs='+', type=float, help='Membrane charge density (nC/cm2)')
@@ -182,23 +216,19 @@ class MechSimParser(SimParser):
         params = ['Irange', 'Arange', 'intensity', 'amp']
         self.restrict(args, params[:-1])
         Irange, Arange, Int, Adrive = [args.pop(k) for k in params]
-        Ascale = None
         if Irange is not None:
             amps = Intensity2Pressure(self.getDistFromList(Irange) * 1e4)  # Pa
-            Ascale = Irange[0]
         elif Int is not None:
             amps = Intensity2Pressure(np.array(Int) * 1e4)  # Pa
         elif Arange is not None:
             amps = self.getDistFromList(Arange) * self.factors['amp']  # Pa
-            Ascale = Arange[0]
         else:
             amps = np.array(Adrive) * self.factors['amp']  # Pa
-            Ascale = args.get('Arange', ['lin'])[0]
-        return amps, Ascale
+        return amps
 
     def parse(self):
         args = super().parse()
-        args['amp'], args['Ascale'] = self.parseAmp(args)
+        args['amp'] = self.parseAmp(args)
         for key in ['radius', 'embedding', 'Cm0', 'Qm0', 'freq', 'charge']:
             args[key] = self.parse2array(args, key, factor=self.factors[key])
         return args
@@ -311,17 +341,16 @@ class EStimParser(PWSimParser):
         if args.pop('titrate'):
             return None
         Arange, Astim = [args.pop(k) for k in ['Arange', 'amp']]
-        Ascale = 'lin'
         if Arange is not None:
             amps = self.getDistFromList(Arange) * self.factors['amp']  # mA/m2
             Ascale = Arange[0]
         else:
             amps = np.array(Astim) * self.factors['amp']  # mA/m2
-        return amps, Ascale
+        return amps
 
     def parse(self):
         args = super().parse()
-        args['amp'], args['Ascale'] = self.parseAmp(args)
+        args['amp'] = self.parseAmp(args)
         return args
 
 

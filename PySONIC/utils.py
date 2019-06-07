@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 21:28:44
+# @Last Modified time: 2019-06-07 15:42:20
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -181,8 +181,10 @@ def OpenFilesDialog(filetype, dirname=''):
     '''
     root = tk.Tk()
     root.withdraw()
-    filenames = filedialog.askopenfilenames(filetypes=[(filetype + " files", '.' + filetype)],
-                                            initialdir=dirname)
+    filenames = filedialog.askopenfilenames(
+        filetypes=[(filetype + " files", '.' + filetype)],
+        initialdir=dirname
+    )
     if filenames:
         par_dir = os.path.abspath(os.path.join(filenames[0], os.pardir))
     else:
@@ -190,14 +192,14 @@ def OpenFilesDialog(filetype, dirname=''):
     return (filenames, par_dir)
 
 
-def selectDirDialog():
+def selectDirDialog(title='Select directory'):
     ''' Open a dialog box to select a directory.
 
         :return: full path to selected directory
     '''
     root = tk.Tk()
     root.withdraw()
-    return filedialog.askdirectory()
+    return filedialog.askdirectory(title=title)
 
 
 def SaveFileDialog(filename, dirname=None, ext=None):
@@ -236,6 +238,13 @@ def rescale(x, lb=None, ub=None, lb_new=0, ub_new=1):
     return xnorm * (ub_new - lb_new) + lb_new
 
 
+def isIterable(x):
+    for t in [list, tuple, np.ndarray]:
+        if isinstance(x, t):
+            return True
+    return False
+
+
 def isWithin(name, val, bounds, rel_tol=1e-9):
     ''' Check if a floating point number is within an interval.
 
@@ -248,7 +257,7 @@ def isWithin(name, val, bounds, rel_tol=1e-9):
         :param bounds: interval bounds (float tuple)
         :return: original or corrected value
     '''
-    if isinstance(val, list) or isinstance(val, np.ndarray) or isinstance(val, tuple):
+    if isIterable(val):
         return [isWithin(name, v, bounds, rel_tol) for v in val]
     if val >= bounds[0] and val <= bounds[1]:
         return val

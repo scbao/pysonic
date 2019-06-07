@@ -2,11 +2,12 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-03 20:10:53
+# @Last Modified time: 2019-06-07 15:55:50
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
 import os
+import numpy as np
 import matplotlib.pyplot as plt
 
 from PySONIC.utils import logger
@@ -19,18 +20,19 @@ def main():
     # Parse command line arguments
     parser = AStimParser()
     parser.addCmap(default='viridis')
+    parser.addAscale()
     parser.addSave()
-    parser.addInputDir()
-    parser.addOutputDir()
-    parser.add_argument(
-        '--comp', default=False, action='store_true', help='Compare with simulations')
+    parser.outputdir_dep_key = 'save'
+    parser.addCompare(desc='Compare with simulations')
+    parser.addInputDir(dep_key='compare')
+    parser.defaults['amp'] = np.logspace(np.log10(1), np.log10(600), 100) # kPa
+    parser.defaults['tstim'] = 1000. # ms
+    parser.defaults['toffset'] = 0.  # ms
     args = parser.parse()
+    args['inputdir'] = parser.parseInputDir(args)
     logger.setLevel(args['loglevel'])
-    args['inputdir'] = parser.parseInputDir(args) if args['comp'] else None
-    args['outputdir'] = parser.parseOutputDir(args) if args['save'] else None
     if args['plot'] is None:
         args['plot'] = ['dQdt']
-
     a, Fdrive, tstim, toffset, PRF = [
         args[k][0] for k in ['radius', 'freq', 'tstim', 'toffset', 'PRF']]
 

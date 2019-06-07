@@ -4,7 +4,7 @@
 # @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 18:21:13
+# @Last Modified time: 2019-06-07 14:58:39
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -19,10 +19,8 @@ from PySONIC.parsers import MechSimParser
 def main():
     # Parse command line arguments
     parser = MechSimParser()
-    parser.addOutputDir()
     args = parser.parse()
     logger.setLevel(args['loglevel'])
-    args['outputdir'] = parser.parseOutputDir(args)
 
     # Run MECH batch
     logger.info("Starting mechanical simulation batch")

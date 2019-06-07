@@ -4,36 +4,30 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 18:13:12
+# @Last Modified time: 2019-06-07 15:12:51
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
 import logging
-from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 
 from PySONIC.utils import logger, OpenFilesDialog, selectDirDialog
 from PySONIC.plt import ComparativePlot, SchemePlot
+from PySONIC.parsers import Parser
 
 # Set logging level
 logger.setLevel(logging.INFO)
 
 
 def main():
-    ap = ArgumentParser()
-
-    # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('--hide', default=False, action='store_true', help='Hide output')
-    ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
-    ap.add_argument('-c', '--compare', default=False, action='store_true', help='Comparative graph')
-    ap.add_argument('-s', '--save', default=False, action='store_true', help='Save output')
-    ap.add_argument('-p', '--plot', type=str, nargs='+', default=None, help='Variables to plot')
-    ap.add_argument('-f', '--frequency', type=int, default=1, help='Sampling frequency for plot')
-
-    # Parse arguments
-    args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
-    logger.setLevel(logging.DEBUG if args['verbose'] else logging.INFO)
+    # Parse command line arguments
+    parser = Parser()
+    parser.addHideOutput()
+    parser.addOutputDir(dep_key='save')
+    parser.addCompare()
+    parser.addSave()
+    parser.addSamplingRate()
+    args = parser.parse()
 
     # Select data files
     pkl_filepaths, _ = OpenFilesDialog('pkl')
@@ -43,20 +37,18 @@ def main():
 
     # Plot appropriate graph
     if args['compare']:
-        if 'plot' not in args:
-            logger.error('Plot variable must be specified')
+        if args['plot'] == ['all']:
+            logger.error('Specific variables must be specified for comparative plots')
             quit()
-        try:
-            comp_plot = ComparativePlot(pkl_filepaths, args['plot'][0])
-            comp_plot.render()
-        except KeyError as e:
-            logger.error(e)
-            quit()
+        for pltvar in args['plot']:
+            try:
+                comp_plot = ComparativePlot(pkl_filepaths, pltvar)
+                comp_plot.render()
+            except KeyError as e:
+                logger.error(e)
+                quit()
     else:
-        pltscheme = {key: [key] for key in args['plot']} if 'plot' in args else None
-        if 'outputdir' not in args:
-            args['outputdir'] = selectDirDialog() if args['save'] else None
-        scheme_plot = SchemePlot(pkl_filepaths, pltscheme=pltscheme)
+        scheme_plot = SchemePlot(pkl_filepaths, pltscheme=parser.parsePltScheme(args))
         scheme_plot.render(
             title=True,
             save=args['save'],
