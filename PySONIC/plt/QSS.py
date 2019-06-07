@@ -354,19 +354,14 @@ def runAndGetStab(nbls, *args):
 )
 def getSimFixedPointsvsAdrive(nbls, Fdrive, amps, tstim, toffset, PRF, DC,
                               outputdir=None, mpi=False, loglevel=logging.INFO):
-
-    # Generate batch queue
-    queue = []
-    for iA, Adrive in enumerate(amps):
-        queue.append([nbls, outputdir, Fdrive, Adrive, tstim, toffset, PRF, DC, 'sonic'])
-
     # Run batch to find stabilization point from simulations (if any) at each amplitude
+    queue = [[nbls, outputdir, Fdrive, Adrive, tstim, toffset, PRF, DC, 'sonic'] for Adrive in amps]
     batch = Batch(runAndGetStab, queue)
     output = batch(mpi=mpi, loglevel=loglevel)
     return list(zip(amps, output))
 
 
-def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3, PRF=100.0,
+def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=None, toffset=None, PRF=None,
                       DC=1., fs=12, xscale='lin', compdir=None, mpi=False,
                       loglevel=logging.INFO):
     ''' Plot the equilibrium membrane charge density as a function of acoustic amplitude,
@@ -436,6 +431,64 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3,
         stim_type,
         DC * 1e2,
         '_with_comp' if compdir is not None else ''
+    ))
+
+    return fig
+
+
+@fileCache(
+    root,
+    lambda nbls, Fdrive, tstim, toffset, PRF, DCs:
+        'threshold_curve_{}_{:.0f}kHz_{:.0f}ms_{:.0f}ms_offset_{:.0f}Hz_PRF_{:.2f}-{:.2f}%DC'.format(
+            nbls.neuron.name, Fdrive * 1e-3, tstim * 1e3, toffset * 1e3, PRF,
+            DCs.min() * 1e2, DCs.max() * 1e2)
+)
+def getSimThresholdAmps(nbls, Fdrive, tstim, toffset, PRF, DCs, mpi=False, loglevel=logging.INFO):
+    # Run batch to find threshold amplitude from titrations at each DC
+    queue = [[Fdrive, tstim, toffset, PRF, DC, 'sonic'] for DC in DCs]
+    batch = Batch(nbls.titrate, queue)
+    output = batch(mpi=mpi, loglevel=loglevel)
+    return list(zip(DCs, output))
+
+
+def plotQSSThresholdCurve(neuron, a, Fdrive, tstim=None, toffset=None, PRF=None, DCs=None,
+                          fs=12, Ascale='lin', comp=False, mpi=False, loglevel=logging.INFO):
+
+    print(DCs)
+    logger.info('plotting %s neuron threshold curve', neuron.name)
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(6, 4))
+    figname = '{} neuron - threshold amplitude vs. duty cycle'.format(neuron.name)
+    ax.set_title(figname)
+    ax.set_xlabel('Duty cycle (%)', fontsize=fs)
+    ax.set_ylabel('Amplitude (kPa)', fontsize=fs)
+    if Ascale == 'log':
+        ax.set_yscale('log')
+    for skey in ['top', 'right']:
+        ax.spines[skey].set_visible(False)
+    for item in ax.get_xticklabels() + ax.get_yticklabels():
+        item.set_fontsize(fs)
+
+    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    # Athrs_QSS = getQSSThresholdAmps(nbls, Fdrive, amps, DCs, mpi=mpi, loglevel=loglevel)
+    # ax.plot(DCs * 1e2, Athrs_QSS * 1e-3, '-', c='k', label='QSS curve')
+    if comp:
+        Athrs_sim = getSimThresholdAmps(
+            nbls, Fdrive, tstim, toffset, PRF, DCs, mpi=mpi, loglevel=loglevel)
+        ax.plot(DCs * 1e2, Athrs_sim * 1e-3, '--', c='k', label='sim curve')
+
+    # Post-process figure
+    ax.set_ylim(np.array([neuron.Qm0 - 10e-5, 0]) * 1e5)
+    ax.legend(frameon=False, fontsize=fs)
+    fig.tight_layout()
+
+    fig.canvas.set_window_title('{}_QSS_threhold_curve_{:.0f}-{:.0f}%DC_{}A_{}'.format(
+        neuron.name,
+        DCs.min() * 1e2,
+        DCs.max() * 1e2,
+        Ascale,
+        '_with_comp' if comp else ''
     ))
 
     return fig
