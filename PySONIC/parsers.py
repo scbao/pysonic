@@ -53,6 +53,10 @@ class Parser(ArgumentParser):
         self.add_argument(
             '--mpi', default=False, action='store_true', help='Use multiprocessing')
 
+    def addTest(self):
+        self.add_argument(
+            '--test', default=False, action='store_true', help='Run test configuration')
+
     def addSave(self):
         self.add_argument(
             '-s', '--save', default=False, action='store_true', help='Save output figure(s)')

@@ -312,8 +312,8 @@ def plotQSSVarVsAmp(neuron, a, Fdrive, varname, amps=None, DC=1.,
 
 @fileCache(
     root,
-    lambda nbls, Fdrive, _, DC: 'FPs_vs_Adrive_{}_{:.0f}kHz_{:.0f}%DC'.format(
-        nbls.neuron.name, Fdrive * 1e-3, DC * 1e2)
+    lambda nbls, Fdrive, amps, DC: 'FPs_vs_Adrive_{}_{:.0f}kHz_{:.2f}-{:.2f}kPa_{:.0f}%DC'.format(
+        nbls.neuron.name, Fdrive * 1e-3, amps.min() * 1e-3, amps.max() * 1e-3, DC * 1e2)
 )
 def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=logging.INFO):
 
@@ -323,40 +323,47 @@ def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=loggin
     dQdt = -nbls.neuron.iNet(lookups['V'], np.array([QSS[k] for k in nbls.neuron.states]))  # mA/m2
 
     # Generate batch queue
-    QSS_queue = []
+    queue = []
     for iA, Adrive in enumerate(amps):
         lookups1D = {k: v[iA, :] for k, v in lookups.items()}
         lookups1D['Q'] = Qref
-        QSS_queue.append([Fdrive, Adrive, DC, lookups1D, dQdt[iA, :]])
+        queue.append([Fdrive, Adrive, DC, lookups1D, dQdt[iA, :]])
 
     # Run batch to find stable and unstable fixed points at each amplitude
-    QSS_batch = Batch(nbls.fixedPointsQSS, QSS_queue)
-    QSS_output = QSS_batch(mpi=mpi, loglevel=loglevel)
+    batch = Batch(nbls.fixedPointsQSS, queue)
+    output = batch(mpi=mpi, loglevel=loglevel)
 
     # Sort points by amplitude
     SFPs, UFPs = [], []
     for i, Adrive in enumerate(amps):
-        SFPs += [(Adrive, Qm) for Qm in QSS_output[i][0]]
-        UFPs += [(Adrive, Qm) for Qm in QSS_output[i][1]]
+        SFPs += [(Adrive, Qm) for Qm in output[i][0]]
+        UFPs += [(Adrive, Qm) for Qm in output[i][1]]
     return SFPs, UFPs
+
+
+def runAndGetStab(nbls, *args):
+    return nbls.neuron.getStabilizationValue(nbls.load(*args)[0])
 
 
 @fileCache(
     root,
-    lambda nbls, Fdrive, _, tstim, toffset, PRF, DC:
-        'stab_vs_Adrive_{}_{:.0f}kHz_{:.0f}ms_{:.0f}ms_offset_{:.0f}Hz_PRF_{:.0f}%DC'.format(
-            nbls.neuron.name, Fdrive * 1e-3, tstim * 1e3, toffset * 1e3, PRF, DC * 1e2)
+    lambda nbls, Fdrive, amps, tstim, toffset, PRF, DC:
+        'stab_vs_Adrive_{}_{:.0f}kHz_{:.0f}ms_{:.0f}ms_offset_{:.0f}Hz_PRF_{:.2f}-{:.2f}kPa_{:.0f}%DC'.format(
+            nbls.neuron.name, Fdrive * 1e-3, tstim * 1e3, toffset * 1e3, PRF,
+            amps.min() * 1e-3, amps.max() * 1e-3, DC * 1e2)
 )
 def getSimFixedPointsvsAdrive(nbls, Fdrive, amps, tstim, toffset, PRF, DC,
                               outputdir=None, mpi=False, loglevel=logging.INFO):
 
-    # Get stabilization point from simulation, if any
-    stab_points = []
-    for Adrive in amps:
-        data, _ = nbls.load(outputdir, Fdrive, Adrive, tstim, toffset, PRF, DC, 'sonic')
-        stab_points.append((Adrive, nbls.neuron.getStabilizationValue(data)))
+    # Generate batch queue
+    queue = []
+    for iA, Adrive in enumerate(amps):
+        queue.append([nbls, outputdir, Fdrive, Adrive, tstim, toffset, PRF, DC, 'sonic'])
 
-    return stab_points
+    # Run batch to find stabilization point from simulations (if any) at each amplitude
+    batch = Batch(runAndGetStab, queue)
+    output = batch(mpi=mpi, loglevel=loglevel)
+    return list(zip(amps, output))
 
 
 def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=250e-3, toffset=50e-3, PRF=100.0,
