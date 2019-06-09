@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:56:51
+# @Last Modified time: 2019-06-09 17:17:03
 
 from enum import Enum
 import os
@@ -141,9 +141,19 @@ class BilayerSonophore(Model):
             s += ', d={}m'.format(si_format(self.d, precision=1, space=' '))
         return s + ')'
 
+    def filecodes(self, Fdrive, Adrive, Qm):
+        return {
+            'simkey': self.simkey,
+            'a': '{:.0f}nm'.format(self.a * 1e9),
+            'Fdrive': '{:.0f}kHz'.format(Fdrive * 1e-3),
+            'Adrive': '{:.2f}kPa'.format(Adrive * 1e-3),
+            'Qm': '{:.1f}nCcm2'.format(Qm * 1e5)
+        }
+
     def filecode(self, Fdrive, Adrive, Qm):
-        return '{}_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
-            self.simkey, self.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
+        return '_'.join(self.filecodes(Fdrive, Adrive, Qm).values())
+        # return '{}_{:.0f}nm_{:.0f}kHz_{:.1f}kPa_{:.1f}nCcm2'.format(
+        #     self.simkey, self.a * 1e9, Fdrive * 1e-3, Adrive * 1e-3, Qm * 1e5)
 
     def getLookupsPath(self):
         return os.path.join(os.path.split(__file__)[0], 'bls_lookups.json')

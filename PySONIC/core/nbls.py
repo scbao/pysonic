@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-07 16:30:13
+# @Last Modified time: 2019-06-09 19:44:58
 
 from copy import deepcopy
 import logging
@@ -16,6 +16,7 @@ from scipy.integrate import solve_ivp
 from .simulators import PWSimulator, HybridSimulator
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
+from .model import Model
 from .batches import createQueue
 from ..neurons import getLookups2D, getLookupsDCavg
 from ..utils import *
@@ -67,11 +68,28 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     def getPltScheme(self):
         return self.neuron.getPltScheme()
 
-    def filecode(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method='sonic'):
-        return '{}_{}_{}_{:.0f}nm_{:.0f}kHz_{:.2f}kPa_{:.0f}ms_{}{}'.format(
-            self.simkey, self.neuron.name, 'CW' if DC == 1 else 'PW', self.a * 1e9,
-            Fdrive * 1e-3, Adrive * 1e-3, tstim * 1e3,
-            'PRF{:.2f}Hz_DC{:.2f}%_'.format(PRF, DC * 1e2) if DC < 1. else '', method)
+    def filecode(self, *args):
+        return Model.filecode(self, *args)
+
+    def filecodes(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method='sonic'):
+        # Get parent codes and supress irrelevant entries
+        bls_codes = super().filecodes(Fdrive, Adrive, 0.0)
+        neuron_codes = self.neuron.filecodes(0.0, tstim, toffset, PRF, DC)
+        for x in [bls_codes, neuron_codes]:
+            del x['simkey']
+        del bls_codes['Qm']
+        del neuron_codes['Astim']
+
+        # Fill in current codes in appropriate order
+        codes = {
+            'simkey': self.simkey,
+            'neuron': neuron_codes.pop('neuron'),
+            'nature': neuron_codes.pop('nature')
+        }
+        codes.update(bls_codes)
+        codes.update(neuron_codes)
+        codes['method'] = method
+        return codes
 
     def fullDerivatives(self, y, t, Adrive, Fdrive, phi):
         ''' Compute the derivatives of the (n+3) ODE full NBLS system variables.
@@ -589,7 +607,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         logger.debug('A = {:.2f} kPa, DC = {:.0f}%'.format(Adrive * 1e-3, DC * 1e2))
 
         # Extract stable and unstable fixed points from QSS charge variation profile
-        dfunc = lambda Qm: - self.iNetQSS(Qm, Fdrive, Adrive, DC)
+        def dfunc(Qm):
+            return - self.iNetQSS(Qm, Fdrive, Adrive, DC)
         SFP_candidates = getFixedPoints(lkp['Q'], dQdt, filter='stable', der_func=dfunc).tolist()
         UFPs = getFixedPoints(lkp['Q'], dQdt, filter='unstable', der_func=dfunc).tolist()
         SFPs = []
@@ -647,3 +666,29 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                     '' if is_stable_FP else ', caused by {} states'.format(unstable_states)))
 
             return SFPs, UFPs
+
+    def isStableQSS(self, Fdrive, Adrive, DC):
+            _, Qref, lookups, QSS = self.quasiSteadyStates(
+                Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
+            lookups['Q'] = Qref
+            dQdt = -self.neuron.iNet(
+                lookups['V'], np.array([QSS[k] for k in self.neuron.states]))  # mA/m2
+            SFPs, _ = self.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)
+            return len(SFPs) > 0
+
+    def titrateQSS(self, Fdrive, DC=1., Arange=None):
+
+        # Default amplitude interval
+        if Arange is None:
+            Arange = (0, getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max())
+
+        # Titration function
+        def xfunc(x):
+            if self.neuron.name == 'STN':
+                return self.isStableQSS(*x)
+            else:
+                return not self.isStableQSS(*x)
+
+        return binarySearch(
+            xfunc,
+            [Fdrive, DC], 1, Arange, TITRATION_ASTIM_DA_MAX)

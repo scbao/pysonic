@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-07 18:24:51
+# @Last Modified time: 2019-06-09 15:56:25
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from PySONIC.utils import logger
-from PySONIC.plt import plotQSSvars, plotQSSVarVsAmp, plotEqChargeVsAmp, plotQSSThresholdCurve
+from PySONIC.plt import plotQSSdynamics, plotQSSVarVsQm, plotEqChargeVsAmp, plotQSSThresholdCurve
 from PySONIC.parsers import AStimParser
 
 
@@ -41,12 +41,12 @@ def main():
         if args['DC'].size == 1:
             DC = args['DC'][0]
             if args['amp'].size == 1:
-                figs.append(
-                    plotQSSvars(neuron, a, Fdrive, args['amp'][0]))
+                Adrive = args['amp'][0]
+                figs.append(plotQSSdynamics(neuron, a, Fdrive, Adrive, DC))
             else:
                 # Plot evolution of QSS vars vs Q for different amplitudes
                 for pvar in args['plot']:
-                    figs.append(plotQSSVarVsAmp(
+                    figs.append(plotQSSVarVsQm(
                         neuron, a, Fdrive, pvar, amps=args['amp'], DC=DC,
                         cmap=args['cmap'], zscale=args['Ascale']))
 

@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-07 18:21:56
+# @Last Modified time: 2019-06-09 19:19:20
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -15,6 +15,7 @@ import time
 import os
 import math
 import pickle
+import json
 from tqdm import tqdm
 import logging
 import tkinter as tk
@@ -168,6 +169,20 @@ def Intensity2Pressure(I, rho=1075.0, c=1515.0):
         :return: pressure amplitude (Pa)
     '''
     return np.sqrt(2 * rho * c * I)
+
+
+def convertPKL2JSON():
+    pkl_fpaths = OpenFilesDialog('pkl')[0]
+    if len(pkl_fpaths) == 0:
+        logger.error('No input files selected')
+        return
+    for pkl_filepath in pkl_fpaths:
+        logger.info('Processing {} ...'.format(pkl_filepath))
+        json_filepath = '{}.json'.format(os.path.splitext(pkl_filepath)[0])
+        with open(pkl_filepath, 'rb') as fpkl, open(json_filepath, 'w') as fjson:
+            data = pickle.load(fpkl)
+            json.dump(data, fjson, ensure_ascii=False, sort_keys=True, indent=4)
+    logger.info('All done!')
 
 
 def OpenFilesDialog(filetype, dirname=''):
@@ -377,26 +392,46 @@ def logCache(fpath, delimiter='\t', out_type=float):
     return wrapper_with_args
 
 
-def fileCache(root, fcode_func, load_func=pickle.load, dump_func=pickle.dump):
+def fileCache(root, fcode_func, ext='json'):
 
     def wrapper_with_args(func):
 
         @wraps(func)
         def wrapper(*args, **kwargs):
+
+            # Get load and dump functions from file extension
+            try:
+                load_func = {
+                    'json': json.load,
+                    'pkl': pickle.load,
+                    'csv': lambda f: np.loadtxt(f, delimiter=',')
+                }[ext]
+                dump_func = {
+                    'json': json.dump,
+                    'pkl': pickle.dump,
+                    'csv': lambda x, f: np.savetxt(f, x, delimiter=',')
+                }[ext]
+            except KeyError:
+                raise ValueError('Unknown file extension')
+
+            # Get read and write mode (text or binary) from file extension
+            mode = 'b' if ext == 'pkl' else ''
+
             # Get file path from root and function arguments, using fcode function
-            fpath = os.path.join(os.path.abspath(root), '{}.pkl'.format(fcode_func(*args)))
+            fpath = os.path.join(os.path.abspath(root), '{}.{}'.format(fcode_func(*args), ext))
 
             # If file exists, load output from it
             if os.path.isfile(fpath):
-                print('loading data from "{}"'.format(fpath))
-                with open(fpath, 'rb') as f:
+                logger.info('loading data from "{}"'.format(fpath))
+                with open(fpath, 'r' + mode) as f:
                     out = load_func(f)
 
             # Otherwise, execute function and create the file to dump the output
             else:
+                logger.warning('reference data file not found: "{}"'.format(fpath))
                 out = func(*args, **kwargs)
-                print('dumping data in "{}"'.format(fpath))
-                with open(fpath, 'wb') as f:
+                logger.info('dumping data in "{}"'.format(fpath))
+                with open(fpath, 'w' + mode) as f:
                     dump_func(out, f)
             return out
 

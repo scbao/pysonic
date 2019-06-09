@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:50:56
+# @Last Modified time: 2019-06-09 17:01:34
 
 import abc
 import inspect
@@ -32,11 +32,18 @@ class PointNeuron(Model):
     def __repr__(self):
         return self.__class__.__name__
 
-    def filecode(self, Astim, tstim, toffset, PRF, DC):
-        ''' File naming convention. '''
-        return '{}_{}_{}_{:.1f}mA_per_m2_{:.0f}ms{}'.format(
-            self.simkey, self.name, 'CW' if DC == 1 else 'PW', Astim, tstim * 1e3,
-            '_PRF{:.2f}Hz_DC{:.2f}%'.format(PRF, DC * 1e2) if DC < 1. else '')
+    def filecodes(self, Astim, tstim, toffset, PRF, DC):
+        is_CW = DC == 1.
+        return {
+            'simkey': self.simkey,
+            'neuron': self.name,
+            'nature': 'CW' if is_CW else 'PW',
+            'Astim': '{:.1f}mAm2'.format(Astim),
+            'tstim': '{:.0f}ms'.format(tstim * 1e3),
+            'toffset': None,
+            'PRF': 'PRF{:.2f}Hz'.format(PRF) if not is_CW else None,
+            'DC': 'DC{:.2f}%'.format(DC * 1e2) if not is_CW else None
+        }
 
     @property
     @abc.abstractmethod
