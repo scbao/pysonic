@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 20:09:50
+# @Last Modified time: 2019-06-09 20:35:16
 
 from enum import Enum
 import os
@@ -501,10 +501,8 @@ class BilayerSonophore(Model):
             :param Pm_comp_method: computation method for average intermolecular pressure
             :return: leaflet deflection canceling quasi-steady pressure (m)
         '''
-        lb = -0.49 * self.Delta
-        ub = self.a
-        Plb = self.PtotQS(lb, ng, Qm, Pac, Pm_comp_method)
-        Pub = self.PtotQS(ub, ng, Qm, Pac, Pm_comp_method)
+        lb, ub = -0.49 * self.Delta, self.a
+        Plb, Pub = [self.PtotQS(x, ng, Qm, Pac, Pm_comp_method) for x in [lb, ub]]
         assert (Plb > 0 > Pub), '[{}, {}] is not a sign changing interval for PtotQS'.format(lb, ub)
         return brentq(self.PtotQS, lb, ub, args=(ng, Qm, Pac, Pm_comp_method), xtol=1e-16)
 

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 20:09:39
+# @Last Modified time: 2019-06-09 20:46:21
 
 from copy import deepcopy
 import logging
@@ -343,10 +343,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             'stimstate': stim,
             'Qm': y[:, 0]
         })
-        data['ng'] = self.interpEffVariable('ng', data['Qm'].values, stim, lkps1D)
         data['Vm'] = self.interpEffVariable('V', data['Qm'].values, stim, lkps1D)
-        data['Z'] = np.array([self.balancedefQS(ng, Qm) for ng, Qm in zip(
-            data['ng'].values, data['Qm'].values)])  # m
+        for key in ['Z', 'ng']:
+            data[key] = np.full(t.size, np.nan)
         for i in range(len(self.neuron.states)):
             data[self.neuron.states[i]] = y[:, i + 1]
 
