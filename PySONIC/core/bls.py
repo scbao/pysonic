@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 17:17:03
+# @Last Modified time: 2019-06-09 20:09:50
 
 from enum import Enum
 import os
@@ -505,7 +505,7 @@ class BilayerSonophore(Model):
         ub = self.a
         Plb = self.PtotQS(lb, ng, Qm, Pac, Pm_comp_method)
         Pub = self.PtotQS(ub, ng, Qm, Pac, Pm_comp_method)
-        assert (Plb > 0 > Pub), '[%d, %d] is not a sign changing interval for PtotQS' % (lb, ub)
+        assert (Plb > 0 > Pub), '[{}, {}] is not a sign changing interval for PtotQS'.format(lb, ub)
         return brentq(self.PtotQS, lb, ub, args=(ng, Qm, Pac, Pm_comp_method), xtol=1e-16)
 
     def TEleaflet(self, Z):

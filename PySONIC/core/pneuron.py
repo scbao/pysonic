@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 17:01:34
+# @Last Modified time: 2019-06-09 19:53:32
 
 import abc
 import inspect
@@ -574,7 +574,7 @@ class PointNeuron(Model):
             :param data: dataframe containing output time series
             :return: boolean stating whether neuron is silenced or not
         '''
-        return not np.isinan(self.getStabilizationValue(data))
+        return not np.isnan(self.getStabilizationValue(data))
 
     def titrate(self, tstim, toffset, PRF, DC, xfunc=None, Arange=(0., 2 * TITRATION_ESTIM_A_MAX)):
         ''' Use a binary search to determine the threshold amplitude needed

@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 19:44:58
+# @Last Modified time: 2019-06-09 20:09:39
 
 from copy import deepcopy
 import logging
@@ -138,9 +138,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
         x = np.zeros(stim.size)
         x[stim == 0] = np.interp(
-            Qm[stim == 0], lkps1D['ON']['Q'], lkps1D['ON'][key], left=np.nan, right=np.nan)
+            Qm[stim == 0], lkps1D['OFF']['Q'], lkps1D['OFF'][key], left=np.nan, right=np.nan)
         x[stim == 1] = np.interp(
-            Qm[stim == 1], lkps1D['ON']['Q'], lkps1D['OFF'][key], left=np.nan, right=np.nan)
+            Qm[stim == 1], lkps1D['ON']['Q'], lkps1D['ON'][key], left=np.nan, right=np.nan)
         return x
 
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
@@ -343,11 +343,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             'stimstate': stim,
             'Qm': y[:, 0]
         })
-        for key in ['ng', 'V']:
-            data[key] = self.interpEffVariable(key, data['Qm'].values, stim, lkps1D)
+        data['ng'] = self.interpEffVariable('ng', data['Qm'].values, stim, lkps1D)
+        data['Vm'] = self.interpEffVariable('V', data['Qm'].values, stim, lkps1D)
         data['Z'] = np.array([self.balancedefQS(ng, Qm) for ng, Qm in zip(
             data['ng'].values, data['Qm'].values)])  # m
-        data['Vm'] = data['Qm'].values / self.v_Capct(data['Z'].values) * 1e3  # mV
         for i in range(len(self.neuron.states)):
             data[self.neuron.states[i]] = y[:, i + 1]
 
