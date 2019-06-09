@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 17:14:48
+# @Last Modified time: 2019-06-09 21:35:40
 
 import os
 import pickle
@@ -106,7 +106,6 @@ class Model(metaclass=abc.ABCMeta):
         data, tcomp = self.simulate(*args)
         meta = self.meta(*args)
         meta['tcomp'] = tcomp
-        print(self, args)
         fpath = '{}/{}.pkl'.format(outdir, self.filecode(*args))
         with open(fpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': data}, fh)

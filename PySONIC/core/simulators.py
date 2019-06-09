@@ -2,12 +2,12 @@
 # @Author: Theo Lemaire
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 21:11:16
+# @Last Modified time: 2019-06-09 21:35:56
 
 import abc
 import numpy as np
 import nolds
-from scipy.integrate import ode, odeint
+from scipy.integrate import ode, odeint, solve_ivp
 from tqdm import tqdm
 
 from ..utils import *
@@ -44,7 +44,7 @@ class Simulator(metaclass=abc.ABCMeta):
         stim = np.concatenate((stim, np.ones(tnew.size - 1) * is_on))
         return t, y, stim
 
-    def integrate(self, t, y, stim, tnew, dfunc, is_on):
+    def integrate(self, t, y, stim, tnew, dfunc, is_on, use_adaptive_dt=False):
         ''' Integrate system for a time interval and append to preceding solution arrays.
 
             :param t: preceding time vector
@@ -57,7 +57,10 @@ class Simulator(metaclass=abc.ABCMeta):
         '''
         if tnew.size == 0:
             return t, y, stim
-        ynew = odeint(dfunc, y[-1], tnew, tfirst=True)
+        if use_adaptive_dt:
+            ynew = solve_ivp(dfunc, [tnew[0], tnew[-1]], y[-1], t_eval=tnew, method='LSODA').y.T
+        else:
+            ynew = odeint(dfunc, y[-1], tnew, tfirst=True)
         return self.appendSolution(t, y, stim, tnew, ynew, is_on)
 
     def resample(self, t, y, stim, target_dt):
