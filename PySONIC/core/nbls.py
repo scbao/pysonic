@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 22:43:34
+# @Last Modified time: 2019-06-09 22:50:47
 
 from copy import deepcopy
 import logging
@@ -442,10 +442,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Default amplitude interval
         if Arange is None:
             Arange = [0., getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max()]
-
-        # Temporary fix: restrict search interval for STN neuron
-        if self.neuron.name == 'STN':
-            Arange[1] = 300e3
 
         return binarySearch(
             lambda x: xfunc(self.simulate(*x)[0]),

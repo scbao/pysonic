@@ -435,6 +435,9 @@ def plotQSSThresholdCurve(neuron, a, Fdrive, tstim=None, toffset=None, PRF=None,
 
     logger.info('plotting %s neuron threshold curve', neuron.name)
 
+    if neuron.name == 'STN':
+        raise ValueError('cannot compute threshold curve for STN neuron')
+
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
     figname = '{} neuron - threshold amplitude vs. duty cycle'.format(neuron.name)
