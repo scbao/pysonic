@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 19:19:20
+# @Last Modified time: 2019-06-09 21:54:12
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -13,6 +13,7 @@ from functools import wraps
 import operator
 import time
 import os
+import lockfile
 import math
 import pickle
 import json
@@ -381,9 +382,12 @@ def logCache(fpath, delimiter='\t', out_type=float):
 
             # Otherwise, compute output and log it into file before returning
             out = func(*args, **kwargs)
+            lock = lockfile.FileLock(fpath)
+            lock.acquire()
             with open(fpath, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile, delimiter=delimiter)
                 writer.writerow([signature, str(out)])
+            lock.release()
 
             return out
 
@@ -431,8 +435,12 @@ def fileCache(root, fcode_func, ext='json'):
                 logger.warning('reference data file not found: "{}"'.format(fpath))
                 out = func(*args, **kwargs)
                 logger.info('dumping data in "{}"'.format(fpath))
+                lock = lockfile.FileLock(fpath)
+                lock.acquire()
                 with open(fpath, 'w' + mode) as f:
                     dump_func(out, f)
+                lock.release()
+
             return out
 
         return wrapper
