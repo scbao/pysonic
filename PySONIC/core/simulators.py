@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-01 19:45:34
+# @Last Modified time: 2019-06-09 21:11:16
 
 import abc
 import numpy as np
@@ -57,7 +57,7 @@ class Simulator(metaclass=abc.ABCMeta):
         '''
         if tnew.size == 0:
             return t, y, stim
-        ynew = odeint(dfunc, y[-1], tnew)
+        ynew = odeint(dfunc, y[-1], tnew, tfirst=True)
         return self.appendSolution(t, y, stim, tnew, ynew, is_on)
 
     def resample(self, t, y, stim, target_dt):

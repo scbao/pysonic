@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 20:46:21
+# @Last Modified time: 2019-06-09 21:13:50
 
 from copy import deepcopy
 import logging
@@ -91,11 +91,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         codes['method'] = method
         return codes
 
-    def fullDerivatives(self, y, t, Adrive, Fdrive, phi):
+    def fullDerivatives(self, t, y, Adrive, Fdrive, phi):
         ''' Compute the derivatives of the (n+3) ODE full NBLS system variables.
 
-            :param y: vector of state variables
             :param t: specific instant in time (s)
+            :param y: vector of state variables
             :param Adrive: acoustic drive amplitude (Pa)
             :param Fdrive: acoustic drive frequency (Hz)
             :param phi: acoustic drive phase (rad)
@@ -105,13 +105,13 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         dydt_elec = self.neuron.Qderivatives(y[3:], t, self.Capct(y[1]))
         return dydt_mech + dydt_elec
 
-    def effDerivatives(self, y, t, lkp):
+    def effDerivatives(self, t, y, lkp):
         ''' Compute the derivatives of the n-ODE effective HH system variables,
             based on 1-dimensional linear interpolation of "effective" coefficients
             that summarize the system's behaviour over an acoustic cycle.
 
-            :param y: vector of HH system variables at time t
             :param t: specific instant in time (s)
+            :param y: vector of HH system variables at time t
             :param lkp: dictionary of 1D data points of "effective" coefficients
              over the charge domain, for specific frequency and amplitude values.
             :return: vector of effective system derivatives at time t
@@ -176,8 +176,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Initialize simulator and compute solution
         logger.debug('Computing detailed solution')
         simulator = PWSimulator(
-            lambda y, t: self.fullDerivatives(y, t, Adrive, Fdrive, phi),
-            lambda y, t: self.fullDerivatives(y, t, 0., 0., 0.))
+            lambda t, y: self.fullDerivatives(t, y, Adrive, Fdrive, phi),
+            lambda t, y: self.fullDerivatives(t, y, 0., 0., 0.))
         (t, y, stim), tcomp = simulator(
             y0, dt, tstim, toffset, PRF, DC,
             print_progress=logger.getEffectiveLevel() <= logging.INFO,
@@ -230,9 +230,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Initialize simulator and compute solution
         logger.debug('Computing hybrid solution')
         simulator = HybridSimulator(
-            lambda y, t: self.fullDerivatives(y, t, Adrive, Fdrive, phi),
-            lambda y, t: self.fullDerivatives(y, t, 0., 0., 0.),
-            lambda t, y, Cm: self.neuron.Qderivatives(y, t, Cm),
+            lambda t, y: self.fullDerivatives(t, y, Adrive, Fdrive, phi),
+            lambda t, y: self.fullDerivatives(t, y, 0., 0., 0.),
+            lambda t, y, Cm: self.neuron.Qderivatives(t, y, Cm),
             lambda yref: self.Capct(yref[1]),
             is_dense_var,
             ivars_to_check=[1, 2])
@@ -332,8 +332,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Initialize simulator and compute solution
         logger.debug('Computing effective solution')
         simulator = PWSimulator(
-            lambda y, t: self.effDerivatives(y, t, lkps1D['ON']),
-            lambda y, t: self.effDerivatives(y, t, lkps1D['OFF']))
+            lambda t, y: self.effDerivatives(t, y, lkps1D['ON']),
+            lambda t, y: self.effDerivatives(t, y, lkps1D['OFF']))
         (t, y, stim), tcomp = simulator(y0, DT_EFF, tstim, toffset, PRF, DC, monitor_time=True)
         logger.debug('completed in %ss', si_format(tcomp, 1))
 
@@ -541,7 +541,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # # Initialize simulator and compute solution
         # simulator = PeriodicSimulator(
-        #     lambda y, t: self.effDerivatives(y, t, lkp),
+        #     lambda t, y: self.effDerivatives(t, y, lkp),
         #     ivars_to_check=[0])
         # simulator.stopfunc = simulator.isAsymptoticallyStable
         # nmax = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)
@@ -561,7 +561,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             # Integrate system for small interval and retrieve final charge deviation
             t0, y0 = tf, yf
             sol = solve_ivp(
-                lambda t, y: self.effDerivatives(y, t, lkp),
+                lambda t, y: self.effDerivatives(t, y, lkp),
                 [t0, t0 + QSS_INTEGRATION_INTERVAL], y0,
                 method='LSODA'
             )

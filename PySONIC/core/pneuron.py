@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 19:53:32
+# @Last Modified time: 2019-06-09 21:14:29
 
 import abc
 import inspect
@@ -366,12 +366,12 @@ class PointNeuron(Model):
             rates[beta_str] = betax
         return rates
 
-    def Vderivatives(self, y, t, Iinj):
+    def Vderivatives(self, t, y, Iinj):
         ''' Compute the derivatives of a V-cast HH system for a
             specific value of injected current.
 
-            :param y: vector of HH system variables at time t
             :param t: time value (s, unused)
+            :param y: vector of HH system variables at time t
             :param Iinj: injected current (mA/m2)
             :return: vector of HH system derivatives at time t
         '''
@@ -381,12 +381,12 @@ class PointNeuron(Model):
         dstates = self.derStates(Vm, states)
         return [dVmdt, *[dstates[k] for k in self.states]]
 
-    def Qderivatives(self, y, t, Cm=None):
+    def Qderivatives(self, t, y, Cm=None):
         ''' Compute the derivatives of the n-ODE HH system variables,
             based on a value of membrane capacitance.
 
-            :param y: vector of HH system variables at time t
             :param t: specific instant in time (s)
+            :param y: vector of HH system variables at time t
             :param Cm: membrane capacitance (F/m2)
             :return: vector of HH system derivatives at time t
         '''
@@ -474,8 +474,8 @@ class PointNeuron(Model):
         # Initialize simulator and compute solution
         logger.debug('Computing solution')
         simulator = PWSimulator(
-            lambda y, t: self.Vderivatives(y, t, Astim),
-            lambda y, t: self.Vderivatives(y, t, 0.))
+            lambda t, y: self.Vderivatives(t, y, Astim),
+            lambda t, y: self.Vderivatives(t, y, 0.))
         (t, y, stim), tcomp = simulator(y0, DT_ESTIM, tstim, toffset, PRF, DC, monitor_time=True)
         logger.debug('completed in %ss', si_format(tcomp, 1))
 

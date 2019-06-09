@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 20:35:16
+# @Last Modified time: 2019-06-09 21:12:38
 
 from enum import Enum
 import os
@@ -579,11 +579,11 @@ class BilayerSonophore(Model):
         # return - (3/2 - 2*R/H) * U**2 / R
         return -(3 * U**2) / (2 * R)
 
-    def derivatives(self, y, t, Adrive, Fdrive, Qm, phi, Pm_comp_method=PmCompMethod.predict):
+    def derivatives(self, t, y, Adrive, Fdrive, Qm, phi, Pm_comp_method=PmCompMethod.predict):
         ''' Evolution of the mechanical system
 
-            :param y: vector of HH system variables at time t
             :param t: time instant (s)
+            :param y: vector of HH system variables at time t
             :param Adrive: acoustic drive amplitude (Pa)
             :param Fdrive: acoustic drive frequency (Hz)
             :param Qm: membrane charge density (F/m2)
@@ -689,7 +689,7 @@ class BilayerSonophore(Model):
 
         # Initialize simulator and compute solution
         simulator = PeriodicSimulator(
-            lambda y, t: self.derivatives(y, t, Adrive, Fdrive, Qm, phi, Pm_comp_method),
+            lambda t, y: self.derivatives(t, y, Adrive, Fdrive, Qm, phi, Pm_comp_method),
             ivars_to_check=[1, 2])
         (t, y, stim), tcomp = simulator(y0, dt, 1. / Fdrive, monitor_time=True)
         logger.debug('completed in %ss', si_format(tcomp, 1))
