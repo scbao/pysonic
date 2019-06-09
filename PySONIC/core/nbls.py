@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 21:13:50
+# @Last Modified time: 2019-06-09 22:43:34
 
 from copy import deepcopy
 import logging
@@ -441,7 +441,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Default amplitude interval
         if Arange is None:
-            Arange = (0, getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max())
+            Arange = [0., getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max()]
+
+        # Temporary fix: restrict search interval for STN neuron
+        if self.neuron.name == 'STN':
+            Arange[1] = 300e3
 
         return binarySearch(
             lambda x: xfunc(self.simulate(*x)[0]),
@@ -583,7 +587,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
             # If max integration duration is been reached -> error
             if tf > QSS_MAX_INTEGRATION_DURATION:
-                raise ValueError('too many iterations')
+                logger.warning('too many iterations (dQ = {:.5f} nC/cm2)'.format(dQ[-1] * 1e5))
+                conv = True
 
         logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
             {True: 'con', False: 'di'}[conv], tf * 1e3, dQ[-1] * 1e5))
@@ -678,7 +683,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Default amplitude interval
         if Arange is None:
-            Arange = (0, getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max())
+            Arange = [0., getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max()]
 
         # Titration function
         def xfunc(x):

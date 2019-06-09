@@ -4,7 +4,7 @@
 # @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 21:54:12
+# @Last Modified time: 2019-06-09 22:45:48
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -459,8 +459,23 @@ def binarySearch(bool_func, args, ix, xbounds, dx_thr, history=None):
         :return: excitation threshold
     '''
 
-    # Assign empty history if first function call
+    # If first function call: check that condition changes within the interval
     if history is None:
+        sim_args = args[:]
+
+        # If condition not satisfied even for upper bound -> return nan
+        sim_args.insert(ix, xbounds[1])
+        if not bool_func(sim_args):
+            logger.warning('titration does not converge within this interval')
+            return np.nan
+
+        # If condition satisfied even for lower bound -> return nan
+        sim_args[ix] = xbounds[0]
+        if bool_func(sim_args):
+            logger.warning('titration does not converge within this interval')
+            return np.nan
+
+        # Assign empty history
         history = []
 
     # Compute function output at interval mid-point
