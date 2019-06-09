@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 21:35:56
+# @Last Modified time: 2019-06-10 00:05:46
 
 import abc
 import numpy as np
@@ -169,12 +169,31 @@ class PeriodicSimulator(Simulator):
             :param T: periodicity (s)
             :return: boolean stating whether the solution is asymptotically stable or not
         '''
+        n_history = int(self.t_history // T)  # size of history
+        n = self.getNPerCycle(t[1] - t[0], T) - 1
 
-        # For each variable of interest, evaluate the ...
-        lyapunov_exponents = np.array([nolds.lyap_r(y[:, ivar]) for ivar in self.ivars_to_check])
-        print(lyapunov_exponents)
-        is_asyptotically_stable = np.all(lyapunov_exponents < 1e-5)
-        return is_asyptotically_stable
+        # For each variable to be checked
+        convs = [None] * len(self.ivars_to_check)
+        for i, ivar in enumerate(self.ivars_to_check):
+            xdev = y[::n, ivar] - self.refs[i]
+            # print(np.array(xdev) * 1e5)
+
+            # If last deviation is too large -> divergence
+            if np.abs(xdev[-1]) > self.div_thr[i]:
+                return -1
+
+            # If last deviation or average deviation in recent history
+            # is small enough -> convergence
+            for x in [xdev[-1], np.mean(xdev[-n_history:])]:
+                if np.abs(x) < self.conv_thr[i]:
+                    convs[i] = 1
+
+        # print(convs)
+
+        return np.all(convs == 1)
+
+    def stopFuncTmp(self, t, y, T):
+        return self.isAsymptoticallyStable(t, y, T) != 0
 
     def compute(self, y0, dt, T, t0=0., nmax=NCYCLES_MAX):
         ''' Simulate system with a specific periodicity until stopping criterion is met.
