@@ -111,11 +111,16 @@ def plotQSSdynamics(neuron, a, Fdrive, Adrive, DC=1., fs=12):
     # Compute neuron-specific charge and amplitude dependent QS states at this amplitude
     nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
     _, Qref, lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
+    lookups['Q'] = Qref
     Vmeff = lookups['V']
 
-    # Compute QSS currents
+    # Compute QSS currents and 1D charge variation array
     currents = neuron.currents(Vmeff, np.array([QSS[k] for k in neuron.states]))
     iNet = sum(currents.values())
+    dQdt = -iNet
+
+    # Compute stable and unstable fixed points
+    Q_SFPs, Q_UFPs = nbls.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)
 
     # Extract dimensionless states
     norm_QSS = {}
@@ -161,6 +166,15 @@ def plotQSSdynamics(neuron, a, Fdrive, Adrive, DC=1., fs=12):
     ax.plot(Qref * 1e5, -iNet * 1e-3, color='k', label='$\\rm -I_{Net}$')
     ax.axhline(0, color='k', linewidth=0.5)
 
+    if len(Q_SFPs) > 0:
+        ax.scatter(np.array(Q_SFPs) * 1e5, np.zeros(len(Q_SFPs)),
+                   marker='.', s=100, facecolors='g', edgecolors='none',
+                   label='QSS stable fixed points')
+    if len(Q_UFPs) > 0:
+        ax.scatter(np.array(Q_UFPs) * 1e5, np.zeros(len(Q_UFPs)),
+                   marker='.', s=100, facecolors='r', edgecolors='none',
+                   label='QSS unstable fixed points')
+
     fig.tight_layout()
     fig.subplots_adjust(right=0.8)
     for ax in axes[1:]:
@@ -175,7 +189,8 @@ def plotQSSdynamics(neuron, a, Fdrive, Adrive, DC=1., fs=12):
 
 
 def plotQSSVarVsQm(neuron, a, Fdrive, varname, amps=None, DC=1.,
-                   fs=12, cmap='viridis', yscale='lin', zscale='lin'):
+                   fs=12, cmap='viridis', yscale='lin', zscale='lin',
+                   mpi=False, loglevel=logging.INFO):
     ''' Plot a specific QSS variable (state or current) as a function of
         membrane charge density, for various acoustic amplitudes.
 
@@ -231,6 +246,21 @@ def plotQSSVarVsQm(neuron, a, Fdrive, varname, amps=None, DC=1.,
     var0 = extractPltVar(
         neuron, pltvar, pd.DataFrame({k: df0[k] for k in df0.keys()}), name=varname)
     ax.plot(Qref * Qvar['factor'], var0, '--', c='k', zorder=1, label='A = 0')
+
+    if varname == 'dQdt':
+        # Plot charge SFPs and UFPs for each acoustic amplitude
+        SFPs, UFPs = getQSSFixedPointsvsAdrive(
+            nbls, Fdrive, amps, DC, mpi=mpi, loglevel=loglevel)
+        if len(SFPs) > 0:
+            _, Q_SFPs = np.array(SFPs).T
+            ax.scatter(np.array(Q_SFPs) * 1e5, np.zeros(len(Q_SFPs)),
+                       marker='.', s=100, facecolors='g', edgecolors='none',
+                       label='QSS stable fixed points')
+        if len(UFPs) > 0:
+            _, Q_UFPs = np.array(UFPs).T
+            ax.scatter(np.array(Q_UFPs) * 1e5, np.zeros(len(Q_UFPs)),
+                       marker='.', s=100, facecolors='r', edgecolors='none',
+                       label='QSS unstable fixed points')
 
     # Define color code
     mymap = plt.get_cmap(cmap)

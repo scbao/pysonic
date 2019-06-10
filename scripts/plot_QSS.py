@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 15:56:25
+# @Last Modified time: 2019-06-10 22:16:40
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -48,7 +48,8 @@ def main():
                 for pvar in args['plot']:
                     figs.append(plotQSSVarVsQm(
                         neuron, a, Fdrive, pvar, amps=args['amp'], DC=DC,
-                        cmap=args['cmap'], zscale=args['Ascale']))
+                        cmap=args['cmap'], zscale=args['Ascale'], mpi=args['mpi'],
+                        loglevel=args['loglevel']))
 
                 # Plot equilibrium charge as a function of amplitude
                 if 'dQdt' in args['plot']:
