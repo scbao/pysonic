@@ -44,7 +44,7 @@ The package also contains modules for graphing utilities, multiprocessing, resul
 ### Example script
 
 The script below shows how to:
-1. create a `NeuronalBilayerSonophore` model of a point-like cortical regular spiking neuron
+1. create a `NeuronalBilayerSonophore` model of a point-like cortical regular spiking (`CorticalRS`) neuron
 2. simulate the model with specific ultrasound parameters
 3. plot the results
 

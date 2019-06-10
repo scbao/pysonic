@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-10 19:24:56
+# @Last Modified time: 2019-06-10 21:55:43
 
 from enum import Enum
 import os
@@ -711,11 +711,14 @@ class BilayerSonophore(Model):
             :param Qm: imposed membrane charge density (C/m2)
             :return: dataframe with the time, kinematic and pressure profiles over the last cycle.
         '''
-        # Run default simulation and compute relevant profiles
+        # Run default simulation and retrieve last cycle solution
         logger.info('Running mechanical simulation (a = %sm, f = %sHz, A = %sPa)',
                     si_format(self.a, 1), si_format(Fdrive, 1), si_format(Adrive, 1))
-        data, _ = self.simulate(Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.direct)
-        t, Z, ng = [data.loc[-NPC_FULL:, key].values for key in ['t', 'Z', 'ng']]
+        data = self.simulate(
+            Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.direct)[0].iloc[-NPC_FULL:, :]
+
+        # Extract relevant variables and de-offset time vector
+        t, Z, ng = [data[key].values for key in ['t', 'Z', 'ng']]
         dt = (t[-1] - t[0]) / (NPC_FULL - 1)
         t -= t[0]
 
