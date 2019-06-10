@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-10 00:02:54
+# @Last Modified time: 2019-06-10 16:18:39
 
 from copy import deepcopy
 import logging
@@ -536,64 +536,64 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
 
         # Initialize y0 vector
-        # t0 = 0.
+        t0 = 0.
         y0 = np.array([Qm0] + list(states0.values()))
 
         # Initialize simulator and compute solution
-        simulator = PeriodicSimulator(
-            lambda t, y: self.effDerivatives(t, y, lkp),
-            ivars_to_check=[0])
-        simulator.stopfunc = simulator.stopFuncTmp
-        simulator.refs = [Qm0]
-        simulator.conv_thr = [QSS_Q_CONV_THR]
-        simulator.div_thr = [QSS_Q_DIV_THR]
-        simulator.t_history = QSS_HISTORY_INTERVAL
-        t, y, stim = simulator.compute(
-            y0,
-            DT_EFF,
-            QSS_INTEGRATION_INTERVAL,
-            nmax=int(QSS_MAX_INTEGRATION_DURATION // QSS_INTEGRATION_INTERVAL)
-        )
-        conv = simulator.isAsymptoticallyStable(t, y, QSS_INTEGRATION_INTERVAL) != -1
-        tf = t[-1]
-        dQ = [y[-1, 0]]
+        # simulator = PeriodicSimulator(
+        #     lambda t, y: self.effDerivatives(t, y, lkp),
+        #     ivars_to_check=[0])
+        # simulator.stopfunc = simulator.stopFuncTmp
+        # simulator.refs = [Qm0]
+        # simulator.conv_thr = [QSS_Q_CONV_THR]
+        # simulator.div_thr = [QSS_Q_DIV_THR]
+        # simulator.t_history = QSS_HISTORY_INTERVAL
+        # t, y, stim = simulator.compute(
+        #     y0,
+        #     QSS_INTEGRATION_INTERVAL,
+        #     QSS_INTEGRATION_INTERVAL,
+        #     nmax=int(QSS_MAX_INTEGRATION_DURATION // QSS_INTEGRATION_INTERVAL)
+        # )
+        # conv = simulator.isAsymptoticallyStable(t, y, QSS_INTEGRATION_INTERVAL) != -1
+        # tf = t[-1]
+        # dQ = [y[-1, 0]]
 
-        # # Initializing empty list to record evolution of charge deviation
-        # n = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)  # size of history
-        # dQ = []
+        # Initializing empty list to record evolution of charge deviation
+        n = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)  # size of history
+        dQ = []
 
-        # # As long as there is no clear charge convergence or divergence
-        # conv, div = False, False
-        # tf, yf = t0, y0
-        # while not conv and not div:
+        # As long as there is no clear charge convergence or divergence
+        conv, div = False, False
+        tf, yf = t0, y0
+        while not conv and not div:
 
-        #     # Integrate system for small interval and retrieve final charge deviation
-        #     t0, y0 = tf, yf
-        #     sol = solve_ivp(
-        #         lambda t, y: self.effDerivatives(t, y, lkp),
-        #         [t0, t0 + QSS_INTEGRATION_INTERVAL], y0,
-        #         method='LSODA'
-        #     )
-        #     tf, yf = sol.t[-1], sol.y[:, -1]
-        #     dQ.append(yf[0] - Qm0)
+            # Integrate system for small interval and retrieve final charge deviation
+            t0, y0 = tf, yf
+            sol = solve_ivp(
+                lambda t, y: self.effDerivatives(t, y, lkp),
+                [t0, t0 + QSS_INTEGRATION_INTERVAL], y0,
+                method='LSODA'
+            )
+            tf, yf = sol.t[-1], sol.y[:, -1]
+            dQ.append(yf[0] - Qm0)
 
-        #     # logger.debug('{:.0f} ms: dQ = {:.5f} nC/cm2, avg dQ = {:.5f} nC/cm2'.format(
-        #     #     tf * 1e3, dQ[-1] * 1e5, np.mean(dQ[-n:]) * 1e5))
+            # logger.debug('{:.0f} ms: dQ = {:.5f} nC/cm2, avg dQ = {:.5f} nC/cm2'.format(
+            #     tf * 1e3, dQ[-1] * 1e5, np.mean(dQ[-n:]) * 1e5))
 
-        #     # If last charge deviation is too large -> divergence
-        #     if np.abs(dQ[-1]) > QSS_Q_DIV_THR:
-        #         div = True
+            # If last charge deviation is too large -> divergence
+            if np.abs(dQ[-1]) > QSS_Q_DIV_THR:
+                div = True
 
-        #     # If last charge deviation or average deviation in recent history
-        #     # is small enough -> convergence
-        #     for x in [dQ[-1], np.mean(dQ[-n:])]:
-        #         if np.abs(x) < QSS_Q_CONV_THR:
-        #             conv = True
+            # If last charge deviation or average deviation in recent history
+            # is small enough -> convergence
+            for x in [dQ[-1], np.mean(dQ[-n:])]:
+                if np.abs(x) < QSS_Q_CONV_THR:
+                    conv = True
 
-        #     # If max integration duration is been reached -> error
-        #     if tf > QSS_MAX_INTEGRATION_DURATION:
-        #         logger.warning('too many iterations (dQ = {:.5f} nC/cm2)'.format(dQ[-1] * 1e5))
-        #         conv = True
+            # If max integration duration is been reached -> error
+            if tf > QSS_MAX_INTEGRATION_DURATION:
+                logger.warning('too many iterations (dQ = {:.5f} nC/cm2)'.format(dQ[-1] * 1e5))
+                conv = True
 
         logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
             {True: 'con', False: 'di'}[conv], tf * 1e3, dQ[-1] * 1e5))
