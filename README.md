@@ -1,70 +1,118 @@
 ## Description
 
-Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation** (SONIC) model to compute individual neural responses to acoustic stimuli, as predicted by the *intramembrane cavitation* hypothesis.
+This package is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation** (SONIC) model [1] to compute individual neural responses to acoustic stimuli, as predicted by the *intramembrane cavitation* hypothesis.
 
-This package contains several core classes:
+This package contains three core model classes:
 - `BilayerSonophore` defines the underlying biomechanical model of intramembrane cavitation.
 - `PointNeuron` defines an abstract generic interface to *Hodgkin-Huxley* point-neuron models. It is inherited by classes defining the different neuron types with specific membrane dynamics.
-- `NeuronalBilayerSonophore` defines the full electromechanical model for a particular neuron type. To do so, it inherits from `BilayerSonophore` and receives a specific `PointNeuron` child instance at initialization. It also provides several integration methods (detailed below) to simulate the full model behavior upon sonication:
-	- `runFull` solves all variables for the entire duration of the simulation. This method uses very small time steps and is computationally expensive (simulation time: several hours)
-	- `runHybrid` integrates the system by consecutive “slices” of time, during which the full system is solved until mechanical stabilization, at which point the electrical system is solely solved with predicted mechanical variables until the end of the slice. This method is more efficient (simulation time: several minutes) and provides accurate results.
-	- `runSONIC` integrates a coarse-grained, effective differential system to grasp the net effect of the acoustic stimulus on the electrical system. This method allows to run simulations of the electrical system in only a few seconds, with very accurate results of the net membrane charge density evolution, but requires the pre-computation of lookup tables.
+- `NeuronalBilayerSonophore` defines the full electromechanical model for a particular neuron type. To do so, it inherits from `BilayerSonophore` and receives a specific `PointNeuron` child instance at initialization.
 
-The package also contains additional modules:
-- `plt` defines graphing utilities to load results of several simulations and display/compare profiles of multiple variables of interest.
-- `utils` defines generic utilities used across the different modules
+These three classes contain a `simulate` method to simulate the underlying model's behavior for a given set of stimulation and pyhsiological parameters. The `NeuronalBilayerSonophore.simulate` method contains an additional `method` argument defining whether to perform a detailed (`full`), coarse-grained (`sonic`) or hybrid (`hybrid`) integration of the differential system.
 
+Numerical integration routines are implemented outside the models, in separate `Simulator` classes.
+
+The package also contains modules for graphing utilities, multiprocessing, results post-processing and command line parsing.
+
+## Requirements
+
+- Python 3.6 or more
 
 ## Installation
 
-Install Python 3 if not already done.
+- Open a terminal.
 
-Open a terminal.
-
-Activate a Python3 environment if needed, e.g. on the tnesrv5 machine:
+- Activate a Python3 environment if needed, e.g. on the tnesrv5 machine:
 
 ```$ source /opt/apps/anaconda3/bin activate```
 
-Check that the appropriate version of pip is activated:
+- Check that the appropriate version of pip is activated:
 
 ```$ pip --version```
 
-Go to the package directory (where the setup.py file is located) and install it:
+- Go to the package directory (where the setup.py file is located):
 
-```
-$ cd <path_to_directory>
-$ pip install -e .
-```
+```$ cd <path_to_directory>```
+
+- Intsall the package:
+
+```$ pip install -e .```
 
 *PySONIC* and all its dependencies will be installed.
 
 ## Usage
 
-### Command line scripts
+### Example script
 
-Open a terminal in the *scripts* directory.
+The script below shows how to:
+1. create a `NeuronalBilayerSonophore` model of a point-like cortical regular spiking neuron
+2. simulate the model with specific ultrasound parameters
+3. plot the results
 
-Use `run_estim.py` to simulate a point-neuron model upon electrical stimulation, e.g. for a *regular-spiking neuron* injected with 10 mA/m2 intracellular current for 30 ms:
+```python
+import logging
+import matplotlib.pyplot as plt
 
-```$ python run_estim.py -n=RS -A=10 -d=30```
+from PySONIC.core import NeuronalBilayerSonophore
+from PySONIC.neurons import CorticalRS
+from PySONIC.utils import logger
+from PySONIC.plt import SchemePlot
 
-Use `run_mech.py` to simulate mechanical model upon sonication (until periodic stabilization), e.g. for a 32 nm radius sonophore sonicated at 500 kHz and 100 kPa:
+logger.setLevel(logging.INFO)
 
-```$ python run_mech.py -a=32 -f=500 -A=100```
+# Point-neuron model
+pneuron = CorticalRS()
 
-Use `run_astim.py` to simulate the full electro-mechanical model of a given neuron type upon sonication, e.g. for a 32 nm radius sonophore within a *regular-spiking neuron* sonicated at 500 kHz and 100 kPa for 150 ms:
+# Stimulation parameters
+a = 32e-9        # m
+Fdrive = 500e3   # Hz
+Adrive = 100e3   # Pa
+tstim = 250e-3   # s
+toffset = 50e-3  # s
+PRF = 100.       # Hz
+DC = 0.5         # -
 
-```$ python run_astim.py -n=RS -a=32 -f=500 -A=100 -d=150```
+# Integration method ('sonic', 'full' or 'hybrid')
+method = 'sonic'
 
-If several values are defined for a given parameter, a batch of simulations is run (for every value of the parameter sweep).
-You can also specify these values from within the script (*defaults* dictionary)
+# Initialize model and run simulation
+nbls = NeuronalBilayerSonophore(a, pneuron)
+args = (Fdrive, Adrive, tstim, toffset, PRF, DC, method)
+meta = nbls.meta(*args)  # meta-information dictionary
+data, tcomp = nbls.simulate(*args)
+logger.info('completed in %.0f ms', tcomp * 1e3)
 
-The simulation results will be save in an output PKL file. To view these results, you can use the `-p` option
+# Plot results
+scheme_plot = SchemePlot([(nbls.simkey, data, meta)])
+fig = scheme_plot.render()
 
-Several more options are available. To view them, type in
+plt.show()
+```
+
+### From the command line
+
+You can easily run simulations of all 3 model types using the dedicated command line scripts. To do so, open a terminal in the *scripts* directory.
+
+- Use `run_mech.py` for simulations of the **mechanical model** upon **sonication** (until periodic stabilization). For instance, a 32 nm radius bilayer sonophore sonicated at 500 kHz and 100 kPa:
+
+```$ python run_mech.py -a 32 -f 500 -A 100```
+
+- Use `run_estim.py` for simulations of **point-neuron models** upon **electrical stimulation**. For instance, a *regular-spiking neuron* injected with 10 mA/m2 intracellular current for 30 ms:
+
+```$ python run_estim.py -n RS -A 10 --tstim 30```
+
+Use `run_astim.py` for simulations of **point-neuron models** upon **sonication**. For instance, a 32 nm radius bilayer sonophore within a *regular-spiking neuron* membrane, sonicated at 500 kHz and 100 kPa for 150 ms:
+
+```$ python run_astim.py -n RS -a 32 -f 500 -A 100 --tstim 150```
+
+You can also easily run batches of simulations by specifying more than one value for any given stimulation parameter (e.g. `-A 100 200` for sonication with 100 and 200 kPa respectively). These batches can be parallelized using multiprocessing to optimize performance, with the extra argument `--mpi`.
+
+The simulation results are saved in `.pkl` files. To view these results directly upon simulation completion, you can use the `-p [xxx]` option, where [xxx] can be "all" or a given variable name (e.g. "Vm" for membrane potential, "Qm" for membrane charge density).
+
+Several more options are available. To view them, type in:
 
 ```$ python <script_name> -h```
 
-### Notebooks
 
-TODO
+## References
+
+[1] Lemaire, T., Neufeld, E., Kuster, N., and Micera, S. (2019). *Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation*. J. Neural Eng.
