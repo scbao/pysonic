@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-07 15:12:51
+# @Last Modified time: 2019-06-10 19:56:23
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -37,7 +37,7 @@ def main():
 
     # Plot appropriate graph
     if args['compare']:
-        if args['plot'] == ['all']:
+        if args['plot'] == ['all'] or args['plot'] is None:
             logger.error('Specific variables must be specified for comparative plots')
             quit()
         for pltvar in args['plot']:

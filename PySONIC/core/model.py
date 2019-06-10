@@ -4,9 +4,10 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 21:35:40
+# @Last Modified time: 2019-06-10 20:50:34
 
 import os
+from inspect import signature
 import pickle
 import abc
 import inspect
@@ -53,6 +54,13 @@ class Model(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def filecode(self, *args):
+        # Optional loading from dict
+        if len(args) == 1 and isinstance(args[0], dict):
+            meta = args[0]
+            meta.pop('tcomp', None)
+            nparams = len(signature(self.meta).parameters)
+            args = list(meta.values())[-nparams:]
+
         codes = self.filecodes(*args).values()
         return '_'.join([x for x in codes if x is not None])
 
@@ -88,10 +96,10 @@ class Model(metaclass=abc.ABCMeta):
         ''' Create a simulation queue from a combination of simulation parameters. '''
         return createQueue(*args)
 
-    def runAndSave(self, outdir, *args):
-        ''' Simulate system and save results in a PKL file. '''
-
-        # If no amplitude provided, perform titration to find it
+    def checkAmplitude(self, args):
+        ''' If no (None) amplitude provided in the list of stimulation parameters,
+            perform a titration to find the threshold amplitude and add it to the list.
+        '''
         if None in args:
             iA = args.index(None)
             new_args = [x for x in args if x is not None]
@@ -101,8 +109,11 @@ class Model(metaclass=abc.ABCMeta):
                 return None
             new_args.insert(iA, Athr)
             args = new_args
+        return args
 
-        # Simulate model, save file and return file path
+    def runAndSave(self, outdir, *args):
+        ''' Simulate system and save results in a PKL file. '''
+        args = self.checkAmplitude(args)
         data, tcomp = self.simulate(*args)
         meta = self.meta(*args)
         meta['tcomp'] = tcomp

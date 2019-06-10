@@ -105,6 +105,8 @@ class Parser(ArgumentParser):
         return logging.DEBUG if args.pop('verbose') else logging.INFO
 
     def parsePltScheme(self, args):
+        if args['plot'] is None:
+            raise ValueError('You must specify a plot scheme')
         if args['plot'] == ['all']:
             return None
         else:

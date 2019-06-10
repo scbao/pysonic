@@ -2,16 +2,13 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-07 16:30:04
+# @Last Modified time: 2019-06-10 16:47:14
 
 ''' Utility functions used in simulations '''
 
-import os
-import lockfile
 import logging
 import multiprocessing as mp
 import numpy as np
-import pandas as pd
 
 from ..utils import logger
 

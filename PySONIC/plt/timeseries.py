@@ -2,10 +2,9 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 18:27:29
+# @Last Modified time: 2019-06-10 19:53:01
 
 import re
-import ntpath
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -19,17 +18,25 @@ from .pltutils import *
 class TimeSeriesPlot:
     ''' Generic interface to build a plot displaying temporal profiles of model simulations. '''
 
-    def __init__(self, filepaths, varname):
+    def __init__(self, filepaths):
         ''' Constructor.
 
             :param filepaths: list of full paths to output data files to be compared
-            :param varname: name of variable to extract and compare
         '''
+        if not isIterable(filepaths):
+            filepaths = [filepaths]
         self.filepaths = filepaths
-        self.varname = varname
 
     def __call__(self, *args, **kwargs):
         return self.render(*args, **kwargs)
+
+    def getData(self, entry):
+        if isinstance(entry, str):
+            simkey = self.getSimType(os.path.basename(entry))
+            data, meta = loadData(entry)
+        else:
+            simkey, data, meta = entry
+        return simkey, data, meta
 
     def render(*args, **kwargs):
         return NotImplementedError
@@ -212,8 +219,9 @@ class ComparativePlot(TimeSeriesPlot):
             :param filepaths: list of full paths to output data files to be compared
             :param varname: name of variable to extract and compare
         '''
-        self.sim_type_ref = None
-        super().__init__(filepaths, varname)
+        super().__init__(filepaths)
+        self.simkey_ref = None
+        self.varname = varname
 
     def checkInputs(self, lines, labels, colors, patches):
         # Input check: labels
@@ -301,23 +309,21 @@ class ComparativePlot(TimeSeriesPlot):
         # Loop through data files
         for j, filepath in enumerate(self.filepaths):
 
-            # Retrieve sim type
-            pkl_filename = ntpath.basename(filepath)
-            sim_type = self.getSimType(pkl_filename)
+            # Load data
+            simkey, data, meta = self.getData(filepath)
 
             # Check consistency if sim types
-            if self.sim_type_ref is None:
-                self.sim_type_ref = sim_type
-            elif sim_type != self.sim_type_ref:
+            if self.simkey_ref is None:
+                self.simkey_ref = simkey
+            elif simkey != self.simkey_ref:
                 raise ValueError('Invalid comparison: different simulation types')
 
-            # Load data and extract model
-            data, meta = loadData(filepath)
-            stimstate = self.getStimStates(data)
-            model = getModel(sim_type, meta)
+            # Extract model
+            model = getModel(simkey, meta)
 
             # Extract time and stim pulses
             t = data['t'].values
+            stimstate = self.getStimStates(data)
             tpatch_on, tpatch_off = self.getStimPulses(t, stimstate)
             tplt = self.getTimePltVar(model.tscale)
             t = self.prepareTime(t, tplt)
@@ -373,8 +379,8 @@ class SchemePlot(TimeSeriesPlot):
             :param filepaths: list of full paths to output data files to be compared
             :param varname: name of variable to extract and compare
         '''
+        super().__init__(filepaths)
         self.pltscheme = pltscheme
-        self.filepaths = filepaths
 
     def createBackBone(self, pltscheme):
         naxes = len(pltscheme)
@@ -399,18 +405,13 @@ class SchemePlot(TimeSeriesPlot):
         figs = []
         for filepath in self.filepaths:
 
-            # Retrieve file code and sim type from file name
-            pkl_filename = os.path.basename(filepath)
-            filecode = pkl_filename[0:-4]
-            sim_type = self.getSimType(pkl_filename)
-
             # Load data and extract model
-            data, meta = loadData(filepath, frequency)
-            stimstate = self.getStimStates(data)
-            model = getModel(sim_type, meta)
+            simkey, data, meta = self.getData(filepath)
+            model = getModel(simkey, meta)
 
             # Extract time and stim pulses
             t = data['t'].values
+            stimstate = self.getStimStates(data)
             tpatch_on, tpatch_off = self.getStimPulses(t, stimstate)
             tplt = self.getTimePltVar(model.tscale)
             t = self.prepareTime(t, tplt)
@@ -470,6 +471,7 @@ class SchemePlot(TimeSeriesPlot):
 
             # Save figure if needed (automatic or checked)
             if save:
+                filecode = model.filecode(meta)
                 if directory is None:
                     directory = os.path.split(filepath)[0]
                 if ask_before_save:

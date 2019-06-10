@@ -465,7 +465,7 @@ def plotQSSThresholdCurve(neuron, a, Fdrive, tstim=None, toffset=None, PRF=None,
     ax.legend(frameon=False, fontsize=fs)
     fig.tight_layout()
 
-    fig.canvas.set_window_title('{}_QSS_threhold_curve_{:.0f}-{:.0f}%DC_{}A_{}'.format(
+    fig.canvas.set_window_title('{}_QSS_threhold_curve_{:.0f}-{:.0f}%DC_{}A{}'.format(
         neuron.name,
         DCs.min() * 1e2,
         DCs.max() * 1e2,
