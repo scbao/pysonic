@@ -1,6 +1,6 @@
 ## Description
 
-This package is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation (SONIC) model<sup>[1](#ref)</sup>**, a computationally efficient and interpretable model of neuronal intramembrane cavitation. It allows to simulate the responses of various neuron types to ultrasonic (and electrical) stimuli.
+This package is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation (SONIC) model<sup>1</sup>**, a computationally efficient and interpretable model of neuronal intramembrane cavitation. It allows to simulate the responses of various neuron types to ultrasonic (and electrical) stimuli.
 
 This package contains three core model classes:
 - `BilayerSonophore` defines the underlying **biomechanical model of intramembrane cavitation**.
@@ -142,20 +142,18 @@ To add a new point-neuron model, follow this procedure:
   - The `derStates` method the membrane potential `Vm` and a vector of gating states as inputs, and returns a dictionary of gating states derivatives
   - The `computeEffRates` method that takes a membrane potential array `Vm` as input, and returns a dictionary of effective (i.e. averaged over the `Vm` array) gating steady-states
   - The `derEffStates` method that takes a membrane charge density value `Qm`, a vector of gating states, and a lookup dictionary as inputs, and returns a dictionary of effective gating states derivatives
-- Add the neuron class to the package, by importing it in the `__init__.py` file of the `neurons` sub-folder:
+10. Add the neuron class to the package, by importing it in the `__init__.py` file of the `neurons` sub-folder:
 
 ```from .my_neuron import MyNeuron```
 
-10. Verify your point-neuron model by running simulations under various electrical stimuli and comparing the output to the neurons's expected behavior. Implemented required corrections if any.
-11. Pre-compute lookup tables required to run coarse-grained  simulations of the neuron model upon ultrasonic stimulation. To do so, go to the `scripts` directory and run the `run_lookups.py` script with the neuron's name as command line argument, e.g.:
+11. Verify your point-neuron model by running simulations under various electrical stimuli and comparing the output to the neurons's expected behavior. Implemented required corrections if any.
+12. Pre-compute lookup tables required to run coarse-grained  simulations of the neuron model upon ultrasonic stimulation. To do so, go to the `scripts` directory and run the `run_lookups.py` script with the neuron's name as command line argument, e.g.:
 
 ```$ python run_lookups.py -n myneuron --mpi```
 
 If possible, use the `--mpi` argument to enable multiprocessing, as lookups pre-computation greatly benefits from parallelization.
 
-12. That's it! You can now run simulations of your point-neuron model upon ultrasonic stimulation.
+13. That's it! You can now run simulations of your point-neuron model upon ultrasonic stimulation.
 
 ## References
-<a name="ref">
 1. Lemaire, T., Neufeld, E., Kuster, N., and Micera, S. (2019). *Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation*. J. Neural Eng.
-</a>
