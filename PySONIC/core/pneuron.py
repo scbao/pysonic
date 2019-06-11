@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-09 21:14:29
+# @Last Modified time: 2019-06-11 15:24:31
 
 import abc
 import inspect
@@ -28,6 +28,8 @@ class PointNeuron(Model):
 
     def __init__(self):
         self.Qm0 = self.Cm0 * self.Vm0 * 1e-3  # C/cm2
+        if hasattr(self, 'states'):
+            self.rates = self.getRatesNames(self.states)
 
     def __repr__(self):
         return self.__class__.__name__
@@ -332,7 +334,6 @@ class PointNeuron(Model):
             for x in states
         }
 
-    @abc.abstractmethod
     def quasiSteadyStates(self, lkp):
         ''' Compute the quasi-steady states of a neuron for a range of membrane charge densities,
             based on 1-dimensional lookups interpolated at a given sonophore diameter, US frequency,
@@ -342,6 +343,7 @@ class PointNeuron(Model):
              over the charge domain, for specific frequency and amplitude values.
             :return: dictionary of quasi-steady states
         '''
+        return self.qsStates(lkp, self.states)
 
     def getRates(self, Vm):
         ''' Compute the ion channels rate constants for a given membrane potential.

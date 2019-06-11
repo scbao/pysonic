@@ -168,12 +168,12 @@ def plotQSSdynamics(neuron, a, Fdrive, Adrive, DC=1., fs=12):
 
     if len(Q_SFPs) > 0:
         ax.scatter(np.array(Q_SFPs) * 1e5, np.zeros(len(Q_SFPs)),
-                   marker='.', s=100, facecolors='g', edgecolors='none',
-                   label='QSS stable fixed points')
+                   marker='.', s=200, facecolors='g', edgecolors='none',
+                   label='QSS stable FPs', zorder=3)
     if len(Q_UFPs) > 0:
         ax.scatter(np.array(Q_UFPs) * 1e5, np.zeros(len(Q_UFPs)),
-                   marker='.', s=100, facecolors='r', edgecolors='none',
-                   label='QSS unstable fixed points')
+                   marker='.', s=200, facecolors='r', edgecolors='none',
+                   label='QSS unstable FPs', zorder=3)
 
     fig.tight_layout()
     fig.subplots_adjust(right=0.8)
@@ -370,16 +370,13 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=None, toffset=None, PR
         :return: figure handle
     '''
 
-    # Determine stimulation modality
-    stim_type = 'US'
-    logger.info('plotting equilibrium charges for %s stimulation', stim_type)
+    logger.info('plotting equilibrium charges for various amplitudes')
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
     figname = '{} neuron - charge stability vs. amplitude @ {:.0f}%DC'.format(neuron.name, DC * 1e2)
     ax.set_title(figname)
-    ax.set_xlabel('Amplitude ({})'.format({'US': 'kPa', 'elec': 'mA/m2'}[stim_type]),
-                  fontsize=fs)
+    ax.set_xlabel('Amplitude (kPa)', fontsize=fs)
     ax.set_ylabel('$\\rm Q_m\ (nC/cm^2)$', fontsize=fs)
     if xscale == 'log':
         ax.set_xscale('log')
@@ -421,10 +418,9 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=None, toffset=None, PR
     ax.legend(frameon=False, fontsize=fs)
     fig.tight_layout()
 
-    fig.canvas.set_window_title('{}_QSS_Qstab_vs_{}A_{}_{:.0f}%DC{}'.format(
+    fig.canvas.set_window_title('{}_QSS_Qstab_vs_{}A_{:.0f}%DC{}'.format(
         neuron.name,
         xscale,
-        stim_type,
         DC * 1e2,
         '_with_comp' if compdir is not None else ''
     ))

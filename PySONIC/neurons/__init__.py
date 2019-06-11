@@ -4,12 +4,13 @@
 # @Date:   2017-06-06 13:36:00
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 21:23:54
+# @Last Modified time: 2019-06-11 16:00:15
 
 import inspect
 import sys
 
 from .lookups import *
+from .template import TemplateNeuron
 from .cortical import CorticalRS, CorticalFS, CorticalLTS, CorticalIB
 from .thalamic import ThalamicRE, ThalamoCortical
 from .leech import LeechTouch, LeechPressure, LeechRetzius

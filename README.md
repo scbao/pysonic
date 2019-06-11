@@ -1,13 +1,13 @@
 ## Description
 
-This package is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation** (SONIC) model [1] to compute individual neural responses to acoustic stimuli, as predicted by the *intramembrane cavitation* hypothesis.
+This package is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation (SONIC) model<sup>[1](#ref)</sup>**, a computationally efficient and interpretable model of neuronal intramembrane cavitation. It allows to simulate the responses of various neuron types to ultrasonic (and electrical) stimuli.
 
 This package contains three core model classes:
-- `BilayerSonophore` defines the underlying biomechanical model of intramembrane cavitation.
-- `PointNeuron` defines an abstract generic interface to *Hodgkin-Huxley* point-neuron models. It is inherited by classes defining the different neuron types with specific membrane dynamics.
-- `NeuronalBilayerSonophore` defines the full electromechanical model for a particular neuron type. To do so, it inherits from `BilayerSonophore` and receives a specific `PointNeuron` child instance at initialization.
+- `BilayerSonophore` defines the underlying **biomechanical model of intramembrane cavitation**.
+- `PointNeuron` defines an abstract generic interface to **conductance-based point-neuron models**. It is inherited by classes defining the different neuron types with specific membrane dynamics.
+- `NeuronalBilayerSonophore` defines the **full electromechanical model for any given neuron type**. To do so, it inherits from `BilayerSonophore` and receives a specific `PointNeuron` object at initialization.
 
-These three classes contain a `simulate` method to simulate the underlying model's behavior for a given set of stimulation and pyhsiological parameters. The `NeuronalBilayerSonophore.simulate` method contains an additional `method` argument defining whether to perform a detailed (`full`), coarse-grained (`sonic`) or hybrid (`hybrid`) integration of the differential system.
+All three classes contain a `simulate` method to simulate the underlying model's behavior for a given set of stimulation and physiological parameters. The `NeuronalBilayerSonophore.simulate` method contains an additional `method` argument defining whether to perform a detailed (`full`), coarse-grained (`sonic`) or hybrid (`hybrid`) integration of the differential system.
 
 Numerical integration routines are implemented outside the models, in separate `Simulator` classes.
 
@@ -33,86 +33,129 @@ The package also contains modules for graphing utilities, multiprocessing, resul
 
 ```$ cd <path_to_directory>```
 
-- Intsall the package:
+- Insall the package and all its dependencies:
 
 ```$ pip install -e .```
 
-*PySONIC* and all its dependencies will be installed.
-
 ## Usage
 
-### Example script
+### Basic use
 
-The script below shows how to:
-1. create a `NeuronalBilayerSonophore` model of a point-like cortical regular spiking (`CorticalRS`) neuron
-2. simulate the model with specific ultrasound parameters
-3. plot the results
+This package contains conductance-based point-neuron implementations of several generic neuron types, including:
+- cortical regular spiking (RS) neuron
+- cortical fast spiking (FS) neuron
+- cortical low-threshold spiking (LTS) neuron
+- cortical intrinsically bursting (IB) neuron
+- thalamic reticular (RE) neuron
+- thalamo-cortical (TC) neuron
+- subthalamic nucleus (STN) neuron
+
+You can easily run simulations of any implemented point-neuron model under both electrical and ultrasonic stimuli, and visualize the simulation results, in just a few lines of code:
 
 ```python
 import logging
 import matplotlib.pyplot as plt
 
 from PySONIC.core import NeuronalBilayerSonophore
-from PySONIC.neurons import CorticalRS
+from PySONIC.neurons import getPointNeuron
 from PySONIC.utils import logger
 from PySONIC.plt import SchemePlot
 
 logger.setLevel(logging.INFO)
 
-# Point-neuron model
-pneuron = CorticalRS()
-
 # Stimulation parameters
 a = 32e-9        # m
 Fdrive = 500e3   # Hz
 Adrive = 100e3   # Pa
+Astim = 10.      # mA/m2
 tstim = 250e-3   # s
 toffset = 50e-3  # s
 PRF = 100.       # Hz
 DC = 0.5         # -
 
-# Integration method ('sonic', 'full' or 'hybrid')
-method = 'sonic'
-
-# Initialize model and run simulation
+# Point-neuron model and corresponding neuronal intramembrane cavitation model
+pneuron = getPointNeuron('RS')
 nbls = NeuronalBilayerSonophore(a, pneuron)
-args = (Fdrive, Adrive, tstim, toffset, PRF, DC, method)
-meta = nbls.meta(*args)  # meta-information dictionary
-data, tcomp = nbls.simulate(*args)
-logger.info('completed in %.0f ms', tcomp * 1e3)
 
-# Plot results
-scheme_plot = SchemePlot([(nbls.simkey, data, meta)])
-fig = scheme_plot.render()
+# Run simulation upon electrical stimulation, and plot results
+elec_args = (Astim, tstim, toffset, PRF, DC)
+data, tcomp = pneuron.simulate(*elec_args)
+logger.info('completed in %.0f ms', tcomp * 1e3)
+scheme_plot = SchemePlot([(pneuron.simkey, data, pneuron.meta(*elec_args))])
+fig1 = scheme_plot.render()
+
+# Run simulation upon ultrasonic stimulation, and plot results
+US_int_method = 'sonic'  # Integration method ('sonic', 'full' or 'hybrid')
+US_args = (Fdrive, Adrive, tstim, toffset, PRF, DC, US_int_method)
+data, tcomp = nbls.simulate(*US_args)
+logger.info('completed in %.0f ms', tcomp * 1e3)
+scheme_plot = SchemePlot([(nbls.simkey, data, nbls.meta(*US_args))])
+fig2 = scheme_plot.render()
 
 plt.show()
 ```
 
 ### From the command line
 
-You can easily run simulations of all 3 model types using the dedicated command line scripts. To do so, open a terminal in the *scripts* directory.
+You can easily run simulations of all 3 model types using the dedicated command line scripts. To do so, open a terminal in the `scripts` directory.
 
-- Use `run_mech.py` for simulations of the **mechanical model** upon **sonication** (until periodic stabilization). For instance, a 32 nm radius bilayer sonophore sonicated at 500 kHz and 100 kPa:
+- Use `run_mech.py` for simulations of the **mechanical model** upon **ultrasonic stimulation**. For instance, for a 32 nm radius bilayer sonophore sonicated at 500 kHz and 100 kPa:
 
-```$ python run_mech.py -a 32 -f 500 -A 100```
+```$ python run_mech.py -a 32 -f 500 -A 100 -p Z```
 
-- Use `run_estim.py` for simulations of **point-neuron models** upon **electrical stimulation**. For instance, a *regular-spiking neuron* injected with 10 mA/m2 intracellular current for 30 ms:
+- Use `run_estim.py` for simulations of **point-neuron models** upon **intracellular electrical stimulation**. For instance, a regular-spiking (RS) neuron injected with 10 mA/m2 intracellular current for 30 ms:
 
-```$ python run_estim.py -n RS -A 10 --tstim 30```
+```$ python run_estim.py -n RS -A 10 --tstim 30 -p Vm```
 
-Use `run_astim.py` for simulations of **point-neuron models** upon **sonication**. For instance, a 32 nm radius bilayer sonophore within a *regular-spiking neuron* membrane, sonicated at 500 kHz and 100 kPa for 150 ms:
+Use `run_astim.py` for simulations of **point-neuron models** upon **ultrasonic stimulation**. For instance, for a coarse-grained simulation of a 32 nm radius bilayer sonophore within a regular-spiking (RS) neuron membrane, sonicated at 500 kHz and 100 kPa for 150 ms:
 
-```$ python run_astim.py -n RS -a 32 -f 500 -A 100 --tstim 150```
+```$ python run_astim.py -n RS -a 32 -f 500 -A 100 --tstim 150 --method sonic -p Qm```
+
+The simulation results are saved in `.pkl` files. To view these results directly upon simulation completion, you can use the `-p [xxx]` option, where `[xxx]` can be `all` or a given variable name (e.g. `Z` for membrane deflection, `Vm` for membrane potential, `Qm` for membrane charge density).
 
 You can also easily run batches of simulations by specifying more than one value for any given stimulation parameter (e.g. `-A 100 200` for sonication with 100 and 200 kPa respectively). These batches can be parallelized using multiprocessing to optimize performance, with the extra argument `--mpi`.
-
-The simulation results are saved in `.pkl` files. To view these results directly upon simulation completion, you can use the `-p [xxx]` option, where [xxx] can be "all" or a given variable name (e.g. "Vm" for membrane potential, "Qm" for membrane charge density).
 
 Several more options are available. To view them, type in:
 
 ```$ python <script_name> -h```
 
 
-## References
+## Extend the package
 
-[1] Lemaire, T., Neufeld, E., Kuster, N., and Micera, S. (2019). *Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation*. J. Neural Eng.
+### Add other neuron types
+
+You can easily add other neuron types into the package, providing their ion channel populations and underlying voltage-gated dynamics equations are known.
+
+To add a new point-neuron model, follow this procedure:
+
+1. Create a new file, and save it in the `neurons` sub-folder, with an explicit name (e.g. `my_neuron.py`)
+2. Copy-paste the content of the `template.py` file (also located in the `neurons` sub-folder) into your file
+3. In your file, change the class name from `TemplateNeuron` to something more explicit (e.g. `MyNeuron`), and change the neuron name (used to refer to the neuron from outside the class) accordingly (e.g. `myneuron`)
+4. Modify the biophysical parameters (resting parameters, reversal potentials, maximal conductances and list of gating states, all defined as class attributes) according to your neuron model
+5. Add any extra parameters you might need across your model class
+6. Modify the existing `alphax` and `betax` methods (and add new ones if needed) to define the voltage-dependent activation and inactivation rates of the different ion channnels gates of your model. Those methods take the membrane potential `Vm` as input and return a rate in `s-1`. **You also need to modify the docstring accordingly, as this information is used by the package**. Alternatively, your can use `xinf` and `taux` methods, but you will need to modify the other class methods accordingly.
+7. Modify the `derX` methods to define the derivatives of your different gating states. Those methods must return a derivative in `prob/s` (or `s-1`). **You also need to modify the docstring accordingly, as this information is used by the package**
+8. Modify the `iXX` methods to define the different membrane currents of your model. Those methods take relevant gating states and the membrane potential `Vm` as inputs, and must return a current density in `mA/m2`. **You also need to modify the docstring accordingly, as this information is used by the package**
+9. Modify the other required methods of the class:
+  - The `currents` method that takes a membrane potential value `Vm` and a vector of gating states as inputs, and returns a dictionary of membrane currents
+  - The `steadyStates` method that takes a membrane potential value `Vm` as input, and returns a dictionary of gating steady-states
+  - The `derStates` method the membrane potential `Vm` and a vector of gating states as inputs, and returns a dictionary of gating states derivatives
+  - The `computeEffRates` method that takes a membrane potential array `Vm` as input, and returns a dictionary of effective (i.e. averaged over the `Vm` array) gating steady-states
+  - The `derEffStates` method that takes a membrane charge density value `Qm`, a vector of gating states, and a lookup dictionary as inputs, and returns a dictionary of effective gating states derivatives
+- Add the neuron class to the package, by importing it in the `__init__.py` file of the `neurons` sub-folder:
+
+```from .my_neuron import MyNeuron```
+
+10. Verify your point-neuron model by running simulations under various electrical stimuli and comparing the output to the neurons's expected behavior. Implemented required corrections if any.
+11. Pre-compute lookup tables required to run coarse-grained  simulations of the neuron model upon ultrasonic stimulation. To do so, go to the `scripts` directory and run the `run_lookups.py` script with the neuron's name as command line argument, e.g.:
+
+```$ python run_lookups.py -n myneuron --mpi```
+
+If possible, use the `--mpi` argument to enable multiprocessing, as lookups pre-computation greatly benefits from parallelization.
+
+12. That's it! You can now run simulations of your point-neuron model upon ultrasonic stimulation.
+
+## References
+<a name="ref">
+1. Lemaire, T., Neufeld, E., Kuster, N., and Micera, S. (2019). *Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation*. J. Neural Eng.
+</a>
