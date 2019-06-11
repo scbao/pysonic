@@ -1,10 +1,10 @@
 ## Description
 
-This package is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation (SONIC) model<sup>1</sup>**, a computationally efficient and interpretable model of neuronal intramembrane cavitation. It allows to simulate the responses of various neuron types to ultrasonic (and electrical) stimuli.
+This package is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation (SONIC) model [1]**, a computationally efficient and interpretable model of neuronal intramembrane cavitation. It allows to simulate the responses of various neuron types to ultrasonic (and electrical) stimuli.
 
 This package contains three core model classes:
 - `BilayerSonophore` defines the underlying **biomechanical model of intramembrane cavitation**.
-- `PointNeuron` defines an abstract generic interface to **conductance-based point-neuron models**. It is inherited by classes defining the different neuron types with specific membrane dynamics.
+- `PointNeuron` defines an abstract generic interface to **conductance-based point-neuron electrical models**. It is inherited by classes defining the different neuron types with specific membrane dynamics.
 - `NeuronalBilayerSonophore` defines the **full electromechanical model for any given neuron type**. To do so, it inherits from `BilayerSonophore` and receives a specific `PointNeuron` object at initialization.
 
 All three classes contain a `simulate` method to simulate the underlying model's behavior for a given set of stimulation and physiological parameters. The `NeuronalBilayerSonophore.simulate` method contains an additional `method` argument defining whether to perform a detailed (`full`), coarse-grained (`sonic`) or hybrid (`hybrid`) integration of the differential system.
@@ -39,8 +39,6 @@ The package also contains modules for graphing utilities, multiprocessing, resul
 
 ## Usage
 
-### Basic use
-
 This package contains conductance-based point-neuron implementations of several generic neuron types, including:
 - cortical regular spiking (RS) neuron
 - cortical fast spiking (FS) neuron
@@ -50,9 +48,12 @@ This package contains conductance-based point-neuron implementations of several 
 - thalamo-cortical (TC) neuron
 - subthalamic nucleus (STN) neuron
 
+
+### Python scripts
+
 You can easily run simulations of any implemented point-neuron model under both electrical and ultrasonic stimuli, and visualize the simulation results, in just a few lines of code:
 
-```python
+```
 import logging
 import matplotlib.pyplot as plt
 
@@ -107,7 +108,7 @@ You can easily run simulations of all 3 model types using the dedicated command 
 
 ```$ python run_estim.py -n RS -A 10 --tstim 30 -p Vm```
 
-Use `run_astim.py` for simulations of **point-neuron models** upon **ultrasonic stimulation**. For instance, for a coarse-grained simulation of a 32 nm radius bilayer sonophore within a regular-spiking (RS) neuron membrane, sonicated at 500 kHz and 100 kPa for 150 ms:
+- Use `run_astim.py` for simulations of **point-neuron models** upon **ultrasonic stimulation**. For instance, for a coarse-grained simulation of a 32 nm radius bilayer sonophore within a regular-spiking (RS) neuron membrane, sonicated at 500 kHz and 100 kPa for 150 ms:
 
 ```$ python run_astim.py -n RS -a 32 -f 500 -A 100 --tstim 150 --method sonic -p Qm```
 
@@ -156,4 +157,5 @@ If possible, use the `--mpi` argument to enable multiprocessing, as lookups pre-
 13. That's it! You can now run simulations of your point-neuron model upon ultrasonic stimulation.
 
 ## References
-1. Lemaire, T., Neufeld, E., Kuster, N., and Micera, S. (2019). *Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation*. J. Neural Eng.
+
+[1] Lemaire, T., Neufeld, E., Kuster, N., and Micera, S. (2019). *Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation*. J. Neural Eng.
