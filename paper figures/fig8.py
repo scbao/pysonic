@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-27 17:57:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:15:59
+# @Last Modified time: 2019-06-12 12:06:14
 
 ''' Sub-panels of threshold curves for various sonophore radii and US frequencies. '''
 
@@ -72,7 +72,6 @@ def plotThresholdAmps(root, neurons, radii, freqs, PRF, tstim, fs=10, colors=Non
     ax.set_ylim([10, 600])
     linestyles = ['-', '--']
     for neuron, ls in zip(neurons, linestyles):
-        neuron = getPointNeuron(neuron)
         icolor = 0
         for i, a in enumerate(radii):
             for j, Fdrive in enumerate(freqs):
@@ -80,9 +79,9 @@ def plotThresholdAmps(root, neurons, radii, freqs, PRF, tstim, fs=10, colors=Non
                     color = 'C{}'.format(icolor)
                 else:
                     color = colors[icolor]
-                DCs, Athrs = getThresholdAmplitudes(root, neuron.name, a, Fdrive, tstim, PRF)
+                DCs, Athrs = getThresholdAmplitudes(root, neuron, a, Fdrive, tstim, PRF)
                 lbl = '{} neuron, {:.0f} nm, {}Hz, {}Hz PRF'.format(
-                    neuron.name, a * 1e9, *si_format([Fdrive, PRF], 0, space=' '))
+                    neuron, a * 1e9, *si_format([Fdrive, PRF], 0, space=' '))
                 ax.plot(DCs * 1e2, Athrs, ls, c=color, label=lbl)
                 icolor += 1
     ax.legend(fontsize=fs - 5, frameon=False)
@@ -94,7 +93,8 @@ def main():
     ap = ArgumentParser()
 
     # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true',
+                    help='Increase verbosity')
     ap.add_argument('-i', '--inputdir', type=str, help='Input directory')
     ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
     ap.add_argument('-s', '--save', default=False, action='store_true',

@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2019-03-18 18:06:20
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:10:17
+# @Last Modified time: 2019-06-12 12:20:32
 
 import os
 import logging
@@ -21,7 +21,7 @@ def main():
     logger.setLevel(logging.INFO)
     args = ap.parse_args()
     try:
-        neuron = getPointNeuron(args.neuron)
+        pneuron = getPointNeuron(args.neuron)
     except ValueError as err:
         logger.error(err)
         return
@@ -32,8 +32,8 @@ def main():
     outfile = '{}.mod'.format(args.neuron)
     outpath = os.path.join(outdir, outfile)
 
-    gen = NmodlGenerator(neuron)
-    logger.info('generating %s neuron MOD file in "%s"', neuron.name, outdir)
+    gen = NmodlGenerator(pneuron)
+    logger.info('generating %s neuron MOD file in "%s"', pneuron.name, outdir)
     gen.print(outpath)
 
 

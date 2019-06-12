@@ -4,7 +4,7 @@ import numpy as np
 from argparse import ArgumentParser
 
 from .utils import Intensity2Pressure, selectDirDialog, isIterable
-from .neurons import getPointNeuron, CorticalRS
+from .neurons import getPointNeuron
 
 
 class Parser(ArgumentParser):
@@ -152,8 +152,8 @@ class MechSimParser(SimParser):
         self.defaults.update({
             'radius': 32.0,  # nm
             'embedding': 0.,  # um
-            'Cm0': CorticalRS().Cm0 * 1e2,  # uF/m2
-            'Qm0': CorticalRS().Qm0 * 1e5,  # nC/m2
+            'Cm0': getPointNeuron('RS').Cm0 * 1e2,  # uF/m2
+            'Qm0': getPointNeuron('RS').Qm0 * 1e5,  # nC/m2
             'freq': 500.0,  # kHz
             'amp': 100.0,  # kPa
             'charge': 0.  # nC/cm2
@@ -302,9 +302,6 @@ class PWSimParser(SimParser):
             '--titrate', default=False, action='store_true', help='Perform titration')
 
     def parseNeuron(self, args):
-        # for item in args['neuron']:
-        #     if item not in self.allowed['neuron']:
-        #         raise ValueError('Unknown neuron type: "{}"'.format(item))
         return [getPointNeuron(n) for n in args['neuron']]
 
     def parseAmp(self, args):

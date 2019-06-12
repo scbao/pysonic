@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-10 22:16:40
+# @Last Modified time: 2019-06-12 12:23:20
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -37,29 +37,29 @@ def main():
         args[k][0] for k in ['radius', 'freq', 'tstim', 'toffset', 'PRF']]
 
     figs = []
-    for i, neuron in enumerate(args['neuron']):
+    for i, pneuron in enumerate(args['neuron']):
         if args['DC'].size == 1:
             DC = args['DC'][0]
             if args['amp'].size == 1:
                 Adrive = args['amp'][0]
-                figs.append(plotQSSdynamics(neuron, a, Fdrive, Adrive, DC))
+                figs.append(plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC))
             else:
                 # Plot evolution of QSS vars vs Q for different amplitudes
                 for pvar in args['plot']:
                     figs.append(plotQSSVarVsQm(
-                        neuron, a, Fdrive, pvar, amps=args['amp'], DC=DC,
+                        pneuron, a, Fdrive, pvar, amps=args['amp'], DC=DC,
                         cmap=args['cmap'], zscale=args['Ascale'], mpi=args['mpi'],
                         loglevel=args['loglevel']))
 
                 # Plot equilibrium charge as a function of amplitude
                 if 'dQdt' in args['plot']:
                     figs.append(plotEqChargeVsAmp(
-                        neuron, a, Fdrive, amps=args['amp'], tstim=tstim, toffset=toffset, PRF=PRF,
+                        pneuron, a, Fdrive, amps=args['amp'], tstim=tstim, toffset=toffset, PRF=PRF,
                         DC=DC, xscale=args['Ascale'], compdir=args['inputdir'], mpi=args['mpi'],
                         loglevel=args['loglevel']))
         else:
             figs.append(plotQSSThresholdCurve(
-                neuron, a, Fdrive, tstim=tstim, toffset=toffset, PRF=PRF, DCs=args['DC'],
+                pneuron, a, Fdrive, tstim=tstim, toffset=toffset, PRF=PRF, DCs=args['DC'],
                 Ascale=args['Ascale'], comp=args['compare'], mpi=args['mpi'],
                 loglevel=args['loglevel']))
 

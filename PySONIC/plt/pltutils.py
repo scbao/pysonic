@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 18:26:50
+# @Last Modified time: 2019-06-12 12:17:23
 
 ''' Useful functions to generate plots. '''
 
@@ -50,7 +50,7 @@ def extractPltVar(model, pltvar, df, meta=None, nsamples=0, name=''):
         try:
             var = eval(s)
         except AttributeError:
-            var = eval(s.replace('model', 'model.neuron'))
+            var = eval(s.replace('model', 'model.pneuron'))
     elif 'key' in pltvar:
         var = df[pltvar['key']]
     elif 'constant' in pltvar:

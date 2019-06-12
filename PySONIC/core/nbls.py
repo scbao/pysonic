@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-10 16:18:39
+# @Last Modified time: 2019-06-12 12:13:32
 
 from copy import deepcopy
 import logging
@@ -31,42 +31,41 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     tscale = 'ms'  # relevant temporal scale of the model
     simkey = 'ASTIM'  # keyword used to characterize simulations made with this model
 
-    def __init__(self, a, neuron, Fdrive=None, embedding_depth=0.0):
+    def __init__(self, a, pneuron, Fdrive=None, embedding_depth=0.0):
         ''' Constructor of the class.
 
             :param a: in-plane radius of the sonophore structure within the membrane (m)
-            :param neuron: neuron object
+            :param pneuron: point-neuron object
             :param Fdrive: frequency of acoustic perturbation (Hz)
             :param embedding_depth: depth of the embedding tissue around the membrane (m)
         '''
         # Check validity of input parameters
-        if not isinstance(neuron, PointNeuron):
+        if not isinstance(pneuron, PointNeuron):
             raise ValueError('Invalid neuron type: "{}" (must inherit from PointNeuron class)'
-                             .format(neuron.name))
-        self.neuron = neuron
+                             .format(pneuron.name))
+        self.pneuron = pneuron
 
         # Initialize BilayerSonophore parent object
-        BilayerSonophore.__init__(self, a, neuron.Cm0, neuron.Cm0 * neuron.Vm0 * 1e-3,
-                                  embedding_depth)
+        BilayerSonophore.__init__(self, a, pneuron.Cm0, pneuron.Qm0, embedding_depth)
 
     def __repr__(self):
-        s = '{}({:.1f} nm, {}'.format(self.__class__.__name__, self.a * 1e9, self.neuron)
+        s = '{}({:.1f} nm, {}'.format(self.__class__.__name__, self.a * 1e9, self.pneuron)
         if self.d > 0.:
             s += ', d={}m'.format(si_format(self.d, precision=1, space=' '))
         return s + ')'
 
     def params(self):
         params = super().params()
-        params.update(self.neuron.params())
+        params.update(self.pneuron.params())
         return params
 
     def getPltVars(self, wrapleft='df["', wrapright='"]'):
         pltvars = super().getPltVars(wrapleft, wrapright)
-        pltvars.update(self.neuron.getPltVars(wrapleft, wrapright))
+        pltvars.update(self.pneuron.getPltVars(wrapleft, wrapright))
         return pltvars
 
     def getPltScheme(self):
-        return self.neuron.getPltScheme()
+        return self.pneuron.getPltScheme()
 
     def filecode(self, *args):
         return Model.filecode(self, *args)
@@ -74,20 +73,20 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     def filecodes(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method='sonic'):
         # Get parent codes and supress irrelevant entries
         bls_codes = super().filecodes(Fdrive, Adrive, 0.0)
-        neuron_codes = self.neuron.filecodes(0.0, tstim, toffset, PRF, DC)
-        for x in [bls_codes, neuron_codes]:
+        pneuron_codes = self.pneuron.filecodes(0.0, tstim, toffset, PRF, DC)
+        for x in [bls_codes, pneuron_codes]:
             del x['simkey']
         del bls_codes['Qm']
-        del neuron_codes['Astim']
+        del pneuron_codes['Astim']
 
         # Fill in current codes in appropriate order
         codes = {
             'simkey': self.simkey,
-            'neuron': neuron_codes.pop('neuron'),
-            'nature': neuron_codes.pop('nature')
+            'neuron': pneuron_codes.pop('neuron'),
+            'nature': pneuron_codes.pop('nature')
         }
         codes.update(bls_codes)
-        codes.update(neuron_codes)
+        codes.update(pneuron_codes)
         codes['method'] = method
         return codes
 
@@ -102,7 +101,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: vector of derivatives
         '''
         dydt_mech = BilayerSonophore.derivatives(self, y[:3], t, Adrive, Fdrive, y[3], phi)
-        dydt_elec = self.neuron.Qderivatives(y[3:], t, self.Capct(y[1]))
+        dydt_elec = self.pneuron.Qderivatives(y[3:], t, self.Capct(y[1]))
         return dydt_mech + dydt_elec
 
     def effDerivatives(self, t, y, lkp):
@@ -120,12 +119,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Qm, *states = y
 
         # Compute charge and channel states variation
-        Vmeff = self.neuron.interpVmeff(Qm, lkp)
-        dQmdt = - self.neuron.iNet(Vmeff, states) * 1e-3
-        dstates = self.neuron.derEffStates(Qm, states, lkp)
+        Vmeff = self.pneuron.interpVmeff(Qm, lkp)
+        dQmdt = - self.pneuron.iNet(Vmeff, states) * 1e-3
+        dstates = self.pneuron.derEffStates(Qm, states, lkp)
 
         # Return derivatives vector
-        return [dQmdt, *[dstates[k] for k in self.neuron.states]]
+        return [dQmdt, *[dstates[k] for k in self.pneuron.states]]
 
     def interpEffVariable(self, key, Qm, stim, lkps1D):
         ''' Interpolate Q-dependent effective variable along solution.
@@ -168,10 +167,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Z0 = self.balancedefQS(self.ng0, self.Qm0, Pac)
 
         # Set initial conditions
-        steady_states = self.neuron.steadyStates(self.neuron.Vm0)
+        steady_states = self.pneuron.steadyStates(self.pneuron.Vm0)
         y0 = np.concatenate((
             [0., Z0, self.ng0, self.Qm0],
-            [steady_states[k] for k in self.neuron.states]))
+            [steady_states[k] for k in self.pneuron.states]))
 
         # Initialize simulator and compute solution
         logger.debug('Computing detailed solution')
@@ -194,8 +193,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             'Qm': y[:, 3]
         })
         data['Vm'] = data['Qm'].values / self.v_Capct(data['Z'].values) * 1e3  # mV
-        for i in range(len(self.neuron.states)):
-            data[self.neuron.states[i]] = y[:, i + 4]
+        for i in range(len(self.pneuron.states)):
+            data[self.pneuron.states[i]] = y[:, i + 4]
 
         # Return dataframe and computation time
         return data, tcomp
@@ -220,19 +219,19 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Z0 = self.balancedefQS(self.ng0, self.Qm0, Pac)
 
         # Set initial conditions
-        steady_states = self.neuron.steadyStates(self.neuron.Vm0)
+        steady_states = self.pneuron.steadyStates(self.pneuron.Vm0)
         y0 = np.concatenate((
             [0., Z0, self.ng0, self.Qm0],
-            [steady_states[k] for k in self.neuron.states],
+            [steady_states[k] for k in self.pneuron.states],
         ))
-        is_dense_var = np.array([True] * 3 + [False] * (len(self.neuron.states) + 1))
+        is_dense_var = np.array([True] * 3 + [False] * (len(self.pneuron.states) + 1))
 
         # Initialize simulator and compute solution
         logger.debug('Computing hybrid solution')
         simulator = HybridSimulator(
             lambda t, y: self.fullDerivatives(t, y, Adrive, Fdrive, phi),
             lambda t, y: self.fullDerivatives(t, y, 0., 0., 0.),
-            lambda t, y, Cm: self.neuron.Qderivatives(t, y, Cm),
+            lambda t, y, Cm: self.pneuron.Qderivatives(t, y, Cm),
             lambda yref: self.Capct(yref[1]),
             is_dense_var,
             ivars_to_check=[1, 2])
@@ -250,8 +249,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             'Qm': y[:, 3]
         })
         data['Vm'] = data['Qm'].values / self.v_Capct(data['Z'].values) * 1e3  # mV
-        for i in range(len(self.neuron.states)):
-            data[self.neuron.states[i]] = y[:, i + 4]
+        for i in range(len(self.pneuron.states)):
+            data[self.pneuron.states[i]] = y[:, i + 4]
 
         # Return dataframe and computation time
         return data, tcomp
@@ -284,7 +283,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
             # Compute average cycle value for membrane potential and rate constants
             effvars.append({'V': np.mean(Vm)})
-            effvars[-1].update(self.neuron.computeEffRates(Vm))
+            effvars[-1].update(self.pneuron.computeEffRates(Vm))
 
         # Log process
         log = '{}: lookups @ {}Hz, {}Pa, {:.2f} nC/cm2'.format(
@@ -311,7 +310,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
         # Load appropriate 2D lookups
-        Aref, Qref, lkps2D, _ = getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)
+        Aref, Qref, lkps2D, _ = getLookups2D(self.pneuron.name, a=self.a, Fdrive=Fdrive)
 
         # Check that acoustic amplitude is within lookup range
         Adrive = isWithin('amplitude', Adrive, (Aref.min(), Aref.max()))
@@ -326,8 +325,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lkps1D[state]['Q'] = Qref
 
         # Set initial conditions
-        steady_states = self.neuron.steadyStates(self.neuron.Vm0)
-        y0 = np.insert(np.array([steady_states[k] for k in self.neuron.states]), 0, self.Qm0)
+        steady_states = self.pneuron.steadyStates(self.pneuron.Vm0)
+        y0 = np.insert(np.array([steady_states[k] for k in self.pneuron.states]), 0, self.Qm0)
 
         # Initialize simulator and compute solution
         logger.debug('Computing effective solution')
@@ -346,8 +345,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         data['Vm'] = self.interpEffVariable('V', data['Qm'].values, stim, lkps1D)
         for key in ['Z', 'ng']:
             data[key] = np.full(t.size, np.nan)
-        for i in range(len(self.neuron.states)):
-            data[self.neuron.states[i]] = y[:, i + 1]
+        for i in range(len(self.pneuron.states)):
+            data[self.pneuron.states[i]] = y[:, i + 1]
 
         # Return dataframe and computation time
         return data, tcomp
@@ -365,7 +364,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: meta-data dictionary
         '''
         return {
-            'neuron': self.neuron.name,
+            'neuron': self.pneuron.name,
             'a': self.a,
             'd': self.d,
             'Fdrive': Fdrive,
@@ -399,7 +398,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Check validity of stimulation parameters
         BilayerSonophore.checkInputs(self, Fdrive, Adrive, 0.0, 0.0)
-        self.neuron.checkInputs(Adrive, tstim, toffset, PRF, DC)
+        self.pneuron.checkInputs(Adrive, tstim, toffset, PRF, DC)
 
         # Call appropriate simulation function
         try:
@@ -413,7 +412,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         data, tcomp = simfunc(Fdrive, Adrive, tstim, toffset, PRF, DC)
 
         # Log number of detected spikes
-        nspikes = self.neuron.getNSpikes(data)
+        nspikes = self.pneuron.getNSpikes(data)
         logger.debug('{} spike{} detected'.format(nspikes, plural(nspikes)))
 
         # Return dataframe and computation time
@@ -437,11 +436,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
         # Default output function
         if xfunc is None:
-            xfunc = self.neuron.titrationFunc
+            xfunc = self.pneuron.titrationFunc
 
         # Default amplitude interval
         if Arange is None:
-            Arange = [0., getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max()]
+            Arange = [0., getLookups2D(self.pneuron.name, a=self.a, Fdrive=Fdrive)[0].max()]
 
         return binarySearch(
             lambda x: xfunc(self.simulate(*x)[0]),
@@ -490,14 +489,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Get DC-averaged lookups interpolated at the appropriate amplitudes and charges
         amps, charges, lookups = getLookupsDCavg(
-            self.neuron.name, self.a, Fdrive, amps, charges, DCs)
+            self.pneuron.name, self.a, Fdrive, amps, charges, DCs)
 
         # Compute QSS states using these lookups
         nA, nQ, nDC = lookups['V'].shape
-        QSS = {k: np.empty((nA, nQ, nDC)) for k in self.neuron.states}
+        QSS = {k: np.empty((nA, nQ, nDC)) for k in self.pneuron.states}
         for iA in range(nA):
             for iDC in range(nDC):
-                QSS_1D = self.neuron.quasiSteadyStates(
+                QSS_1D = self.pneuron.quasiSteadyStates(
                     {k: v[iA, :, iDC] for k, v in lookups.items()})
                 for k in QSS.keys():
                     QSS[k][iA, :, iDC] = QSS_1D[k]
@@ -522,7 +521,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
         _, _, lookups, QSS = self.quasiSteadyStates(
             Fdrive, amps=Adrive, charges=Qm, DCs=DC, squeeze_output=True)
-        return self.neuron.iNet(lookups['V'], np.array(list(QSS.values())))  # mA/m2
+        return self.pneuron.iNet(lookups['V'], np.array(list(QSS.values())))  # mA/m2
 
     def evaluateStability(self, Qm0, states0, lkp):
         ''' Integrate the effective differential system from a given starting point,
@@ -640,7 +639,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             else:
                 # For each state
                 unstable_states = []
-                for x in self.neuron.states:
+                for x in self.pneuron.states:
                     pltvar = pltvars[x]
                     unit_str = pltvar.get('unit', '')
                     factor = pltvar.get('factor', 1)
@@ -651,7 +650,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                         QSS_perturbed[x] *= (1 + sign * QSS_REL_OFFSET)
 
                         # If gating state, bound within [0., 1.]
-                        if self.neuron.isVoltageGated(x):
+                        if self.pneuron.isVoltageGated(x):
                             QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
 
                         logger.debug('{}: {:.5f} -> {:.5f} {}'.format(
@@ -679,8 +678,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             _, Qref, lookups, QSS = self.quasiSteadyStates(
                 Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
             lookups['Q'] = Qref
-            dQdt = -self.neuron.iNet(
-                lookups['V'], np.array([QSS[k] for k in self.neuron.states]))  # mA/m2
+            dQdt = -self.pneuron.iNet(
+                lookups['V'], np.array([QSS[k] for k in self.pneuron.states]))  # mA/m2
             SFPs, _ = self.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)
             return len(SFPs) > 0
 
@@ -688,11 +687,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Default amplitude interval
         if Arange is None:
-            Arange = [0., getLookups2D(self.neuron.name, a=self.a, Fdrive=Fdrive)[0].max()]
+            Arange = [0., getLookups2D(self.pneuron.name, a=self.a, Fdrive=Fdrive)[0].max()]
 
         # Titration function
         def xfunc(x):
-            if self.neuron.name == 'STN':
+            if self.pneuron.name == 'STN':
                 return self.isStableQSS(*x)
             else:
                 return not self.isStableQSS(*x)

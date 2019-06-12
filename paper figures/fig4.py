@@ -4,7 +4,7 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:19:18
+# @Last Modified time: 2019-06-12 12:01:04
 
 ''' Sub-panels of the effective variables figure. '''
 
@@ -31,7 +31,8 @@ def main():
     ap = ArgumentParser()
 
     # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true',
+                    help='Increase verbosity')
     ap.add_argument('-o', '--outdir', type=str, help='Output directory')
     ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
     ap.add_argument('-s', '--save', default=False, action='store_true',
@@ -47,7 +48,7 @@ def main():
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
-    neuron = getPointNeuron('RS')
+    pneuron = getPointNeuron('RS')
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
     Adrive = 50e3  # Pa
@@ -55,15 +56,15 @@ def main():
     # Generate figures
     figs = []
     if 'a' in figset:
-        fig = plotEffectiveVariables(neuron, a=a, Fdrive=Fdrive, cmap='Oranges', zscale='log')
+        fig = plotEffectiveVariables(pneuron, a=a, Fdrive=Fdrive, cmap='Oranges', zscale='log')
         fig.canvas.set_window_title(figbase + 'a')
         figs.append(fig)
     if 'b' in figset:
-        fig = plotEffectiveVariables(neuron, a=a, Adrive=Adrive, cmap='Greens', zscale='log')
+        fig = plotEffectiveVariables(pneuron, a=a, Adrive=Adrive, cmap='Greens', zscale='log')
         fig.canvas.set_window_title(figbase + 'b')
         figs.append(fig)
     if 'c' in figset:
-        fig = plotEffectiveVariables(neuron, Fdrive=Fdrive, Adrive=Adrive, cmap='Blues', zscale='log')
+        fig = plotEffectiveVariables(pneuron, Fdrive=Fdrive, Adrive=Adrive, cmap='Blues', zscale='log')
         fig.canvas.set_window_title(figbase + 'c')
         figs.append(fig)
 

@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-07 13:54:14
+# @Last Modified time: 2019-06-12 12:51:23
 
 ''' Sub-panels of the model optimization figure. '''
 
@@ -19,7 +19,7 @@ from argparse import ArgumentParser
 from PySONIC.utils import logger, rescale, si_format, selectDirDialog
 from PySONIC.plt import SchemePlot, cm2inch
 from PySONIC.constants import NPC_FULL
-from PySONIC.neurons import CorticalRS
+from PySONIC.neurons import getPointNeuron
 from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 
 
@@ -167,7 +167,7 @@ def mechSim(bls, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
     return fig
 
 
-def cycleAveraging(bls, neuron, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
+def cycleAveraging(bls, pneuron, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
 
     # Run mechanical simulation
     data, _ = bls.simulate(Fdrive, Adrive, Qm)
@@ -181,10 +181,10 @@ def cycleAveraging(bls, neuron, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
     yvars = {
         'C_m': Cm,  # uF/cm2
         'V_m': Vm,  # mV
-        '\\alpha_m': neuron.alpham(Vm) * 1e3,  # ms-1
-        '\\beta_m': neuron.betam(Vm) * 1e3,  # ms-1
-        'p_\\infty / \\tau_p': neuron.pinf(Vm) / neuron.taup(Vm) * 1e3,  # ms-1
-        '(1-p_\\infty) / \\tau_p': (1 - neuron.pinf(Vm)) / neuron.taup(Vm) * 1e3  # ms-1
+        '\\alpha_m': pneuron.alpham(Vm) * 1e3,  # ms-1
+        '\\beta_m': pneuron.betam(Vm) * 1e3,  # ms-1
+        'p_\\infty / \\tau_p': pneuron.pinf(Vm) / pneuron.taup(Vm) * 1e3,  # ms-1
+        '(1-p_\\infty) / \\tau_p': (1 - pneuron.pinf(Vm)) / pneuron.taup(Vm) * 1e3  # ms-1
     }
 
     # Determine colors
@@ -287,7 +287,7 @@ def main():
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
-    neuron = CorticalRS()
+    pneuron = getPointNeuron('RS')
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
     Adrive = 100e3  # Pa
@@ -296,8 +296,8 @@ def main():
     tstim = 150e-3  # s
     toffset = 100e-3  # s
     Qm = -71.9e-5  # C/cm2
-    bls = BilayerSonophore(a, neuron.Cm0, neuron.Cm0 * neuron.Vm0 * 1e-3)
-    nbls = NeuronalBilayerSonophore(a, neuron)
+    bls = BilayerSonophore(a, pneuron.Cm0, pneuron.Qm0)
+    nbls = NeuronalBilayerSonophore(a, pneuron)
 
     # Figures
     figs = []
@@ -308,7 +308,7 @@ def main():
     if 'c' in figset:
         figs += [
             mechSim(bls, Fdrive, Adrive, Qm),
-            cycleAveraging(bls, neuron, Fdrive, Adrive, Qm)
+            cycleAveraging(bls, pneuron, Fdrive, Adrive, Qm)
         ]
     if 'e' in figset:
         figs.append(Qsolution(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC))

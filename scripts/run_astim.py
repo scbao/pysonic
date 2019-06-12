@@ -4,7 +4,7 @@
 # @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-07 14:59:17
+# @Last Modified time: 2019-06-12 12:24:06
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -26,8 +26,8 @@ def main():
     logger.info("Starting A-STIM simulation batch")
     pkl_filepaths = []
     for a in args['radius']:
-        for neuron in args['neuron']:
-            nbls = NeuronalBilayerSonophore(a, neuron)
+        for pneuron in args['neuron']:
+            nbls = NeuronalBilayerSonophore(a, pneuron)
             queue = nbls.simQueue(
                 args['freq'],
                 args['amp'],

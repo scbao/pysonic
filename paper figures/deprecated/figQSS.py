@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:14:32
+# @Last Modified time: 2019-06-12 12:10:20
 
 ''' Subpanels of the QSS approximation figure. '''
 
@@ -30,19 +30,19 @@ figbase = os.path.splitext(__file__)[0]
 
 def plotQSSvars_vs_Adrive(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', '.-'], title=None):
 
-    neuron = getPointNeuron(neuron)
+    pneuron = getPointNeuron(neuron)
 
     # Determine spiking threshold
-    Vthr = neuron.VT  # mV
-    Qthr = neuron.Cm0 * Vthr * 1e-3  # C/m2
+    Vthr = pneuron.VT  # mV
+    Qthr = pneuron.Cm0 * Vthr * 1e-3  # C/m2
 
     # Get QSS variables for each amplitude at threshold charge
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
     Aref, _, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, charges=Qthr, DCs=DC)
 
     # Compute US-ON and US-OFF ionic currents
-    currents_on = neuron.currents(Vmeff, QS_states)
-    currents_off = neuron.currents(neuron.VT, QS_states)
+    currents_on = pneuron.currents(Vmeff, QS_states)
+    currents_off = pneuron.currents(pneuron.VT, QS_states)
     iNet_on = sum(currents_on.values())
     iNet_off = sum(currents_off.values())
 
@@ -70,7 +70,7 @@ def plotQSSvars_vs_Adrive(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
         for item in ax.get_xticklabels(minor=True):
             item.set_visible(False)
     figname = '{} neuron thr dynamics {:.1f}nC_cm2 {:.0f}% DC'.format(
-        neuron.name, Qthr * 1e5, DC * 1e2)
+        pneuron.name, Qthr * 1e5, DC * 1e2)
     fig.suptitle(figname, fontsize=fs)
 
     # Subplot 1: Vmeff
@@ -78,11 +78,11 @@ def plotQSSvars_vs_Adrive(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     ax.set_ylabel('Effective potential (mV)', fontsize=fs)
     Vbounds = (-120, -40)
     ax.set_ylim(Vbounds)
-    ax.set_yticks([Vbounds[0], neuron.Vm0, Vbounds[1]])
+    ax.set_yticks([Vbounds[0], pneuron.Vm0, Vbounds[1]])
     ax.set_yticklabels(['{:.0f}'.format(Vbounds[0]), '$V_{m0}$', '{:.0f}'.format(Vbounds[1])])
     ax.plot(Aref * 1e-3, Vmeff, '--', color='C0', label='ON')
-    ax.plot(Aref * 1e-3, neuron.VT * np.ones(Aref.size), ':', color='C0', label='OFF')
-    ax.axhline(neuron.Vm0, linewidth=0.5, color='k')
+    ax.plot(Aref * 1e-3, pneuron.VT * np.ones(Aref.size), ':', color='C0', label='OFF')
+    ax.axhline(pneuron.Vm0, linewidth=0.5, color='k')
 
     # Subplot 2: quasi-steady states
     ax = axes[1]
@@ -95,7 +95,7 @@ def plotQSSvars_vs_Adrive(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
     xcut = ax.get_xlim()[0]
     for ycut in [0.54, 0.56]:
         ax.plot([xcut / f, xcut * f], [ycut - d, ycut + d], color='k', clip_on=False)
-    for label, QS_state in zip(neuron.states, QS_states):
+    for label, QS_state in zip(pneuron.states, QS_states):
         if label == 'h':
             QS_state -= 0.4
         ax.plot(Aref * 1e-3, QS_state, label=label)
@@ -141,22 +141,22 @@ def plotQSSvars_vs_Adrive(neuron, a, Fdrive, PRF, DC, fs=8, markers=['-', '--', 
 
 def plotQSSdQ_vs_Adrive(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
 
-    neuron = getPointNeuron(neuron)
+    pneuron = getPointNeuron(neuron)
 
     # Determine spiking threshold
-    Vthr = neuron.VT  # mV
-    Qthr = neuron.Cm0 * Vthr * 1e-3  # C/m2
+    Vthr = pneuron.VT  # mV
+    Qthr = pneuron.Cm0 * Vthr * 1e-3  # C/m2
 
     # Get QSS variables for each amplitude and DC at threshold charge
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
     Aref, _, Vmeff, QS_states = nbls.quasiSteadyStates(Fdrive, charges=Qthr, DCs=DCs)
 
     dQnet = np.empty((DCs.size, Aref.size))
     Athr = np.empty(DCs.size)
     for i, DC in enumerate(DCs):
         # Compute US-ON and US-OFF net membrane current from QSS variables
-        iNet_on = neuron.iNet(Vmeff, QS_states[:, :, i])
-        iNet_off = neuron.iNet(Vthr, QS_states[:, :, i])
+        iNet_on = pneuron.iNet(Vmeff, QS_states[:, :, i])
+        iNet_off = pneuron.iNet(Vthr, QS_states[:, :, i])
 
         # Compute the pulse average net current along the amplitude space
         iNet_avg = iNet_on * DC + iNet_off * (1 - DC)
@@ -167,7 +167,7 @@ def plotQSSdQ_vs_Adrive(neuron, a, Fdrive, PRF, DCs, fs=8, title=None):
 
     # Create figure
     fig, ax = plt.subplots(figsize=(4, 2))
-    figname = '{} neuron thr vs DC'.format(neuron.name, Qthr * 1e5)
+    figname = '{} neuron thr vs DC'.format(pneuron.name, Qthr * 1e5)
     fig.suptitle(figname, fontsize=fs)
     for key in ['top', 'right']:
         ax.spines[key].set_visible(False)
@@ -219,11 +219,11 @@ def plotQSSAthr_vs_DC(neurons, a, Fdrive, DCs_dense, DCs_sparse, fs=8, title=Non
     sm = cm.ScalarMappable(norm=norm, cmap='viridis')
     sm._A = []
     for i, neuron in enumerate(neurons):
-        neuron = getPointNeuron(neuron)
-        nbls = NeuronalBilayerSonophore(a, neuron)
-        Athrs_dense = nbls.findRheobaseAmps(DCs_dense, Fdrive, neuron.VT)[0] * 1e-3  # kPa
-        Athrs_sparse = nbls.findRheobaseAmps(DCs_sparse, Fdrive, neuron.VT)[0] * 1e-3  # kPa
-        ax.plot(DCs_dense * 1e2, Athrs_dense, label='{} neuron'.format(neuron.name))
+        pneuron = getPointNeuron(neuron)
+        nbls = NeuronalBilayerSonophore(a, pneuron)
+        Athrs_dense = nbls.findRheobaseAmps(DCs_dense, Fdrive, pneuron.VT)[0] * 1e-3  # kPa
+        Athrs_sparse = nbls.findRheobaseAmps(DCs_sparse, Fdrive, pneuron.VT)[0] * 1e-3  # kPa
+        ax.plot(DCs_dense * 1e2, Athrs_dense, label='{} neuron'.format(pneuron.name))
         for DC, Athr in zip(DCs_sparse, Athrs_sparse):
             ax.plot(DC * 1e2, Athr, 'o',
                     label='{:.0f}% DC'.format(DC * 1e2) if i == len(neurons) - 1 else None,

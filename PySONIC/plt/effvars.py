@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 21:23:03
+# @Last Modified time: 2019-06-12 12:17:07
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -24,13 +24,13 @@ def setGrid(n, ncolmax=3):
         return ((n - 1) // ncolmax + 1, ncolmax)
 
 
-def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
+def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None,
                            nlevels=10, zscale='lin', cmap=None, fs=12, ncolmax=1):
     ''' Plot the profiles of effective variables of a specific neuron as a function of charge density
         and another reference variable (z-variable). For each effective variable, one charge-profile
         per z-value is plotted, with a color code based on the z-variable value.
 
-        :param neuron: channel mechanism object
+        :param pneuron: point-neuron object
         :param a: sonophore radius (m)
         :param Fdrive: acoustic drive frequency (Hz)
         :param Adrive: acoustic pressure amplitude (Pa)
@@ -49,14 +49,14 @@ def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
         cmap = 'viridis'
 
     # Get reference US-OFF lookups (1D)
-    _, lookupsoff = getLookupsOff(neuron.name)
+    _, lookupsoff = getLookupsOff(pneuron.name)
 
-    nbls = NeuronalBilayerSonophore(32e-9, neuron)
+    nbls = NeuronalBilayerSonophore(32e-9, pneuron)
     pltvars = nbls.getPltVars()
 
     # Get 2D lookups at specific combination
-    zref, Qref, lookups2D, zvar = getLookups2D(neuron.name, a=a, Fdrive=Fdrive, Adrive=Adrive)
-    _, lookupsoff = getLookupsOff(neuron.name)
+    zref, Qref, lookups2D, zvar = getLookups2D(pneuron.name, a=a, Fdrive=Fdrive, Adrive=Adrive)
+    _, lookupsoff = getLookupsOff(pneuron.name)
     for lookups in [lookups2D, lookupsoff]:
         lookups.pop('ng')
         lookups['Cm'] = Qref / lookups['V'] * 1e5  # uF/cm2
@@ -147,7 +147,7 @@ def plotEffectiveVariables(neuron, a=None, Fdrive=None, Adrive=None,
         ax.set_ylabel('$\\rm {}\ ({})$'.format(yvar['label'], yvar['unit']), fontsize=fs,
                       rotation=0, ha='right', va='center')
 
-    fig.suptitle('{} neuron: {} \n modulated effective variables'.format(neuron.name, zvar['label']))
+    fig.suptitle('{} neuron: {} \n modulated effective variables'.format(pneuron.name, zvar['label']))
 
     # Plot colorbar
     fig.subplots_adjust(left=0.20, bottom=0.05, top=0.8, right=0.80, hspace=0.5)

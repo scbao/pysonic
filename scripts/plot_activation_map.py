@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 20:58:41
+# @Last Modified time: 2019-06-12 12:20:52
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -85,7 +85,7 @@ def main():
         return
 
     # Parameters
-    neuron = getPointNeuron(args['neuron'])
+    pneuron = getPointNeuron(args['neuron'])
     a = args['radius'] * 1e-9  # m
     Fdrive = args['freq'] * 1e3  # Hz
     tstim = args['duration'] * 1e-3  # s
@@ -103,7 +103,7 @@ def main():
         assert args[item] in ('lin', 'log'), 'Unknown {}'.format(item)
 
     # Plot activation map
-    actmap = ActivationMap(inputdir, neuron, a, Fdrive, tstim, PRF, amps, DCs)
+    actmap = ActivationMap(inputdir, pneuron, a, Fdrive, tstim, PRF, amps, DCs)
     actmap.render(
         Ascale=args['Ascale'],
         FRscale=args['FRscale'],

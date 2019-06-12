@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-07 15:41:10
+# @Last Modified time: 2019-06-12 12:25:32
 
 ''' Create lookup table for specific neuron. '''
 
@@ -29,14 +29,14 @@ defaults = dict(
 )
 
 
-def computeAStimLookups(neuron, aref, fref, Aref, Qref, fsref=None,
+def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
                         mpi=False, loglevel=logging.INFO):
     ''' Run simulations of the mechanical system for a multiple combinations of
         imposed sonophore radius, US frequencies, acoustic amplitudes charge densities and
         (spatially-averaged) sonophore membrane coverage fractions, compute effective
         coefficients and store them in a dictionary of n-dimensional arrays.
 
-        :param neuron: neuron object
+        :param pneuron: point-neuron object
         :param aref: array of sonophore radii (m)
         :param fref: array of acoustic drive frequencies (Hz)
         :param Aref: array of acoustic drive amplitudes (Pa)
@@ -96,10 +96,10 @@ def computeAStimLookups(neuron, aref, fref, Aref, Qref, fsref=None,
         queue[i].append(inputs['fs'])
 
     # Run simulations and populate outputs (list of lists)
-    logger.info('Starting simulation batch for %s neuron', neuron.name)
+    logger.info('Starting simulation batch for %s neuron', pneuron.name)
     outputs = []
     for a in aref:
-        nbls = NeuronalBilayerSonophore(a, neuron)
+        nbls = NeuronalBilayerSonophore(a, pneuron)
         batch = Batch(nbls.computeEffVars, queue)
         outputs += batch(mpi=mpi, loglevel=loglevel)
 
@@ -164,7 +164,7 @@ def main():
 
     # Check neuron name validity
     try:
-        neuron = getPointNeuron(neuron_str)
+        pneuron = getPointNeuron(neuron_str)
     except ValueError as err:
         logger.error(err)
         return
@@ -173,7 +173,7 @@ def main():
     if 'charge' in args:
         charges = np.array(args['charge']) * 1e-5  # C/m2
     else:
-        charges = np.arange(neuron.Qbounds()[0], neuron.Qbounds()[1] + 1e-5, 1e-5)  # C/m2
+        charges = np.arange(pneuron.Qbounds()[0], pneuron.Qbounds()[1] + 1e-5, 1e-5)  # C/m2
 
     # Determine fs vector
     fs = None
@@ -182,8 +182,8 @@ def main():
 
     # Determine output filename
     lookup_path = {
-        True: getNeuronLookupsFile(neuron.name),
-        False: getNeuronLookupsFile(neuron.name, a=radii[0], Fdrive=freqs[0], fs=True)
+        True: getNeuronLookupsFile(pneuron.name),
+        False: getNeuronLookupsFile(pneuron.name, a=radii[0], Fdrive=freqs[0], fs=True)
     }[fs is None]
 
     # Combine inputs into single list
@@ -202,14 +202,14 @@ def main():
                        'Continue? (y/n)', lookup_path)
         user_str = input()
         if user_str not in ['y', 'Y']:
-            logger.error('%s Lookup creation canceled', neuron.name)
+            logger.error('%s Lookup creation canceled', pneuron.name)
             return
 
     # Compute lookups
-    df = computeAStimLookups(neuron, *inputs, mpi=mpi, loglevel=loglevel)
+    df = computeAStimLookups(pneuron, *inputs, mpi=mpi, loglevel=loglevel)
 
     # Save dictionary in lookup file
-    logger.info('Saving %s neuron lookup table in file: "%s"', neuron.name, lookup_path)
+    logger.info('Saving %s neuron lookup table in file: "%s"', pneuron.name, lookup_path)
     with open(lookup_path, 'wb') as fh:
         pickle.dump(df, fh)
 

@@ -4,7 +4,7 @@
 # @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 21:27:19
+# @Last Modified time: 2019-06-12 12:21:05
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
@@ -56,13 +56,13 @@ def main():
 
     # Check neuron name validity
     try:
-        neuron = getPointNeuron(neuron_str)
+        pneuron = getPointNeuron(neuron_str)
     except ValueError as err:
         logger.error(err)
         return
 
     # Plot effective variables
-    plotEffectiveVariables(neuron, a=a, Fdrive=Fdrive, Adrive=Adrive,
+    plotEffectiveVariables(pneuron, a=a, Fdrive=Fdrive, Adrive=Adrive,
                            zscale=zscale, cmap=cmap, ncolmax=ncol)
     plt.show()
 

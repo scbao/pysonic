@@ -16,11 +16,11 @@ from .pltutils import cm2inch, computeMeshEdges
 
 class ActivationMap:
 
-    def __init__(self, root, neuron, a, Fdrive, tstim, PRF, amps, DCs):
+    def __init__(self, root, pneuron, a, Fdrive, tstim, PRF, amps, DCs):
         self.root = root
-        self.neuron = neuron
+        self.pneuron = pneuron
         self.a = a
-        self.nbls = NeuronalBilayerSonophore(self.a, self.neuron)
+        self.nbls = NeuronalBilayerSonophore(self.a, self.pneuron)
         self.Fdrive = Fdrive
         self.tstim = tstim
         self.PRF = PRF
@@ -28,9 +28,9 @@ class ActivationMap:
         self.DCs = DCs
 
         self.title = '{} neuron @ {}Hz, {}Hz PRF ({}m sonophore)'.format(
-            self.neuron.name, *si_format([self.Fdrive, self.PRF, self.a]))
+            self.pneuron.name, *si_format([self.Fdrive, self.PRF, self.a]))
         out_fname = 'actmap {} {}Hz PRF{}Hz {}s.csv'.format(
-            self.neuron.name, *si_format([self.Fdrive, self.PRF, self.tstim], space=''))
+            self.pneuron.name, *si_format([self.Fdrive, self.PRF, self.tstim], space=''))
         out_fpath = os.path.join(self.root, out_fname)
 
         if os.path.isfile(out_fpath):
@@ -68,7 +68,7 @@ class ActivationMap:
         return np.round(A * 1e-3, 1) * 1e3
 
     def compute(self):
-        logger.info('Generating activation map for %s neuron', self.neuron.name)
+        logger.info('Generating activation map for %s neuron', self.pneuron.name)
         actmap = np.empty((self.amps.size, self.DCs.size))
         nfiles = self.DCs.size * self.amps.size
         for i, A in enumerate(self.amps):
@@ -119,7 +119,7 @@ class ActivationMap:
 
     def addThresholdCurve(self, ax):
         Athrs_fname = 'Athrs_{}_{:.0f}nm_{}Hz_PRF{}Hz_{}s.xlsx'.format(
-            self.neuron.name, self.a * 1e9,
+            self.pneuron.name, self.a * 1e9,
             *si_format([self.Fdrive, self.PRF, self.tstim], 0, space=''))
         fpath = os.path.join(self.root, Athrs_fname)
         if os.path.isfile(fpath):
@@ -230,7 +230,7 @@ class ActivationMap:
 
         # Add onset to profiles
         t = np.hstack((np.array([-tonset, t[0]]), t))
-        Vm = np.hstack((np.array([self.neuron.Vm0] * 2), Vm))
+        Vm = np.hstack((np.array([self.pneuron.Vm0] * 2), Vm))
         Qm = np.hstack((np.array([Qm[0]] * 2), Qm))
 
         # Determine axes bounds

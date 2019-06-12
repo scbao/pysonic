@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 21:29:48
+# @Last Modified time: 2019-06-12 12:54:36
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
-from PySONIC.neurons import OtsukaSTN
+from PySONIC.neurons import getPointNeuron
 from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
 from PySONIC.plt import plotFRProfile, SchemePlot
 
@@ -53,17 +53,17 @@ def main():
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
-    neuron = OtsukaSTN()
+    pneuron = getPointNeuron('STN')
     a = 32e-9  # m
     Fdrive = 500e3  # Hz
     tstim = 1  # s
     toffset = 0.  # s
     PRF = 1e2
     DC = 1.
-    nbls = NeuronalBilayerSonophore(a, neuron)
+    nbls = NeuronalBilayerSonophore(a, pneuron)
 
     # Range of intensities
-    intensities = neuron.getLowIntensities()  # W/m2
+    intensities = pneuron.getLowIntensities()  # W/m2
 
     # Levels depicted with individual traces
     subset_intensities = [112, 114, 123]  # W/m2

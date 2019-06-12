@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 14:39:42
+# @Last Modified time: 2019-06-12 12:53:09
 
 ''' Test the basic functionalities of the package. '''
 
@@ -18,7 +18,7 @@ from argparse import ArgumentParser
 
 from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 from PySONIC.utils import logger
-from PySONIC.neurons import *
+from PySONIC.neurons import getPointNeuron
 
 
 def execute(func_str, globals, locals, is_profiled):
@@ -60,7 +60,7 @@ def test_ESTIM(is_profiled=False):
     logger.info('Test: running ESTIM simulation')
 
     # Initialize neuron
-    neuron = CorticalRS()
+    pneuron = getPointNeuron('RS')
 
     # Stimulation parameters
     Astim = 10.0  # mA/m2
@@ -68,7 +68,7 @@ def test_ESTIM(is_profiled=False):
     toffset = 50e-3  # s
 
     # Run simulation
-    execute('neuron.simulate(Astim, tstim, toffset)', globals(), locals(), is_profiled)
+    execute('pneuron.simulate(Astim, tstim, toffset)', globals(), locals(), is_profiled)
 
 
 def test_ASTIM_sonic(is_profiled=False):
@@ -78,8 +78,8 @@ def test_ASTIM_sonic(is_profiled=False):
 
     # Default parameters
     a = 32e-9  # m
-    neuron = CorticalRS()
-    nbls = NeuronalBilayerSonophore(a, neuron)
+    pneuron = getPointNeuron('RS')
+    nbls = NeuronalBilayerSonophore(a, pneuron)
 
     Fdrive = 500e3  # Hz
     Adrive = 100e3  # Pa
@@ -88,21 +88,21 @@ def test_ASTIM_sonic(is_profiled=False):
 
     # test error 1: sonophore radius outside of lookup range
     try:
-        nbls = NeuronalBilayerSonophore(100e-9, neuron)
+        nbls = NeuronalBilayerSonophore(100e-9, pneuron)
         nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
     except ValueError as err:
         logger.debug('Out of range radius: OK')
 
     # test error 2: frequency outside of lookups range
     try:
-        nbls = NeuronalBilayerSonophore(a, neuron)
+        nbls = NeuronalBilayerSonophore(a, pneuron)
         nbls.simulate(10e3, Adrive, tstim, toffset, method='sonic')
     except ValueError as err:
         logger.debug('Out of range frequency: OK')
 
     # test error 3: amplitude outside of lookups range
     try:
-        nbls = NeuronalBilayerSonophore(a, neuron)
+        nbls = NeuronalBilayerSonophore(a, pneuron)
         nbls.simulate(Fdrive, 1e6, tstim, toffset, method='sonic')
     except ValueError as err:
         logger.debug('Out of range amplitude: OK')
@@ -119,8 +119,8 @@ def test_ASTIM_full(is_profiled=False):
 
     # Initialize sonic neuron
     a = 32e-9  # m
-    neuron = CorticalRS()
-    nbls = NeuronalBilayerSonophore(a, neuron)
+    pneuron = getPointNeuron('RS')
+    nbls = NeuronalBilayerSonophore(a, pneuron)
 
     # Stimulation parameters
     Fdrive = 500e3  # Hz
@@ -140,8 +140,8 @@ def test_ASTIM_hybrid(is_profiled=False):
 
     # Initialize sonic neuron
     a = 32e-9  # m
-    neuron = CorticalRS()
-    nbls = NeuronalBilayerSonophore(a, neuron)
+    pneuron = getPointNeuron('RS')
+    nbls = NeuronalBilayerSonophore(a, pneuron)
 
     # Stimulation parameters
     Fdrive = 350e3  # Hz

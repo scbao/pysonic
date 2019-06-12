@@ -2,7 +2,7 @@
 # @Author: Theo
 # @Date:   2018-04-30 21:06:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:08:17
+# @Last Modified time: 2019-06-12 12:23:44
 
 ''' Plot duty-cycle dependent rheobase acoustic amplitudes of various neurons
     for a specific US frequency and PRF. '''
@@ -48,7 +48,7 @@ def main():
     # Get neurons objects from names
     neuron_str = args.get('neuron', defaults['neuron'])
     try:
-        neuron = getPointNeuron(neuron_str)
+        pneuron = getPointNeuron(neuron_str)
     except ValueError as err:
         logger.error(err)
         return
@@ -56,9 +56,9 @@ def main():
     if mode == 'US':
         radii = np.array(args['radii']) * 1e-9  # m
         freqs = np.array(args['freqs']) * 1e3  # Hz
-        plotAstimRheobaseAmps(neuron, radii, freqs)
+        plotAstimRheobaseAmps(pneuron, radii, freqs)
     elif mode == 'elec':
-        plotEstimRheobaseAmps(neuron)
+        plotEstimRheobaseAmps(pneuron)
     else:
         logger.error('Invalid stimulation type: "%s"', mode)
         return

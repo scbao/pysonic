@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-03-18 21:17:03
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-03-18 21:37:58
+# @Last Modified time: 2019-06-12 12:14:36
 
 
 import inspect
@@ -19,9 +19,9 @@ class NmodlGenerator:
     tabreturn = '\n   '
     NEURON_protected_vars = ['O', 'C']
 
-    def __init__(self, neuron):
-        self.neuron = neuron
-        self.translated_states = [self.translateState(s) for s in self.neuron.states]
+    def __init__(self, pneuron):
+        self.pneuron = pneuron
+        self.translated_states = [self.translateState(s) for s in self.pneuron.states]
 
     def print(self, outfile):
         all_blocks = [
@@ -45,12 +45,12 @@ class NmodlGenerator:
         return '{}{}'.format(state, '1' if state in self.NEURON_protected_vars else '')
 
     def title(self):
-        return 'TITLE {} membrane mechanism'.format(self.neuron.name)
+        return 'TITLE {} membrane mechanism'.format(self.pneuron.name)
 
     def description(self):
         return '\n'.join([
             'COMMENT',
-            self.neuron.getDesc(),
+            self.pneuron.getDesc(),
             '',
             '@Author: Theo Lemaire, EPFL',
             '@Date: {}'.format(strftime("%Y-%m-%d", gmtime())),
@@ -70,10 +70,10 @@ class NmodlGenerator:
 
     def neuron_block(self):
         block = [
-            'SUFFIX {}'.format(self.neuron.name),
+            'SUFFIX {}'.format(self.pneuron.name),
             '',
             ': Constituting currents',
-            *['NONSPECIFIC_CURRENT {}'.format(i) for i in self.neuron.getCurrentsNames()],
+            *['NONSPECIFIC_CURRENT {}'.format(i) for i in self.pneuron.getCurrentsNames()],
             '',
             ': RANGE variables',
             'RANGE Adrive, Vmeff : section specific',
@@ -88,26 +88,26 @@ class NmodlGenerator:
             'Adrive (kPa) : Stimulation amplitude',
             '',
             ': Membrane properties',
-            'cm = {} (uF/cm2)'.format(self.neuron.Cm0 * 1e2)
+            'cm = {} (uF/cm2)'.format(self.pneuron.Cm0 * 1e2)
         ]
 
         # Reversal potentials
-        possibles_E = list(set(['Na', 'K', 'Ca'] + [i[1:] for i in self.neuron.getCurrentsNames()]))
+        possibles_E = list(set(['Na', 'K', 'Ca'] + [i[1:] for i in self.pneuron.getCurrentsNames()]))
         for x in possibles_E:
             nernst_pot = 'E{}'.format(x)
-            if hasattr(self.neuron, nernst_pot):
+            if hasattr(self.pneuron, nernst_pot):
                 block.append('{} = {} (mV)'.format(
-                    nernst_pot, getattr(self.neuron, nernst_pot)))
+                    nernst_pot, getattr(self.pneuron, nernst_pot)))
 
         # Conductances / permeabilities
-        for i in self.neuron.getCurrentsNames():
+        for i in self.pneuron.getCurrentsNames():
             suffix = '{}{}'.format(i[1:], '' if 'Leak' in i else 'bar')
             factors = {'g': 1e-4, 'p': 1e2}
             units = {'g': 'S/cm2', 'p': 'cm/s'}
             for prefix in ['g', 'p']:
                 attr = '{}{}'.format(prefix, suffix)
-                if hasattr(self.neuron, attr):
-                    val = getattr(self.neuron, attr) * factors[prefix]
+                if hasattr(self.pneuron, attr):
+                    val = getattr(self.pneuron, attr) * factors[prefix]
                     block.append('{} = {} ({})'.format(attr, val, units[prefix]))
 
         return 'PARAMETER {{{}{}\n}}'.format(self.tabreturn, self.tabreturn.join(block))
@@ -121,7 +121,7 @@ class NmodlGenerator:
             ': Variables computed during the simulation and whose value can be retrieved',
             'Vmeff (mV)',
             'v (mV)',
-            *['{} (mA/cm2)'.format(i) for i in self.neuron.getCurrentsNames()]
+            *['{} (mA/cm2)'.format(i) for i in self.pneuron.getCurrentsNames()]
         ]
         return 'ASSIGNED {{{}{}\n}}'.format(self.tabreturn, self.tabreturn.join(block))
 
@@ -129,14 +129,14 @@ class NmodlGenerator:
         block = [
             ': Function tables to interpolate effective variables',
             'FUNCTION_TABLE V(A(kPa), Q(nC/cm2)) (mV)',
-            *['FUNCTION_TABLE {}(A(kPa), Q(nC/cm2)) (mV)'.format(r) for r in self.neuron.rates]
+            *['FUNCTION_TABLE {}(A(kPa), Q(nC/cm2)) (mV)'.format(r) for r in self.pneuron.rates]
         ]
         return '\n'.join(block)
 
     def initial_block(self):
         block = [': Set initial states values']
-        for s in self.neuron.states:
-            if s in self.neuron.getGates():
+        for s in self.pneuron.states:
+            if s in self.pneuron.getGates():
                 block.append('{0} = alpha{1}(0, v) / (alpha{1}(0, v) + beta{1}(0, v))'.format(
                     self.translateState(s), s.lower()))
             else:
@@ -154,8 +154,8 @@ class NmodlGenerator:
             '',
             ': Compute ionic currents'
         ]
-        for i in self.neuron.getCurrentsNames():
-            func_exp = inspect.getsource(getattr(self.neuron, i)).splitlines()[-1]
+        for i in self.pneuron.getCurrentsNames():
+            func_exp = inspect.getsource(getattr(self.pneuron, i)).splitlines()[-1]
             func_exp = func_exp[func_exp.find('return') + 7:]
             func_exp = func_exp.replace('self.', '').replace('Vm', 'Vmeff')
             func_exp = re.sub(r'([A-Za-z][A-Za-z0-9]*)\*\*([0-9])', escaped_pow, func_exp)
@@ -165,8 +165,8 @@ class NmodlGenerator:
 
     def derivative_block(self):
         block = [': Gating states derivatives']
-        for s in self.neuron.states:
-            if s in self.neuron.getGates():
+        for s in self.pneuron.states:
+            if s in self.pneuron.getGates():
                 block.append(
                     '{0}\' = alpha{1}{2} * (1 - {0}) - beta{1}{2} * {0}'.format(
                         self.translateState(s), s.lower(), '(Adrive * stimon, v)')

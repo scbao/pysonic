@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 21:01:54
+# @Last Modified time: 2019-06-12 12:04:26
 
 ''' Sub-panels of (duty-cycle x amplitude) US activation maps and related Q-V traces. '''
 
@@ -27,12 +27,12 @@ matplotlib.rcParams['font.family'] = 'arial'
 figbase = os.path.splitext(__file__)[0]
 
 
-def plotMapAndTraces(inputdir, neuron, a, Fdrive, tstim, amps, PRF, DCs, FRbounds,
+def plotMapAndTraces(inputdir, pneuron, a, Fdrive, tstim, amps, PRF, DCs, FRbounds,
                      insets, tmax, Vbounds, prefix):
     # Activation map
-    mapcode = '{} {}Hz PRF{}Hz 1s'.format(neuron.name, *si_format([Fdrive, PRF, tstim], space=''))
+    mapcode = '{} {}Hz PRF{}Hz 1s'.format(pneuron.name, *si_format([Fdrive, PRF, tstim], space=''))
     subdir = os.path.join(inputdir, mapcode)
-    actmap = ActivationMap(subdir, neuron, a, Fdrive, tstim, PRF, amps, DCs)
+    actmap = ActivationMap(subdir, pneuron, a, Fdrive, tstim, PRF, amps, DCs)
     mapfig = actmap.render(FRbounds=FRbounds, thresholds=True)
     mapfig.canvas.set_window_title('{} map {}'.format(prefix, mapcode))
     ax = mapfig.axes[0]
@@ -41,7 +41,7 @@ def plotMapAndTraces(inputdir, neuron, a, Fdrive, tstim, amps, PRF, DCs, FRbound
 
     # Related inset traces
     tracefigs = []
-    nbls = NeuronalBilayerSonophore(a, neuron)
+    nbls = NeuronalBilayerSonophore(a, pneuron)
     for inset in insets:
         DC = inset[0] * 1e-2
         Adrive = inset[1] * 1e3
@@ -50,20 +50,20 @@ def plotMapAndTraces(inputdir, neuron, a, Fdrive, tstim, amps, PRF, DCs, FRbound
         fpath = os.path.join(subdir, fname)
         tracefig = actmap.plotQVeff(fpath, tmax=tmax, ybounds=Vbounds)
         figcode = '{} VQ trace {} {:.1f}kPa {:.0f}%DC'.format(
-            prefix, neuron.name, Adrive * 1e-3, DC * 1e2)
+            prefix, pneuron.name, Adrive * 1e-3, DC * 1e2)
         tracefig.canvas.set_window_title(figcode)
         tracefigs.append(tracefig)
 
     return mapfig, tracefigs
 
 
-def panel(inputdir, neurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds, insets, prefix):
+def panel(inputdir, pneurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds, insets, prefix):
 
     mapfigs, tracefigs = [], []
-    for n in neurons:
+    for pn in pneurons:
         out = plotMapAndTraces(
-            inputdir, n, a, 500e3, tstim, amps, PRF, DCs,
-            FRbounds, insets[n.name], tmax, Vbounds, prefix)
+            inputdir, pn, a, 500e3, tstim, amps, PRF, DCs,
+            FRbounds, insets[pn.name], tmax, Vbounds, prefix)
         mapfigs.append(out[0])
         tracefigs += out[1]
 
@@ -95,7 +95,7 @@ def main():
     logger.info('Generating panel {} of {}'.format(figset, figbase))
 
     # Parameters
-    neurons = [getPointNeuron(n) for n in ['RS', 'LTS']]
+    pneurons = [getPointNeuron(n) for n in ['RS', 'LTS']]
     a = 32e-9  # m
     tstim = 1.0  # s
     amps = np.logspace(np.log10(10), np.log10(600), num=30) * 1e3  # Pa
@@ -115,7 +115,7 @@ def main():
                 'RS': [(28, 127.0), (37, 168.4)],
                 'LTS': [(8, 47.3), (30, 146.2)]
             }
-            figs += panel(inputdir, neurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds,
+            figs += panel(inputdir, pneurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds,
                           insets, figbase + 'a')
         if 'b' in figset:
             PRF = 1e2
@@ -123,7 +123,7 @@ def main():
                 'RS': [(51, 452.4), (56, 452.4)],
                 'LTS': [(13, 193.9), (43, 257.2)]
             }
-            figs += panel(inputdir, neurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds,
+            figs += panel(inputdir, pneurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds,
                           insets, figbase + 'b')
         if 'c' in figset:
             PRF = 1e3
@@ -131,7 +131,7 @@ def main():
                 'RS': [(40, 110.2), (64, 193.9)],
                 'LTS': [(10, 47.3), (53, 168.4)]
             }
-            figs += panel(inputdir, neurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds,
+            figs += panel(inputdir, pneurons, a, tstim, PRF, amps, DCs, FRbounds, tmax, Vbounds,
                           insets, figbase + 'c')
 
     except Exception as e:

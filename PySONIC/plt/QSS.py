@@ -14,12 +14,12 @@ from ..utils import logger, fileCache
 root = '../../../QSS analysis/data'
 
 
-def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):
+def plotVarQSSDynamics(pneuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):
     ''' Plot the QSS-approximated derivative of a specific variable as function of
         the variable itself, as well as equilibrium values, for various membrane
         charge densities at a given acoustic amplitude.
 
-        :param neuron: neuron object
+        :param pneuron: point-neuron object
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param Adrive: US amplitude (Pa)
@@ -30,16 +30,16 @@ def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs
     '''
 
     # Extract information about variable to plot
-    pltvar = neuron.getPltVars()[varname]
+    pltvar = pneuron.getPltVars()[varname]
 
     # Get methods to compute derivative and steady-state of variable of interest
-    derX_func = getattr(neuron, 'der{}{}'.format(varname[0].upper(), varname[1:]))
-    Xinf_func = getattr(neuron, '{}inf'.format(varname))
+    derX_func = getattr(pneuron, 'der{}{}'.format(varname[0].upper(), varname[1:]))
+    Xinf_func = getattr(pneuron, '{}inf'.format(varname))
     derX_args = inspect.getargspec(derX_func)[0][1:]
     Xinf_args = inspect.getargspec(Xinf_func)[0][1:]
 
     # Get dictionary of charge and amplitude dependent QSS variables
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
     _, Qref, lookups, QSS = nbls.quasiSteadyStates(
         Fdrive, amps=Adrive, charges=charges, squeeze_output=True)
     df = QSS
@@ -48,7 +48,7 @@ def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.set_title('{} neuron - QSS {} dynamics @ {:.2f} kPa'.format(
-        neuron.name, pltvar['desc'], Adrive * 1e-3), fontsize=fs)
+        pneuron.name, pltvar['desc'], Adrive * 1e-3), fontsize=fs)
     ax.set_xscale('log')
     for key in ['top', 'right']:
         ax.spines[key].set_visible(False)
@@ -60,8 +60,8 @@ def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs
     ax.axhline(0, c='k', linewidth=0.5)
 
     y0_str = '{}0'.format(varname)
-    if hasattr(neuron, y0_str):
-        ax.axvline(getattr(neuron, y0_str) * pltvar.get('factor', 1),
+    if hasattr(pneuron, y0_str):
+        ax.axvline(getattr(pneuron, y0_str) * pltvar.get('factor', 1),
                    label=y0_str, c='k', linewidth=0.5)
 
     # For each charge value
@@ -73,8 +73,8 @@ def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs
         # keeping other variables at quasi steady-state
         derX_inputs = [varrange if arg == varname else df[arg][j] for arg in derX_args]
         Xinf_inputs = [df[arg][j] for arg in Xinf_args]
-        dX_QSS = neuron.derCai(*derX_inputs)
-        Xeq_QSS = neuron.Caiinf(*Xinf_inputs)
+        dX_QSS = pneuron.derCai(*derX_inputs)
+        Xeq_QSS = pneuron.Caiinf(*Xinf_inputs)
 
         # Plot variable derivative and its root as a function of the variable itself
         c = 'C{}'.format(icolor)
@@ -89,16 +89,16 @@ def plotVarQSSDynamics(neuron, a, Fdrive, Adrive, charges, varname, varrange, fs
     fig.tight_layout()
 
     fig.canvas.set_window_title('{}_QSS_{}_dynamics_{:.2f}kPa'.format(
-        neuron.name, varname, Adrive * 1e-3))
+        pneuron.name, varname, Adrive * 1e-3))
 
     return fig
 
 
-def plotQSSdynamics(neuron, a, Fdrive, Adrive, DC=1., fs=12):
+def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):
     ''' Plot effective membrane potential, quasi-steady states and resulting membrane currents
         as a function of membrane charge density, for a given acoustic amplitude.
 
-        :param neuron: neuron object
+        :param pneuron: point-neuron object
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param Adrive: US amplitude (Pa)
@@ -106,16 +106,16 @@ def plotQSSdynamics(neuron, a, Fdrive, Adrive, DC=1., fs=12):
     '''
 
     # Get neuron-specific pltvars
-    pltvars = neuron.getPltVars()
+    pltvars = pneuron.getPltVars()
 
     # Compute neuron-specific charge and amplitude dependent QS states at this amplitude
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
     _, Qref, lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
     lookups['Q'] = Qref
     Vmeff = lookups['V']
 
     # Compute QSS currents and 1D charge variation array
-    currents = neuron.currents(Vmeff, np.array([QSS[k] for k in neuron.states]))
+    currents = pneuron.currents(Vmeff, np.array([QSS[k] for k in pneuron.states]))
     iNet = sum(currents.values())
     dQdt = -iNet
 
@@ -124,7 +124,7 @@ def plotQSSdynamics(neuron, a, Fdrive, Adrive, DC=1., fs=12):
 
     # Extract dimensionless states
     norm_QSS = {}
-    for x in neuron.states:
+    for x in pneuron.states:
         if 'unit' not in pltvars[x]:
             norm_QSS[x] = QSS[x]
 
@@ -139,13 +139,13 @@ def plotQSSdynamics(neuron, a, Fdrive, Adrive, DC=1., fs=12):
         for item in ax.get_xticklabels(minor=True):
             item.set_visible(False)
     fig.suptitle('{} neuron - QSS dynamics @ {:.2f} kPa, {:.0f}%DC'.format(
-        neuron.name, Adrive * 1e-3, DC * 1e2), fontsize=fs)
+        pneuron.name, Adrive * 1e-3, DC * 1e2), fontsize=fs)
 
     # Subplot: Vmeff
     ax = axes[0]
     ax.set_ylabel('$V_m^*$ (mV)', fontsize=fs)
     ax.plot(Qref * 1e5, Vmeff, color='k')
-    ax.axhline(neuron.Vm0, linewidth=0.5, color='k')
+    ax.axhline(pneuron.Vm0, linewidth=0.5, color='k')
 
     # Subplot: dimensionless quasi-steady states
     cset = plt.get_cmap('Dark2').colors + plt.get_cmap('tab10').colors
@@ -162,7 +162,7 @@ def plotQSSdynamics(neuron, a, Fdrive, Adrive, DC=1., fs=12):
     ax.set_ylabel('QSS currents ($\\rm A/m^2$)', fontsize=fs)
     for i, (k, I) in enumerate(currents.items()):
         ax.plot(Qref * 1e5, -I * 1e-3, '--', c=cset[i],
-                label='$\\rm -{}$'.format(neuron.getPltVars()[k]['label']))
+                label='$\\rm -{}$'.format(pneuron.getPltVars()[k]['label']))
     ax.plot(Qref * 1e5, -iNet * 1e-3, color='k', label='$\\rm -I_{Net}$')
     ax.axhline(0, color='k', linewidth=0.5)
 
@@ -183,18 +183,18 @@ def plotQSSdynamics(neuron, a, Fdrive, Adrive, DC=1., fs=12):
         ax.set_xticklabels([])
 
     fig.canvas.set_window_title(
-        '{}_QSS_dynamics_vs_Qm_{:.2f}kPa_DC{:.0f}%'.format(neuron.name, Adrive * 1e-3, DC * 1e2))
+        '{}_QSS_dynamics_vs_Qm_{:.2f}kPa_DC{:.0f}%'.format(pneuron.name, Adrive * 1e-3, DC * 1e2))
 
     return fig
 
 
-def plotQSSVarVsQm(neuron, a, Fdrive, varname, amps=None, DC=1.,
+def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
                    fs=12, cmap='viridis', yscale='lin', zscale='lin',
                    mpi=False, loglevel=logging.INFO):
     ''' Plot a specific QSS variable (state or current) as a function of
         membrane charge density, for various acoustic amplitudes.
 
-        :param neuron: neuron object
+        :param pneuron: point-neuron object
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param amps: US amplitudes (Pa)
@@ -204,14 +204,14 @@ def plotQSSVarVsQm(neuron, a, Fdrive, varname, amps=None, DC=1.,
     '''
 
     # Extract information about variable to plot
-    pltvar = neuron.getPltVars()[varname]
-    Qvar = neuron.getPltVars()['Qm']
+    pltvar = pneuron.getPltVars()[varname]
+    Qvar = pneuron.getPltVars()['Qm']
     Afactor = 1e-3
 
     logger.info('plotting %s neuron QSS %s vs. Qm for various amplitudes @ %.0f%% DC',
-                neuron.name, pltvar['desc'], DC * 1e2)
+                pneuron.name, pltvar['desc'], DC * 1e2)
 
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
 
     # Get reference dictionaries for zero amplitude
     _, Qref, lookups0, QSS0 = nbls.quasiSteadyStates(Fdrive, amps=0., squeeze_output=True)
@@ -221,7 +221,7 @@ def plotQSSVarVsQm(neuron, a, Fdrive, varname, amps=None, DC=1.,
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    title = '{} neuron - QSS {} vs. Qm - {:.0f}% DC'.format(neuron.name, varname, DC * 1e2)
+    title = '{} neuron - QSS {} vs. Qm - {:.0f}% DC'.format(pneuron.name, varname, DC * 1e2)
     ax.set_title(title, fontsize=fs)
     ax.set_xlabel('$\\rm {}\ ({})$'.format(Qvar['label'], Qvar['unit']), fontsize=fs)
     ax.set_ylabel('$\\rm QSS\ {}\ ({})$'.format(pltvar['label'], pltvar.get('unit', '')),
@@ -234,9 +234,9 @@ def plotQSSVarVsQm(neuron, a, Fdrive, varname, amps=None, DC=1.,
     # Plot y-variable reference line, if any
     y0 = None
     y0_str = '{}0'.format(varname)
-    if hasattr(neuron, y0_str):
-        y0 = getattr(neuron, y0_str) * pltvar.get('factor', 1)
-    elif varname in neuron.getCurrentsNames() + ['iNet', 'dQdt']:
+    if hasattr(pneuron, y0_str):
+        y0 = getattr(pneuron, y0_str) * pltvar.get('factor', 1)
+    elif varname in pneuron.getCurrentsNames() + ['iNet', 'dQdt']:
         y0 = 0.
         y0_str = ''
     if y0 is not None:
@@ -244,7 +244,7 @@ def plotQSSVarVsQm(neuron, a, Fdrive, varname, amps=None, DC=1.,
 
     # Plot reference QSS profile of variable as a function of charge density
     var0 = extractPltVar(
-        neuron, pltvar, pd.DataFrame({k: df0[k] for k in df0.keys()}), name=varname)
+        pneuron, pltvar, pd.DataFrame({k: df0[k] for k in df0.keys()}), name=varname)
     ax.plot(Qref * Qvar['factor'], var0, '--', c='k', zorder=1, label='A = 0')
 
     if varname == 'dQdt':
@@ -281,7 +281,7 @@ def plotQSSVarVsQm(neuron, a, Fdrive, varname, amps=None, DC=1.,
     # Plot QSS profiles for various amplitudes
     for i, A in enumerate(amps):
         var = extractPltVar(
-            neuron, pltvar, pd.DataFrame({k: df[k][i] for k in df.keys()}), name=varname)
+            pneuron, pltvar, pd.DataFrame({k: df[k][i] for k in df.keys()}), name=varname)
         ax.plot(Qref * Qvar['factor'], var, c=sm.to_rgba(A * Afactor), zorder=0)
 
     # Add legend and adjust layout
@@ -300,7 +300,7 @@ def plotQSSVarVsQm(neuron, a, Fdrive, varname, amps=None, DC=1.,
             item.set_fontsize(fs)
 
     fig.canvas.set_window_title('{}_QSS_{}_vs_Qm_{}A_{:.2f}-{:.2f}kPa_DC{:.0f}%'.format(
-        neuron.name, varname, zscale, amps.min() * 1e-3, amps.max() * 1e-3, DC * 1e2))
+        pneuron.name, varname, zscale, amps.min() * 1e-3, amps.max() * 1e-3, DC * 1e2))
 
     return fig
 
@@ -309,14 +309,14 @@ def plotQSSVarVsQm(neuron, a, Fdrive, varname, amps=None, DC=1.,
     root,
     lambda nbls, Fdrive, amps, DC:
         '{}_QSS_FPs_{:.0f}kHz_{:.2f}-{:.2f}kPa_DC{:.0f}%'.format(
-            nbls.neuron.name, Fdrive * 1e-3, amps.min() * 1e-3, amps.max() * 1e-3, DC * 1e2)
+            nbls.pneuron.name, Fdrive * 1e-3, amps.min() * 1e-3, amps.max() * 1e-3, DC * 1e2)
 )
 def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=logging.INFO):
 
     # Compute 2D QSS charge variation array
     _, Qref, lookups, QSS = nbls.quasiSteadyStates(
         Fdrive, amps=amps, DCs=DC, squeeze_output=True)
-    dQdt = -nbls.neuron.iNet(lookups['V'], np.array([QSS[k] for k in nbls.neuron.states]))  # mA/m2
+    dQdt = -nbls.pneuron.iNet(lookups['V'], np.array([QSS[k] for k in nbls.pneuron.states]))  # mA/m2
 
     # Generate batch queue
     queue = []
@@ -338,14 +338,14 @@ def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=loggin
 
 
 def runAndGetStab(nbls, *args):
-    return nbls.neuron.getStabilizationValue(nbls.load(*args)[0])
+    return nbls.pneuron.getStabilizationValue(nbls.load(*args)[0])
 
 
 @fileCache(
     root,
     lambda nbls, Fdrive, amps, tstim, toffset, PRF, DC:
         '{}_sim_FPs_{:.0f}kHz_{:.0f}ms_offset{:.0f}ms_PRF{:.0f}Hz_{:.2f}-{:.2f}kPa_DC{:.0f}%'.format(
-            nbls.neuron.name, Fdrive * 1e-3, tstim * 1e3, toffset * 1e3, PRF,
+            nbls.pneuron.name, Fdrive * 1e-3, tstim * 1e3, toffset * 1e3, PRF,
             amps.min() * 1e-3, amps.max() * 1e-3, DC * 1e2)
 )
 def getSimFixedPointsvsAdrive(nbls, Fdrive, amps, tstim, toffset, PRF, DC,
@@ -357,13 +357,13 @@ def getSimFixedPointsvsAdrive(nbls, Fdrive, amps, tstim, toffset, PRF, DC,
     return list(zip(amps, output))
 
 
-def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=None, toffset=None, PRF=None,
+def plotEqChargeVsAmp(pneuron, a, Fdrive, amps=None, tstim=None, toffset=None, PRF=None,
                       DC=1., fs=12, xscale='lin', compdir=None, mpi=False,
                       loglevel=logging.INFO):
     ''' Plot the equilibrium membrane charge density as a function of acoustic amplitude,
         given an initial value of membrane charge density.
 
-        :param neuron: neuron object
+        :param pneuron: point-neuron object
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param amps: US amplitudes (Pa)
@@ -374,7 +374,7 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=None, toffset=None, PR
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    figname = '{} neuron - charge stability vs. amplitude @ {:.0f}%DC'.format(neuron.name, DC * 1e2)
+    figname = '{} neuron - charge stability vs. amplitude @ {:.0f}%DC'.format(pneuron.name, DC * 1e2)
     ax.set_title(figname)
     ax.set_xlabel('Amplitude (kPa)', fontsize=fs)
     ax.set_ylabel('$\\rm Q_m\ (nC/cm^2)$', fontsize=fs)
@@ -385,7 +385,7 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=None, toffset=None, PR
     for item in ax.get_xticklabels() + ax.get_yticklabels():
         item.set_fontsize(fs)
 
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
     Afactor = 1e-3
 
     # Plot charge SFPs and UFPs for each acoustic amplitude
@@ -414,12 +414,12 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=None, toffset=None, PR
                        label='stabilization points from simulations')
 
     # Post-process figure
-    ax.set_ylim(np.array([neuron.Qm0 - 10e-5, 0]) * 1e5)
+    ax.set_ylim(np.array([pneuron.Qm0 - 10e-5, 0]) * 1e5)
     ax.legend(frameon=False, fontsize=fs)
     fig.tight_layout()
 
     fig.canvas.set_window_title('{}_QSS_Qstab_vs_{}A_{:.0f}%DC{}'.format(
-        neuron.name,
+        pneuron.name,
         xscale,
         DC * 1e2,
         '_with_comp' if compdir is not None else ''
@@ -432,7 +432,7 @@ def plotEqChargeVsAmp(neuron, a, Fdrive, amps=None, tstim=None, toffset=None, PR
     root,
     lambda nbls, Fdrive, DCs:
         '{}_QSS_threshold_curve_{:.0f}kHz_DC{:.2f}-{:.2f}%'.format(
-            nbls.neuron.name, Fdrive * 1e-3, DCs.min() * 1e2, DCs.max() * 1e2),
+            nbls.pneuron.name, Fdrive * 1e-3, DCs.min() * 1e2, DCs.max() * 1e2),
     ext='csv'
 )
 def getQSSThresholdAmps(nbls, Fdrive, DCs, mpi=False, loglevel=logging.INFO):
@@ -445,7 +445,7 @@ def getQSSThresholdAmps(nbls, Fdrive, DCs, mpi=False, loglevel=logging.INFO):
     root,
     lambda nbls, Fdrive, tstim, toffset, PRF, DCs:
         '{}_sim_threshold_curve_{:.0f}kHz_{:.0f}ms_offset{:.0f}ms_PRF{:.0f}Hz_DC{:.2f}-{:.2f}%'.format(
-            nbls.neuron.name, Fdrive * 1e-3, tstim * 1e3, toffset * 1e3, PRF,
+            nbls.pneuron.name, Fdrive * 1e-3, tstim * 1e3, toffset * 1e3, PRF,
             DCs.min() * 1e2, DCs.max() * 1e2),
     ext='csv'
 )
@@ -456,17 +456,17 @@ def getSimThresholdAmps(nbls, Fdrive, tstim, toffset, PRF, DCs, mpi=False, logle
     return batch(mpi=mpi, loglevel=loglevel)
 
 
-def plotQSSThresholdCurve(neuron, a, Fdrive, tstim=None, toffset=None, PRF=None, DCs=None,
+def plotQSSThresholdCurve(pneuron, a, Fdrive, tstim=None, toffset=None, PRF=None, DCs=None,
                           fs=12, Ascale='lin', comp=False, mpi=False, loglevel=logging.INFO):
 
-    logger.info('plotting %s neuron threshold curve', neuron.name)
+    logger.info('plotting %s neuron threshold curve', pneuron.name)
 
-    if neuron.name == 'STN':
+    if pneuron.name == 'STN':
         raise ValueError('cannot compute threshold curve for STN neuron')
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    figname = '{} neuron - threshold amplitude vs. duty cycle'.format(neuron.name)
+    figname = '{} neuron - threshold amplitude vs. duty cycle'.format(pneuron.name)
     ax.set_title(figname)
     ax.set_xlabel('Duty cycle (%)', fontsize=fs)
     ax.set_ylabel('Amplitude (kPa)', fontsize=fs)
@@ -477,7 +477,7 @@ def plotQSSThresholdCurve(neuron, a, Fdrive, tstim=None, toffset=None, PRF=None,
     for item in ax.get_xticklabels() + ax.get_yticklabels():
         item.set_fontsize(fs)
 
-    nbls = NeuronalBilayerSonophore(a, neuron, Fdrive)
+    nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
     Athrs_QSS = np.array(getQSSThresholdAmps(nbls, Fdrive, DCs, mpi=mpi, loglevel=loglevel))
     ax.plot(DCs * 1e2, Athrs_QSS * 1e-3, '-', c='k', label='QSS curve')
     if comp:
@@ -492,7 +492,7 @@ def plotQSSThresholdCurve(neuron, a, Fdrive, tstim=None, toffset=None, PRF=None,
     fig.tight_layout()
 
     fig.canvas.set_window_title('{}_QSS_threhold_curve_{:.0f}-{:.0f}%DC_{}A{}'.format(
-        neuron.name,
+        pneuron.name,
         DCs.min() * 1e2,
         DCs.max() * 1e2,
         Ascale,

@@ -4,7 +4,7 @@
 # @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-31 12:31:21
+# @Last Modified time: 2019-06-12 12:27:41
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -66,21 +66,21 @@ def test_resting_potential():
     for Neuron in getNeuronsDict().values():
 
         # Simulate each neuron in free conditions
-        neuron = Neuron()
+        pneuron = Neuron()
 
-        logger.info('%s neuron simulation in free conditions', neuron.name)
+        logger.info('%s neuron simulation in free conditions', pneuron.name)
 
-        data, _ = neuron.simulate(Astim=0.0, tstim=20.0, toffset=0.0)
+        data, _ = pneuron.simulate(Astim=0.0, tstim=20.0, toffset=0.0)
         Vm_free = data['Vm'].values
 
         # Check membrane potential convergence
         Vm_free_last, Vm_free_beforelast = (Vm_free[-1], Vm_free[-2])
         Vm_free_conv = Vm_free_last - Vm_free_beforelast
-        assert np.abs(Vm_free_conv) < 1e-5, conv_err_msg.format(neuron.name, Vm_free_conv)
+        assert np.abs(Vm_free_conv) < 1e-5, conv_err_msg.format(pneuron.name, Vm_free_conv)
 
         # Check membrane potential convergence to resting potential
-        Vm_free_diff = Vm_free_last - neuron.Vm0
-        assert np.abs(Vm_free_diff) < 0.1, value_err_msg.format(neuron.name, Vm_free_diff)
+        Vm_free_diff = Vm_free_last - pneuron.Vm0
+        assert np.abs(Vm_free_diff) < 0.1, value_err_msg.format(pneuron.name, Vm_free_diff)
 
     logger.info('Passed test: neurons resting potential')
 
@@ -107,13 +107,13 @@ def test_ESTIM():
     for Neuron in getNeuronsDict().values():
 
         # Perform titration for each neuron
-        neuron = Neuron()
-        logger.info('%s neuron titration', neuron.name)
-        Athr = neuron.titrate(tstim, toffset)
+        pneuron = Neuron()
+        logger.info('%s neuron titration', pneuron.name)
+        Athr = pneuron.titrate(tstim, toffset)
 
         # Check threshold amplitude
-        Athr_diff = Athr - Athr_refs[neuron.name]
-        assert np.abs(Athr_diff) < 0.1, Athr_err_msg.format(neuron.name, Athr_diff)
+        Athr_diff = Athr - Athr_refs[pneuron.name]
+        assert np.abs(Athr_diff) < 0.1, Athr_err_msg.format(pneuron.name, Athr_diff)
 
     logger.info('Passed test: E-STIM titration')
 
@@ -145,16 +145,16 @@ def test_ASTIM():
     for Neuron in getNeuronsDict().values():
 
         # Initialize sonic neuron
-        neuron = Neuron()
-        nbls = NeuronalBilayerSonophore(a, neuron)
-        logger.info('%s neuron titration', neuron.name)
+        pneuron = Neuron()
+        nbls = NeuronalBilayerSonophore(a, pneuron)
+        logger.info('%s neuron titration', pneuron.name)
 
         # Perform titration
         Athr = nbls.titrate(Fdrive, tstim, toffset, method='sonic')
 
         # Check threshold amplitude
-        Athr_diff = (Athr - Athr_refs[neuron.name]) * 1e-3
-        assert np.abs(Athr_diff) < 0.1, Athr_err_msg.format(neuron.name, Athr_diff)
+        Athr_diff = (Athr - Athr_refs[pneuron.name]) * 1e-3
+        assert np.abs(Athr_diff) < 0.1, Athr_err_msg.format(pneuron.name, Athr_diff)
 
     logger.info('Passed test: A-STIM titration')
 

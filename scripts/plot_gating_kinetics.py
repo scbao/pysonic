@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 15:07:26
+# @Last Modified time: 2019-06-12 12:21:52
 
 ''' Plot the voltage-dependent steady-states and time constants of activation and inactivation
     gates of the different ionic currents involved in the neuron's membrane dynamics. '''
@@ -24,12 +24,12 @@ defaults = dict(
 )
 
 
-def plotGatingKinetics(neuron, fs=15):
+def plotGatingKinetics(pneuron, fs=15):
     ''' Plot the voltage-dependent steady-states and time constants of activation and
         inactivation gates of the different ionic currents involved in a specific
         neuron's membrane.
 
-        :param neuron: specific channel mechanism object
+        :param pneuron: point-neuron object
         :param fs: labels and title font size
     '''
 
@@ -39,8 +39,8 @@ def plotGatingKinetics(neuron, fs=15):
     xinf_dict = {}
     taux_dict = {}
 
-    logger.info('Computing %s neuron gating kinetics', neuron.name)
-    names = neuron.states
+    logger.info('Computing %s neuron gating kinetics', pneuron.name)
+    names = pneuron.states
     for xname in names:
         Vm_state = True
 
@@ -52,9 +52,9 @@ def plotGatingKinetics(neuron, fs=15):
         # derx_func_str = 'der' + xname.upper()
 
         # 1st choice: use xinf and taux function
-        if hasattr(neuron, xinf_func_str) and hasattr(neuron, taux_func_str):
-            xinf_func = getattr(neuron, xinf_func_str)
-            taux_func = getattr(neuron, taux_func_str)
+        if hasattr(pneuron, xinf_func_str) and hasattr(pneuron, taux_func_str):
+            xinf_func = getattr(pneuron, xinf_func_str)
+            taux_func = getattr(pneuron, taux_func_str)
             xinf = np.array([xinf_func(v) for v in Vm])
             if isinstance(taux_func, float):
                 taux = taux_func * np.ones(len(Vm))
@@ -62,9 +62,9 @@ def plotGatingKinetics(neuron, fs=15):
                 taux = np.array([taux_func(v) for v in Vm])
 
         # 2nd choice: use alphax and betax functions
-        elif hasattr(neuron, alphax_func_str) and hasattr(neuron, betax_func_str):
-            alphax_func = getattr(neuron, alphax_func_str)
-            betax_func = getattr(neuron, betax_func_str)
+        elif hasattr(pneuron, alphax_func_str) and hasattr(pneuron, betax_func_str):
+            alphax_func = getattr(pneuron, alphax_func_str)
+            betax_func = getattr(pneuron, betax_func_str)
             alphax = np.array([alphax_func(v) for v in Vm])
             if isinstance(betax_func, float):
                 betax = betax_func * np.ones(len(Vm))
@@ -74,9 +74,9 @@ def plotGatingKinetics(neuron, fs=15):
             xinf = taux * alphax
 
         # # 3rd choice: use derX choice
-        # elif hasattr(neuron, derx_func_str):
-        #     derx_func = getattr(neuron, derx_func_str)
-        #     xinf = brentq(lambda x: derx_func(neuron.Vm, x), 0, 1)
+        # elif hasattr(pneuron, derx_func_str):
+        #     derx_func = getattr(pneuron, derx_func_str)
+        #     xinf = brentq(lambda x: derx_func(pneuron.Vm, x), 0, 1)
         else:
             Vm_state = False
         if not Vm_state:
@@ -86,7 +86,7 @@ def plotGatingKinetics(neuron, fs=15):
             taux_dict[xname] = taux
 
     fig, axes = plt.subplots(2)
-    fig.suptitle('{} neuron: gating dynamics'.format(neuron.name))
+    fig.suptitle('{} neuron: gating dynamics'.format(pneuron.name))
 
     ax = axes[0]
     ax.get_xaxis().set_ticklabels([])
@@ -120,13 +120,13 @@ def main():
 
     # Check neuron name validity
     try:
-        neuron = getPointNeuron(neuron_str)
+        pneuron = getPointNeuron(neuron_str)
     except ValueError as err:
         logger.error(err)
         return
 
     # Plot gating kinetics variables
-    plotGatingKinetics(neuron)
+    plotGatingKinetics(pneuron)
     plt.show()
 
 

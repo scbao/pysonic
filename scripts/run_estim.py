@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-07 14:57:30
+# @Last Modified time: 2019-06-12 12:24:26
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -23,8 +23,8 @@ def main():
     # Run E-STIM batch
     logger.info("Starting E-STIM simulation batch")
     pkl_filepaths = []
-    for neuron in args['neuron']:
-        queue = neuron.simQueue(
+    for pneuron in args['neuron']:
+        queue = pneuron.simQueue(
             args['amp'],
             args['tstim'],
             args['toffset'],
@@ -33,7 +33,7 @@ def main():
         )
         for item in queue:
             item.insert(0, args['outputdir'])
-        batch = Batch(neuron.runAndSave, queue)
+        batch = Batch(pneuron.runAndSave, queue)
         pkl_filepaths += batch(mpi=args['mpi'], loglevel=args['loglevel'])
 
     # Plot resulting profiles
