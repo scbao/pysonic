@@ -4,7 +4,7 @@
 # @Date:   2017-06-02 17:50:10
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:25:32
+# @Last Modified time: 2019-06-12 13:05:17
 
 ''' Create lookup table for specific neuron. '''
 
@@ -36,7 +36,7 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
         (spatially-averaged) sonophore membrane coverage fractions, compute effective
         coefficients and store them in a dictionary of n-dimensional arrays.
 
-        :param pneuron: point-neuron object
+        :param pneuron: point-neuron model
         :param aref: array of sonophore radii (m)
         :param fref: array of acoustic drive frequencies (Hz)
         :param Aref: array of acoustic drive amplitudes (Pa)

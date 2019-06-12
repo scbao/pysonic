@@ -4,7 +4,7 @@
 # @Date:   2016-10-11 20:35:38
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:21:52
+# @Last Modified time: 2019-06-12 13:05:19
 
 ''' Plot the voltage-dependent steady-states and time constants of activation and inactivation
     gates of the different ionic currents involved in the neuron's membrane dynamics. '''
@@ -29,7 +29,7 @@ def plotGatingKinetics(pneuron, fs=15):
         inactivation gates of the different ionic currents involved in a specific
         neuron's membrane.
 
-        :param pneuron: point-neuron object
+        :param pneuron: point-neuron model
         :param fs: labels and title font size
     '''
 

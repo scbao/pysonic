@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:17:07
+# @Last Modified time: 2019-06-12 13:05:06
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -30,7 +30,7 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None,
         and another reference variable (z-variable). For each effective variable, one charge-profile
         per z-value is plotted, with a color code based on the z-variable value.
 
-        :param pneuron: point-neuron object
+        :param pneuron: point-neuron model
         :param a: sonophore radius (m)
         :param Fdrive: acoustic drive frequency (Hz)
         :param Adrive: acoustic pressure amplitude (Pa)

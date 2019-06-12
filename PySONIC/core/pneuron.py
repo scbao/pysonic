@@ -4,7 +4,7 @@
 # @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-11 15:24:31
+# @Last Modified time: 2019-06-12 14:55:44
 
 import abc
 import inspect
@@ -211,7 +211,7 @@ class PointNeuron(Model):
             'unit': 'A/m^2',
             'factor': 1e-3,
             'func': 'iNet({0}Vm{1}, {2}{3}{4}.values.T)'.format(
-                wrapleft, wrapright, wrapleft[:-1], self.states, wrapright[1:]),
+                wrapleft, wrapright, wrapleft[:-1], list(self.states), wrapright[1:]),
             'ls': '--',
             'color': 'black'
         }
@@ -222,7 +222,7 @@ class PointNeuron(Model):
             'unit': 'A/m^2',
             'factor': 1e-3,
             'func': 'dQdt({0}Vm{1}, {2}{3}{4}.values.T)'.format(
-                wrapleft, wrapright, wrapleft[:-1], self.states, wrapright[1:]),
+                wrapleft, wrapright, wrapleft[:-1], list(self.states), wrapright[1:]),
             'ls': '--',
             'color': 'black'
         }

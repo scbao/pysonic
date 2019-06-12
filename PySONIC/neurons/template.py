@@ -4,36 +4,34 @@ from ..core import PointNeuron
 
 
 class TemplateNeuron(PointNeuron):
+    ''' Template neuron class '''
 
-    # ------------------------------ Neuron name ------------------------------
+    # Neuron name
     name = 'template'
 
     # ------------------------------ Biophysical parameters ------------------------------
 
     # Resting parameters
-    Cm0 = 1e-2  # resting membrane capacitance (F/m2)
-    Vm0 = -71.9  # resting membrane potential (mV)
+    Cm0 = 1e-2   # Membrane capacitance (F/m2)
+    Vm0 = -71.9  # Membrane potential (mV)
 
-    # Ions reversal potentials (mV)
+    # Reversal potentials (mV)
     ENa = 50.0     # Sodium
     EK = -90.0     # Potassium
     ELeak = -70.3  # Non-specific leakage
 
-    # Ion channels maximal conductances (S/m2)
+    # Maximal channel conductances (S/m2)
     gNabar = 560.0  # Sodium
     gKdbar = 60.0   # Delayed-rectifier Potassium
     gLeak = 0.205   # Non-specific leakage
 
-    # Names of ion channel gating states
-    states = ['m', 'h', 'n']
+    # Names of ion channels gating states (ordered)
+    states = ('m', 'h', 'n')
 
     # Extra-parameters
     VT = -56.2  # Spike threshold adjustment parameter (mV)
 
-    def __init__(self):
-        super().__init__()
-
-    # ------------------------------ Rate constants ------------------------------
+    # ------------------------------ Gating states kinetics ------------------------------
 
     def alpham(self, Vm):
         ''' Voltage-dependent activation rate of m-gate
@@ -95,7 +93,7 @@ class TemplateNeuron(PointNeuron):
         beta = (0.5 * np.exp(-(Vdiff - 10) / 40))  # ms-1
         return beta * 1e3  # s-1
 
-    # ------------------------------ Gating states derivatives ------------------------------
+    # ------------------------------ States derivatives ------------------------------
 
     def derM(self, Vm, m):
         ''' Evolution of m-gate open-probability
@@ -123,6 +121,32 @@ class TemplateNeuron(PointNeuron):
             :return: time derivative of n-gate open-probability (s-1)
         '''
         return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
+
+    def derStates(self, Vm, states):
+        m, h, n = states
+        return {
+            'm': self.derM(Vm, m),
+            'h': self.derH(Vm, h),
+            'n': self.derN(Vm, n)
+        }
+
+    def derEffStates(self, Qm, states, lkp):
+        rates = self.interpEffRates(Qm, lkp)
+        m, h, n = states
+        return {
+            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
+            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
+            'n': rates['alphan'] * (1 - n) - rates['betan'] * n
+        }
+
+    # ------------------------------ Steady states ------------------------------
+
+    def steadyStates(self, Vm):
+        return {
+            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
+        }
 
     # ------------------------------ Membrane currents ------------------------------
 
@@ -153,8 +177,6 @@ class TemplateNeuron(PointNeuron):
         '''
         return self.gLeak * (Vm - self.ELeak)
 
-    # ------------------------------ Other required methos ------------------------------
-
     def currents(self, Vm, states):
         m, h, n = states
         return {
@@ -163,20 +185,7 @@ class TemplateNeuron(PointNeuron):
             'iLeak': self.iLeak(Vm)
         }  # mA/m2
 
-    def steadyStates(self, Vm):
-        return {
-            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
-        }
-
-    def derStates(self, Vm, states):
-        m, h, n = states
-        return {
-            'm': self.derM(Vm, m),
-            'h': self.derH(Vm, h),
-            'n': self.derN(Vm, n)
-        }
+    # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
         return {
@@ -188,11 +197,4 @@ class TemplateNeuron(PointNeuron):
             'betan': np.mean(self.betan(Vm))
         }
 
-    def derEffStates(self, Qm, states, lkp):
-        rates = self.interpEffRates(Qm, lkp)
-        m, h, n = states
-        return {
-            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
-            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
-            'n': rates['alphan'] * (1 - n) - rates['betan'] * n
-        }
+

@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 12:32:41
+# @Last Modified time: 2019-06-12 15:52:23
 
 import numpy as np
 from ..core import PointNeuron
@@ -20,17 +20,17 @@ class Thalamic(PointNeuron):
         Neuromodulation. eNeuro 3.*
     '''
 
-    # Generic biophysical parameters of thalamic cells
-    Cm0 = 1e-2  # Cell membrane resting capacitance (F/m2)
-    Vm0 = 0.0  # Dummy value for membrane potential (mV)
-    ENa = 50.0  # Sodium Nernst potential (mV)
-    EK = -90.0  # Potassium Nernst potential (mV)
-    ECa = 120.0  # Calcium Nernst potential (mV)
+    # ------------------------------ Biophysical parameters ------------------------------
 
-    def __init__(self):
-        super().__init__()
-        self.states = ['m', 'h', 'n', 's', 'u']
-        self.rates = self.getRatesNames(self.states)
+    # Resting parameters
+    Cm0 = 1e-2  # Membrane capacitance (F/m2)
+
+    # Reversal potentials (mV)
+    ENa = 50.0   # Sodium
+    EK = -90.0   # Potassium
+    ECa = 120.0  # Calcium
+
+    # ------------------------------ Gating states kinetics ------------------------------
 
     def alpham(self, Vm):
         ''' Voltage-dependent activation rate of m-gate
@@ -92,6 +92,8 @@ class Thalamic(PointNeuron):
         beta = (0.5 * np.exp(-(Vdiff - 10) / 40))  # ms-1
         return beta * 1e3  # s-1
 
+    # ------------------------------ States derivatives ------------------------------
+
     def derM(self, Vm, m):
         ''' Evolution of m-gate open-probability
 
@@ -137,6 +139,41 @@ class Thalamic(PointNeuron):
         '''
         return (self.uinf(Vm) - u) / self.tauu(Vm)
 
+    def derStates(self, Vm, states):
+        m, h, n, s, u = states
+        return {
+            'm': self.derM(Vm, m),
+            'h': self.derH(Vm, h),
+            'n': self.derN(Vm, n),
+            's': self.derS(Vm, s),
+            'u': self.derU(Vm, u)
+        }
+
+    def derEffStates(self, Qm, states, lkp):
+        rates = self.interpEffRates(Qm, lkp)
+        m, h, n, s, u = states
+        return {
+            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
+            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
+            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
+            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
+            'u': rates['alphau'] * (1 - u) - rates['betau'] * u
+        }
+
+    # ------------------------------ Steady states ------------------------------
+
+    def steadyStates(self, Vm):
+        # Voltage-gated steady-states
+        return {
+            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
+            's': self.sinf(Vm),
+            'u': self.uinf(Vm)
+        }
+
+    # ------------------------------ Membrane currents ------------------------------
+
     def iNa(self, m, h, Vm):
         ''' Sodium current
 
@@ -175,7 +212,6 @@ class Thalamic(PointNeuron):
         return self.gLeak * (Vm - self.ELeak)
 
     def currents(self, Vm, states):
-        ''' Overriding of abstract parent method. '''
         m, h, n, s, u = states
         return {
             'iNa': self.iNa(m, h, Vm),
@@ -184,34 +220,9 @@ class Thalamic(PointNeuron):
             'iLeak': self.iLeak(Vm)
         }  # mA/m2
 
-    def steadyStates(self, Vm):
-        ''' Overriding of abstract parent method. '''
-
-        # Voltage-gated steady-states
-        return {
-            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
-            's': self.sinf(Vm),
-            'u': self.uinf(Vm)
-        }
-
-
-    def derStates(self, Vm, states):
-        ''' Overriding of abstract parent method. '''
-        m, h, n, s, u = states
-        return {
-            'm': self.derM(Vm, m),
-            'h': self.derH(Vm, h),
-            'n': self.derN(Vm, n),
-            's': self.derS(Vm, s),
-            'u': self.derU(Vm, u)
-        }
-
+    # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        ''' Overriding of abstract parent method. '''
-
         # Compute average cycle value for rate constants
         return {
             'alpham': np.mean(self.alpham(Vm)),
@@ -225,25 +236,6 @@ class Thalamic(PointNeuron):
             'alphau': np.mean(self.uinf(Vm) / self.tauu(Vm)),
             'betau': np.mean((1 - self.uinf(Vm)) / self.tauu(Vm))
         }
-
-
-    def derEffStates(self, Qm, states, lkp):
-        ''' Overriding of abstract parent method. '''
-
-        rates = self.interpEffRates(Qm, lkp)
-        m, h, n, s, u = states
-        return {
-            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
-            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
-            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
-            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
-            'u': rates['alphau'] * (1 - u) - rates['betau'] * u
-        }
-
-
-    def quasiSteadyStates(self, lkp):
-        ''' Overriding of abstract parent method. '''
-        return self.qsStates(lkp, ['m', 'h', 'n', 's', 'u'])
 
 
 class ThalamicRE(Thalamic):
@@ -260,20 +252,30 @@ class ThalamicRE(Thalamic):
 
     '''
 
-    # Name of channel mechanism
+    # Neuron name
     name = 'RE'
 
-    # Cell-specific biophysical parameters
-    Vm0 = -89.5  # Cell membrane resting potential (mV)
-    gNabar = 2000.0  # Max. conductance of Sodium current (S/m^2)
-    gKdbar = 200.0  # Max. conductance of Potassium current (S/m^2)
-    gCaTbar = 30.0  # Max. conductance of low-threshold Calcium current (S/m^2)
-    gLeak = 0.5  # Conductance of non-specific leakage current (S/m^2)
-    ELeak = -90.0  # Non-specific leakage Nernst potential (mV)
+    # ------------------------------ Biophysical parameters ------------------------------
+
+    # Resting parameters
+    Vm0 = -89.5  # Membrane potential (mV)
+
+    # Reversal potentials (mV)
+    ELeak = -90.0  # Non-specific leakage
+
+    # Maximal channel conductances (S/m2)
+    gNabar = 2000.0  # Sodium
+    gKdbar = 200.0   # Delayed-rectifier Potassium
+    gCaTbar = 30.0   # Low-threshold Calcium
+    gLeak = 0.5      # Non-specific leakage
+
+    # Names of ion channels gating states (ordered)
+    states = ('m', 'h', 'n', 's', 'u')
+
+    # Extra-parameters
     VT = -67.0  # Spike threshold adjustment parameter (mV)
 
-    def __init__(self):
-        super().__init__()
+    # ------------------------------ Gating states kinetics ------------------------------
 
     def sinf(self, Vm):
         ''' Voltage-dependent steady-state opening of s-gate
@@ -322,37 +324,47 @@ class ThalamoCortical(Thalamic):
         properties of thalamocortical relay neurons. J. Neurophysiol. 68, 1384–1400.*
     '''
 
-    # Name of channel mechanism
+    # Neuron name
     name = 'TC'
 
-    # Cell-specific biophysical parameters
-    # Vm0 = -63.4  # Cell membrane resting potential (mV)
-    Vm0 = -61.93  # Cell membrane resting potential (mV)
-    gNabar = 900.0  # bar. conductance of Sodium current (S/m^2)
-    gKdbar = 100.0  # bar. conductance of Potassium current (S/m^2)
-    gCaTbar = 20.0  # Max. conductance of low-threshold Calcium current (S/m^2)
-    gKLeak = 0.138  # Conductance of leakage Potassium current (S/m^2)
-    gHbar = 0.175  # Max. conductance of mixed cationic current (S/m^2)
-    gLeak = 0.1  # Conductance of non-specific leakage current (S/m^2)
-    EH = -40.0  # Mixed cationic current reversal potential (mV)
-    ELeak = -70.0  # Non-specific leakage Nernst potential (mV)
-    VT = -52.0  # Spike threshold adjustment parameter (mV)
-    Vx = 0.0  # Voltage-dependence uniform shift factor at 36°C (mV)
+    # ------------------------------ Biophysical parameters ------------------------------
 
+    # Resting parameters
+    # Vm0 = -63.4  # Membrane potential (mV)
+    Vm0 = -61.93  # Membrane potential (mV)
+
+    # Reversal potentials (mV)
+    EH = -40.0     # Mixed cationic current
+    ELeak = -70.0  # Non-specific leakage
+
+    # Maximal channel conductances (S/m2)
+    gNabar = 900.0  # Sodium
+    gKdbar = 100.0  # Delayed-rectifier Potassium
+    gCaTbar = 20.0  # Low-threshold Calcium
+    gKLeak = 0.138  # Leakage Potassium
+    gHbar = 0.175   # Mixed cationic current
+    gLeak = 0.1     # Non-specific leakage
+
+    # Names of ion channels gating states (ordered)
+    states = ('m', 'h', 'n', 's', 'u', 'O', 'C', 'P0', 'Cai')
+
+    # Extra-parameters
+    VT = -52.0       # Spike threshold adjustment parameter (mV)
+    Vx = 0.0         # Voltage-dependence uniform shift factor at 36°C (mV)
     taur_Cai = 5e-3  # decay time constant for intracellular Ca2+ dissolution (s)
     Cai_min = 50e-9  # minimal intracellular Calcium concentration (M)
-    deff = 100e-9  # effective depth beneath membrane for intracellular [Ca2+] calculation
-    nCa = 4  # number of Calcium binding sites on regulating factor
-    k1 = 2.5e22  # intracellular Ca2+ regulation factor (M-4 s-1)
-    k2 = 0.4  # intracellular Ca2+ regulation factor (s-1)
-    k3 = 100.0  # intracellular Ca2+ regulation factor (s-1)
-    k4 = 1.0  # intracellular Ca2+ regulation factor (s-1)
+    deff = 100e-9    # effective depth beneath membrane for intracellular [Ca2+] calculation
+    nCa = 4          # number of Calcium binding sites on regulating factor
+    k1 = 2.5e22      # intracellular Ca2+ regulation factor (M-4 s-1)
+    k2 = 0.4         # intracellular Ca2+ regulation factor (s-1)
+    k3 = 100.0       # intracellular Ca2+ regulation factor (s-1)
+    k4 = 1.0         # intracellular Ca2+ regulation factor (s-1)
 
     def __init__(self):
         super().__init__()
+        self.rates = self.getRatesNames(['m', 'h', 'n', 's', 'u', 'O'])
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
-        self.states += ['O', 'C', 'P0', 'Cai']
-        self.rates += self.getRatesNames(['O'])
+        # self.states += ['O', 'C', 'P0', 'Cai']
 
     def getPltScheme(self):
         pltscheme = super().getPltScheme()
@@ -382,6 +394,8 @@ class ThalamoCortical(Thalamic):
             }
         })
         return pltvars
+
+    # ------------------------------ Gating states kinetics ------------------------------
 
     def sinf(self, Vm):
         ''' Voltage-dependent steady-state opening of s-gate
@@ -419,24 +433,6 @@ class ThalamoCortical(Thalamic):
         else:
             return 1 / 3.7 * (np.exp(-(Vm + self.Vx + 22) / 10.5) + 28.0) * 1e-3  # s
 
-    def derS(self, Vm, s):
-        ''' Evolution of s-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param s: open-probability of s-gate (-)
-            :return: time derivative of s-gate open-probability (s-1)
-        '''
-        return (self.sinf(Vm) - s) / self.taus(Vm)
-
-    def derU(self, Vm, u):
-        ''' Evolution of u-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param u: open-probability of u-gate (-)
-            :return: time derivative of u-gate open-probability (s-1)
-        '''
-        return (self.uinf(Vm) - u) / self.tauu(Vm)
-
     def oinf(self, Vm):
         ''' Voltage-dependent steady-state opening of O-gate
 
@@ -468,6 +464,26 @@ class ThalamoCortical(Thalamic):
             :return: rate (s-1)
         '''
         return (1 - self.oinf(Vm)) / self.tauo(Vm)
+
+    # ------------------------------ States derivatives ------------------------------
+
+    def derS(self, Vm, s):
+        ''' Evolution of s-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param s: open-probability of s-gate (-)
+            :return: time derivative of s-gate open-probability (s-1)
+        '''
+        return (self.sinf(Vm) - s) / self.taus(Vm)
+
+    def derU(self, Vm, u):
+        ''' Evolution of u-gate open-probability
+
+            :param Vm: membrane potential (mV)
+            :param u: open-probability of u-gate (-)
+            :return: time derivative of u-gate open-probability (s-1)
+        '''
+        return (self.uinf(Vm) - u) / self.tauu(Vm)
 
     def derC(self, C, O, Vm):
         ''' Evolution of O-gate closed-probability
@@ -524,31 +540,41 @@ class ThalamoCortical(Thalamic):
         '''
         return (self.Cai_min - Cai) / self.taur_Cai - self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)
 
-    def iKLeak(self, Vm):
-        ''' Potassium leakage current
+    def derStates(self, Vm, states):
+        m, h, n, s, u, O, C, P0, Cai = states
 
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gKLeak * (Vm - self.EK)
+        NaKCa_states = [m, h, n, s, u]
+        dstates = super().derStates(Vm, NaKCa_states)
+        dstates.update({
+            'O': self.derO(C, O, P0, Vm),
+            'C': self.derC(C, O, Vm),
+            'P0': self.derP0(P0, Cai),
+            'Cai': self.derCai(Cai, s, u, Vm)
 
-    def iH(self, O, C, Vm):
-        ''' outward mixed cationic current
+        })
 
-            :param C: closed-probability of O-gate (-)
-            :param O: open-probability of O-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gHbar * (O + 2 * self.OL(O, C)) * (Vm - self.EH)
+        return dstates
 
-    def currents(self, Vm, states):
-        ''' Overriding of abstract parent method. '''
-        m, h, n, s, u, O, C, _, _ = states
-        currents = super().currents(Vm, [m, h, n, s, u])
-        currents['iKLeak'] = self.iKLeak(Vm)  # mA/m2
-        currents['iH'] = self.iH(O, C, Vm)  # mA/m2
-        return currents
+    def derEffStates(self, Qm, states, lkp):
+        # Unpack states
+        m, h, n, s, u, O, C, P0, Cai = states
+
+        # Call parent method to compute channels states derivatives
+        dstates = super().derEffStates(Qm, [m, h, n, s, u], lkp)
+
+        iHrates = self.interpEffRates(Qm, lkp, keys=self.getRatesNames(['o']))
+        Vmeff = self.interpVmeff(Qm, lkp)
+
+        # Ih effective states derivatives
+        dstates['C'] = iHrates['betao'] * O - iHrates['alphao'] * C
+        dstates['O'] = - dstates['C'] - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
+        dstates['P0'] = self.derP0(P0, Cai)
+        dstates['Cai'] = self.derCai(Cai, s, u, Vmeff)
+
+        # Merge derivatives and return
+        return dstates
+
+    # ------------------------------ Steady states ------------------------------
 
     def Caiinf(self, Vm, s, u):
         ''' Find the steady-state intracellular Calcium concentration for a
@@ -593,8 +619,6 @@ class ThalamoCortical(Thalamic):
         return BA * self.Oinf(Cai, Vm)
 
     def steadyStates(self, Vm):
-        ''' Overriding of abstract parent method. '''
-
         # Voltage-gated steady-states
         sstates = super().steadyStates(Vm)
 
@@ -606,25 +630,45 @@ class ThalamoCortical(Thalamic):
 
         return sstates
 
+    def quasiSteadyStates(self, lkp):
+        qsstates = super().quasiSteadyStates(lkp)
+        qsstates['Cai'] = self.Caiinf(lkp['V'], qsstates['s'], qsstates['u'])
+        qsstates['P0'] = self.P0inf(qsstates['Cai'])
+        qsstates['O'] = self.Oinf(qsstates['Cai'], lkp['V'])
+        qsstates['C'] = self.Cinf(qsstates['Cai'], lkp['V'])
 
-    def derStates(self, Vm, states):
-        ''' Overriding of abstract parent method. '''
+        return qsstates
 
-        m, h, n, s, u, O, C, P0, Cai = states
+    # ------------------------------ Membrane currents ------------------------------
 
-        NaKCa_states = [m, h, n, s, u]
-        dstates = super().derStates(Vm, NaKCa_states)
+    def iKLeak(self, Vm):
+        ''' Potassium leakage current
 
-        dstates['O'] = self.derO(C, O, P0, Vm)
-        dstates['C'] = self.derC(C, O, Vm)
-        dstates['P0'] = self.derP0(P0, Cai)
-        dstates['Cai'] = self.derCai(Cai, s, u, Vm)
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
+        return self.gKLeak * (Vm - self.EK)
 
-        return dstates
+    def iH(self, O, C, Vm):
+        ''' outward mixed cationic current
+
+            :param C: closed-probability of O-gate (-)
+            :param O: open-probability of O-gate (-)
+            :param Vm: membrane potential (mV)
+            :return: current per unit area (mA/m2)
+        '''
+        return self.gHbar * (O + 2 * self.OL(O, C)) * (Vm - self.EH)
+
+    def currents(self, Vm, states):
+        m, h, n, s, u, O, C, _, _ = states
+        currents = super().currents(Vm, [m, h, n, s, u])
+        currents['iKLeak'] = self.iKLeak(Vm)  # mA/m2
+        currents['iH'] = self.iH(O, C, Vm)  # mA/m2
+        return currents
+
+    # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        ''' Overriding of abstract parent method. '''
-
         # Compute effective coefficients for Sodium, Potassium and Calcium conductances
         effrates = super().computeEffRates(Vm)
 
@@ -635,34 +679,5 @@ class ThalamoCortical(Thalamic):
         return effrates
 
 
-    def derEffStates(self, Qm, states, lkp):
-        ''' Overriding of abstract parent method. '''
-
-        # Unpack states
-        m, h, n, s, u, O, C, P0, Cai = states
-
-        # Call parent method to compute channels states derivatives
-        dstates = super().derEffStates(Qm, [m, h, n, s, u], lkp)
-
-        iHrates = self.interpEffRates(Qm, lkp, keys=self.getRatesNames(['o']))
-        Vmeff = self.interpVmeff(Qm, lkp)
-
-        # Ih effective states derivatives
-        dstates['C'] = iHrates['betao'] * O - iHrates['alphao'] * C
-        dstates['O'] = - dstates['C'] - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
-        dstates['P0'] = self.derP0(P0, Cai)
-        dstates['Cai'] = self.derCai(Cai, s, u, Vmeff)
-
-        # Merge derivatives and return
-        return dstates
 
 
-    def quasiSteadyStates(self, lkp):
-        ''' Overriding of abstract parent method. '''
-        qsstates = super().quasiSteadyStates(lkp)
-        qsstates['Cai'] = self.Caiinf(lkp['V'], qsstates['s'], qsstates['u'])
-        qsstates['P0'] = self.P0inf(qsstates['Cai'])
-        qsstates['O'] = self.Oinf(qsstates['Cai'], lkp['V'])
-        qsstates['C'] = self.Cinf(qsstates['Cai'], lkp['V'])
-
-        return qsstates

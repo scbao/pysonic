@@ -7,8 +7,8 @@ from scipy.interpolate import interp1d
 from ..utils import isWithin, logger, si_format
 
 
-def getNeuronLookupsFile(mechname, a=None, Fdrive=None, Adrive=None, fs=False):
-    fpath = os.path.join(os.path.split(__file__)[0], '{}_lookups'.format(mechname))
+def getNeuronLookupsFile(name, a=None, Fdrive=None, Adrive=None, fs=False):
+    fpath = os.path.join(os.path.split(__file__)[0], '{}_lookups'.format(name))
     if a is not None:
         fpath += '_{:.0f}nm'.format(a * 1e9)
     if Fdrive is not None:
@@ -20,22 +20,22 @@ def getNeuronLookupsFile(mechname, a=None, Fdrive=None, Adrive=None, fs=False):
     return '{}.pkl'.format(fpath)
 
 
-def getLookups4D(mechname):
-    ''' Retrieve 4D lookup tables and reference vectors for a given membrane mechanism.
+def getLookups4D(name):
+    ''' Retrieve 4D lookup tables and reference vectors for a given point-neuron model
 
-        :param mechname: name of membrane density mechanism
+        :param name: name of point-neuron model
         :return: 4-tuple with 1D numpy arrays of reference input vectors (charge density and
             one other variable), a dictionary of associated 2D lookup numpy arrays, and
             a dictionary with information about the other variable.
     '''
 
     # Check lookup file existence
-    lookup_path = getNeuronLookupsFile(mechname)
+    lookup_path = getNeuronLookupsFile(name)
     if not os.path.isfile(lookup_path):
         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 
     # Load lookups dictionary
-    # logger.debug('Loading %s lookup table', mechname)
+    # logger.debug('Loading %s lookup table', name)
     with open(lookup_path, 'rb') as fh:
         df = pickle.load(fh)
         inputs = df['input']
@@ -50,17 +50,17 @@ def getLookups4D(mechname):
     return aref, Fref, Aref, Qref, lookups4D
 
 
-def getLookupsOff(mechname):
+def getLookupsOff(name):
     ''' Retrieve appropriate US-OFF lookup tables and reference vectors
-        for a given membrane mechanism.
+        for a given point-neuron model
 
-        :param mechname: name of membrane density mechanism
+        :param name: name of point-neuron model
         :return: 2-tuple with 1D numpy array of reference charge density
             and dictionary of associated 1D lookup numpy arrays.
     '''
 
     # Get 4D lookups and input vectors
-    aref, Fref, Aref, Qref, lookups4D = getLookups4D(mechname)
+    aref, Fref, Aref, Qref, lookups4D = getLookups4D(name)
 
     # Perform 2D projection in appropriate dimensions
     logger.debug('Interpolating lookups at A = 0')
@@ -69,12 +69,12 @@ def getLookupsOff(mechname):
     return Qref, lookups_off
 
 
-def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
+def getLookups2D(name, a=None, Fdrive=None, Adrive=None):
     ''' Retrieve appropriate 2D lookup tables and reference vectors
-        for a given membrane mechanism, projected at a specific combination
+        for a given point-neuron model, projected at a specific combination
         of sonophore radius, US frequency and/or acoustic pressure amplitude.
 
-        :param mechname: name of membrane density mechanism
+        :param name: name of point-neuron model
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param Adrive: Acoustic peak pressure amplitude (Hz)
@@ -84,7 +84,7 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
     '''
 
     # Get 4D lookups and input vectors
-    aref, Fref, Aref, Qref, lookups4D = getLookups4D(mechname)
+    aref, Fref, Aref, Qref, lookups4D = getLookups4D(name)
 
     # Check that inputs are within lookup range
     if a is not None:
@@ -137,15 +137,15 @@ def getLookups2D(mechname, a=None, Fdrive=None, Adrive=None):
     return var3['ref'], Qref, lookups2D, var3
 
 
-def getLookups2Dfs(mechname, a, Fdrive, fs):
+def getLookups2Dfs(name, a, Fdrive, fs):
 
     # Check lookup file existence
-    lookup_path = getNeuronLookupsFile(mechname, a=a, Fdrive=Fdrive, fs=True)
+    lookup_path = getNeuronLookupsFile(name, a=a, Fdrive=Fdrive, fs=True)
     if not os.path.isfile(lookup_path):
         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 
     # Load lookups dictionary
-    logger.debug('Loading %s lookup table with fs = %.0f%%', mechname, fs * 1e2)
+    logger.debug('Loading %s lookup table with fs = %.0f%%', name, fs * 1e2)
     with open(lookup_path, 'rb') as fh:
         df = pickle.load(fh)
         inputs = df['input']
@@ -166,11 +166,11 @@ def getLookups2Dfs(mechname, a, Fdrive, fs):
     return Aref, Qref, lookups2D
 
 
-def getLookupsDCavg(mechname, a, Fdrive, amps=None, charges=None, DCs=1.0):
+def getLookupsDCavg(name, a, Fdrive, amps=None, charges=None, DCs=1.0):
     ''' Get the DC-averaged lookups of a specific neuron for a combination of US amplitudes,
         charge densities and duty cycles, at a specific US frequency.
 
-        :param mechname: name of membrane density mechanism
+        :param name: name of point-neuron model
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param amps: US amplitudes (Pa)
@@ -181,7 +181,7 @@ def getLookupsDCavg(mechname, a, Fdrive, amps=None, charges=None, DCs=1.0):
     '''
 
     # Get lookups for specific (a, f, A) combination
-    Aref, Qref, lookups2D, _ = getLookups2D(mechname, a=a, Fdrive=Fdrive)
+    Aref, Qref, lookups2D, _ = getLookups2D(name, a=a, Fdrive=Fdrive)
     if 'ng' in lookups2D:
         lookups2D.pop('ng')
 
@@ -224,10 +224,10 @@ def getLookupsDCavg(mechname, a, Fdrive, amps=None, charges=None, DCs=1.0):
     return amps, charges, lookups_DCavg
 
 
-def getLookupsCompTime(mechname):
+def getLookupsCompTime(name):
 
     # Check lookup file existence
-    lookup_path = getNeuronLookupsFile(mechname)
+    lookup_path = getNeuronLookupsFile(name)
     if not os.path.isfile(lookup_path):
         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 

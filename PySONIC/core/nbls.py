@@ -4,7 +4,7 @@
 # @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:13:32
+# @Last Modified time: 2019-06-12 13:05:08
 
 from copy import deepcopy
 import logging
@@ -35,7 +35,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         ''' Constructor of the class.
 
             :param a: in-plane radius of the sonophore structure within the membrane (m)
-            :param pneuron: point-neuron object
+            :param pneuron: point-neuron model
             :param Fdrive: frequency of acoustic perturbation (Hz)
             :param embedding_depth: depth of the embedding tissue around the membrane (m)
         '''

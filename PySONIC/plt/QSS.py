@@ -19,7 +19,7 @@ def plotVarQSSDynamics(pneuron, a, Fdrive, Adrive, charges, varname, varrange, f
         the variable itself, as well as equilibrium values, for various membrane
         charge densities at a given acoustic amplitude.
 
-        :param pneuron: point-neuron object
+        :param pneuron: point-neuron model
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param Adrive: US amplitude (Pa)
@@ -98,7 +98,7 @@ def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):
     ''' Plot effective membrane potential, quasi-steady states and resulting membrane currents
         as a function of membrane charge density, for a given acoustic amplitude.
 
-        :param pneuron: point-neuron object
+        :param pneuron: point-neuron model
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param Adrive: US amplitude (Pa)
@@ -194,7 +194,7 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
     ''' Plot a specific QSS variable (state or current) as a function of
         membrane charge density, for various acoustic amplitudes.
 
-        :param pneuron: point-neuron object
+        :param pneuron: point-neuron model
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param amps: US amplitudes (Pa)
@@ -363,7 +363,7 @@ def plotEqChargeVsAmp(pneuron, a, Fdrive, amps=None, tstim=None, toffset=None, P
     ''' Plot the equilibrium membrane charge density as a function of acoustic amplitude,
         given an initial value of membrane charge density.
 
-        :param pneuron: point-neuron object
+        :param pneuron: point-neuron model
         :param a: sonophore radius (m)
         :param Fdrive: US frequency (Hz)
         :param amps: US amplitudes (Pa)
