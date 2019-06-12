@@ -131,30 +131,31 @@ To add a new point-neuron model, follow this procedure:
 
 1. Create a new file, and save it in the `neurons` sub-folder, with an explicit name (e.g. `my_neuron.py`)
 2. Copy-paste the content of the `template.py` file (also located in the `neurons` sub-folder) into your file
-3. In your file, change the class name from `TemplateNeuron` to something more explicit (e.g. `MyNeuron`), and change the neuron name (used to refer to the neuron from outside the class) accordingly (e.g. `myneuron`)
-4. Modify the biophysical parameters (resting parameters, reversal potentials, maximal conductances and list of gating states, all defined as class attributes) according to your neuron model
-5. Add any extra parameters you might need across your model class
-6. Modify the existing `alphax` and `betax` methods (and add new ones if needed) to define the voltage-dependent activation and inactivation rates of the different ion channnels gates of your model. Those methods take the membrane potential `Vm` as input and return a rate in `s-1`. **You also need to modify the docstring accordingly, as this information is used by the package**. Alternatively, your can use `xinf` and `taux` methods, but you will need to modify the other class methods accordingly.
-7. Modify the `derX` methods to define the derivatives of your different gating states. Those methods must return a derivative in `prob/s` (or `s-1`). **You also need to modify the docstring accordingly, as this information is used by the package**
-8. Modify the `iXX` methods to define the different membrane currents of your model. Those methods take relevant gating states and the membrane potential `Vm` as inputs, and must return a current density in `mA/m2`. **You also need to modify the docstring accordingly, as this information is used by the package**
-9. Modify the other required methods of the class:
-  - The `currents` method that takes a membrane potential value `Vm` and a vector of gating states as inputs, and returns a dictionary of membrane currents
-  - The `steadyStates` method that takes a membrane potential value `Vm` as input, and returns a dictionary of gating steady-states
-  - The `derStates` method the membrane potential `Vm` and a vector of gating states as inputs, and returns a dictionary of gating states derivatives
-  - The `computeEffRates` method that takes a membrane potential array `Vm` as input, and returns a dictionary of effective (i.e. averaged over the `Vm` array) gating steady-states
-  - The `derEffStates` method that takes a membrane charge density value `Qm`, a vector of gating states, and a lookup dictionary as inputs, and returns a dictionary of effective gating states derivatives
-10. Add the neuron class to the package, by importing it in the `__init__.py` file of the `neurons` sub-folder:
+3. In your file, change the **class name** from `TemplateNeuron` to something more explicit (e.g. `MyNeuron`), and change the **neuron name** accordingly (e.g. `myneuron`). This name is a keyword used to refer to the model from outside the class
+4. Modify/add **biophysical parameters** of your model (resting parameters, reversal potentials, channel conductances, ionic concentrations, temperatures, diffusion constants, etc...) as class attributes
+5. Specify a **tuple of names of your different differential states** (i.e. all the differential variables of your model, except for the membrane potential), in the order you want them to appear in the solution.
+6. Modify/add **gating states kinetics** (`alphax` and `betax` methods) that define the voltage-dependent activation and inactivation rates of the different ion channnels gates of your model. Those methods take the membrane potential `Vm` as input and return a rate in `s-1`. **You also need to modify the docstring accordingly, as this information is used by the package**. Alternatively, your can use steady-state open-probabilties (`xinf`) and adaptation time constants (`taux`) methods, but you will need to modify the other class methods accordingly.
+7. Modify/add **states derivatives** (`derX` methods) that define the derivatives of your different state variables. Those methods must return a derivative in `<state_unit>/s`. **You also need to modify the docstring accordingly, as this information is used by the package**
+8. Modify/add **steady-states** (`Xinf` methods) that define the steady-state values of your different state variables. Those methods must return a steady-state value in `<state_unit>`.
+9. Modify/add **membrane currents** (`iXX` methods) of your model. Those methods take relevant gating states and the membrane potential `Vm` as inputs, and must return a current density in `mA/m2`. **You also need to modify the docstring accordingly, as this information is used by the package**
+10. Modify the other required methods of the class:
+  - The `currents` method that takes a membrane potential value `Vm` and a states vector as inputs, and returns a dictionary of membrane currents
+  - The `derStates` method that takes the membrane potential `Vm` and a states vector as inputs, and returns a dictionary of states derivatives
+  - The `derEffStates` method that takes a membrane charge density value `Qm`, a states vector, and a lookup dictionary as inputs, and returns a dictionary of effective states derivatives
+  - The `steadyStates` method that takes a membrane potential value `Vm` as input, and returns a dictionary of steady-states
+  - The `computeEffRates` method that takes a membrane potential array `Vm` as input, and returns a dictionary of effective (i.e. averaged over the `Vm` array) voltage-gated states
+11. Add the neuron class to the package, by importing it in the `__init__.py` file of the `neurons` sub-folder:
 
 ```from .my_neuron import MyNeuron```
 
-11. Verify your point-neuron model by running simulations under various electrical stimuli and comparing the output to the neurons's expected behavior. Implemented required corrections if any.
-12. Pre-compute lookup tables required to run coarse-grained  simulations of the neuron model upon ultrasonic stimulation. To do so, go to the `scripts` directory and run the `run_lookups.py` script with the neuron's name as command line argument, e.g.:
+12. Verify your point-neuron model by running simulations under various electrical stimuli and comparing the output to the neurons's expected behavior. Implemented required corrections if any.
+13. Pre-compute lookup tables required to run coarse-grained  simulations of the neuron model upon ultrasonic stimulation. To do so, go to the `scripts` directory and run the `run_lookups.py` script with the neuron's name as command line argument, e.g.:
 
 ```$ python run_lookups.py -n myneuron --mpi```
 
 If possible, use the `--mpi` argument to enable multiprocessing, as lookups pre-computation greatly benefits from parallelization.
 
-13. That's it! You can now run simulations of your point-neuron model upon ultrasonic stimulation.
+14. That's it! You can now run simulations of your point-neuron model upon ultrasonic stimulation.
 
 ## References
 

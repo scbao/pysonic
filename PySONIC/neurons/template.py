@@ -25,11 +25,11 @@ class TemplateNeuron(PointNeuron):
     gKdbar = 60.0   # Delayed-rectifier Potassium
     gLeak = 0.205   # Non-specific leakage
 
-    # Names of ion channels gating states (ordered)
-    states = ('m', 'h', 'n')
-
-    # Extra-parameters
+    # Additional parameters
     VT = -56.2  # Spike threshold adjustment parameter (mV)
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('m', 'h', 'n')
 
     # ------------------------------ Gating states kinetics ------------------------------
 

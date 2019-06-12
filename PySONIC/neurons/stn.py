@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 15:19:20
+# @Last Modified time: 2019-06-12 17:15:00
 
 
 import numpy as np
@@ -46,9 +46,6 @@ class OtsukaSTN(PointNeuron):
     gCaLbar = 150.0  # High-threshold Calcium
     gAbar = 50.0     # A-type Potassium
     gKCabar = 10.0   # Calcium-dependent Potassium
-
-    # Names of ion channels gating states (ordered)
-    states = ('a', 'b', 'c', 'd1', 'd2', 'm', 'h', 'n', 'p', 'q', 'r', 'Cai')
 
     # Physical constants
     T = 306.15  # K (33°C)
@@ -152,6 +149,9 @@ class OtsukaSTN(PointNeuron):
     thetax_r = 0.17e-6  # M
     kx_r = -0.08e-6     # M
     tau_r = 2e-3        # s
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('a', 'b', 'c', 'd1', 'd2', 'm', 'h', 'n', 'p', 'q', 'r', 'Cai')
 
     def __init__(self):
         super().__init__()

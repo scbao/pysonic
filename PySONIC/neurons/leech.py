@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 16:33:24
+# @Last Modified time: 2019-06-12 17:15:52
 
 
 from functools import partialmethod
@@ -48,9 +48,6 @@ class LeechTouch(PointNeuron):
     gLeak = 1.0      # Non-specific leakage
     gPumpNa = 20.0   # Sodium pump
 
-    # Names of ion channels gating states (ordered)
-    states = ('m', 'h', 'n', 's', 'Nai', 'ANai', 'Cai', 'ACai')
-
     # Activation time constants (s)
     taum = 0.1e-3  # Sodium
     taus = 0.6e-3  # Calcium
@@ -73,6 +70,9 @@ class LeechTouch(PointNeuron):
     # from specific intracellular ions (s)
     taua_PumpNa = 0.1  # PumpNa current activation from intracellular Na+
     taua_KCa = 0.01    # KCa current activation from intracellular Ca2+
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('m', 'h', 'n', 's', 'Nai', 'ANai', 'Cai', 'ACai')
 
     def __init__(self):
         super().__init__()
@@ -588,15 +588,15 @@ class LeechPressure(LeechMech):
     Nao = 0.11    # Extracellular Sodium
     Cao = 1.8e-3  # Extracellular Calcium
 
-    # Names of ion channels gating states (ordered)
-    states = ('m', 'h', 'n', 's', 'c', 'Nai', 'Cai')
-
-    # Extra-parameters
+    # Additional parameters
     INaPmax = 70.0    # Maximum pump rate of the NaK-ATPase (mA/m2)
     khalf_Na = 0.012  # Sodium concentration at which NaK-ATPase is at half its maximum rate (M)
     ksteep_Na = 1e-3  # Sensitivity of NaK-ATPase to varying Sodium concentrations (M)
     iCaS = 0.1        # Calcium pump current parameter (mA/m2)
     diam = 50e-6      # Cell soma diameter (m)
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('m', 'h', 'n', 's', 'c', 'Nai', 'Cai')
 
     def __init__(self):
         ''' Constructor of the class. '''
@@ -621,13 +621,11 @@ class LeechPressure(LeechMech):
             'n': self.derN(Vm, n),
             's': self.derS(Vm, s),
             'c': self.derC(c, Cai),
-            'Nai': -(self.iNa(m, h, Vm, Nai) + self.iPumpNa(Nai)) * self.K_Na,  # M/s
-            'Cai': -(self.iCa(s, Vm, Cai) + self.iPumpCa(Cai)) * self.K_Ca  # M/s'
+            'Nai': -(self.iNa(m, h, Vm, Nai) + self.iPumpNa(Nai)) * self.K_Na,
+            'Cai': -(self.iCa(s, Vm, Cai) + self.iPumpCa(Cai)) * self.K_Ca
         }
 
     def derEffStates(self, Qm, states, lkp):
-        ''' Overriding of abstract parent method. '''
-
         rates = self.interpEffRates(Qm, lkp)
         Vmeff = self.interpVmeff(Qm, lkp)
         m, h, n, s, c, Nai, Cai = states
@@ -638,8 +636,8 @@ class LeechPressure(LeechMech):
             'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
             's': rates['alphas'] * (1 - s) - rates['betas'] * s,
             'c': self.derC(c, Cai),
-            'Nai': -(self.iNa(m, h, Vmeff, Nai) + self.iPumpNa(Nai)) * self.K_Na,  # M/s
-            'Cai': -(self.iCa(s, Vmeff, Cai) + self.iPumpCa(Cai)) * self.K_Ca  # M/s
+            'Nai': -(self.iNa(m, h, Vmeff, Nai) + self.iPumpNa(Nai)) * self.K_Na,
+            'Cai': -(self.iCa(s, Vmeff, Cai) + self.iPumpCa(Cai)) * self.K_Ca
         }
 
     # ------------------------------ Steady states ------------------------------
@@ -747,11 +745,11 @@ class LeechRetzius(LeechMech):
     # Ionic concentrations (M)
     Cai = 5e-8  # Intracellular Calcium (from retztemp.ses file)
 
-    # Names of ion channels gating states (ordered)
-    states = ('m', 'h', 'n', 's', 'c', 'a', 'b')
-
-    # Extra-parameters
+    # Additional parameters
     Vhalf = -73.1  # half-activation voltage (mV)
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('m', 'h', 'n', 's', 'c', 'a', 'b')
 
     # ------------------------------ Gating states kinetics ------------------------------
 

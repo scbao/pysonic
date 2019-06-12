@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:19:51
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 15:08:33
+# @Last Modified time: 2019-06-12 17:13:16
 
 import numpy as np
 from ..core import PointNeuron
@@ -263,12 +263,12 @@ class CorticalRS(Cortical):
     gMbar = 0.75    # Slow non-inactivating Potassium
     gLeak = 0.205   # Non-specific leakage
 
-    # Names of ion channels gating states (ordered)
-    states = ('m', 'h', 'n', 'p')
-
-    # Extra-parameters
+    # Additional parameters
     VT = -56.2      # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('m', 'h', 'n', 'p')
 
 
 class CorticalFS(Cortical):
@@ -297,12 +297,12 @@ class CorticalFS(Cortical):
     gMbar = 0.787   # Slow non-inactivating Potassium
     gLeak = 0.38    # Non-specific leakage
 
-    # Names of ion channels gating states (ordered)
-    states = ('m', 'h', 'n', 'p')
-
-    # Extra-parameters
+    # Additional parameters
     VT = -57.9      # Spike threshold adjustment parameter (mV)
     TauMax = 0.502  # Max. adaptation decay of slow non-inactivating Potassium current (s)
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('m', 'h', 'n', 'p')
 
 
 class CorticalLTS(Cortical):
@@ -336,13 +336,13 @@ class CorticalLTS(Cortical):
     gCaTbar = 4.0   # Low-threshold Calcium
     gLeak = 0.19    # Non-specific leakage
 
-    # Names of ion channels gating states (ordered)
-    states = ('m', 'h', 'n', 'p', 's', 'u')
-
-    # Extra-parameters
+    # Additional parameters
     VT = -50.0    # Spike threshold adjustment parameter (mV)
     TauMax = 4.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
     Vx = -7.0     # Voltage-dependence uniform shift factor at 36°C (mV)
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('m', 'h', 'n', 'p', 's', 'u')
 
     # ------------------------------ Gating states kinetics ------------------------------
 
@@ -503,12 +503,12 @@ class CorticalIB(Cortical):
     gCaLbar = 1.0  # High-threshold Calcium
     gLeak = 0.1    # Non-specific leakage
 
-    # Names of ion channels gating states (ordered)
-    states = ('m', 'h', 'n', 'p', 'q', 'r')
-
-    # Extra-parameters
+    # Additional parameters
     VT = -56.2      # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('m', 'h', 'n', 'p', 'q', 'r')
 
     # ------------------------------ Gating states kinetics ------------------------------
 

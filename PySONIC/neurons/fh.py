@@ -2,7 +2,7 @@
 # @Author: Theo Lemaire
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 16:13:46
+# @Last Modified time: 2019-06-12 17:14:16
 
 import numpy as np
 from ..core import PointNeuron
@@ -44,10 +44,10 @@ class FrankenhaeuserHuxley(PointNeuron):
     Ki = 120e-3     # Intracellular Potassium
     Ko = 2.5e-3     # Extracellular Potassium
 
-    # Extra-parameters
+    # Additional parameters
     celsius = 20.0  # Temperature (Celsius)
 
-    # Names of ion channels gating states (ordered)
+    # ------------------------------ States names (ordered) ------------------------------
     states = ('m', 'h', 'n', 'p')
 
     def __init__(self):

@@ -4,7 +4,7 @@
 # @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 15:52:23
+# @Last Modified time: 2019-06-12 17:13:53
 
 import numpy as np
 from ..core import PointNeuron
@@ -269,11 +269,11 @@ class ThalamicRE(Thalamic):
     gCaTbar = 30.0   # Low-threshold Calcium
     gLeak = 0.5      # Non-specific leakage
 
-    # Names of ion channels gating states (ordered)
-    states = ('m', 'h', 'n', 's', 'u')
-
-    # Extra-parameters
+    # Additional parameters
     VT = -67.0  # Spike threshold adjustment parameter (mV)
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('m', 'h', 'n', 's', 'u')
 
     # ------------------------------ Gating states kinetics ------------------------------
 
@@ -345,10 +345,7 @@ class ThalamoCortical(Thalamic):
     gHbar = 0.175   # Mixed cationic current
     gLeak = 0.1     # Non-specific leakage
 
-    # Names of ion channels gating states (ordered)
-    states = ('m', 'h', 'n', 's', 'u', 'O', 'C', 'P0', 'Cai')
-
-    # Extra-parameters
+    # Additional parameters
     VT = -52.0       # Spike threshold adjustment parameter (mV)
     Vx = 0.0         # Voltage-dependence uniform shift factor at 36°C (mV)
     taur_Cai = 5e-3  # decay time constant for intracellular Ca2+ dissolution (s)
@@ -359,6 +356,9 @@ class ThalamoCortical(Thalamic):
     k2 = 0.4         # intracellular Ca2+ regulation factor (s-1)
     k3 = 100.0       # intracellular Ca2+ regulation factor (s-1)
     k4 = 1.0         # intracellular Ca2+ regulation factor (s-1)
+
+    # ------------------------------ States names (ordered) ------------------------------
+    states = ('m', 'h', 'n', 's', 'u', 'O', 'C', 'P0', 'Cai')
 
     def __init__(self):
         super().__init__()
