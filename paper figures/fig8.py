@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-27 17:57:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:06:14
+# @Last Modified time: 2019-06-12 23:13:05
 
 ''' Sub-panels of threshold curves for various sonophore radii and US frequencies. '''
 

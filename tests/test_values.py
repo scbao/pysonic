@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2017-06-14 18:37:45
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:27:41
+# @Last Modified time: 2019-06-12 23:11:06
 
 ''' Run functionalities of the package and test validity of outputs. '''
 

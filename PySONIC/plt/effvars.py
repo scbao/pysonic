@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 13:05:06
+# @Last Modified time: 2019-06-12 23:06:14
 
 import numpy as np
 from scipy.interpolate import interp1d

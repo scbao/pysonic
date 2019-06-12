@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-10 21:55:43
+# @Last Modified time: 2019-06-12 23:02:43
 
 from enum import Enum
 import os

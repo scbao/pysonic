@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2016-11-21 10:46:56
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2016-11-21 10:46:56
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-07 14:58:39
+# @Last Modified time: 2019-06-12 23:10:42
 
 ''' Run simulations of the NICE mechanical model. '''
 

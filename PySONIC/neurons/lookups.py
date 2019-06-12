@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+# @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
+# @Date:   2019-06-06 21:15:32
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2019-06-12 23:05:29
 
 import os
 import pickle

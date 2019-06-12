@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-# @Author: Theo
+# @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:51:23
+# @Last Modified time: 2019-06-12 23:12:14
 
 ''' Sub-panels of the model optimization figure. '''
 

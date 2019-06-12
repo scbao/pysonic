@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 22:21:24
+# @Last Modified time: 2019-06-12 23:07:14
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 

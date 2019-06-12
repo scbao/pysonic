@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2016-09-29 16:16:19
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 13:05:08
+# @Last Modified time: 2019-06-12 23:03:15
 
 from copy import deepcopy
 import logging

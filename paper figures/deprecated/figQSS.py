@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:10:20
+# @Last Modified time: 2019-06-12 23:12:04
 
 ''' Subpanels of the QSS approximation figure. '''
 

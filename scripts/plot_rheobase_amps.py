@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-# @Author: Theo
+# @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-04-30 21:06:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:23:44
+# @Last Modified time: 2019-06-12 23:09:34
 
 ''' Plot duty-cycle dependent rheobase acoustic amplitudes of various neurons
     for a specific US frequency and PRF. '''

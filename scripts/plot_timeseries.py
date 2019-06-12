@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-10 19:56:23
+# @Last Modified time: 2019-06-12 23:10:00
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 

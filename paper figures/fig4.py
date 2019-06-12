@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2017-02-15 15:59:37
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2017-02-15 15:59:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:01:04
+# @Last Modified time: 2019-06-12 23:12:25
 
 ''' Sub-panels of the effective variables figure. '''
 

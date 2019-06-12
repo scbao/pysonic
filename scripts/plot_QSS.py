@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:23:20
+# @Last Modified time: 2019-06-12 23:09:24
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 

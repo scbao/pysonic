@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-# @Author: Theo
+# @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-04-04 11:49:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-05-16 14:52:03
+# @Last Modified time: 2019-06-12 23:09:48
 
 ''' Plot features of detected spikes on charge profiles. '''
 

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 16:15:14
-
+# @Last Modified time: 2019-06-12 23:00:45
 
 import pickle
 import numpy as np

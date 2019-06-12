@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-# @Author: Theo
+# @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-06 18:18:04
+# @Last Modified time: 2019-06-12 23:12:36
 
 ''' Sub-panels of the NICE and SONIC accuracies comparative figure. '''
 

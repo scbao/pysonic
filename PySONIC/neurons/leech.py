@@ -1,11 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2017-07-31 15:20:54
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 17:15:52
-
+# @Last Modified time: 2019-06-12 23:05:23
 
 from functools import partialmethod
 import numpy as np

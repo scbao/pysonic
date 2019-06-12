@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:54:36
+# @Last Modified time: 2019-06-12 23:13:15
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 

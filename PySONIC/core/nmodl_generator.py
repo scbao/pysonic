@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2019-03-18 21:17:03
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:14:36
-
+# @Last Modified time: 2019-06-12 23:03:31
 
 import inspect
 import re

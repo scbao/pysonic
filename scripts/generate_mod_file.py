@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-# @Author: Theo
+# @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2019-03-18 18:06:20
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:20:32
+# @Last Modified time: 2019-06-12 23:08:08
 
 import os
 import logging

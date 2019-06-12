@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+# @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
+# @Date:   2019-06-11 15:58:38
+# @Last Modified by:   Theo Lemaire
+# @Last Modified time: 2019-06-12 23:05:39
+
 import numpy as np
 
 from ..core import PointNeuron

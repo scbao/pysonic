@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 14:55:44
+# @Last Modified time: 2019-06-12 23:03:59
 
 import abc
 import inspect

@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2017-02-13 12:41:26
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2018-12-06 15:59:06
+# @Last Modified time: 2019-06-12 23:09:10
 
 ''' Plot phase plane diagram of specific simulation output variables. '''
 

@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2017-06-13 09:40:02
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2017-06-13 09:40:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-02 15:44:57
+# @Last Modified time: 2019-06-12 23:11:26
 
 import os
 from setuptools import setup

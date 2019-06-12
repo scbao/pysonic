@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2016-09-19 22:30:46
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-10 20:07:29
+# @Last Modified time: 2019-06-12 23:07:29
 
 ''' Definition of generic utility functions used in other modules '''
 

@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2017-02-13 18:16:09
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2017-02-13 18:16:09
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:24:06
+# @Last Modified time: 2019-06-12 23:10:11
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 

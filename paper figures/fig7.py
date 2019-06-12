@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
+# @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 12:04:26
+# @Last Modified time: 2019-06-12 23:12:56
 
 ''' Sub-panels of (duty-cycle x amplitude) US activation maps and related Q-V traces. '''
 

@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
-# @Date:   2017-08-03 11:53:04
 # @Email: theo.lemaire@epfl.ch
+# @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-10 20:50:34
+# @Last Modified time: 2019-06-12 23:03:03
 
 import os
 from inspect import signature
