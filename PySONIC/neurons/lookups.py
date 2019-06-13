@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-06 21:15:32
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:05:29
+# @Last Modified time: 2019-06-13 13:44:46
 
 import os
 import pickle
@@ -13,17 +13,24 @@ from scipy.interpolate import interp1d
 from ..utils import isWithin, logger, si_format
 
 
-def getNeuronLookupsFile(name, a=None, Fdrive=None, Adrive=None, fs=False):
-    fpath = os.path.join(os.path.split(__file__)[0], '{}_lookups'.format(name))
+NEURONS_LOOKUP_DIR = os.path.split(__file__)[0]
+
+
+def getNeuronLookupsFileName(name, a=None, Fdrive=None, Adrive=None, fs=False):
+    fname = '{}_lookups'.format(name)
     if a is not None:
-        fpath += '_{:.0f}nm'.format(a * 1e9)
+        fname += '_{:.0f}nm'.format(a * 1e9)
     if Fdrive is not None:
-        fpath += '_{:.0f}kHz'.format(Fdrive * 1e-3)
+        fname += '_{:.0f}kHz'.format(Fdrive * 1e-3)
     if Adrive is not None:
-        fpath += '_{:.0f}kPa'.format(Adrive * 1e-3)
+        fname += '_{:.0f}kPa'.format(Adrive * 1e-3)
     if fs is True:
-        fpath += '_fs'
-    return '{}.pkl'.format(fpath)
+        fname += '_fs'
+    return '{}.pkl'.format(fname)
+
+
+def getNeuronLookupsFilePath(*args, **kwargs):
+    return os.path.join(NEURONS_LOOKUP_DIR, getNeuronLookupsFileName(*args, **kwargs))
 
 
 def getLookups4D(name):
@@ -36,7 +43,7 @@ def getLookups4D(name):
     '''
 
     # Check lookup file existence
-    lookup_path = getNeuronLookupsFile(name)
+    lookup_path = getNeuronLookupsFilePath(name)
     if not os.path.isfile(lookup_path):
         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 
@@ -146,7 +153,7 @@ def getLookups2D(name, a=None, Fdrive=None, Adrive=None):
 def getLookups2Dfs(name, a, Fdrive, fs):
 
     # Check lookup file existence
-    lookup_path = getNeuronLookupsFile(name, a=a, Fdrive=Fdrive, fs=True)
+    lookup_path = getNeuronLookupsFilePath(name, a=a, Fdrive=Fdrive, fs=True)
     if not os.path.isfile(lookup_path):
         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 
@@ -233,7 +240,7 @@ def getLookupsDCavg(name, a, Fdrive, amps=None, charges=None, DCs=1.0):
 def getLookupsCompTime(name):
 
     # Check lookup file existence
-    lookup_path = getNeuronLookupsFile(name)
+    lookup_path = getNeuronLookupsFilePath(name)
     if not os.path.isfile(lookup_path):
         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
 

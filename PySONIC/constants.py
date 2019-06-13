@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-04 13:23:31
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:07:00
+# @Last Modified time: 2019-06-13 15:20:27
 
 ''' Algorithmic constants used in the package. '''
 

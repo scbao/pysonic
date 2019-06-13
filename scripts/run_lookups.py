@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:10:32
+# @Last Modified time: 2019-06-13 15:19:55
 
 ''' Create lookup table for specific neuron. '''
 
@@ -12,20 +12,11 @@ import itertools
 import pickle
 import logging
 import numpy as np
-from argparse import ArgumentParser
 
-from PySONIC.utils import logger, getNeuronLookupsFile, isIterable
-from PySONIC.neurons import getPointNeuron
+from PySONIC.utils import logger, isIterable
+from PySONIC.neurons import getPointNeuron, NEURONS_LOOKUP_DIR, getNeuronLookupsFileName
 from PySONIC.core import NeuronalBilayerSonophore, createQueue, Batch
-
-
-# Default parameters
-defaults = dict(
-    neuron='RS',
-    radius=np.array([16.0, 32.0, 64.0]),  # nm
-    freq=np.array([20., 100., 500., 1e3, 2e3, 3e3, 4e3]),  # kHz
-    amp=np.insert(np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0),  # kPa
-)
+from PySONIC.parsers import MechSimParser
 
 
 def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
@@ -61,14 +52,12 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
         'Q': Qref  # C/m2
     }
 
-    # Add fs to inputs if provided, otherwise add default value (1)
+    # Check inputs compatibility
     err_fs = 'cannot span {} for more than 1 {}'
-    if fsref is not None:
+    if fsref.size > 1 or fsref[0] != 1.:
         for x in ['a', 'f']:
             assert inputs[x].size == 1, err_fs.format(descs['fs'], descs[x])
-        inputs['fs'] = fsref
-    else:
-        inputs['fs'] = np.array([1.])
+    inputs['fs'] = fsref
 
     # Check validity of input parameters
     for key, values in inputs.items():
@@ -84,9 +73,8 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
         if key in ('A', 'fs') and min(values) < 0:
             raise ValueError('Invalid {} (must all be positive or null)'.format(descs[key]))
 
-    # Get dimensions of inputs that have more than one value
+    # Get inputs dimensions
     dims = np.array([x.size for x in inputs.values()])
-    dims = dims[dims > 1]
     ncombs = dims.prod()
 
     # Create simulation queue per radius
@@ -115,11 +103,7 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
     for key in varkeys:
         effvar = [effvars[i][key] for i in range(nout)]
         lookups[key] = np.array(effvar).reshape(dims)
-
-    # Reshape comp times into nD array (minus fs dimension)
-    if fsref is not None:
-        dims = dims[:-1]
-    tcomps = np.array(tcomps).reshape(dims)
+    tcomps = np.array(tcomps).reshape(dims[:-1])
 
     # Store inputs, lookup data and comp times in dictionary
     df = {
@@ -132,85 +116,69 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
 
 
 def main():
-    ap = ArgumentParser()
 
-    # Runtime options
-    ap.add_argument('--mpi', default=False, action='store_true', help='Use multiprocessing')
-    ap.add_argument('-v', '--verbose', default=False, action='store_true',
-                    help='Increase verbosity')
-    ap.add_argument('-t', '--test', default=False, action='store_true', help='Test configuration')
+    parser = MechSimParser(outputdir=NEURONS_LOOKUP_DIR)
+    parser.addNeuron()
+    parser.addTest()
+    parser.defaults['neuron'] = 'RS'
+    parser.defaults['radius'] = np.array([16.0, 32.0, 64.0])  # nm
+    parser.defaults['freq'] = np.array([20., 100., 500., 1e3, 2e3, 3e3, 4e3])  # kHz
+    parser.defaults['amp'] = np.insert(
+        np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0)  # kPa
+    parser.defaults['charge'] = np.nan
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
 
-    # Stimulation parameters
-    ap.add_argument('-n', '--neuron', type=str, default=defaults['neuron'],
-                    help='Neuron name (string)')
-    ap.add_argument('-a', '--radius', nargs='+', type=float, help='Sonophore radius (nm)')
-    ap.add_argument('-f', '--freq', nargs='+', type=float, help='US frequency (kHz)')
-    ap.add_argument('-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
-    ap.add_argument('-Q', '--charge', nargs='+', type=float,
-                    help='Membrane charge density (nC/cm2)')
-    ap.add_argument('--spanFs', default=False, action='store_true',
-                    help='Span sonophore coverage fraction')
+    for neuron in args['neuron']:
 
-    # Parse arguments
-    args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
-    loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
-    logger.setLevel(loglevel)
-    mpi = args['mpi']
-    neuron_str = args['neuron']
-    radii = np.array(args.get('radius', defaults['radius'])) * 1e-9  # m
-    freqs = np.array(args.get('freq', defaults['freq'])) * 1e3  # Hz
-    amps = np.array(args.get('amp', defaults['amp'])) * 1e3  # Pa
-
-    # Check neuron name validity
-    try:
-        pneuron = getPointNeuron(neuron_str)
-    except ValueError as err:
-        logger.error(err)
-        return
-
-    # Determine charge vector
-    if 'charge' in args:
-        charges = np.array(args['charge']) * 1e-5  # C/m2
-    else:
-        charges = np.arange(pneuron.Qbounds()[0], pneuron.Qbounds()[1] + 1e-5, 1e-5)  # C/m2
-
-    # Determine fs vector
-    fs = None
-    if args['spanFs']:
-        fs = np.linspace(0, 100, 101) * 1e-2  # (-)
-
-    # Determine output filename
-    lookup_path = {
-        True: getNeuronLookupsFile(pneuron.name),
-        False: getNeuronLookupsFile(pneuron.name, a=radii[0], Fdrive=freqs[0], fs=True)
-    }[fs is None]
-
-    # Combine inputs into single list
-    inputs = [radii, freqs, amps, charges, fs]
-
-    # Adapt inputs and output filename if test case
-    if args['test']:
-        for i, x in enumerate(inputs):
-            if x is not None and x.size > 1:
-                inputs[i] = np.array([x.min(), x.max()])
-        lookup_path = '{}_test{}'.format(*os.path.splitext(lookup_path))
-
-    # Check if lookup file already exists
-    if os.path.isfile(lookup_path):
-        logger.warning('"%s" file already exists and will be overwritten. ' +
-                       'Continue? (y/n)', lookup_path)
-        user_str = input()
-        if user_str not in ['y', 'Y']:
-            logger.error('%s Lookup creation canceled', pneuron.name)
+        # Check neuron name validity
+        try:
+            pneuron = getPointNeuron(neuron)
+        except ValueError as err:
+            logger.error(err)
             return
 
-    # Compute lookups
-    df = computeAStimLookups(pneuron, *inputs, mpi=mpi, loglevel=loglevel)
+        # Determine charge vector
+        charges = args['charge']
+        if charges.size == 1 and np.isnan(charges[0]):
+            charges = np.arange(
+                pneuron.Qbounds()[0], pneuron.Qbounds()[1] + 1e-5, 1e-5)  # C/m2
 
-    # Save dictionary in lookup file
-    logger.info('Saving %s neuron lookup table in file: "%s"', pneuron.name, lookup_path)
-    with open(lookup_path, 'wb') as fh:
-        pickle.dump(df, fh)
+        # Determine output filename
+        if args['fs'].size == 1 and args['fs'][0] == 1.:
+            lookup_fname = getNeuronLookupsFileName(pneuron.name)
+        else:
+            lookup_fname = getNeuronLookupsFileName(
+                pneuron.name, a=args['radius'][0], Fdrive=args['freq'][0], fs=True)
+
+        # Combine inputs into single list
+        inputs = [args[x] for x in ['radius', 'freq', 'amp']] + [charges, args['fs']]
+
+        # Adapt inputs and output filename if test case
+        if args['test']:
+            for i, x in enumerate(inputs):
+                if x is not None and x.size > 1:
+                    inputs[i] = np.array([x.min(), x.max()])
+            lookup_fname = '{}_test{}'.format(*os.path.splitext(lookup_fname))
+
+        lookup_fpath = os.path.join(args['outputdir'], lookup_fname)
+
+        # Check if lookup file already exists
+        if os.path.isfile(lookup_fpath):
+            logger.warning('"%s" file already exists and will be overwritten. ' +
+                           'Continue? (y/n)', lookup_fpath)
+            user_str = input()
+            if user_str not in ['y', 'Y']:
+                logger.error('%s Lookup creation canceled', pneuron.name)
+                return
+
+        # Compute lookups
+        df = computeAStimLookups(pneuron, *inputs, mpi=args['mpi'], loglevel=args['loglevel'])
+
+        # Save dictionary in lookup file
+        logger.info('Saving %s neuron lookup table in file: "%s"', pneuron.name, lookup_fpath)
+        with open(lookup_fpath, 'wb') as fh:
+            pickle.dump(df, fh)
 
 
 if __name__ == '__main__':

@@ -3,9 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:07:04
+# @Last Modified time: 2019-06-13 14:26:26
 
 import logging
+import pprint
 import numpy as np
 from argparse import ArgumentParser
 
@@ -20,11 +21,15 @@ class Parser(ArgumentParser):
 
     def __init__(self):
         super().__init__()
+        self.pp = pprint.PrettyPrinter(indent=4)
         self.defaults = {}
         self.allowed = {}
         self.factors = {}
         self.addPlot()
         self.addVerbose()
+
+    def pprint(self, args):
+        self.pp.pprint(args)
 
     def getDistribution(self, xmin, xmax, nx, scale='lin'):
         if scale == 'log':
@@ -130,7 +135,7 @@ class Parser(ArgumentParser):
         args = vars(super().parse_args())
         args['loglevel'] = self.parseLogLevel(args)
         for k, v in self.defaults.items():
-            if args[k] is None:
+            if k in args and args[k] is None:
                 args[k] = v if isIterable(v) else [v]
         return args
 
@@ -138,22 +143,31 @@ class Parser(ArgumentParser):
 class SimParser(Parser):
     ''' Generic simulation parser interface. '''
 
-    def __init__(self):
+    def __init__(self, outputdir=None):
         super().__init__()
         self.addMPI()
-        self.addOutputDir()
+        self.outputdir = outputdir
+        if self.outputdir is None:
+            self.addOutputDir()
+
+    def addNeuron(self):
+        self.add_argument(
+            '-n', '--neuron', type=str, nargs='+', help='Neuron name (string)')
 
     def parse(self):
         args = super().parse()
-        args['outputdir'] = self.parseOutputDir(args)
+        if self.outputdir is not None:
+            args['outputdir'] = self.outputdir
+        else:
+            args['outputdir'] = self.parseOutputDir(args)
         return args
 
 
 class MechSimParser(SimParser):
     ''' Parser to run mechanical simulations from the command line. '''
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.defaults.update({
             'radius': 32.0,  # nm
@@ -162,7 +176,8 @@ class MechSimParser(SimParser):
             'Qm0': getPointNeuron('RS').Qm0 * 1e5,  # nC/m2
             'freq': 500.0,  # kHz
             'amp': 100.0,  # kPa
-            'charge': 0.  # nC/cm2
+            'charge': 0.,  # nC/cm2
+            'fs': 100.  # %
         })
 
         self.factors.update({
@@ -172,7 +187,8 @@ class MechSimParser(SimParser):
             'Qm0': 1e-5,
             'freq': 1e3,
             'amp': 1e3,
-            'charge': 1e-5
+            'charge': 1e-5,
+            'fs': 1e-2
         })
 
         self.addRadius()
@@ -182,6 +198,8 @@ class MechSimParser(SimParser):
         self.addFdrive()
         self.addAdrive()
         self.addCharge()
+        self.addFs()
+        self.addSpanFs()
 
     def addRadius(self):
         self.add_argument(
@@ -224,6 +242,14 @@ class MechSimParser(SimParser):
         self.add_argument(
             '-Q', '--charge', nargs='+', type=float, help='Membrane charge density (nC/cm2)')
 
+    def addFs(self):
+        self.add_argument(
+            '--fs', nargs='+', type=float, help='Sonophore coverage fraction (%%)')
+
+    def addSpanFs(self):
+        self.add_argument(
+            '--spanFs', default=False, action='store_true', help='Span Fs from 1 to 100%%')
+
     def parseAmp(self, args):
         params = ['Irange', 'Arange', 'intensity', 'amp']
         self.restrict(args, params[:-1])
@@ -238,11 +264,18 @@ class MechSimParser(SimParser):
             amps = np.array(Adrive) * self.factors['amp']  # Pa
         return amps
 
+    def parseFs(self, args):
+        if args.pop('spanFs', False):
+            return np.arange(1, 101) * self.factors['fs']  # (-)
+        else:
+            return np.array(args['fs']) * self.factors['fs']  # (-)
+
     def parse(self):
         args = super().parse()
         args['amp'] = self.parseAmp(args)
         for key in ['radius', 'embedding', 'Cm0', 'Qm0', 'freq', 'charge']:
             args[key] = self.parse2array(args, key, factor=self.factors[key])
+        args['fs'] = self.parseFs(args)
         return args
 
 
@@ -278,10 +311,6 @@ class PWSimParser(SimParser):
         self.addDC()
         self.addSpanDC()
         self.addTitrate()
-
-    def addNeuron(self):
-        self.add_argument(
-            '-n', '--neuron', type=str, nargs='+', help='Neuron name (string)')
 
     def addTstim(self):
         self.add_argument(
