@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 14:26:26
+# @Last Modified time: 2019-06-13 15:24:25
 
 import logging
 import pprint
@@ -381,7 +381,6 @@ class EStimParser(PWSimParser):
         Arange, Astim = [args.pop(k) for k in ['Arange', 'amp']]
         if Arange is not None:
             amps = self.getDistFromList(Arange) * self.factors['amp']  # mA/m2
-            Ascale = Arange[0]
         else:
             amps = np.array(Astim) * self.factors['amp']  # mA/m2
         return amps
