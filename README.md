@@ -53,7 +53,7 @@ This package contains conductance-based point-neuron implementations of several 
 
 You can easily run simulations of any implemented point-neuron model under both electrical and ultrasonic stimuli, and visualize the simulation results, in just a few lines of code:
 
-```
+```python
 import logging
 import matplotlib.pyplot as plt
 
@@ -156,6 +156,21 @@ To add a new point-neuron model, follow this procedure:
 If possible, use the `--mpi` argument to enable multiprocessing, as lookups pre-computation greatly benefits from parallelization.
 
 14. That's it! You can now run simulations of your point-neuron model upon ultrasonic stimulation.
+
+## Future developments
+
+Here is a list of future developments:
+
+- [x] Integration within the [NEURON simulation environment](https://www.neuron.yale.edu/neuron/)
+- [x] Spatial expansion into nanoscale multicompartmental model
+- [ ] Spatial expansion into morphological realistic fiber models
+- [ ] Model validation against experimental data (leech neurons)
+
+
+# License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
 
 # References
 
