@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 15:19:55
+# @Last Modified time: 2019-06-13 15:22:57
 
 ''' Create lookup table for specific neuron. '''
 
@@ -106,13 +106,11 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
     tcomps = np.array(tcomps).reshape(dims[:-1])
 
     # Store inputs, lookup data and comp times in dictionary
-    df = {
+    return {
         'input': inputs,
         'lookup': lookups,
         'tcomp': tcomps
     }
-
-    return df
 
 
 def main():
