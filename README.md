@@ -1,17 +1,48 @@
 # Description
 
-This package is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation (SONIC) model [1]**, a computationally efficient and interpretable model of neuronal intramembrane cavitation. It allows to simulate the responses of various neuron types to ultrasonic (and electrical) stimuli.
+`PySONIC` is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation (SONIC) model [1]**, a computationally efficient and interpretable model of neuronal intramembrane cavitation. It allows to simulate the responses of various neuron types to ultrasonic (and electrical) stimuli.
 
-This package contains three core model classes:
+## Content of repository
+
+### Core model classes
+
+The package contains three core model classes:
 - `BilayerSonophore` defines the underlying **biomechanical model of intramembrane cavitation**.
 - `PointNeuron` defines an abstract generic interface to **conductance-based point-neuron electrical models**. It is inherited by classes defining the different neuron types with specific membrane dynamics.
 - `NeuronalBilayerSonophore` defines the **full electromechanical model for any given neuron type**. To do so, it inherits from `BilayerSonophore` and receives a specific `PointNeuron` object at initialization.
 
 All three classes contain a `simulate` method to simulate the underlying model's behavior for a given set of stimulation and physiological parameters. The `NeuronalBilayerSonophore.simulate` method contains an additional `method` argument defining whether to perform a detailed (`full`), coarse-grained (`sonic`) or hybrid (`hybrid`) integration of the differential system.
 
-Numerical integration routines are implemented outside the models, in separate `Simulator` classes.
+### Simulators
 
-The package also contains modules for graphing utilities, multiprocessing, results post-processing and command line parsing.
+Numerical integration routines are implemented outside the models, in separate `Simulator` classes:
+- `PeriodicSimulator` integrates a differential system periodically until a stable periodic behavior is detected.
+- `PWSimulator` integrates a differential system given a specific temporal stimulation pattern (pulse repetition frequency, stimulus duty cycle and post-stimulus offset), using different derivative functions for "ON" (with stimulus) and "OFF" (without stimulus) periods
+- `HybridSimulator` inherits from both `PeriodicSimulator`and `PWSimulator`. It integrates a differential system using a hybrid scheme inside each "ON" or "OFF" period:
+  1. The full ODE system is integrated for a few cycles with a dense time granularity until a periodic stabilization detection
+  2. The profiles of all variables over the last cycle are resampled to a far lower (i.e. sparse) sampling rate
+  3. A subset of the ODE system is integrated with a sparse time granularity, while the remaining variables are periodically expanded from their last cycle profile, until the end of the period or that of an predefined update interval.
+  4. The process is repeated from step 1
+
+### Neurons
+
+Several conductance-based point-neuron models are implemented that inherit from the `PointNeuron` generic interface:
+- `CorticalRS`: cortical regular spiking (`RS`) neuron
+- `CorticalFS`: cortical fast spiking (`FS`) neuron
+- `CorticalLTS`: cortical low-threshold spiking (`LTS`) neuron
+- `CorticalIB`: cortical intrinsically bursting (`IB`) neuron
+- `ThalamicRE`: thalamic reticular (`RE`) neuron
+- `ThalamoCortical`: thalamo-cortical (`TC`) neuron
+- `OstukaSTN`: subthalamic nucleus (`STN`) neuron
+
+### Other modules
+
+- `batches`: a generic interface to run simulation batches with or without multiprocessing
+- `parsers`: command line parsing utilities
+- `plt`: graphing utilities
+- `postpro`: post-processing utilities (mostly signal features detection)
+- `constants`: algorithmic constants used across modules and classes
+- `utils`: generic utilities
 
 # Requirements
 
@@ -38,16 +69,6 @@ The package also contains modules for graphing utilities, multiprocessing, resul
 ```$ pip install -e .```
 
 # Usage
-
-This package contains conductance-based point-neuron implementations of several generic neuron types, including:
-- cortical regular spiking (RS) neuron
-- cortical fast spiking (FS) neuron
-- cortical low-threshold spiking (LTS) neuron
-- cortical intrinsically bursting (IB) neuron
-- thalamic reticular (RE) neuron
-- thalamo-cortical (TC) neuron
-- subthalamic nucleus (STN) neuron
-
 
 ## Python scripts
 
@@ -166,6 +187,9 @@ Here is a list of future developments:
 - [ ] Spatial expansion into morphological realistic fiber models
 - [ ] Model validation against experimental data (leech neurons)
 
+# Authors
+
+Code written and maintained by Theo Lemaire (theo.lemaire@epfl.ch).
 
 # License
 
