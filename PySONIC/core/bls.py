@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:02:43
+# @Last Modified time: 2019-06-13 23:26:10
 
 from enum import Enum
 import os
@@ -672,7 +672,7 @@ class BilayerSonophore(Model):
         self.checkInputs(Fdrive, Adrive, Qm, phi)
 
         # Determine time step
-        dt = 1 / (NPC_FULL * Fdrive)
+        dt = 1 / (NPC_DENSE * Fdrive)
 
         # Compute non-zero deflection value for a small perturbation (solving quasi-steady equation)
         Pac = self.Pacoustic(dt, Adrive, Fdrive, phi)
@@ -714,11 +714,11 @@ class BilayerSonophore(Model):
         logger.info('Running mechanical simulation (a = %sm, f = %sHz, A = %sPa)',
                     si_format(self.a, 1), si_format(Fdrive, 1), si_format(Adrive, 1))
         data = self.simulate(
-            Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.direct)[0].iloc[-NPC_FULL:, :]
+            Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.direct)[0].iloc[-NPC_DENSE:, :]
 
         # Extract relevant variables and de-offset time vector
         t, Z, ng = [data[key].values for key in ['t', 'Z', 'ng']]
-        dt = (t[-1] - t[0]) / (NPC_FULL - 1)
+        dt = (t[-1] - t[0]) / (NPC_DENSE - 1)
         t -= t[0]
 
         # Compute pressure cyclic profiles

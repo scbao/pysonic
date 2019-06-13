@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:11:06
+# @Last Modified time: 2019-06-13 23:26:05
 
 ''' Run functionalities of the package and test validity of outputs. '''
 
@@ -41,7 +41,7 @@ def test_MECH():
     data, _ = bls.simulate(Fdrive, Adrive, Qm)
 
     # Check validity of deflection extrema
-    Zlast = data.loc[-NPC_FULL:, 'Z'].values
+    Zlast = data.loc[-NPC_DENSE:, 'Z'].values
     Zmin, Zmax = (Zlast.min(), Zlast.max())
     logger.info('Zmin = %.2f nm, Zmax = %.2f nm', Zmin * 1e9, Zmax * 1e9)
     Zmin_ref, Zmax_ref = (-0.116e-9, 5.741e-9)

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:03:15
+# @Last Modified time: 2019-06-13 23:47:40
 
 from copy import deepcopy
 import logging
@@ -159,7 +159,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: 2-tuple with the output dataframe and computation time.
         '''
         # Determine time step
-        dt = 1 / (NPC_FULL * Fdrive)
+        dt = 1 / (NPC_DENSE * Fdrive)
 
         # Compute non-zero deflection value for a small perturbation (solving quasi-steady equation)
         Pac = self.Pacoustic(dt, Adrive, Fdrive, phi)
@@ -211,7 +211,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         '''
         # Determine time steps
-        dt_dense, dt_sparse = [1. / (n * Fdrive) for n in [NPC_FULL, NPC_HH]]
+        dt_dense, dt_sparse = [1. / (n * Fdrive) for n in [NPC_DENSE, NPC_SPARSE]]
 
         # Compute non-zero deflection value for a small perturbation (solving quasi-steady equation)
         Pac = self.Pacoustic(dt_dense, Adrive, Fdrive, phi)
@@ -270,7 +270,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
         # Run simulation and retrieve deflection and gas content vectors from last cycle
         data, tcomp = BilayerSonophore.simulate(self, Fdrive, Adrive, Qm)
-        Z_last = data.loc[-NPC_FULL:, 'Z'].values  # m
+        Z_last = data.loc[-NPC_DENSE:, 'Z'].values  # m
         Cm_last = self.v_Capct(Z_last)  # F/m2
 
         # For each coverage fraction
@@ -332,7 +332,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         simulator = PWSimulator(
             lambda t, y: self.effDerivatives(t, y, lkps1D['ON']),
             lambda t, y: self.effDerivatives(t, y, lkps1D['OFF']))
-        (t, y, stim), tcomp = simulator(y0, DT_EFF, tstim, toffset, PRF, DC, monitor_time=True)
+        (t, y, stim), tcomp = simulator(
+            y0, DT_EFFECTIVE, tstim, toffset, PRF, DC, monitor_time=True)
         logger.debug('completed in %ss', si_format(tcomp, 1))
 
         # Store output in dataframe
@@ -443,7 +444,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         return binarySearch(
             lambda x: xfunc(self.simulate(*x)[0]),
-            [Fdrive, tstim, toffset, PRF, DC, method], 1, Arange, TITRATION_ASTIM_DA_MAX
+            [Fdrive, tstim, toffset, PRF, DC, method], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM
         )
 
     def simQueue(self, freqs, amps, durations, offsets, PRFs, DCs, method):
@@ -697,4 +698,4 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         return binarySearch(
             xfunc,
-            [Fdrive, DC], 1, Arange, TITRATION_ASTIM_DA_MAX)
+            [Fdrive, DC], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM)

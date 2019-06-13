@@ -3,11 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:04:30
+# @Last Modified time: 2019-06-13 23:42:16
 
 import abc
 import numpy as np
-import nolds
 from scipy.integrate import ode, odeint, solve_ivp
 from tqdm import tqdm
 
@@ -267,8 +266,8 @@ class PWSimulator(Simulator):
         # number of samples during TON or TOFF
         dt_warning_msg = 'high-PRF protocol: lowering time step to %.2e s to properly integrate %s'
         for key, T in {'TON': T_ON, 'TOFF': T_OFF}.items():
-            if T > 0 and T / dt < MIN_SAMPLES_PER_PULSE_INT:
-                dt = T / MIN_SAMPLES_PER_PULSE_INT
+            if T > 0 and T / dt < MIN_SAMPLES_PER_PULSE_INTERVAL:
+                dt = T / MIN_SAMPLES_PER_PULSE_INTERVAL
                 logger.warning(dt_warning_msg, dt, key)
 
         # Initializing accurate time vectors pulse ON and OFF periods, as well as offset
@@ -426,7 +425,7 @@ class HybridSimulator(PWSimulator):
 
             # Integrate until either the rest of the interval or max update interval is reached
             t0 = tdense[-1]
-            tf = min(tnew[-1], tdense[0] + DT_UPDATE)
+            tf = min(tnew[-1], tdense[0] + HYBRID_UPDATE_INTERVAL)
             nsparse = int(np.round((tf - t0) / self.dt_sparse))
             tsparse = np.linspace(t0, tf, nsparse)
             ysparse = np.empty((nsparse, y.shape[1]))

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:12:14
+# @Last Modified time: 2019-06-13 23:26:16
 
 ''' Sub-panels of the model optimization figure. '''
 
@@ -19,7 +19,7 @@ from argparse import ArgumentParser
 
 from PySONIC.utils import logger, rescale, si_format, selectDirDialog
 from PySONIC.plt import SchemePlot, cm2inch
-from PySONIC.constants import NPC_FULL
+from PySONIC.constants import NPC_DENSE
 from PySONIC.neurons import getPointNeuron
 from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 
@@ -175,8 +175,8 @@ def cycleAveraging(bls, pneuron, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
     t, Z, ng = [data[key].values for key in ['t', 'Z', 'ng']]
 
     # Compute variables evolution over last acoustic cycle
-    t_last = t[-NPC_FULL:] * 1e6  # us
-    Z_last = Z[-NPC_FULL:]  # m
+    t_last = t[-NPC_DENSE:] * 1e6  # us
+    Z_last = Z[-NPC_DENSE:]  # m
     Cm = bls.v_Capct(Z_last) * 1e2  # uF/m2
     Vm = Qm / Cm * 1e5  # mV
     yvars = {

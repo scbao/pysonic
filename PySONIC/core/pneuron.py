@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:03:59
+# @Last Modified time: 2019-06-13 23:49:14
 
 import abc
 import inspect
@@ -477,7 +477,8 @@ class PointNeuron(Model):
         simulator = PWSimulator(
             lambda t, y: self.Vderivatives(t, y, Astim),
             lambda t, y: self.Vderivatives(t, y, 0.))
-        (t, y, stim), tcomp = simulator(y0, DT_ESTIM, tstim, toffset, PRF, DC, monitor_time=True)
+        (t, y, stim), tcomp = simulator(
+            y0, DT_EFFECTIVE, tstim, toffset, PRF, DC, monitor_time=True)
         logger.debug('completed in %ss', si_format(tcomp, 1))
 
         # Store output in dataframe
@@ -577,7 +578,7 @@ class PointNeuron(Model):
         '''
         return not np.isnan(self.getStabilizationValue(data))
 
-    def titrate(self, tstim, toffset, PRF, DC, xfunc=None, Arange=(0., 2 * TITRATION_ESTIM_A_MAX)):
+    def titrate(self, tstim, toffset, PRF, DC, xfunc=None, Arange=(0., 2 * AMP_UPPER_BOUND_ESTIM)):
         ''' Use a binary search to determine the threshold amplitude needed
             to obtain neural excitation for a given duration, PRF and duty cycle.
 
@@ -595,5 +596,5 @@ class PointNeuron(Model):
 
         return binarySearch(
             lambda x: xfunc(self.simulate(*x)[0]),
-            [tstim, toffset, PRF, DC], 0, Arange, TITRATION_ESTIM_DA_MAX
+            [tstim, toffset, PRF, DC], 0, Arange, THRESHOLD_CONV_RANGE_ESTIM
         )

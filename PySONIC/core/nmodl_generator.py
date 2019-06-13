@@ -3,11 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-03-18 21:17:03
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:03:31
+# @Last Modified time: 2019-06-13 15:26:55
 
 import inspect
 import re
 from time import gmtime, strftime
+
+from ..constants import FARADAY, Rg
 
 
 def escaped_pow(x):
@@ -60,8 +62,8 @@ class NmodlGenerator:
 
     def constants(self):
         block = [
-            'FARADAY = 96494     (coul)     : moles do not appear in units',
-            'R = 8.31342         (J/mol/K)  : Universal gas constant'
+            'FARADAY = {:.5e}     (coul)     : moles do not appear in units'.format(FARADAY),
+            'R = {:.5e}         (J/mol/K)  : Universal gas constant'.format(Rg)
         ]
         return 'CONSTANT {{{}{}\n}}'.format(self.tabreturn, self.tabreturn.join(block))
 
