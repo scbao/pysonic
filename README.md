@@ -1,4 +1,4 @@
-## Description
+# Description
 
 This package is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation (SONIC) model [1]**, a computationally efficient and interpretable model of neuronal intramembrane cavitation. It allows to simulate the responses of various neuron types to ultrasonic (and electrical) stimuli.
 
@@ -13,11 +13,11 @@ Numerical integration routines are implemented outside the models, in separate `
 
 The package also contains modules for graphing utilities, multiprocessing, results post-processing and command line parsing.
 
-## Requirements
+# Requirements
 
 - Python 3.6 or more
 
-## Installation
+# Installation
 
 - Open a terminal.
 
@@ -37,7 +37,7 @@ The package also contains modules for graphing utilities, multiprocessing, resul
 
 ```$ pip install -e .```
 
-## Usage
+# Usage
 
 This package contains conductance-based point-neuron implementations of several generic neuron types, including:
 - cortical regular spiking (RS) neuron
@@ -49,7 +49,7 @@ This package contains conductance-based point-neuron implementations of several 
 - subthalamic nucleus (STN) neuron
 
 
-### Python scripts
+## Python scripts
 
 You can easily run simulations of any implemented point-neuron model under both electrical and ultrasonic stimuli, and visualize the simulation results, in just a few lines of code:
 
@@ -96,7 +96,7 @@ fig2 = scheme_plot.render()
 plt.show()
 ```
 
-### From the command line
+## From the command line
 
 You can easily run simulations of all 3 model types using the dedicated command line scripts. To do so, open a terminal in the `scripts` directory.
 
@@ -121,9 +121,9 @@ Several more options are available. To view them, type in:
 ```$ python <script_name> -h```
 
 
-## Extend the package
+# Extend the package
 
-### Add other neuron types
+## Add other neuron types
 
 You can easily add other neuron types into the package, providing their ion channel populations and underlying voltage-gated dynamics equations are known.
 
@@ -157,6 +157,6 @@ If possible, use the `--mpi` argument to enable multiprocessing, as lookups pre-
 
 14. That's it! You can now run simulations of your point-neuron model upon ultrasonic stimulation.
 
-## References
+# References
 
-[1] Lemaire, T., Neufeld, E., Kuster, N., and Micera, S. (2019). *Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation*. J. Neural Eng.
+[1] Lemaire, T., Neufeld, E., Kuster, N., and Micera, S. (2019). Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation. J. Neural Eng.
