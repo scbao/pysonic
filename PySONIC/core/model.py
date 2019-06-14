@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:03:03
+# @Last Modified time: 2019-06-14 11:28:16
 
 import os
 from inspect import signature
@@ -91,9 +91,13 @@ class Model(metaclass=abc.ABCMeta):
     def simulate(self, *args, **kwargs):
         raise NotImplementedError
 
-    def simQueue(self, *args):
+    def simQueue(self, *args, outputdir=None):
         ''' Create a simulation queue from a combination of simulation parameters. '''
-        return createQueue(*args)
+        queue = createQueue(*args)
+        if outputdir is not None:
+            for item in queue:
+                item.insert(0, outputdir)
+        return queue
 
     def checkAmplitude(self, args):
         ''' If no (None) amplitude provided in the list of stimulation parameters,

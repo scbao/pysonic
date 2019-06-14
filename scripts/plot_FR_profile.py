@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:08:45
+# @Last Modified time: 2019-06-14 08:15:03
 
 ''' Plot firing rate temporal profile of specific simulation outputs. '''
 
@@ -43,9 +43,10 @@ def main():
     cmap = args.get('cmap', None)
     zref = args.get('ref', None)
 
-    filepaths = args['inputfiles'] if 'inputfiles' in args else OpenFilesDialog('pkl')[0]
-    if not filepaths:
-        logger.error('No input file')
+    try:
+        filepaths = args['inputfiles'] if 'inputfiles' in args else OpenFilesDialog('pkl')[0]
+    except ValueError as err:
+        logger.error(err)
         return
 
     loglevel = logging.DEBUG if args['verbose'] else logging.INFO

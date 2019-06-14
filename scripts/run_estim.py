@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:10:22
+# @Last Modified time: 2019-06-14 11:30:00
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -24,22 +24,16 @@ def main():
     # Run E-STIM batch
     logger.info("Starting E-STIM simulation batch")
     pkl_filepaths = []
+    inputs = [args[k] for k in ['amp', 'tstim', 'toffset', 'PRF', 'DC']]
     for pneuron in args['neuron']:
-        queue = pneuron.simQueue(
-            args['amp'],
-            args['tstim'],
-            args['toffset'],
-            args['PRF'],
-            args['DC'],
-        )
-        for item in queue:
-            item.insert(0, args['outputdir'])
+        queue = pneuron.simQueue(*inputs, outputdir=args['outputdir'])
         batch = Batch(pneuron.runAndSave, queue)
         pkl_filepaths += batch(mpi=args['mpi'], loglevel=args['loglevel'])
 
     # Plot resulting profiles
     if args['plot'] is not None:
-        SchemePlot(pkl_filepaths, pltscheme=parser.parsePltScheme(args))()
+        scheme_plot = SchemePlot(pkl_filepaths, pltscheme=args['pltscheme'])
+        scheme_plot.render(mark_spikes=args['markspikes'])
         plt.show()
 
 

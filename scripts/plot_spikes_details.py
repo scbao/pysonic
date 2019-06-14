@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-04-04 11:49:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:09:48
+# @Last Modified time: 2019-06-14 08:15:47
 
 ''' Plot features of detected spikes on charge profiles. '''
 
@@ -65,9 +65,10 @@ def plotSpikesDetails(filepaths, fs=15, lw=2):
 
 def main():
     # Select data files
-    pkl_filepaths, _ = OpenFilesDialog('pkl')
-    if not pkl_filepaths:
-        logger.error('No input file')
+    try:
+        pkl_filepaths, _ = OpenFilesDialog('pkl')
+    except ValueError as err:
+        logger.error(err)
         return
     plotSpikesDetails(pkl_filepaths)
 

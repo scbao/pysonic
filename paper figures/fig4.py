@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-15 15:59:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:12:25
+# @Last Modified time: 2019-06-14 08:07:29
 
 ''' Sub-panels of the effective variables figure. '''
 
@@ -63,14 +63,16 @@ def main():
         fig.canvas.set_window_title(figbase + 'b')
         figs.append(fig)
     if 'c' in figset:
-        fig = plotEffectiveVariables(pneuron, Fdrive=Fdrive, Adrive=Adrive, cmap='Blues', zscale='log')
+        fig = plotEffectiveVariables(
+            pneuron, Fdrive=Fdrive, Adrive=Adrive, cmap='Blues', zscale='log')
         fig.canvas.set_window_title(figbase + 'c')
         figs.append(fig)
 
     if args.save:
-        outdir = selectDirDialog() if args.outdir is None else args.outdir
-        if outdir == '':
-            logger.error('No input directory chosen')
+        try:
+            outdir = selectDirDialog() if args.outdir is None else args.outdir
+        except ValueError as err:
+            logger.error(err)
             return
         for fig in figs:
             figname = '{}.pdf'.format(fig.canvas.get_window_title())

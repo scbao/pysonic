@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:13:15
+# @Last Modified time: 2019-06-14 08:09:34
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -43,9 +43,10 @@ def main():
     args = ap.parse_args()
     loglevel = logging.DEBUG if args.verbose is True else logging.INFO
     logger.setLevel(loglevel)
-    inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
-    if inputdir == '':
-        logger.error('No input directory chosen')
+    try:
+        inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
+    except ValueError as err:
+        logger.error(err)
         return
     figset = args.figset
     if figset is 'all':

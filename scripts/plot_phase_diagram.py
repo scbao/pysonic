@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:09:10
+# @Last Modified time: 2019-06-14 08:15:28
 
 ''' Plot phase plane diagram of specific simulation output variables. '''
 
@@ -37,9 +37,10 @@ def main():
     args = ap.parse_args()
 
     if args.inputfiles is None:
-        filepaths, _ = OpenFilesDialog('pkl')
-        if not filepaths:
-            logger.error('No input file')
+        try:
+            filepaths, _ = OpenFilesDialog('pkl')
+        except ValueError as err:
+            logger.error(err)
             return
     else:
         filepaths = args.inputfiles

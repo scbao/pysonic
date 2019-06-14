@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:07:14
+# @Last Modified time: 2019-06-14 10:50:49
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -424,7 +424,7 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
     bounds = np.array([ivalleys[:-1], ivalleys[1:]]).T - 1
     bounds[bounds < 0] = 0
 
-    return (ipeaks - 1, prominences, widths, halfmaxbounds, bounds)
+    return ipeaks, prominences, widths, halfmaxbounds, bounds
 
 
 def computeSpikingMetrics(filenames):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:12:04
+# @Last Modified time: 2019-06-14 08:09:50
 
 ''' Subpanels of the QSS approximation figure. '''
 
@@ -280,9 +280,10 @@ def main():
                                       title=figbase + 'c'))
 
     if args.save:
-        outdir = selectDirDialog() if args.outdir is None else args.outdir
-        if outdir == '':
-            logger.error('No input directory chosen')
+        try:
+            outdir = selectDirDialog() if args.outdir is None else args.outdir
+        except ValueError as err:
+            logger.error(err)
             return
         for fig in figs:
             figname = '{}.pdf'.format(fig.canvas.get_window_title())

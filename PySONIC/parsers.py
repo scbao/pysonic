@@ -3,14 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 15:24:25
+# @Last Modified time: 2019-06-14 10:59:39
 
 import logging
 import pprint
 import numpy as np
 from argparse import ArgumentParser
 
-from .utils import Intensity2Pressure, selectDirDialog, isIterable
+from .utils import Intensity2Pressure, selectDirDialog, OpenFilesDialog, isIterable
 from .neurons import getPointNeuron
 
 
@@ -25,6 +25,7 @@ class Parser(ArgumentParser):
         self.defaults = {}
         self.allowed = {}
         self.factors = {}
+        self.to_parse = {}
         self.addPlot()
         self.addVerbose()
 
@@ -55,10 +56,12 @@ class Parser(ArgumentParser):
     def addVerbose(self):
         self.add_argument(
             '-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+        self.to_parse['loglevel'] = self.parseLogLevel
 
     def addPlot(self):
         self.add_argument(
             '-p', '--plot', type=str, nargs='+', help='Variables to plot')
+        self.to_parse['pltscheme'] = self.parsePltScheme
 
     def addMPI(self):
         self.add_argument(
@@ -72,6 +75,10 @@ class Parser(ArgumentParser):
         self.add_argument(
             '-s', '--save', default=False, action='store_true', help='Save output figure(s)')
 
+    def addFigureExtension(self):
+        self.add_argument(
+            '--figext', type=str, default='png', help='Figure type (extension)')
+
     def addCompare(self, desc='Comparative graph'):
         self.add_argument(
             '--compare', default=False, action='store_true', help=desc)
@@ -79,6 +86,11 @@ class Parser(ArgumentParser):
     def addSamplingRate(self):
         self.add_argument(
             '--sr', type=int, default=1, help='Sampling rate for plot')
+
+    def addMarkSpikes(self):
+        self.add_argument(
+            '--markspikes', default=False, action='store_true',
+            help='Indicate spikes on charge profile')
 
     def addHideOutput(self):
         self.add_argument(
@@ -92,33 +104,53 @@ class Parser(ArgumentParser):
         self.inputdir_dep_key = dep_key
         self.add_argument(
             '-i', '--inputdir', type=str, help='Input directory')
+        self.to_parse['inputdir'] = self.parseInputDir
 
     def addOutputDir(self, dep_key=None):
         self.outputdir_dep_key = dep_key
         self.add_argument(
             '-o', '--outputdir', type=str, help='Output directory')
+        self.to_parse['outputdir'] = self.parseOutputDir
+
+    def addInputFiles(self, dep_key=None):
+        self.inputfiles_dep_key = dep_key
+        self.add_argument(
+            '-i', '--inputfiles', type=str, help='Input files')
+        self.to_parse['inputfiles'] = self.parseInputFiles
+
+    def parseInputFiles(self, args):
+        if self.inputfiles_dep_key is not None and not args[self.inputfiles_dep_key]:
+            return None
+        elif args['inputfiles'] is None:
+            return OpenFilesDialog('pkl')[0]
 
     def parseDir(self, key, args, title, dep_key=None):
         if dep_key is not None and args[dep_key] is False:
             return None
-        directory = args[key] if args[key] is not None else selectDirDialog(title=title)
-        if directory == '':
+        try:
+            if args[key] is not None:
+                return args[key]
+            else:
+                return selectDirDialog(title=title)
+        except ValueError:
             raise ValueError('No {} selected'.format(key))
-        return directory
 
     def parseInputDir(self, args):
-        return self.parseDir('inputdir', args, 'Select input directory', self.inputdir_dep_key)
+        return self.parseDir(
+            'inputdir', args, 'Select input directory', self.inputdir_dep_key)
 
     def parseOutputDir(self, args):
-        return self.parseDir('outputdir', args, 'Select output directory', self.outputdir_dep_key)
+        if hasattr(self, 'outputdir') and self.outputdir is not None:
+            return self.outputdir
+        else:
+            return self.parseDir(
+                'outputdir', args, 'Select output directory', self.outputdir_dep_key)
 
     def parseLogLevel(self, args):
         return logging.DEBUG if args.pop('verbose') else logging.INFO
 
     def parsePltScheme(self, args):
-        if args['plot'] is None:
-            raise ValueError('You must specify a plot scheme')
-        if args['plot'] == ['all']:
+        if args['plot'] is None or args['plot'] == ['all']:
             return None
         else:
             return {x: [x] for x in args['plot']}
@@ -133,10 +165,11 @@ class Parser(ArgumentParser):
 
     def parse(self):
         args = vars(super().parse_args())
-        args['loglevel'] = self.parseLogLevel(args)
         for k, v in self.defaults.items():
             if k in args and args[k] is None:
                 args[k] = v if isIterable(v) else [v]
+        for k, parse_method in self.to_parse.items():
+            args[k] = parse_method(args)
         return args
 
 
@@ -145,10 +178,9 @@ class SimParser(Parser):
 
     def __init__(self, outputdir=None):
         super().__init__()
-        self.addMPI()
         self.outputdir = outputdir
-        if self.outputdir is None:
-            self.addOutputDir()
+        self.addMPI()
+        self.addOutputDir()
 
     def addNeuron(self):
         self.add_argument(
@@ -156,10 +188,6 @@ class SimParser(Parser):
 
     def parse(self):
         args = super().parse()
-        if self.outputdir is not None:
-            args['outputdir'] = self.outputdir
-        else:
-            args['outputdir'] = self.parseOutputDir(args)
         return args
 
 
@@ -199,7 +227,6 @@ class MechSimParser(SimParser):
         self.addAdrive()
         self.addCharge()
         self.addFs()
-        self.addSpanFs()
 
     def addRadius(self):
         self.add_argument(
@@ -232,6 +259,7 @@ class MechSimParser(SimParser):
         self.add_argument(
             '--Irange', type=str, nargs='+',
             help='Intensity range {} (W/cm2)'.format(self.dist_str))
+        self.to_parse['amp'] = self.parseAmp
 
     def addAscale(self, default='lin'):
         self.add_argument(
@@ -245,10 +273,9 @@ class MechSimParser(SimParser):
     def addFs(self):
         self.add_argument(
             '--fs', nargs='+', type=float, help='Sonophore coverage fraction (%%)')
-
-    def addSpanFs(self):
         self.add_argument(
             '--spanFs', default=False, action='store_true', help='Span Fs from 1 to 100%%')
+        self.to_parse['fs'] = self.parseFs
 
     def parseAmp(self, args):
         params = ['Irange', 'Arange', 'intensity', 'amp']
@@ -272,10 +299,8 @@ class MechSimParser(SimParser):
 
     def parse(self):
         args = super().parse()
-        args['amp'] = self.parseAmp(args)
         for key in ['radius', 'embedding', 'Cm0', 'Qm0', 'freq', 'charge']:
             args[key] = self.parse2array(args, key, factor=self.factors[key])
-        args['fs'] = self.parseFs(args)
         return args
 
 
@@ -309,8 +334,8 @@ class PWSimParser(SimParser):
         self.addToffset()
         self.addPRF()
         self.addDC()
-        self.addSpanDC()
         self.addTitrate()
+        self.addMarkSpikes()
 
     def addTstim(self):
         self.add_argument(
@@ -327,10 +352,9 @@ class PWSimParser(SimParser):
     def addDC(self):
         self.add_argument(
             '--DC', nargs='+', type=float, help='Duty cycle (%%)')
-
-    def addSpanDC(self):
         self.add_argument(
             '--spanDC', default=False, action='store_true', help='Span DC from 1 to 100%%')
+        self.to_parse['DC'] = self.parseDC
 
     def addTitrate(self):
         self.add_argument(
@@ -352,7 +376,6 @@ class PWSimParser(SimParser):
         if args is None:
             args = super().parse()
         args['neuron'] = self.parseNeuron(args)
-        args['DC'] = self.parseDC(args)
         for key in ['tstim', 'toffset', 'PRF']:
             args[key] = self.parse2array(args, key, factor=self.factors[key])
         return args
@@ -374,6 +397,7 @@ class EStimParser(PWSimParser):
         self.add_argument(
             '--Arange', type=str, nargs='+',
             help='Amplitude range {} (mA/m2)'.format(self.dist_str))
+        self.to_parse['amp'] = self.parseAmp
 
     def parseAmp(self, args):
         if args.pop('titrate'):
@@ -387,7 +411,6 @@ class EStimParser(PWSimParser):
 
     def parse(self):
         args = super().parse()
-        args['amp'] = self.parseAmp(args)
         return args
 
 
@@ -405,11 +428,13 @@ class AStimParser(PWSimParser, MechSimParser):
         self.add_argument(
             '-m', '--method', nargs='+', type=str,
             help='Numerical integration method ({})'.format(', '.join(self.allowed['method'])))
+        self.to_parse['method'] = self.parseMethod
 
     def parseMethod(self, args):
         for item in args['method']:
             if item not in self.allowed['method']:
                 raise ValueError('Unknown neuron type: "{}"'.format(item))
+        return args['method']
 
     def parseAmp(self, args):
         if args.pop('titrate'):
@@ -420,5 +445,4 @@ class AStimParser(PWSimParser, MechSimParser):
         args = PWSimParser.parse(self, args=MechSimParser.parse(self))
         for k in ['Cm0', 'Qm0', 'embedding', 'charge']:
             del args[k]
-        self.parseMethod(args)
         return args

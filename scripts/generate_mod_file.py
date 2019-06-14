@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-03-18 18:06:20
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:08:08
+# @Last Modified time: 2019-06-14 08:11:25
 
 import os
 import logging
@@ -26,10 +26,11 @@ def main():
     except ValueError as err:
         logger.error(err)
         return
-    outdir = args.outputdir if args.outputdir is not None else selectDirDialog()
-    if outdir == '':
-        logger.error('No output directory selected')
-        quit()
+    try:
+        outdir = args.outputdir if args.outputdir is not None else selectDirDialog()
+    except ValueError as err:
+        logger.error(err)
+        return
     outfile = '{}.mod'.format(args.neuron)
     outpath = os.path.join(outdir, outfile)
 

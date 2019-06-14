@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-27 17:57:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:13:05
+# @Last Modified time: 2019-06-14 08:09:16
 
 ''' Sub-panels of threshold curves for various sonophore radii and US frequencies. '''
 
@@ -104,9 +104,10 @@ def main():
     args = ap.parse_args()
     loglevel = logging.DEBUG if args.verbose is True else logging.INFO
     logger.setLevel(loglevel)
-    inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
-    if inputdir == '':
-        logger.error('No input directory chosen')
+    try:
+        inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
+    except ValueError as err:
+        logger.error(err)
         return
     figset = args.figset
     if figset == 'all':

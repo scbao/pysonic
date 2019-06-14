@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:09:24
+# @Last Modified time: 2019-06-14 10:04:01
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -30,7 +30,6 @@ def main():
     parser.defaults['tstim'] = 1000.  # ms
     parser.defaults['toffset'] = 0.  # ms
     args = parser.parse()
-    args['inputdir'] = parser.parseInputDir(args)
     logger.setLevel(args['loglevel'])
     if args['plot'] is None:
         args['plot'] = ['dQdt']

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:08:21
+# @Last Modified time: 2019-06-14 08:11:59
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -80,9 +80,10 @@ def main():
     # Runtime options
     loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
     logger.setLevel(loglevel)
-    inputdir = args['inputdir'] if 'inputdir' in args else selectDirDialog()
-    if inputdir == '':
-        logger.error('Operation cancelled')
+    try:
+        inputdir = args['inputdir'] if 'inputdir' in args else selectDirDialog()
+    except ValueError as err:
+        logger.error(err)
         return
 
     # Parameters

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:12:46
+# @Last Modified time: 2019-06-14 08:08:28
 
 ''' Sub-panels of the NICE and SONIC computation times comparative figure. '''
 
@@ -248,9 +248,10 @@ def main():
     args = ap.parse_args()
     loglevel = logging.DEBUG if args.verbose is True else logging.INFO
     logger.setLevel(loglevel)
-    inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
-    if inputdir == '':
-        logger.error('No input directory chosen')
+    try:
+        inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
+    except ValueError as err:
+        logger.error(err)
         return
     figset = args.figset
     if figset == 'all':

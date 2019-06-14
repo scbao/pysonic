@@ -3,16 +3,17 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:06:46
+# @Last Modified time: 2019-06-14 10:35:21
 
 import re
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from matplotlib.ticker import FormatStrFormatter
 
 from ..core import getModel
+from ..postpro import findPeaks
 from ..utils import *
+from ..constants import SPIKE_MIN_DT, SPIKE_MIN_QAMP, SPIKE_MIN_QPROM
 from .pltutils import *
 
 
@@ -103,6 +104,20 @@ class TimeSeriesPlot:
         except KeyError:
             stimstate = df['states']
         return stimstate.values
+
+    def getSpikes(self, data):
+        if 'Qm' not in data:
+            raise ValueError('charge profile not avilable in dataframe')
+        t, Qm = [data[k].values for k in['t', 'Qm']]
+        mpd = int(np.ceil(SPIKE_MIN_DT / (t[1] - t[0])))
+        ipeaks, *_ = findPeaks(
+            data['Qm'].values, mph=SPIKE_MIN_QAMP, mpd=mpd, mpp=SPIKE_MIN_QPROM)
+        if ipeaks is None:
+            return None, None
+        return t[ipeaks], Qm[ipeaks]
+
+    def materializeSpikes(self, ax, tspikes, Qspikes):
+        ax.scatter(tspikes, Qspikes + 10, color='k', label='spikes', marker='v')
 
     def prepareTime(self, t, tplt):
         if tplt['onset'] > 0.0:
@@ -197,13 +212,8 @@ class TimeSeriesPlot:
         ax.set_ylabel('$\\rm {}\ ({})$'.format(lbl, yplt.get('unit', '')), fontsize=fs)
 
     def setYTicks(self, ax, yticks=None):
-        if yticks is not None:  # optional y-ticks
+        if yticks is not None:
             ax.set_yticks(yticks)
-        # else:
-        #     ax.locator_params(axis='y', nbins=2)
-        #     ax.yaxis.set_major_locator(plt.MaxNLocator(2))
-        # if any(ax.get_yticks() < 0):
-        #     ax.yaxis.set_major_formatter(FormatStrFormatter('%+.0f'))
 
     def setTickLabelsFontSize(self, ax, fs):
         for tick in ax.xaxis.get_major_ticks() + ax.yaxis.get_major_ticks():
@@ -401,7 +411,7 @@ class SchemePlot(TimeSeriesPlot):
         self.setTimeLabel(axes[-1], tplt, fs)
 
     def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches=True, title=True,
-               save=False, directory=None, ask_before_save=True, fig_ext='png', frequency=1):
+               save=False, directory=None, fig_ext='png', frequency=1, mark_spikes=False):
 
         figs = []
         for filepath in self.filepaths:
@@ -413,6 +423,11 @@ class SchemePlot(TimeSeriesPlot):
             # Extract time and stim pulses
             t = data['t'].values
             stimstate = self.getStimStates(data)
+            if 'Qm' in data and mark_spikes:
+                tspikes, Qspikes = self.getSpikes(data)
+            else:
+                tspikes = None
+
             tpatch_on, tpatch_off = self.getStimPulses(t, stimstate)
             tplt = self.getTimePltVar(model.tscale)
             t = self.prepareTime(t, tplt)
@@ -432,6 +447,7 @@ class SchemePlot(TimeSeriesPlot):
 
             # Loop through each subgraph
             for ax, (grouplabel, keys) in zip(axes, pltscheme.items()):
+                ax_legend_spikes = False
 
                 # Extract variables to plot
                 nvars = len(keys)
@@ -456,8 +472,14 @@ class SchemePlot(TimeSeriesPlot):
                     if 'color' not in yplt:
                         icolor += 1
 
+                    # Optional: add spikes
+                    if name == 'Qm' and tspikes is not None:
+                        self.materializeSpikes(
+                            ax, tspikes * tplt['factor'], Qspikes * yplt['factor'])
+                        ax_legend_spikes = True
+
                 # Add legend
-                if nvars > 1 or 'gate' in ax_pltvars[0]['desc']:
+                if nvars > 1 or 'gate' in ax_pltvars[0]['desc'] or ax_legend_spikes:
                     ax.legend(fontsize=fs, loc=7, ncol=nvars // 4 + 1, frameon=False)
 
             if patches:
@@ -475,22 +497,17 @@ class SchemePlot(TimeSeriesPlot):
                 filecode = model.filecode(meta)
                 if directory is None:
                     directory = os.path.split(filepath)[0]
-                if ask_before_save:
-                    plt_filename = SaveFileDialog(
-                        '{}_{}.{}'.format(filecode, tag, fig_ext),
-                        dirname=directory, ext=fig_ext)
-                else:
-                    plt_filename = '{}/{}_{}.{}'.format(directory, filecode, tag, fig_ext)
-                if plt_filename:
-                    plt.savefig(plt_filename)
-                    logger.info('Saving figure as "{}"'.format(plt_filename))
-                    plt.close()
+                plt_filename = '{}/{}.{}'.format(directory, filecode, fig_ext)
+                plt.savefig(plt_filename)
+                logger.info('Saving figure as "{}"'.format(plt_filename))
+                plt.close()
 
             figs.append(fig)
         return figs
 
 
 if __name__ == '__main__':
+    # example of use
     filepaths = OpenFilesDialog('pkl')[0]
     comp_plot = ComparativePlot(filepaths, 'Qm')
     fig = comp_plot.render(

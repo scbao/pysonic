@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 15:22:57
+# @Last Modified time: 2019-06-14 10:01:25
 
 ''' Create lookup table for specific neuron. '''
 
@@ -126,6 +126,8 @@ def main():
     parser.defaults['charge'] = np.nan
     args = parser.parse()
     logger.setLevel(args['loglevel'])
+
+    # print(args['outputdir'])
 
     for neuron in args['neuron']:
 

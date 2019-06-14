@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 03:17:15
+# @Last Modified time: 2019-06-14 09:45:00
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -172,11 +172,7 @@ def Intensity2Pressure(I, rho=1075.0, c=1515.0):
 
 
 def convertPKL2JSON():
-    pkl_fpaths = OpenFilesDialog('pkl')[0]
-    if len(pkl_fpaths) == 0:
-        logger.error('No input files selected')
-        return
-    for pkl_filepath in pkl_fpaths:
+    for pkl_filepath in OpenFilesDialog('pkl')[0]:
         logger.info('Processing {} ...'.format(pkl_filepath))
         json_filepath = '{}.json'.format(os.path.splitext(pkl_filepath)[0])
         with open(pkl_filepath, 'rb') as fpkl, open(json_filepath, 'w') as fjson:
@@ -200,11 +196,10 @@ def OpenFilesDialog(filetype, dirname=''):
         filetypes=[(filetype + " files", '.' + filetype)],
         initialdir=dirname
     )
-    if filenames:
-        par_dir = os.path.abspath(os.path.join(filenames[0], os.pardir))
-    else:
-        par_dir = None
-    return (filenames, par_dir)
+    if len(filenames) == 0:
+        raise ValueError('no input file selected')
+    par_dir = os.path.abspath(os.path.join(filenames[0], os.pardir))
+    return filenames, par_dir
 
 
 def selectDirDialog(title='Select directory'):
@@ -214,7 +209,10 @@ def selectDirDialog(title='Select directory'):
     '''
     root = tk.Tk()
     root.withdraw()
-    return filedialog.askdirectory(title=title)
+    directory = filedialog.askdirectory(title=title)
+    if directory == '':
+        raise ValueError('no directory selected')
+    return directory
 
 
 def SaveFileDialog(filename, dirname=None, ext=None):
@@ -229,6 +227,8 @@ def SaveFileDialog(filename, dirname=None, ext=None):
     root.withdraw()
     filename_out = filedialog.asksaveasfilename(
         defaultextension=ext, initialdir=dirname, initialfile=filename)
+    if len(filename_out) == 0:
+        raise ValueError('no output filepath selected')
     return filename_out
 
 

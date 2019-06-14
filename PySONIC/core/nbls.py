@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 23:47:40
+# @Last Modified time: 2019-06-14 11:28:43
 
 from copy import deepcopy
 import logging
@@ -447,7 +447,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             [Fdrive, tstim, toffset, PRF, DC, method], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM
         )
 
-    def simQueue(self, freqs, amps, durations, offsets, PRFs, DCs, method):
+    def simQueue(self, freqs, amps, durations, offsets, PRFs, DCs, methods, outputdir=None):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
             parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 
@@ -457,21 +457,25 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
             :param PRFs: list (or 1D-array) of pulse-repetition frequencies
             :param DCs: list (or 1D-array) of duty cycle values
-            :params method: integration method
+            :params methods: integration methods
             :return: list of parameters (list) for each simulation
         '''
+        method_ids = list(range(len(methods)))
         if amps is None:
             amps = [np.nan]
         DCs = np.array(DCs)
         queue = []
         if 1.0 in DCs:
-            queue += createQueue(freqs, amps, durations, offsets, min(PRFs), 1.0)
+            queue += createQueue(freqs, amps, durations, offsets, min(PRFs), 1.0, method_ids)
         if np.any(DCs != 1.0):
-            queue += createQueue(freqs, amps, durations, offsets, PRFs, DCs[DCs != 1.0])
+            queue += createQueue(freqs, amps, durations, offsets, PRFs, DCs[DCs != 1.0], method_ids)
         for item in queue:
             if np.isnan(item[1]):
                 item[1] = None
-            item.append(method)
+            item[-1] = methods[int(item[-1])]
+        if outputdir is not None:
+            for item in queue:
+                item.insert(0, outputdir)
         return queue
 
     def quasiSteadyStates(self, Fdrive, amps=None, charges=None, DCs=1.0, squeeze_output=False):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:12:36
+# @Last Modified time: 2019-06-14 08:08:00
 
 ''' Sub-panels of the NICE and SONIC accuracies comparative figure. '''
 
@@ -279,7 +279,8 @@ def main():
     ap = ArgumentParser()
 
     # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
+    ap.add_argument('-v', '--verbose', default=False, action='store_true',
+                    help='Increase verbosity')
     ap.add_argument('-i', '--inputdir', type=str, help='Input directory')
     ap.add_argument('-f', '--figset', type=str, help='Figure set', default='a')
     ap.add_argument('-s', '--save', default=False, action='store_true',
@@ -288,9 +289,10 @@ def main():
     args = ap.parse_args()
     loglevel = logging.DEBUG if args.verbose is True else logging.INFO
     logger.setLevel(loglevel)
-    inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
-    if inputdir == '':
-        logger.error('No input directory chosen')
+    try:
+        inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
+    except ValueError as err:
+        logger.error(err)
         return
     figset = args.figset
 

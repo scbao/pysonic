@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 18:16:09
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:10:11
+# @Last Modified time: 2019-06-14 11:29:27
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -24,26 +24,18 @@ def main():
     # Run A-STIM batch
     logger.info("Starting A-STIM simulation batch")
     pkl_filepaths = []
+    inputs = [args[k] for k in ['freq', 'amp', 'tstim', 'toffset', 'PRF', 'DC', 'method']]
     for a in args['radius']:
         for pneuron in args['neuron']:
             nbls = NeuronalBilayerSonophore(a, pneuron)
-            queue = nbls.simQueue(
-                args['freq'],
-                args['amp'],
-                args['tstim'],
-                args['toffset'],
-                args['PRF'],
-                args['DC'],
-                args['method'][0]
-            )
-            for item in queue:
-                item.insert(0, args['outputdir'])
+            queue = nbls.simQueue(*inputs, outputdir=args['outputdir'])
             batch = Batch(nbls.runAndSave, queue)
             pkl_filepaths += batch(mpi=args['mpi'], loglevel=args['loglevel'])
 
     # Plot resulting profiles
     if args['plot'] is not None:
-        SchemePlot(pkl_filepaths, pltscheme=parser.parsePltScheme(args))()
+        scheme_plot = SchemePlot(pkl_filepaths, pltscheme=args['pltscheme'])
+        scheme_plot.render(mark_spikes=args['markspikes'])
         plt.show()
 
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 23:49:14
+# @Last Modified time: 2019-06-14 11:29:06
 
 import abc
 import inspect
@@ -499,7 +499,7 @@ class PointNeuron(Model):
         # Return dataframe and computation time
         return data, tcomp
 
-    def simQueue(self, amps, durations, offsets, PRFs, DCs):
+    def simQueue(self, amps, durations, offsets, PRFs, DCs, outputdir=None):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
             parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 
@@ -521,6 +521,9 @@ class PointNeuron(Model):
         for item in queue:
             if np.isnan(item[0]):
                 item[0] = None
+        if outputdir is not None:
+            for item in queue:
+                item.insert(0, outputdir)
         return queue
 
     def getNSpikes(self, data):
