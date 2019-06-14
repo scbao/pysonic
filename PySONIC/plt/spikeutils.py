@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:00:45
+# @Last Modified time: 2019-06-14 15:27:16
 
 import pickle
 import numpy as np
@@ -372,6 +372,4 @@ def plotFRProfile(filepaths, varname, no_offset=False, no_first=False, fs=15, lw
             lh.set_label('{:.2f} {}'.format(z, zunit))
         ax.legend()
 
-
-    # Return
     return fig

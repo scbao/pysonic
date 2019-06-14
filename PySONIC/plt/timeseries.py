@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 11:52:21
+# @Last Modified time: 2019-06-14 16:04:59
 
 import re
 import numpy as np
@@ -106,20 +106,35 @@ class TimeSeriesPlot:
             stimstate = df['states']
         return stimstate.values
 
-    def getSpikes(self, data):
+    def materializeSpikes(self, ax, data, tf, yf, color, mode, add_to_legend=False):
         if 'Qm' not in data:
             raise ValueError('charge profile not avilable in dataframe')
-        t, Qm = [data[k].values for k in['t', 'Qm']]
-        mpd = int(np.ceil(SPIKE_MIN_DT / (t[1] - t[0])))
-        ipeaks, *_ = findPeaks(
-            data['Qm'].values, mph=SPIKE_MIN_QAMP, mpd=mpd, mpp=SPIKE_MIN_QPROM)
-        if ipeaks is None:
-            return None, None
-        return t[ipeaks], Qm[ipeaks]
 
-    def materializeSpikes(self, ax, tspikes, Qspikes, color, add_to_legend=False):
-        label = 'spikes' if add_to_legend else None
-        ax.scatter(tspikes, Qspikes + 10, color=color, label=label, marker='v')
+        # Get spikes details
+        t, Qm = [data[k].values for k in['t', 'Qm']]
+        dt = t[1] - t[0]
+        mpd = int(np.ceil(SPIKE_MIN_DT / dt))
+        ipeaks, prominences, widths, halfmaxbounds, _ = findPeaks(
+            data['Qm'].values, mph=SPIKE_MIN_QAMP, mpd=mpd, mpp=SPIKE_MIN_QPROM)
+        if ipeaks is not None:
+            ax.scatter(t[ipeaks] * tf, Qm[ipeaks] * yf + 10, color=color,
+                       label='spikes' if add_to_legend else None, marker='v')
+            if mode == 'details':
+                widths *= dt
+                indexes = np.arange(t.size)
+                tleftbounds = np.interp(halfmaxbounds[:, 0], indexes, t, left=np.nan, right=np.nan)
+                trightbounds = np.interp(halfmaxbounds[:, 1], indexes, t, left=np.nan, right=np.nan)
+                for i in range(len(ipeaks)):
+                    ax.plot(np.array([t[ipeaks[i]]] * 2) * tf,
+                            np.array([Qm[ipeaks[i]], Qm[ipeaks[i]] - prominences[i]]) * yf,
+                            '--', color=color,
+                            label='prominences' if i == 0 and add_to_legend else '')
+                    ax.plot(np.array([tleftbounds[i], trightbounds[i]]) * tf,
+                            np.array([Qm[ipeaks[i]] - 0.5 * prominences[i]] * 2) * yf,
+                            '-.', color=color,
+                            label='widths' if i == 0 and add_to_legend else '')
+
+        return add_to_legend
 
     def prepareTime(self, t, tplt):
         if tplt['onset'] > 0.0:
@@ -291,7 +306,7 @@ class ComparativePlot(TimeSeriesPlot):
 
     def render(self, figsize=(11, 4), fs=10, lw=2, labels=None, colors=None, lines=None,
                patches='one', xticks=None, yticks=None, blacklegend=False, straightlegend=False,
-               inset=None, frequency=1, mark_spikes=False):
+               inset=None, frequency=1, spikes='none'):
         ''' Render plot.
 
             :param figsize: figure size (x, y)
@@ -309,7 +324,7 @@ class ComparativePlot(TimeSeriesPlot):
             :param inset: string indicating whether/how to mark an inset zooming on
                 a particular region of the graph
             :param frequency: frequency at which to plot samples
-            :param mark_spikes: boolean indicating whether to indicate spikes on charge profiles
+            :param spikes: string indicating how to show spikes ("none", "marks" or "details")
             :return: figure handle
         '''
 
@@ -337,10 +352,6 @@ class ComparativePlot(TimeSeriesPlot):
 
             # Extract time and stim pulses
             t = data['t'].values
-            if 'Qm' in data and mark_spikes:
-                tspikes, Qspikes = self.getSpikes(data)
-            else:
-                tspikes = None
             stimstate = self.getStimStates(data)
             tpatch_on, tpatch_off = self.getStimPulses(t, stimstate)
             tplt = self.getTimePltVar(model.tscale)
@@ -360,9 +371,9 @@ class ComparativePlot(TimeSeriesPlot):
                     label=labels[j] if labels is not None else figtitle(meta))
 
             # Optional: add spikes
-            if self.varname == 'Qm' and tspikes is not None:
+            if self.varname == 'Qm' and spikes != 'none':
                 self.materializeSpikes(
-                    ax, tspikes * tplt['factor'], Qspikes * yplt['factor'], colors[j])
+                    ax, data, tplt['factor'], yplt['factor'], colors[j], spikes)
 
             # Plot optional inset
             if inset is not None:
@@ -423,7 +434,7 @@ class SchemePlot(TimeSeriesPlot):
         self.setTimeLabel(axes[-1], tplt, fs)
 
     def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches=True, title=True,
-               save=False, directory=None, fig_ext='png', frequency=1, mark_spikes=False):
+               save=False, directory=None, fig_ext='png', frequency=1, spikes='none'):
 
         figs = []
         for filepath in self.filepaths:
@@ -435,10 +446,6 @@ class SchemePlot(TimeSeriesPlot):
             # Extract time and stim pulses
             t = data['t'].values
             stimstate = self.getStimStates(data)
-            if 'Qm' in data and mark_spikes:
-                tspikes, Qspikes = self.getSpikes(data)
-            else:
-                tspikes = None
 
             tpatch_on, tpatch_off = self.getStimPulses(t, stimstate)
             tplt = self.getTimePltVar(model.tscale)
@@ -486,11 +493,10 @@ class SchemePlot(TimeSeriesPlot):
                         icolor += 1
 
                     # Optional: add spikes
-                    if name == 'Qm' and tspikes is not None:
-                        self.materializeSpikes(
-                            ax, tspikes * tplt['factor'], Qspikes * yplt['factor'], color,
-                            add_to_legend=True)
-                        ax_legend_spikes = True
+                    if name == 'Qm' and spikes != 'none':
+                        ax_legend_spikes = self.materializeSpikes(
+                            ax, data, tplt['factor'], yplt['factor'],
+                            color, spikes, add_to_legend=True)
 
                 # Add legend
                 if nvars > 1 or 'gate' in ax_pltvars[0]['desc'] or ax_legend_spikes:

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 15:21:57
+# @Last Modified time: 2019-06-14 14:59:22
 
 import inspect
 import logging
@@ -380,7 +380,8 @@ def plotEqChargeVsAmp(pneuron, a, Fdrive, amps=None, tstim=None, toffset=None, P
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    figname = '{} neuron - charge stability vs. amplitude @ {:.0f}%DC'.format(pneuron.name, DC * 1e2)
+    figname = '{} neuron - charge stability vs. amplitude @ {:.0f}%DC'.format(
+        pneuron.name, DC * 1e2)
     ax.set_title(figname)
     ax.set_xlabel('Amplitude (kPa)', fontsize=fs)
     ax.set_ylabel('$\\rm Q_m\ (nC/cm^2)$', fontsize=fs)

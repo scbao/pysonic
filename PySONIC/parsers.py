@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 10:59:39
+# @Last Modified time: 2019-06-14 15:55:20
 
 import logging
 import pprint
@@ -87,10 +87,10 @@ class Parser(ArgumentParser):
         self.add_argument(
             '--sr', type=int, default=1, help='Sampling rate for plot')
 
-    def addMarkSpikes(self):
+    def addSpikes(self):
         self.add_argument(
-            '--markspikes', default=False, action='store_true',
-            help='Indicate spikes on charge profile')
+            '--spikes', type=str, default='none',
+            help='How to indicate spikes on charge profile ("none", "marks" or "details")')
 
     def addHideOutput(self):
         self.add_argument(
@@ -335,7 +335,7 @@ class PWSimParser(SimParser):
         self.addPRF()
         self.addDC()
         self.addTitrate()
-        self.addMarkSpikes()
+        self.addSpikes()
 
     def addTstim(self):
         self.add_argument(
