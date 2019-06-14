@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 10:35:21
+# @Last Modified time: 2019-06-14 11:52:21
 
 import re
 import numpy as np
@@ -32,12 +32,13 @@ class TimeSeriesPlot:
     def __call__(self, *args, **kwargs):
         return self.render(*args, **kwargs)
 
-    def getData(self, entry):
+    def getData(self, entry, frequency):
         if isinstance(entry, str):
             simkey = self.getSimType(os.path.basename(entry))
-            data, meta = loadData(entry)
+            data, meta = loadData(entry, frequency)
         else:
             simkey, data, meta = entry
+            data = data.iloc[::frequency]
         return simkey, data, meta
 
     def render(*args, **kwargs):
@@ -116,8 +117,9 @@ class TimeSeriesPlot:
             return None, None
         return t[ipeaks], Qm[ipeaks]
 
-    def materializeSpikes(self, ax, tspikes, Qspikes):
-        ax.scatter(tspikes, Qspikes + 10, color='k', label='spikes', marker='v')
+    def materializeSpikes(self, ax, tspikes, Qspikes, color, add_to_legend=False):
+        label = 'spikes' if add_to_legend else None
+        ax.scatter(tspikes, Qspikes + 10, color=color, label=label, marker='v')
 
     def prepareTime(self, t, tplt):
         if tplt['onset'] > 0.0:
@@ -287,10 +289,9 @@ class ComparativePlot(TimeSeriesPlot):
         self.setYTicks(ax, yticks)
         self.setTickLabelsFontSize(ax, fs)
 
-
     def render(self, figsize=(11, 4), fs=10, lw=2, labels=None, colors=None, lines=None,
                patches='one', xticks=None, yticks=None, blacklegend=False, straightlegend=False,
-               inset=None):
+               inset=None, frequency=1, mark_spikes=False):
         ''' Render plot.
 
             :param figsize: figure size (x, y)
@@ -307,6 +308,8 @@ class ComparativePlot(TimeSeriesPlot):
             :param straightlegend: boolean indicating whether to use straight lines in the legend
             :param inset: string indicating whether/how to mark an inset zooming on
                 a particular region of the graph
+            :param frequency: frequency at which to plot samples
+            :param mark_spikes: boolean indicating whether to indicate spikes on charge profiles
             :return: figure handle
         '''
 
@@ -321,7 +324,7 @@ class ComparativePlot(TimeSeriesPlot):
         for j, filepath in enumerate(self.filepaths):
 
             # Load data
-            simkey, data, meta = self.getData(filepath)
+            simkey, data, meta = self.getData(filepath, frequency)
 
             # Check consistency if sim types
             if self.simkey_ref is None:
@@ -334,6 +337,10 @@ class ComparativePlot(TimeSeriesPlot):
 
             # Extract time and stim pulses
             t = data['t'].values
+            if 'Qm' in data and mark_spikes:
+                tspikes, Qspikes = self.getSpikes(data)
+            else:
+                tspikes = None
             stimstate = self.getStimStates(data)
             tpatch_on, tpatch_off = self.getStimPulses(t, stimstate)
             tplt = self.getTimePltVar(model.tscale)
@@ -351,6 +358,11 @@ class ComparativePlot(TimeSeriesPlot):
             #  Plot time series
             ax.plot(t, y, linewidth=lw, linestyle=lines[j], color=colors[j],
                     label=labels[j] if labels is not None else figtitle(meta))
+
+            # Optional: add spikes
+            if self.varname == 'Qm' and tspikes is not None:
+                self.materializeSpikes(
+                    ax, tspikes * tplt['factor'], Qspikes * yplt['factor'], colors[j])
 
             # Plot optional inset
             if inset is not None:
@@ -417,7 +429,7 @@ class SchemePlot(TimeSeriesPlot):
         for filepath in self.filepaths:
 
             # Load data and extract model
-            simkey, data, meta = self.getData(filepath)
+            simkey, data, meta = self.getData(filepath, frequency)
             model = getModel(simkey, meta)
 
             # Extract time and stim pulses
@@ -466,16 +478,18 @@ class SchemePlot(TimeSeriesPlot):
                 # Plot time series
                 icolor = 0
                 for yplt, name in zip(ax_pltvars, pltscheme[grouplabel]):
+                    color = yplt.get('color', 'C{}'.format(icolor))
                     y = extractPltVar(model, yplt, data, meta, t.size, name)
-                    ax.plot(t, y, yplt.get('ls', '-'), c=yplt.get('color', 'C{}'.format(icolor)),
-                            lw=lw, label='$\\rm {}$'.format(yplt['label']))
+                    ax.plot(t, y, yplt.get('ls', '-'), c=color, lw=lw,
+                            label='$\\rm {}$'.format(yplt['label']))
                     if 'color' not in yplt:
                         icolor += 1
 
                     # Optional: add spikes
                     if name == 'Qm' and tspikes is not None:
                         self.materializeSpikes(
-                            ax, tspikes * tplt['factor'], Qspikes * yplt['factor'])
+                            ax, tspikes * tplt['factor'], Qspikes * yplt['factor'], color,
+                            add_to_legend=True)
                         ax_legend_spikes = True
 
                 # Add legend
