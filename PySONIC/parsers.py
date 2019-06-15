@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-15 18:13:01
+# @Last Modified time: 2019-06-15 19:13:11
 
 import logging
 import pprint
@@ -96,9 +96,14 @@ class Parser(ArgumentParser):
         self.add_argument(
             '--hide', default=False, action='store_true', help='Hide output')
 
-    def addCmap(self, default='viridis'):
+    def addCmap(self):
         self.add_argument(
-            '--cmap', type=str, default=default, help='Colormap name')
+            '--cmap', type=str, help='Colormap name')
+
+    def addCscale(self, default='lin'):
+        self.add_argument(
+            '--cscale', type=str, default=default, choices=('lin', 'log'),
+            help='Color scale ("lin" or "log")')
 
     def addInputDir(self, dep_key=None):
         self.inputdir_dep_key = dep_key
@@ -120,7 +125,7 @@ class Parser(ArgumentParser):
 
     def addPatches(self):
         self.add_argument(
-            '--patches', type=str,
+            '--patches', type=str, default='one',
             help='Stimulus patching mode ("none", "one", all", or a boolean list)')
         self.to_parse['patches'] = self.parsePatches
 

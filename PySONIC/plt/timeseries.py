@@ -3,11 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-15 18:27:19
+# @Last Modified time: 2019-06-15 19:14:17
 
 import re
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from matplotlib.patches import Rectangle
 
 from ..core import getModel
@@ -302,31 +303,31 @@ class ComparativePlot(TimeSeriesPlot):
         self.setYTicks(ax, yticks)
         self.setTickLabelsFontSize(ax, fs)
 
-    def addCmap(self, fig, cmap, handles, zref, zlabel, zunit):
+    def addCmap(self, fig, cmap, handles, zvalues, zinfo, fs, zscale='lin'):
         # Create colormap and normalizer
         mymap = plt.get_cmap(cmap)
         if zscale == 'lin':
-            norm = matplotlib.colors.Normalize(zref.min(), zref.max())
+            norm = matplotlib.colors.Normalize(zvalues.min(), zvalues.max())
         elif zscale == 'log':
-            norm = matplotlib.colors.LogNorm(zref.min(), zref.max())
+            norm = matplotlib.colors.LogNorm(zvalues.min(), zvalues.max())
         sm = cm.ScalarMappable(norm=norm, cmap=mymap)
         sm._A = []
 
         # Adjust line colors
-        for lh, z in zip(handles, zref):
+        for lh, z in zip(handles, zvalues):
             lh.set_color(sm.to_rgba(z))
 
         # Add colorbar
         fig.subplots_adjust(left=0.1, right=0.8, bottom=0.15, top=0.95, hspace=0.5)
         cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
         fig.colorbar(sm, cax=cbarax, orientation='vertical')
-        cbarax.set_ylabel('{} ({})'.format(zlabel, zunit), fontsize=fs)
+        cbarax.set_ylabel('$\\rm {}\ ({})$'.format(zinfo['label'], zinfo['unit']), fontsize=fs)
         for item in cbarax.get_yticklabels():
             item.set_fontsize(fs)
 
     def render(self, figsize=(11, 4), fs=10, lw=2, labels=None, colors=None, lines=None,
                patches='one', xticks=None, yticks=None, blacklegend=False, straightlegend=False,
-               inset=None, frequency=1, spikes='none', cmap=None):
+               inset=None, frequency=1, spikes='none', cmap=None, cscale='lin'):
         ''' Render plot.
 
             :param figsize: figure size (x, y)
@@ -347,8 +348,6 @@ class ComparativePlot(TimeSeriesPlot):
             :param spikes: string indicating how to show spikes ("none", "marks" or "details")
             :return: figure handle
         '''
-        print(patches)
-
         lines, labels, colors, patches, greypatch = self.checkInputs(
             lines, labels, colors, patches)
 
@@ -432,10 +431,10 @@ class ComparativePlot(TimeSeriesPlot):
                 if inset is not None:
                     self.addInsetPatches(
                         ax, inset_ax, inset, tpatch_on, tpatch_off, tplt['factor'], color)
-
         if zinfo is not None:
-            zlabels = ['$\\rm{} = {}\ {}$'.format(
-                zinfo['label'], zinfo['factor'] * z, zinfo['unit']) for z in zvalues]
+            zvalues = np.array(zvalues) * zinfo['factor']
+            zlabels = ['$\\rm{} = {}\ {}$'.format(zinfo['label'], z, zinfo['unit'])
+                       for z in zvalues]
         else:
             zlabels = zvalues
 
@@ -454,7 +453,9 @@ class ComparativePlot(TimeSeriesPlot):
 
         # Add color legend or label legend
         if cmap is not None:
-            self.addCmap(cmap, handles, zref, zlabel, zunit)
+            if zinfo is None:
+                raise ValueError('Colormap mode unavailable for qualitative comparisons')
+            self.addCmap(fig, cmap, handles, zvalues, zinfo, fs, zscale=cscale)
         else:
             self.addLegend(ax, handles, labels, fs, black=blacklegend, straight=straightlegend)
 
