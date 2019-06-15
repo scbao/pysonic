@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:14:24
+# @Last Modified time: 2019-06-14 17:16:01
 
 import inspect
 import sys
@@ -29,12 +29,12 @@ def getModelsDict():
     return models_dict
 
 
-def getModel(key, meta):
-    ''' Return appropriate model object based on a sim key and a dictionary of meta-information. '''
-    if key == 'MECH':
+def getModel(meta):
+    ''' Return appropriate model object based on a dictionary of meta-information. '''
+    if meta['simkey'] == 'MECH':
         model = BilayerSonophore(meta['a'], meta['Cm0'], meta['Qm0'])
     else:
         model = getPointNeuron(meta['neuron'])
-        if key == 'ASTIM':
+        if meta['simkey'] == 'ASTIM':
             model = NeuronalBilayerSonophore(meta['a'], model, meta['Fdrive'])
     return model

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 16:02:43
+# @Last Modified time: 2019-06-15 18:15:19
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -25,6 +25,7 @@ def main():
     parser.addFigureExtension()
     parser.addSamplingRate()
     parser.addSpikes()
+    parser.addPatches()
     args = parser.parse()
     logger.setLevel(args['loglevel'])
 
@@ -38,7 +39,8 @@ def main():
                 comp_plot = ComparativePlot(args['inputfiles'], pltvar)
                 comp_plot.render(
                     spikes=args['spikes'],
-                    frequency=args['sr'])
+                    frequency=args['sr'],
+                    patches=args['patches'])
             except KeyError as e:
                 logger.error(e)
                 return

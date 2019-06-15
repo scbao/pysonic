@@ -103,7 +103,7 @@ nbls = NeuronalBilayerSonophore(a, pneuron)
 elec_args = (Astim, tstim, toffset, PRF, DC)
 data, tcomp = pneuron.simulate(*elec_args)
 logger.info('completed in %.0f ms', tcomp * 1e3)
-scheme_plot = SchemePlot([(pneuron.simkey, data, pneuron.meta(*elec_args))])
+scheme_plot = SchemePlot([(data, pneuron.meta(*elec_args))])
 fig1 = scheme_plot.render()
 
 # Run simulation upon ultrasonic stimulation, and plot results
@@ -111,7 +111,7 @@ US_int_method = 'sonic'  # Integration method ('sonic', 'full' or 'hybrid')
 US_args = (Fdrive, Adrive, tstim, toffset, PRF, DC, US_int_method)
 data, tcomp = nbls.simulate(*US_args)
 logger.info('completed in %.0f ms', tcomp * 1e3)
-scheme_plot = SchemePlot([(nbls.simkey, data, nbls.meta(*US_args))])
+scheme_plot = SchemePlot([(data, nbls.meta(*US_args))])
 fig2 = scheme_plot.render()
 
 plt.show()

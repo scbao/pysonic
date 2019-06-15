@@ -3,9 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 11:28:16
+# @Last Modified time: 2019-06-15 16:15:42
 
 import os
+import re
 from inspect import signature
 import pickle
 import abc
@@ -46,6 +47,15 @@ class Model(metaclass=abc.ABCMeta):
         inst_attrs = [a for a in inst_attrs if not toAvoid(a[0]) and a not in class_attrs]
         params_dict = {a[0]: a[1] for a in class_attrs + inst_attrs}
         return params_dict
+
+    def inputCode(self, value, info):
+        if 'unit' in info:
+            fmt = '{{:.{}f}}'.format(info['precision'])
+            return '{}{}'.format(
+                fmt.format(value * info['factor']),
+                re.sub('/|\^', '', info['unit']))
+        else:
+            return value
 
     @property
     @abc.abstractmethod

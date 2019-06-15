@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 16:04:59
+# @Last Modified time: 2019-06-15 18:27:19
 
 import re
 import numpy as np
@@ -34,12 +34,11 @@ class TimeSeriesPlot:
 
     def getData(self, entry, frequency):
         if isinstance(entry, str):
-            simkey = self.getSimType(os.path.basename(entry))
             data, meta = loadData(entry, frequency)
         else:
-            simkey, data, meta = entry
+            data, meta = entry
             data = data.iloc[::frequency]
-        return simkey, data, meta
+        return data, meta
 
     def render(*args, **kwargs):
         return NotImplementedError
@@ -90,8 +89,8 @@ class TimeSeriesPlot:
         tpulse_off = t[ipulse_off]
         return tpulse_on, tpulse_off
 
-    def addLegend(self, ax, fs, black=False, straight=False, interactive=False):
-        lh = ax.legend(loc=1, fontsize=fs, frameon=False)
+    def addLegend(self, ax, handles, labels, fs, black=False, straight=False, interactive=False):
+        lh = ax.legend(handles, labels, loc=1, fontsize=fs, frameon=False)
         if black:
             for l in lh.get_lines():
                 l.set_color('k')
@@ -248,7 +247,6 @@ class ComparativePlot(TimeSeriesPlot):
             :param varname: name of variable to extract and compare
         '''
         super().__init__(filepaths)
-        self.simkey_ref = None
         self.varname = varname
 
     def checkInputs(self, lines, labels, colors, patches):
@@ -304,9 +302,31 @@ class ComparativePlot(TimeSeriesPlot):
         self.setYTicks(ax, yticks)
         self.setTickLabelsFontSize(ax, fs)
 
+    def addCmap(self, fig, cmap, handles, zref, zlabel, zunit):
+        # Create colormap and normalizer
+        mymap = plt.get_cmap(cmap)
+        if zscale == 'lin':
+            norm = matplotlib.colors.Normalize(zref.min(), zref.max())
+        elif zscale == 'log':
+            norm = matplotlib.colors.LogNorm(zref.min(), zref.max())
+        sm = cm.ScalarMappable(norm=norm, cmap=mymap)
+        sm._A = []
+
+        # Adjust line colors
+        for lh, z in zip(handles, zref):
+            lh.set_color(sm.to_rgba(z))
+
+        # Add colorbar
+        fig.subplots_adjust(left=0.1, right=0.8, bottom=0.15, top=0.95, hspace=0.5)
+        cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
+        fig.colorbar(sm, cax=cbarax, orientation='vertical')
+        cbarax.set_ylabel('{} ({})'.format(zlabel, zunit), fontsize=fs)
+        for item in cbarax.get_yticklabels():
+            item.set_fontsize(fs)
+
     def render(self, figsize=(11, 4), fs=10, lw=2, labels=None, colors=None, lines=None,
                patches='one', xticks=None, yticks=None, blacklegend=False, straightlegend=False,
-               inset=None, frequency=1, spikes='none'):
+               inset=None, frequency=1, spikes='none', cmap=None):
         ''' Render plot.
 
             :param figsize: figure size (x, y)
@@ -327,6 +347,7 @@ class ComparativePlot(TimeSeriesPlot):
             :param spikes: string indicating how to show spikes ("none", "marks" or "details")
             :return: figure handle
         '''
+        print(patches)
 
         lines, labels, colors, patches, greypatch = self.checkInputs(
             lines, labels, colors, patches)
@@ -335,20 +356,41 @@ class ComparativePlot(TimeSeriesPlot):
         if inset is not None:
             inset_ax = self.addInset(fig, ax, inset)
 
+        handles = []
+        meta_ref = None
+        zref = None
+        zvalues = []
+        full_labels = []
+
         # Loop through data files
         for j, filepath in enumerate(self.filepaths):
 
             # Load data
-            simkey, data, meta = self.getData(filepath, frequency)
-
-            # Check consistency if sim types
-            if self.simkey_ref is None:
-                self.simkey_ref = simkey
-            elif simkey != self.simkey_ref:
-                raise ValueError('Invalid comparison: different simulation types')
+            data, meta = self.getData(filepath, frequency)
+            meta.pop('tcomp')
+            full_labels.append(figtitle(meta))
 
             # Extract model
-            model = getModel(simkey, meta)
+            model = getModel(meta)
+
+            # Check consistency of sim types and check differing inputs
+            if meta_ref is None:
+                meta_ref = meta
+            else:
+                if meta['simkey'] != meta_ref['simkey']:
+                    raise ValueError('Invalid comparison: different simulation types')
+                differing = {k: meta[k] != meta_ref[k] for k in meta.keys()}
+                if sum(differing.values()) > 1:
+                    raise ValueError('More than one differing inputs')
+                zkey = (list(differing.keys())[list(differing.values()).index(True)])
+                if zref is None:
+                    zref = zkey
+                    zvalues.append(meta_ref[zkey])
+                    zinfo = model.inputVars().get(zkey, None)
+                else:
+                    if zkey != zref:
+                        raise ValueError('inconsitent differing input')
+                zvalues.append(meta[zkey])
 
             # Extract time and stim pulses
             t = data['t'].values
@@ -367,8 +409,8 @@ class ComparativePlot(TimeSeriesPlot):
             y = extractPltVar(model, yplt, data, meta, t.size, self.varname)
 
             #  Plot time series
-            ax.plot(t, y, linewidth=lw, linestyle=lines[j], color=colors[j],
-                    label=labels[j] if labels is not None else figtitle(meta))
+            handles.append(
+                ax.plot(t, y, linewidth=lw, linestyle=lines[j], color=colors[j])[0])
 
             # Optional: add spikes
             if self.varname == 'Qm' and spikes != 'none':
@@ -385,20 +427,36 @@ class ComparativePlot(TimeSeriesPlot):
             # Add optional STIM-ON patches
             if patches[j]:
                 ybottom, ytop = ax.get_ylim()
-                color = '#8A8A8A' if greypatch else handle[0].get_color()
+                color = '#8A8A8A' if greypatch else handles[j].get_color()
                 self.addPatches(ax, tpatch_on, tpatch_off, tplt['factor'], color)
                 if inset is not None:
                     self.addInsetPatches(
                         ax, inset_ax, inset, tpatch_on, tpatch_off, tplt['factor'], color)
 
+        if zinfo is not None:
+            zlabels = ['$\\rm{} = {}\ {}$'.format(
+                zinfo['label'], zinfo['factor'] * z, zinfo['unit']) for z in zvalues]
+        else:
+            zlabels = zvalues
+
+        if labels is None:
+            if zlabels is not None:
+                labels = zlabels
+            else:
+                labels = full_labels
+
         # Postprocess figure
         self.postProcess(ax, tplt, yplt, fs, xticks, yticks)
         fig.tight_layout()
+
         if inset is not None:
             self.materializeInset(ax, inset_ax, inset)
 
-        # Add legend
-        self.addLegend(ax, fs, black=blacklegend, straight=straightlegend)
+        # Add color legend or label legend
+        if cmap is not None:
+            self.addCmap(cmap, handles, zref, zlabel, zunit)
+        else:
+            self.addLegend(ax, handles, labels, fs, black=blacklegend, straight=straightlegend)
 
         return fig
 
@@ -440,8 +498,8 @@ class SchemePlot(TimeSeriesPlot):
         for filepath in self.filepaths:
 
             # Load data and extract model
-            simkey, data, meta = self.getData(filepath, frequency)
-            model = getModel(simkey, meta)
+            data, meta = self.getData(filepath, frequency)
+            model = getModel(meta)
 
             # Extract time and stim pulses
             t = data['t'].values

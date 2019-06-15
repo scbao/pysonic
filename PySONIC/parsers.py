@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 15:55:20
+# @Last Modified time: 2019-06-15 18:13:01
 
 import logging
 import pprint
@@ -117,6 +117,18 @@ class Parser(ArgumentParser):
         self.add_argument(
             '-i', '--inputfiles', type=str, help='Input files')
         self.to_parse['inputfiles'] = self.parseInputFiles
+
+    def addPatches(self):
+        self.add_argument(
+            '--patches', type=str,
+            help='Stimulus patching mode ("none", "one", all", or a boolean list)')
+        self.to_parse['patches'] = self.parsePatches
+
+    def parsePatches(self, args):
+        if args['patches'] not in ('none', 'one', 'all'):
+            return eval(args['patches'])
+        else:
+            return args['patches']
 
     def parseInputFiles(self, args):
         if self.inputfiles_dep_key is not None and not args[self.inputfiles_dep_key]:

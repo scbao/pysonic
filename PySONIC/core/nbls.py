@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 11:28:43
+# @Last Modified time: 2019-06-15 17:35:53
 
 from copy import deepcopy
 import logging
@@ -68,6 +68,19 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     def filecode(self, *args):
         return Model.filecode(self, *args)
+
+    def inputVars(self):
+        # Get parent input vars and supress irrelevant entries
+        bls_vars = super().inputVars()
+        pneuron_vars = self.pneuron.inputVars()
+        del bls_vars['Qm']
+        del pneuron_vars['Astim']
+
+        # Fill in current input vars in appropriate order
+        inputvars = bls_vars
+        inputvars.update(pneuron_vars)
+        inputvars['method'] = None
+        return inputvars
 
     def filecodes(self, Fdrive, Adrive, tstim, toffset, PRF, DC, method='sonic'):
         # Get parent codes and supress irrelevant entries
@@ -364,6 +377,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: meta-data dictionary
         '''
         return {
+            'simkey': self.simkey,
             'neuron': self.pneuron.name,
             'a': self.a,
             'd': self.d,

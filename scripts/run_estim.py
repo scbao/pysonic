@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 11:30:00
+# @Last Modified time: 2019-06-14 17:15:48
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -33,7 +33,7 @@ def main():
     # Plot resulting profiles
     if args['plot'] is not None:
         scheme_plot = SchemePlot(pkl_filepaths, pltscheme=args['pltscheme'])
-        scheme_plot.render(mark_spikes=args['markspikes'])
+        scheme_plot.render(spikes=args['spikes'])
         plt.show()
 
 

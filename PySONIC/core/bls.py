@@ -3,10 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 23:26:10
+# @Last Modified time: 2019-06-15 18:04:55
 
 from enum import Enum
 import os
+import re
 import json
 import numpy as np
 import pandas as pd
@@ -41,36 +42,36 @@ def LennardJones(x, beta, alpha, C, m, n):
 
 
 class BilayerSonophore(Model):
-    ''' This class contains the geometric and mechanical parameters of the
-        Bilayer Sonophore Model, as well as all the core functions needed to
-        compute the dynamics (kinetics and kinematics) of the bilayer membrane
-        cavitation, and run dynamic BLS simulations.
+    ''' Definition of the Bilayer Sonophore Model
+        - geometry
+        - pressure terms
+        - cavitation dynamics
     '''
 
     # BIOMECHANICAL PARAMETERS
-    T = 309.15  # Temperature (K)
+    T = 309.15       # Temperature (K)
     delta0 = 2.0e-9  # Thickness of the leaflet (m)
     Delta_ = 1.4e-9  # Initial gap between the two leaflets on a non-charged membrane at equil. (m)
-    pDelta = 1.0e5  # Attraction/repulsion pressure coefficient (Pa)
-    m = 5.0  # Exponent in the repulsion term (dimensionless)
-    n = 3.3  # Exponent in the attraction term (dimensionless)
-    rhoL = 1075.0  # Density of the surrounding fluid (kg/m^3)
-    muL = 7.0e-4  # Dynamic viscosity of the surrounding fluid (Pa.s)
-    muS = 0.035  # Dynamic viscosity of the leaflet (Pa.s)
-    kA = 0.24  # Area compression modulus of the leaflet (N/m)
-    alpha = 7.56  # Tissue shear loss modulus frequency coefficient (Pa.s)
-    C0 = 0.62  # Initial gas molar concentration in the surrounding fluid (mol/m^3)
-    kH = 1.613e5  # Henry's constant (Pa.m^3/mol)
-    P0 = 1.0e5  # Static pressure in the surrounding fluid (Pa)
-    Dgl = 3.68e-9  # Diffusion coefficient of gas in the fluid (m^2/s)
-    xi = 0.5e-9  # Boundary layer thickness for gas transport across leaflet (m)
-    c = 1515.0  # Speed of sound in medium (m/s)
+    pDelta = 1.0e5   # Attraction/repulsion pressure coefficient (Pa)
+    m = 5.0          # Exponent in the repulsion term (dimensionless)
+    n = 3.3          # Exponent in the attraction term (dimensionless)
+    rhoL = 1075.0    # Density of the surrounding fluid (kg/m^3)
+    muL = 7.0e-4     # Dynamic viscosity of the surrounding fluid (Pa.s)
+    muS = 0.035      # Dynamic viscosity of the leaflet (Pa.s)
+    kA = 0.24        # Area compression modulus of the leaflet (N/m)
+    alpha = 7.56     # Tissue shear loss modulus frequency coefficient (Pa.s)
+    C0 = 0.62        # Initial gas molar concentration in the surrounding fluid (mol/m^3)
+    kH = 1.613e5     # Henry's constant (Pa.m^3/mol)
+    P0 = 1.0e5       # Static pressure in the surrounding fluid (Pa)
+    Dgl = 3.68e-9    # Diffusion coefficient of gas in the fluid (m^2/s)
+    xi = 0.5e-9      # Boundary layer thickness for gas transport across leaflet (m)
+    c = 1515.0       # Speed of sound in medium (m/s)
 
     # BIOPHYSICAL PARAMETERS
     epsilon0 = 8.854e-12  # Vacuum permittivity (F/m)
-    epsilonR = 1.0  # Relative permittivity of intramembrane cavity (dimensionless)
+    epsilonR = 1.0        # Relative permittivity of intramembrane cavity (dimensionless)
 
-    tscale = 'us'  # relevant temporal scale of the model
+    tscale = 'us'    # relevant temporal scale of the model
     simkey = 'MECH'  # keyword used to characterize simulations made with this model
 
     def __init__(self, a, Cm0, Qm0, Fdrive=None, embedding_depth=0.0):
@@ -139,6 +140,38 @@ class BilayerSonophore(Model):
         if self.d > 0.:
             s += ', d={}m'.format(si_format(self.d, precision=1, space=' '))
         return s + ')'
+
+    def inputVars(self):
+        return {
+            'a': {
+                'desc': 'sonophore radius',
+                'label': 'a',
+                'unit': 'nm',
+                'factor': 1e9,
+                'precision': 0
+            },
+            'Fdrive': {
+                'desc': 'US frequency',
+                'label': 'f',
+                'unit': 'kHz',
+                'factor': 1e-3,
+                'precision': 0
+            },
+            'Adrive': {
+                'desc': 'US pressure amplitude',
+                'label': 'A',
+                'unit': 'kPa',
+                'factor': 1e-3,
+                'precision': 2
+            },
+            'Qm': {
+                'desc': 'membrane charge density',
+                'label': 'Q_m',
+                'unit': 'nC/cm^2',
+                'factor': 1e5,
+                'precision': 1
+            }
+        }
 
     def filecodes(self, Fdrive, Adrive, Qm):
         return {
@@ -645,6 +678,7 @@ class BilayerSonophore(Model):
             :return: meta-data dictionary
         '''
         return {
+            'simkey': self.simkey,
             'a': self.a,
             'd': self.d,
             'Cm0': self.Cm0,

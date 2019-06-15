@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 11:29:06
+# @Last Modified time: 2019-06-15 18:05:05
 
 import abc
 import inspect
@@ -32,6 +32,45 @@ class PointNeuron(Model):
 
     def __repr__(self):
         return self.__class__.__name__
+
+    def inputVars(self):
+        return {
+            'Astim': {
+                'desc': 'current density amplitude',
+                'label': 'A',
+                'unit': 'mA/m2',
+                'factor': 1e0,
+                'precision': 1
+            },
+            'tstim': {
+                'desc': 'stimulus duration',
+                'label': 't_{stim}',
+                'unit': 'ms',
+                'factor': 1e3,
+                'precision': 0
+            },
+            'toffset': {
+                'desc': 'offset duration',
+                'label': 't_{offset}',
+                'unit': 'ms',
+                'factor': 1e3,
+                'precision': 0
+            },
+            'PRF': {
+                'desc': 'pulse repetition frequency',
+                'label': 'PRF',
+                'unit': 'Hz',
+                'factor': 1e0,
+                'precision': 0
+            },
+            'DC': {
+                'desc': 'duty cycle',
+                'label': 'DC',
+                'unit': '%',
+                'factor': 1e2,
+                'precision': 2
+            }
+        }
 
     def filecodes(self, Astim, tstim, toffset, PRF, DC):
         is_CW = DC == 1.
@@ -440,6 +479,7 @@ class PointNeuron(Model):
             :return: meta-data dictionary
         '''
         return {
+            'simkey': self.simkey,
             'neuron': self.name,
             'Astim': Astim,
             'tstim': tstim,
