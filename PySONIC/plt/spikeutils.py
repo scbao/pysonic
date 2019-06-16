@@ -3,13 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 22:46:04
+# @Last Modified time: 2019-06-16 22:50:33
 
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import matplotlib
 
 from ..utils import *
 from ..constants import *
@@ -181,7 +179,6 @@ def plotPhasePlane(filepaths, varname, no_offset=False, no_first=False,
 
     # Return
     return fig
-
 
 
 def plotSpikingMetrics(xvar, xlabel, metrics_dict, logscale=False, spikeamp=True, colors=None,
