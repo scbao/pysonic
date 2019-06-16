@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-15 18:05:05
+# @Last Modified time: 2019-06-16 12:48:43
 
 import abc
 import inspect
@@ -14,7 +14,7 @@ import pandas as pd
 from .batches import createQueue
 from .model import Model
 from .simulators import PWSimulator
-from ..postpro import findPeaks
+from ..postpro import findPeaks, computeFRProfile
 from ..constants import *
 from ..utils import si_format, logger, plural, binarySearch
 
@@ -273,7 +273,19 @@ class PointNeuron(Model):
                     'factor': 1e-3
                 }
 
+        pltvars['FR'] = {
+            'desc': 'riring rate',
+            'label': 'FR',
+            'unit': 'Hz',
+            'factor': 1e0,
+            'bounds': (0, 1e3),
+            'func': 'firingRateProfile({0}t{1}.values, {0}Qm{1}.values)'.format(wrapleft, wrapright)
+        }
+
         return pltvars
+
+    def firingRateProfile(*args, **kwargs):
+        return computeFRProfile(*args, **kwargs)
 
     def getRatesNames(self, states):
         ''' Return a list of names of the alpha and beta rates of the neuron. '''

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 10:50:49
+# @Last Modified time: 2019-06-16 12:49:45
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -13,7 +13,7 @@ import pandas as pd
 from scipy.optimize import brentq
 
 from .constants import *
-from .utils import logger
+from .utils import logger, debug
 
 
 def detectCrossings(x, thr=0.0, edge='both'):
@@ -425,6 +425,20 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
     bounds[bounds < 0] = 0
 
     return ipeaks, prominences, widths, halfmaxbounds, bounds
+
+
+def computeFRProfile(data, t, Qm):
+    # Prominence-based spike detection
+    dt = t[1] - t[0]
+    mpd = int(np.ceil(SPIKE_MIN_DT / dt))
+    ispikes, *_ = findPeaks(Qm, mph=SPIKE_MIN_QAMP, mpd=mpd, mpp=SPIKE_MIN_QPROM)
+    if len(ispikes) == 0:
+        return np.full(t.size, np.nan)
+
+    # Compute firing rate as function of spike time and re-interpolate along time vector
+    tspikes = t[ispikes][:-1]
+    sr = 1 / np.diff(t[ispikes])
+    return np.interp(t, tspikes, sr, left=np.nan, right=np.nan)
 
 
 def computeSpikingMetrics(filenames):

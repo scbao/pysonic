@@ -3,11 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:06:26
+# @Last Modified time: 2019-06-16 12:27:50
 
 ''' Useful functions to generate plots. '''
 
 import numpy as np
+import pandas as pd
 import matplotlib
 
 # Matplotlib parameters
@@ -58,7 +59,9 @@ def extractPltVar(model, pltvar, df, meta=None, nsamples=0, name=''):
         var = eval(pltvar['constant']) * np.ones(nsamples)
     else:
         var = df[name]
-    var = var.values.copy()
+    if isinstance(var, pd.Series):
+        var = var.values
+    var = var.copy()
 
     if var.size == nsamples - 2:
         var = np.hstack((np.array([pltvar.get('y0', var[0])] * 2), var))

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-15 19:14:17
+# @Last Modified time: 2019-06-16 13:05:01
 
 import re
 import numpy as np
@@ -522,6 +522,8 @@ class SchemePlot(TimeSeriesPlot):
 
             # Create figure
             fig, axes = self.createBackBone(pltscheme)
+            for ax in axes:
+                ax.set_xlim(t.min(), t.max())
 
             # Loop through each subgraph
             for ax, (grouplabel, keys) in zip(axes, pltscheme.items()):
