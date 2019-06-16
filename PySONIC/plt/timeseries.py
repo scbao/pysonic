@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 13:05:01
+# @Last Modified time: 2019-06-16 20:41:42
 
 import re
 import numpy as np
@@ -361,6 +361,8 @@ class ComparativePlot(TimeSeriesPlot):
         zvalues = []
         full_labels = []
 
+        tmin, tmax = np.inf, -np.inf
+
         # Loop through data files
         for j, filepath in enumerate(self.filepaths):
 
@@ -431,13 +433,16 @@ class ComparativePlot(TimeSeriesPlot):
                 if inset is not None:
                     self.addInsetPatches(
                         ax, inset_ax, inset, tpatch_on, tpatch_off, tplt['factor'], color)
+
+            tmin, tmax = min(tmin, t.min()), max(tmax, t.max())
+
+        # Determine labels
         if zinfo is not None:
             zvalues = np.array(zvalues) * zinfo['factor']
             zlabels = ['$\\rm{} = {}\ {}$'.format(zinfo['label'], z, zinfo['unit'])
                        for z in zvalues]
         else:
             zlabels = zvalues
-
         if labels is None:
             if zlabels is not None:
                 labels = zlabels
@@ -446,6 +451,7 @@ class ComparativePlot(TimeSeriesPlot):
 
         # Postprocess figure
         self.postProcess(ax, tplt, yplt, fs, xticks, yticks)
+        ax.set_xlim(tmin, tmax)
         fig.tight_layout()
 
         if inset is not None:
@@ -522,8 +528,6 @@ class SchemePlot(TimeSeriesPlot):
 
             # Create figure
             fig, axes = self.createBackBone(pltscheme)
-            for ax in axes:
-                ax.set_xlim(t.min(), t.max())
 
             # Loop through each subgraph
             for ax, (grouplabel, keys) in zip(axes, pltscheme.items()):
@@ -563,8 +567,10 @@ class SchemePlot(TimeSeriesPlot):
                 if nvars > 1 or 'gate' in ax_pltvars[0]['desc'] or ax_legend_spikes:
                     ax.legend(fontsize=fs, loc=7, ncol=nvars // 4 + 1, frameon=False)
 
-            if patches:
-                for ax in axes:
+            # Set x-limits and add optional patches
+            for ax in axes:
+                ax.set_xlim(t.min(), t.max())
+                if patches:
                     self.addPatches(ax, tpatch_on, tpatch_off, tplt['factor'])
 
             # Post-process figure
