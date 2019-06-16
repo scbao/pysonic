@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 12:48:43
+# @Last Modified time: 2019-06-16 21:58:55
 
 import abc
 import inspect
@@ -278,7 +278,7 @@ class PointNeuron(Model):
             'label': 'FR',
             'unit': 'Hz',
             'factor': 1e0,
-            'bounds': (0, 1e3),
+            # 'bounds': (0, 1e3),
             'func': 'firingRateProfile({0}t{1}.values, {0}Qm{1}.values)'.format(wrapleft, wrapright)
         }
 

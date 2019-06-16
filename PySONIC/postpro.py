@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 12:49:45
+# @Last Modified time: 2019-06-16 22:37:02
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -432,7 +432,7 @@ def computeFRProfile(data, t, Qm):
     dt = t[1] - t[0]
     mpd = int(np.ceil(SPIKE_MIN_DT / dt))
     ispikes, *_ = findPeaks(Qm, mph=SPIKE_MIN_QAMP, mpd=mpd, mpp=SPIKE_MIN_QPROM)
-    if len(ispikes) == 0:
+    if len(ispikes) <= 1:
         return np.full(t.size, np.nan)
 
     # Compute firing rate as function of spike time and re-interpolate along time vector

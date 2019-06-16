@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 20:41:42
+# @Last Modified time: 2019-06-16 22:44:14
 
 import re
 import numpy as np
@@ -321,13 +321,14 @@ class ComparativePlot(TimeSeriesPlot):
         fig.subplots_adjust(left=0.1, right=0.8, bottom=0.15, top=0.95, hspace=0.5)
         cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
         fig.colorbar(sm, cax=cbarax, orientation='vertical')
-        cbarax.set_ylabel('$\\rm {}\ ({})$'.format(zinfo['label'], zinfo['unit']), fontsize=fs)
+        cbarax.set_ylabel('$\\rm {}\ ({})$'.format(
+            zinfo['desc'].replace(' ', '\ '), zinfo['unit']), fontsize=fs)
         for item in cbarax.get_yticklabels():
             item.set_fontsize(fs)
 
     def render(self, figsize=(11, 4), fs=10, lw=2, labels=None, colors=None, lines=None,
                patches='one', xticks=None, yticks=None, blacklegend=False, straightlegend=False,
-               inset=None, frequency=1, spikes='none', cmap=None, cscale='lin'):
+               inset=None, frequency=1, spikes='none', cmap=None, cscale='lin', no_offset=False):
         ''' Render plot.
 
             :param figsize: figure size (x, y)
@@ -368,6 +369,8 @@ class ComparativePlot(TimeSeriesPlot):
 
             # Load data
             data, meta = self.getData(filepath, frequency)
+            if no_offset:
+                data = data.loc[data['t'] <= meta['tstim']]
             meta.pop('tcomp')
             full_labels.append(figtitle(meta))
 
@@ -499,13 +502,16 @@ class SchemePlot(TimeSeriesPlot):
         self.setTimeLabel(axes[-1], tplt, fs)
 
     def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches=True, title=True,
-               save=False, directory=None, fig_ext='png', frequency=1, spikes='none'):
+               save=False, directory=None, fig_ext='png', frequency=1, spikes='none',
+               no_offset=False):
 
         figs = []
         for filepath in self.filepaths:
 
             # Load data and extract model
             data, meta = self.getData(filepath, frequency)
+            if no_offset:
+                data = data.loc[data['t'] <= meta['tstim']]
             model = getModel(meta)
 
             # Extract time and stim pulses

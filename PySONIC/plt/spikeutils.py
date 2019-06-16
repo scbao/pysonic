@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 16:47:56
+# @Last Modified time: 2019-06-16 22:46:04
 
 import pickle
 import numpy as np
@@ -267,110 +267,4 @@ def plotSpikingMetrics(xvar, xlabel, metrics_dict, logscale=False, spikeamp=True
             l.set_linestyle('-')
 
     fig.subplots_adjust(hspace=.3, bottom=0.2, left=0.35, right=0.95, top=0.95)
-    return fig
-
-
-def plotFRProfile(filepaths, varname, no_offset=False, no_first=False, fs=15, lw=2,
-                  cmap=None, zscale='lin', zref='A'):
-    ''' Plot spike rate temporal profiles from simulation results.
-
-        :param filepaths: list of full paths to data files
-        :param no_offset: boolean stating whether or not to discard post-offset spikes
-        :param no_first: boolean stating whether or not to discard first spike
-        :return: figure handle
-    '''
-
-    pltvar = phaseplotvars[varname]
-
-    # Create figure
-    fig, ax = plt.subplots(figsize=(9, 4))
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.set_xlabel('time (ms)', fontsize=fs)
-    ax.set_ylabel('firing rate (Hz)', fontsize=fs)
-    for item in ax.get_xticklabels() + ax.get_yticklabels():
-        item.set_fontsize(fs)
-
-    handles = []
-    amplitudes = []
-    intensities = []
-
-    # For each file
-    for i, filepath in enumerate(filepaths):
-        # Load data
-        logger.info('loading data from file "{}"'.format(filepath))
-        with open(filepath, 'rb') as fh:
-            frame = pickle.load(fh)
-        df = frame['data']
-        meta = frame['meta']
-        tstim = meta['tstim']
-        t = df['t'].values
-        y = df[varname].values
-
-        amplitudes.append(meta['Adrive'])
-        intensities.append(Pressure2Intensity(meta['Adrive']))
-
-        # Prominence-based spike detection
-        ispikes, *_ = findPeaks(
-            y,
-            mph=pltvar['thr_amp'],
-            # mpd=int(np.ceil(SPIKE_MIN_DT / dt)),
-            mpp=pltvar['thr_prom']
-        )
-
-        # Discard potential irrelevant spikes
-        if len(ispikes) > 0:
-            if no_offset:
-                inds = np.where(t[ispikes] < tstim)[0]
-                ispikes = ispikes[inds]
-            if no_first:
-                ispikes = ispikes[1:]
-
-        # Plot firing rate as a function of spikes timing
-        if len(ispikes) > 0:
-            tspikes = t[ispikes][:-1]
-            sr = 1 / np.diff(t[ispikes])
-            lh = ax.plot(tspikes * 1e3, sr, linewidth=lw)[0]
-            handles.append(lh)
-        else:
-            logger.warning('No spikes detected')
-
-    intensities = np.array(intensities)
-    amplitudes = np.array(amplitudes)
-
-    #  Define and apply color code
-    if zref == 'I':
-        zref = intensities
-        zlabel = 'Intensity'
-        zunit = 'W/m2'
-    elif zref == 'A':
-        zref = amplitudes * 1e-3
-        zlabel = 'Amplitude'
-        zunit = 'kPa'
-
-    fig.tight_layout()
-
-    if cmap is not None:
-        mymap = plt.get_cmap(cmap)
-        if zscale == 'lin':
-            norm = matplotlib.colors.Normalize(zref.min(), zref.max())
-        elif zscale == 'log':
-            norm = matplotlib.colors.LogNorm(zref.min(), zref.max())
-        sm = cm.ScalarMappable(norm=norm, cmap=mymap)
-        sm._A = []
-        for lh, z in zip(handles, zref):
-            lh.set_color(sm.to_rgba(z))
-
-        # Add colorbar
-        fig.subplots_adjust(left=0.1, right=0.8, bottom=0.15, top=0.95, hspace=0.5)
-        cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
-        fig.colorbar(sm, cax=cbarax, orientation='vertical')
-        cbarax.set_ylabel('{} ({})'.format(zlabel, zunit), fontsize=fs)
-        for item in cbarax.get_yticklabels():
-            item.set_fontsize(fs)
-    else:
-        for lh, z in zip(handles, zref):
-            lh.set_label('{:.2f} {}'.format(z, zunit))
-        ax.legend()
-
     return fig

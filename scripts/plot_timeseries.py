@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-15 19:13:46
+# @Last Modified time: 2019-06-16 22:41:35
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -27,6 +27,7 @@ def main():
     parser.addSpikes()
     parser.addPatches()
     parser.addCmap()
+    parser.addNoOffset()
     parser.addCscale()
     args = parser.parse()
     logger.setLevel(args['loglevel'])
@@ -44,7 +45,8 @@ def main():
                     frequency=args['sr'],
                     patches=args['patches'],
                     cmap=args['cmap'],
-                    cscale=args['cscale'])
+                    cscale=args['cscale'],
+                    no_offset=args['no_offset'])
             except KeyError as e:
                 logger.error(e)
                 return
@@ -56,7 +58,8 @@ def main():
             directory=args['outputdir'],
             fig_ext=args['figext'],
             spikes=args['spikes'],
-            frequency=args['sr'])
+            frequency=args['sr'],
+            no_offset=args['no_offset'])
     if not args['hide']:
         plt.show()
 

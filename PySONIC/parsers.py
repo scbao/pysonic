@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-15 19:13:11
+# @Last Modified time: 2019-06-16 22:40:33
 
 import logging
 import pprint
@@ -95,6 +95,10 @@ class Parser(ArgumentParser):
     def addHideOutput(self):
         self.add_argument(
             '--hide', default=False, action='store_true', help='Hide output')
+
+    def addNoOffset(self):
+        self.add_argument(
+            '--no_offset', default=False, action='store_true', help='Remove stimulus offset')
 
     def addCmap(self):
         self.add_argument(

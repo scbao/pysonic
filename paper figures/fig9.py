@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 08:09:34
+# @Last Modified time: 2019-06-16 22:45:27
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -17,8 +17,7 @@ from argparse import ArgumentParser
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.neurons import getPointNeuron
 from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
-from PySONIC.plt import plotFRProfile, SchemePlot
-
+from PySONIC.plt import ComparativePlot, SchemePlot
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -79,8 +78,12 @@ def main():
     # Generate figures
     figs = []
     if 'a' in figset:
-        fig = plotFRProfile(fpaths, 'Qm', no_offset=True, no_first=False,
-                            zref='A', zscale='lin', cmap='Oranges')
+        comp_plot = ComparativePlot(fpaths, 'FR')
+        fig = comp_plot.render(
+            patches='none',
+            cmap='Oranges',
+            no_offset=True
+        )
         fig.canvas.set_window_title(figbase + 'a')
         figs.append(fig)
     if 'b' in figset:
@@ -88,7 +91,6 @@ def main():
         subset_amplitudes = amplitudes[isubset]
         titles = ['{:.2f} kPa ({:.0f} W/m2)'.format(A * 1e-3, I)
                   for A, I in zip(subset_amplitudes, subset_intensities)]
-        print(titles)
         figtraces = SchemePlot([fpaths[i] for i in isubset], pltscheme={'Q_m': ['Qm']})()
         for fig, title in zip(figtraces, titles):
             fig.axes[0].set_title(title)
