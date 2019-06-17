@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 22:40:33
+# @Last Modified time: 2019-06-17 09:13:54
 
 import logging
 import pprint
@@ -96,13 +96,30 @@ class Parser(ArgumentParser):
         self.add_argument(
             '--hide', default=False, action='store_true', help='Hide output')
 
-    def addNoOffset(self):
+    def addTimeBounds(self, default=None):
         self.add_argument(
-            '--no_offset', default=False, action='store_true', help='Remove stimulus offset')
+            '--tbounds', type=float, nargs=2, default=default,
+            help='Time lower and upper bounds (ms)')
+        self.to_parse['tbounds'] = self.parseTimeBounds
 
-    def addCmap(self):
+    def addPotentialBounds(self, default=None):
         self.add_argument(
-            '--cmap', type=str, help='Colormap name')
+            '--Vbounds', type=float, nargs=2, default=default,
+            help='Membrane potential lower and upper bounds (mV)')
+
+    def addFiringRateBounds(self, default):
+        self.add_argument(
+            '--FRbounds', type=float, nargs=2, default=default,
+            help='Firing rate lower and upper bounds (Hz)')
+
+    def addFiringRateScale(self, default='lin'):
+        self.add_argument(
+            '--FRscale', type=str, choices=('lin', 'log'), default=default,
+            help='Firing rate scale for plot ("lin" or "log")')
+
+    def addCmap(self, default=None):
+        self.add_argument(
+            '--cmap', type=str, default=default, help='Colormap name')
 
     def addCscale(self, default='lin'):
         self.add_argument(
@@ -132,6 +149,17 @@ class Parser(ArgumentParser):
             '--patches', type=str, default='one',
             help='Stimulus patching mode ("none", "one", all", or a boolean list)')
         self.to_parse['patches'] = self.parsePatches
+
+    def addThresholdCurve(self):
+        self.add_argument(
+            '--threshold', default=False, action='store_true', help='Show threshold amplitudes')
+
+    def addInteractive(self):
+        self.add_argument(
+            '--interactive', default=False, action='store_true', help='Make interactive')
+
+    def parseTimeBounds(self, args):
+        return np.array(args['tbounds']) * 1e-3
 
     def parsePatches(self, args):
         if args['patches'] not in ('none', 'one', 'all'):

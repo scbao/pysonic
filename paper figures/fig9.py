@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 22:45:27
+# @Last Modified time: 2019-06-17 08:54:10
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -82,7 +82,7 @@ def main():
         fig = comp_plot.render(
             patches='none',
             cmap='Oranges',
-            no_offset=True
+            tbounds=(0, tstim)
         )
         fig.canvas.set_window_title(figbase + 'a')
         figs.append(fig)

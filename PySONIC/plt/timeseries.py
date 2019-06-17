@@ -3,12 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 22:44:14
+# @Last Modified time: 2019-06-17 08:51:45
 
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import cm
 from matplotlib.patches import Rectangle
 
 from ..core import getModel
@@ -33,12 +32,16 @@ class TimeSeriesPlot:
     def __call__(self, *args, **kwargs):
         return self.render(*args, **kwargs)
 
-    def getData(self, entry, frequency):
+    def getData(self, entry, frequency=1, tbounds=None):
+        print(frequency, tbounds)
         if isinstance(entry, str):
             data, meta = loadData(entry, frequency)
         else:
             data, meta = entry
-            data = data.iloc[::frequency]
+        data = data.iloc[::frequency]
+        if tbounds is not None:
+            tmin, tmax = tbounds
+            data = data.loc[(data['t'] >= tmin) & (data['t'] <= tmax)]
         return data, meta
 
     def render(*args, **kwargs):
@@ -306,12 +309,7 @@ class ComparativePlot(TimeSeriesPlot):
     def addCmap(self, fig, cmap, handles, zvalues, zinfo, fs, zscale='lin'):
         # Create colormap and normalizer
         mymap = plt.get_cmap(cmap)
-        if zscale == 'lin':
-            norm = matplotlib.colors.Normalize(zvalues.min(), zvalues.max())
-        elif zscale == 'log':
-            norm = matplotlib.colors.LogNorm(zvalues.min(), zvalues.max())
-        sm = cm.ScalarMappable(norm=norm, cmap=mymap)
-        sm._A = []
+        norm, sm = setNormalizer(mymap, (zvalues.min(), zvalues.max()), zscale)
 
         # Adjust line colors
         for lh, z in zip(handles, zvalues):
@@ -328,7 +326,7 @@ class ComparativePlot(TimeSeriesPlot):
 
     def render(self, figsize=(11, 4), fs=10, lw=2, labels=None, colors=None, lines=None,
                patches='one', xticks=None, yticks=None, blacklegend=False, straightlegend=False,
-               inset=None, frequency=1, spikes='none', cmap=None, cscale='lin', no_offset=False):
+               inset=None, frequency=1, spikes='none', cmap=None, cscale='lin', tbounds=None):
         ''' Render plot.
 
             :param figsize: figure size (x, y)
@@ -368,9 +366,7 @@ class ComparativePlot(TimeSeriesPlot):
         for j, filepath in enumerate(self.filepaths):
 
             # Load data
-            data, meta = self.getData(filepath, frequency)
-            if no_offset:
-                data = data.loc[data['t'] <= meta['tstim']]
+            data, meta = self.getData(filepath, frequency, tbounds)
             meta.pop('tcomp')
             full_labels.append(figtitle(meta))
 
@@ -502,16 +498,13 @@ class SchemePlot(TimeSeriesPlot):
         self.setTimeLabel(axes[-1], tplt, fs)
 
     def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches=True, title=True,
-               save=False, directory=None, fig_ext='png', frequency=1, spikes='none',
-               no_offset=False):
+               save=False, directory=None, fig_ext='png', frequency=1, spikes='none', tbounds=None):
 
         figs = []
         for filepath in self.filepaths:
 
             # Load data and extract model
             data, meta = self.getData(filepath, frequency)
-            if no_offset:
-                data = data.loc[data['t'] <= meta['tstim']]
             model = getModel(meta)
 
             # Extract time and stim pulses

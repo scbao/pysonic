@@ -3,14 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 14:59:22
+# @Last Modified time: 2019-06-17 07:48:59
 
 import inspect
 import logging
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import cm, colors
 
 from ..core import NeuronalBilayerSonophore, Batch
 from .pltutils import *
@@ -271,12 +270,7 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
     # Define color code
     mymap = plt.get_cmap(cmap)
     zref = amps * Afactor
-    if zscale == 'lin':
-        norm = colors.Normalize(zref.min(), zref.max())
-    elif zscale == 'log':
-        norm = colors.LogNorm(zref.min(), zref.max())
-    sm = cm.ScalarMappable(norm=norm, cmap=mymap)
-    sm._A = []
+    norm, sm = setNormalizer(mymap, (zref.min(), zref.max()), zscale)
 
     # Get amplitude-dependent QSS dictionary
     _, Qref, lookups, QSS = nbls.quasiSteadyStates(

@@ -3,24 +3,40 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:06:03
+# @Last Modified time: 2019-06-17 09:32:29
 
-import ntpath
+import os
 import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib
 from matplotlib.ticker import FormatStrFormatter
 
 from ..core import NeuronalBilayerSonophore
 from ..utils import logger, si_format, loadData
 from ..postpro import findPeaks
 from ..constants import *
-from .pltutils import cm2inch, computeMeshEdges
+from .pltutils import cm2inch, setNormalizer
 
 
-class ActivationMap:
+class Map:
+
+    @staticmethod
+    def computeMeshEdges(x, scale='lin'):
+        ''' Compute the appropriate edges of a mesh that quads a linear or logarihtmic distribution.
+
+            :param x: the input vector
+            :param scale: the type of distribution ('lin' for linear, 'log' for logarihtmic)
+            :return: the edges vector
+        '''
+        if scale == 'log':
+            x = np.log10(x)
+        dx = x[1] - x[0]
+        n = x.size + 1
+        return {'lin': np.linspace, 'log': np.logspace}[scale](x[0] - dx / 2, x[-1] + dx / 2, n)
+
+
+class ActivationMap(Map):
 
     def __init__(self, root, pneuron, a, Fdrive, tstim, PRF, amps, DCs):
         self.root = root
@@ -110,12 +126,6 @@ class ActivationMap:
                     'Maximal firing rate (%.0f Hz) is above defined upper bound (%.0f Hz)',
                     maxFR, FRbounds[1])
 
-    def getNormalizer(self, bounds, scale):
-        return {
-            'lin': matplotlib.colors.Normalize,
-            'log': matplotlib.colors.LogNorm
-        }[scale](*bounds)
-
     def fit2Colormap(self, actmap, cmap):
         actmap[actmap == -1] = np.nan
         actmap[actmap == 0] = 1e-3
@@ -142,14 +152,15 @@ class ActivationMap:
             logger.warning('%s file not found -> cannot draw threshold curve', fpath)
 
     def render(self, Ascale='log', FRscale='log', FRbounds=None, fs=8, cmap='viridis',
-               interactive=False, Vbounds=None, tmax=None, thresholds=False):
+               interactive=False, Vbounds=None, tbounds=None, thresholds=False):
 
         # Compute FR normalizer
-        norm = self.getNormalizer(FRbounds, FRscale)
+        mymap = plt.get_cmap(cmap)
+        norm, sm = setNormalizer(mymap, FRbounds, FRscale)
 
         # Compute mesh edges
-        xedges = computeMeshEdges(self.DCs)
-        yedges = computeMeshEdges(self.amps, scale=Ascale)
+        xedges = self.computeMeshEdges(self.DCs)
+        yedges = self.computeMeshEdges(self.amps, scale=Ascale)
 
         # Create figure
         fig, ax = plt.subplots(figsize=cm2inch(8, 5.8))
@@ -165,11 +176,9 @@ class ActivationMap:
 
         # Plot activation map with specific color code
         actmap, cmap = self.fit2Colormap(self.data, plt.get_cmap(cmap))
-        ax.pcolormesh(xedges * 1e2, yedges * 1e-3, actmap, cmap=cmap, norm=norm)
+        ax.pcolormesh(xedges * 1e2, yedges * 1e-3, actmap, cmap=mymap, norm=norm)
 
         # Plot firing rate colorbar
-        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm._A = []
         pos1 = ax.get_position()  # get the map axis position
         cbarax = fig.add_axes([pos1.x1 + 0.02, pos1.y0, 0.03, pos1.height])
         fig.colorbar(sm, cax=cbarax)
@@ -180,14 +189,14 @@ class ActivationMap:
         if interactive:
             fig.canvas.mpl_connect(
                 'button_press_event',
-                lambda event: self.onClick(event, (xedges, yedges), tmax, Vbounds))
+                lambda event: self.onClick(event, (xedges, yedges), tbounds, Vbounds))
 
         if thresholds:
             self.addThresholdCurve(ax)
 
         return fig
 
-    def onClick(self, event, meshedges, tmax, Vbounds):
+    def onClick(self, event, meshedges, tbounds, Vbounds):
         ''' Retrieve the specific input parameters of the x and y dimensions
             when the user clicks on a cell in the 2D map, and define filename from it.
         '''
@@ -204,44 +213,44 @@ class ActivationMap:
 
         # Plot Q-trace
         try:
-            self.plotQVeff(fpath, tmax=tmax, ybounds=Vbounds)
-            self.plotFRspectrum(fpath)
+            self.plotQVeff(fpath, tbounds=tbounds, ybounds=Vbounds)
             plt.show()
         except FileNotFoundError as err:
             logger.error(err)
 
-    def plotQVeff(self, filepath, tonset=10, tmax=None, ybounds=None, fs=8, lw=1):
+    def plotQVeff(self, filepath, tonset=10e-3, tbounds=None, ybounds=None, fs=8, lw=1):
         ''' Plot superimposed profiles of membrane charge density and
             effective membrane potential.
 
             :param filepath: full path to the data file
-            :param tonset: pre-stimulus onset to add to profiles (ms)
-            :param tmax: max time value showed on graph (ms)
+            :param tonset: pre-stimulus onset to add to profiles (s)
+            :param tbounds: time lower and upper bounds on graph (s)
             :param ybounds: y-axis bounds (mV / nC/cm2)
             :return: handle to the generated figure
         '''
         # Check file existence
-        fname = ntpath.basename(filepath)
+        fname = os.path.basename(filepath)
         if not os.path.isfile(filepath):
             raise FileNotFoundError('Error: "{}" file does not exist'.format(fname))
 
-        # Load data
+        # Load data (with optional time restriction)
         logger.debug('Loading data from "%s"', fname)
         with open(filepath, 'rb') as fh:
             frame = pickle.load(fh)
             df = frame['data']
-        t = df['t'].values * 1e3  # ms
-        Qm = df['Qm'].values * 1e5  # nC/cm2
-        Vm = df['Vm'].values  # mV
+        if tbounds is not None:
+            tmin, tmax = tbounds
+            df = df.loc[(df['t'] >= tmin) & (df['t'] <= tmax)]
 
-        # Add onset to profiles
-        t = np.hstack((np.array([-tonset, t[0]]), t))
-        Vm = np.hstack((np.array([self.pneuron.Vm0] * 2), Vm))
-        Qm = np.hstack((np.array([Qm[0]] * 2), Qm))
+        # Load variables, add onset and rescale
+        t, Qm, Vm = [df[k].values for k in ['t', 'Qm', 'Vm']]
+        t = np.hstack((np.array([-tonset, t[0]]), t))  # s
+        Vm = np.hstack((np.array([self.pneuron.Vm0] * 2), Vm))  # mV
+        Qm = np.hstack((np.array([self.pneuron.Qm0] * 2), Qm))  # C/m2
+        t *= 1e3  # ms
+        Qm *= 1e5  # nC/cm2
 
         # Determine axes bounds
-        if tmax is None:
-            tmax = t.max()
         if ybounds is None:
             ybounds = (min(Vm.min(), Qm.min()), max(Vm.max(), Qm.max()))
 
@@ -256,9 +265,8 @@ class ActivationMap:
             ax.spines[key].set_linewidth(2)
         ax.yaxis.set_tick_params(width=2)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
-        ax.set_xlim((-tonset, tmax))
         ax.set_xticks([])
-        ax.set_xlabel('{}s'.format(si_format((tonset + tmax) * 1e-3, space=' ')), fontsize=fs)
+        ax.set_xlabel('{}s'.format(si_format(np.ptp(t), space=' ')), fontsize=fs)
         ax.set_ylabel('mV - $\\rm nC/cm^2$', fontsize=fs, labelpad=-15)
         ax.set_ylim(ybounds)
         ax.set_yticks(ybounds)
@@ -270,64 +278,4 @@ class ActivationMap:
         ax.plot(t, Qm, color='k', linewidth=lw)
 
         # fig.tight_layout()
-        return fig
-
-    def plotFRspectrum(self, filepath, FRbounds=None, fs=8, lw=1):
-        '''  Plot firing rate specturm.
-
-            :param filepath: full path to the data file
-            :param FRbounds: firing rate bounds (Hz)
-            :return: handle to the generated figure
-        '''
-        # Determine FR bounds
-        if FRbounds is None:
-            FRbounds = (1e0, 1e3)
-
-        # Check file existence
-        fname = ntpath.basename(filepath)
-        if not os.path.isfile(filepath):
-            raise FileNotFoundError('Error: "{}" file does not exist'.format(fname))
-
-        # Load data
-        logger.debug('Loading data from "%s"', fname)
-        with open(filepath, 'rb') as fh:
-            frame = pickle.load(fh)
-            df = frame['data']
-            meta = frame['meta']
-        tstim = meta['tstim']
-        t = df['t'].values
-        Qm = df['Qm'].values
-        dt = t[1] - t[0]
-
-        # Detect spikes on charge profile during stimulus
-        mpd = int(np.ceil(SPIKE_MIN_DT / dt))
-        ispikes, *_ = findPeaks(
-            Qm[t <= tstim],
-            mph=SPIKE_MIN_QAMP,
-            mpd=mpd,
-            mpp=SPIKE_MIN_QPROM
-        )
-
-        # Compute FR spectrum
-        if ispikes.size <= MIN_NSPIKES_SPECTRUM:
-            raise ValueError('Number of spikes is to small to form spectrum')
-        FRs = 1 / np.diff(t[ispikes])
-        logbins = np.logspace(np.log10(FRbounds[0]), np.log10(FRbounds[1]), 30)
-
-        # Create figure
-        fig, ax = plt.subplots(figsize=cm2inch(7, 3))
-        fig.canvas.set_window_title(fname)
-        for key in ['top', 'right']:
-            ax.spines[key].set_visible(False)
-        ax.set_xlim(FRbounds)
-        ax.set_xlabel('Firing rate (Hz)', fontsize=fs)
-        ax.set_ylabel('Density', fontsize=fs)
-        for item in ax.get_yticklabels():
-            item.set_fontsize(fs)
-
-        ax.hist(FRs, bins=logbins, density=True, color='k')
-        ax.set_xscale('log')
-
-        fig.tight_layout()
-
         return fig

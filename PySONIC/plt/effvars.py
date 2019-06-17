@@ -3,26 +3,16 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:06:14
+# @Last Modified time: 2019-06-17 07:49:41
 
 import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import matplotlib
 
-from PySONIC.utils import logger, si_prefixes, isWithin
-from PySONIC.neurons import getLookups2D, getLookupsOff
-from PySONIC.core import NeuronalBilayerSonophore
-
-
-def setGrid(n, ncolmax=3):
-    ''' Determine number of rows and columns in figure grid, based on number of
-        variables to plot. '''
-    if n <= ncolmax:
-        return (1, n)
-    else:
-        return ((n - 1) // ncolmax + 1, ncolmax)
+from ..utils import logger, si_prefixes, isWithin
+from ..neurons import getLookups2D, getLookupsOff
+from ..core import NeuronalBilayerSonophore
+from .pltutils import setGrid, setNormalizer
 
 
 def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None,
@@ -82,13 +72,8 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None,
     keys = ['Cm', 'Vm'] + list(lookups2D.keys())[:-2]
 
     #  Define color code
-    mymap = cm.get_cmap(cmap)
-    if zscale == 'lin':
-        norm = matplotlib.colors.Normalize(zref.min(), zref.max())
-    elif zscale == 'log':
-        norm = matplotlib.colors.LogNorm(zref.min(), zref.max())
-    sm = cm.ScalarMappable(norm=norm, cmap=mymap)
-    sm._A = []
+    mymap = plt.get_cmap(cmap)
+    norm, sm = setNormalizer(mymap, (zref.min(), zref.max()), zscale)
 
     # Plot
     logger.info('plotting')
@@ -148,7 +133,8 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None,
         ax.set_ylabel('$\\rm {}\ ({})$'.format(yvar['label'], yvar['unit']), fontsize=fs,
                       rotation=0, ha='right', va='center')
 
-    fig.suptitle('{} neuron: {} \n modulated effective variables'.format(pneuron.name, zvar['label']))
+    fig.suptitle('{} neuron: {} \n modulated effective variables'.format(
+        pneuron.name, zvar['label']))
 
     # Plot colorbar
     fig.subplots_adjust(left=0.20, bottom=0.05, top=0.8, right=0.80, hspace=0.5)

@@ -3,13 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 12:27:50
+# @Last Modified time: 2019-06-17 07:48:35
 
 ''' Useful functions to generate plots. '''
 
 import numpy as np
 import pandas as pd
 import matplotlib
+from matplotlib import cm, colors
 
 # Matplotlib parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -70,15 +71,20 @@ def extractPltVar(model, pltvar, df, meta=None, nsamples=0, name=''):
     return var
 
 
-def computeMeshEdges(x, scale='lin'):
-    ''' Compute the appropriate edges of a mesh that quads a linear or logarihtmic distribution.
+def setGrid(n, ncolmax=3):
+    ''' Determine number of rows and columns in figure grid, based on number of
+        variables to plot. '''
+    if n <= ncolmax:
+        return (1, n)
+    else:
+        return ((n - 1) // ncolmax + 1, ncolmax)
 
-        :param x: the input vector
-        :param scale: the type of distribution ('lin' for linear, 'log' for logarihtmic)
-        :return: the edges vector
-    '''
-    if scale == 'log':
-        x = np.log10(x)
-    dx = x[1] - x[0]
-    n = x.size + 1
-    return {'lin': np.linspace, 'log': np.logspace}[scale](x[0] - dx / 2, x[-1] + dx / 2, n)
+
+def setNormalizer(cmap, bounds, scale='lin'):
+    norm = {
+        'lin': colors.Normalize,
+        'log': colors.LogNorm
+    }[scale](*bounds)
+    sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+    sm._A = []
+    return norm, sm
