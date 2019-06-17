@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 18:16:09
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-15 18:04:37
+# @Last Modified time: 2019-06-17 14:23:33
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 from PySONIC.core import NeuronalBilayerSonophore, Batch
 from PySONIC.utils import logger
-from PySONIC.plt import SchemePlot
+from PySONIC.plt import GroupedTimeSeries
 from PySONIC.parsers import AStimParser
 
 
@@ -34,7 +34,7 @@ def main():
 
     # Plot resulting profiles
     if args['plot'] is not None:
-        scheme_plot = SchemePlot(pkl_filepaths, pltscheme=args['pltscheme'])
+        scheme_plot = GroupedTimeSeries(pkl_filepaths, pltscheme=args['pltscheme'])
         scheme_plot.render(spikes=args['spikes'])
         plt.show()
 

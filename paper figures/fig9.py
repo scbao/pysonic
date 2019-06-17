@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 08:54:10
+# @Last Modified time: 2019-06-17 14:24:31
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.neurons import getPointNeuron
 from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
-from PySONIC.plt import ComparativePlot, SchemePlot
+from PySONIC.plt import CompTimeSeries, GroupedTimeSeries
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -78,7 +78,7 @@ def main():
     # Generate figures
     figs = []
     if 'a' in figset:
-        comp_plot = ComparativePlot(fpaths, 'FR')
+        comp_plot = CompTimeSeries(fpaths, 'FR')
         fig = comp_plot.render(
             patches='none',
             cmap='Oranges',
@@ -91,7 +91,7 @@ def main():
         subset_amplitudes = amplitudes[isubset]
         titles = ['{:.2f} kPa ({:.0f} W/m2)'.format(A * 1e-3, I)
                   for A, I in zip(subset_amplitudes, subset_intensities)]
-        figtraces = SchemePlot([fpaths[i] for i in isubset], pltscheme={'Q_m': ['Qm']})()
+        figtraces = GroupedTimeSeries([fpaths[i] for i in isubset], pltscheme={'Q_m': ['Qm']})()
         for fig, title in zip(figtraces, titles):
             fig.axes[0].set_title(title)
             fig.canvas.set_window_title(figbase + 'b {}'.format(title))

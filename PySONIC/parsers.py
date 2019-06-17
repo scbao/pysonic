@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 10:49:46
+# @Last Modified time: 2019-06-17 17:47:27
 
 import logging
 import pprint
@@ -96,11 +96,11 @@ class Parser(ArgumentParser):
         self.add_argument(
             '--hide', default=False, action='store_true', help='Hide output')
 
-    def addTimeBounds(self, default=None):
+    def addTimeRange(self, default=None):
         self.add_argument(
-            '--tbounds', type=float, nargs=2, default=default,
+            '--trange', type=float, nargs=2, default=default,
             help='Time lower and upper bounds (ms)')
-        self.to_parse['tbounds'] = self.parseTimeBounds
+        self.to_parse['trange'] = self.parseTimeRange
 
     def addPotentialBounds(self, default=None):
         self.add_argument(
@@ -166,8 +166,23 @@ class Parser(ArgumentParser):
         self.add_argument(
             '--interactive', default=False, action='store_true', help='Make interactive')
 
-    def parseTimeBounds(self, args):
-        return np.array(args['tbounds']) * 1e-3
+    def addLabels(self):
+        self.add_argument(
+            '--labels', type=str, nargs='+', default=None, help='Labels')
+
+    def addRelativeTimeBounds(self):
+        self.add_argument(
+            '--rel_tbounds', type=float, nargs='+', default=None,
+            help='Relative time lower and upper bounds')
+
+    def addPretty(self):
+        self.add_argument(
+            '--pretty', default=False, action='store_true', help='Make figure pretty')
+
+    def parseTimeRange(self, args):
+        if args['trange'] is None:
+            return None
+        return np.array(args['trange']) * 1e-3
 
     def parsePatches(self, args):
         if args['patches'] not in ('none', 'one', 'all'):

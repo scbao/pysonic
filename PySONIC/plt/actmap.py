@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 10:23:34
+# @Last Modified time: 2019-06-17 16:33:52
 
 import os
 import pickle
@@ -162,7 +162,7 @@ class ActivationMap(Map):
             logger.warning('%s file not found -> cannot draw threshold curve', fpath)
 
     def render(self, Ascale='log', FRscale='log', FRbounds=None, fs=8, cmap='viridis',
-               interactive=False, Vbounds=None, tbounds=None, thresholds=False):
+               interactive=False, Vbounds=None, trange=None, thresholds=False):
 
         # Compute FR normalizer
         mymap = plt.get_cmap(cmap)
@@ -201,11 +201,11 @@ class ActivationMap(Map):
         if interactive:
             fig.canvas.mpl_connect(
                 'button_press_event',
-                lambda event: self.onClick(event, (xedges, yedges), tbounds, Vbounds))
+                lambda event: self.onClick(event, (xedges, yedges), trange, Vbounds))
 
         return fig
 
-    def onClick(self, event, meshedges, tbounds, Vbounds):
+    def onClick(self, event, meshedges, trange, Vbounds):
         ''' Retrieve the specific input parameters of the x and y dimensions
             when the user clicks on a cell in the 2D map, and define filename from it.
         '''
@@ -222,18 +222,18 @@ class ActivationMap(Map):
 
         # Plot Q-trace
         try:
-            self.plotQVeff(fpath, tbounds=tbounds, ybounds=Vbounds)
+            self.plotQVeff(fpath, trange=trange, ybounds=Vbounds)
             plt.show()
         except FileNotFoundError as err:
             logger.error(err)
 
-    def plotQVeff(self, filepath, tonset=10e-3, tbounds=None, ybounds=None, fs=8, lw=1):
+    def plotQVeff(self, filepath, tonset=10e-3, trange=None, ybounds=None, fs=8, lw=1):
         ''' Plot superimposed profiles of membrane charge density and
             effective membrane potential.
 
             :param filepath: full path to the data file
             :param tonset: pre-stimulus onset to add to profiles (s)
-            :param tbounds: time lower and upper bounds on graph (s)
+            :param trange: time lower and upper bounds on graph (s)
             :param ybounds: y-axis bounds (mV / nC/cm2)
             :return: handle to the generated figure
         '''
@@ -247,8 +247,8 @@ class ActivationMap(Map):
         with open(filepath, 'rb') as fh:
             frame = pickle.load(fh)
             df = frame['data']
-        if tbounds is not None:
-            tmin, tmax = tbounds
+        if trange is not None:
+            tmin, tmax = trange
             df = df.loc[(df['t'] >= tmin) & (df['t'] <= tmax)]
 
         # Load variables, add onset and rescale

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 17:15:48
+# @Last Modified time: 2019-06-17 14:23:46
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 from PySONIC.core import Batch
 from PySONIC.utils import logger
-from PySONIC.plt import SchemePlot
+from PySONIC.plt import GroupedTimeSeries
 from PySONIC.parsers import EStimParser
 
 
@@ -32,7 +32,7 @@ def main():
 
     # Plot resulting profiles
     if args['plot'] is not None:
-        scheme_plot = SchemePlot(pkl_filepaths, pltscheme=args['pltscheme'])
+        scheme_plot = GroupedTimeSeries(pkl_filepaths, pltscheme=args['pltscheme'])
         scheme_plot.render(spikes=args['spikes'])
         plt.show()
 

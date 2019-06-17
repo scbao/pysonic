@@ -3,14 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 08:49:26
+# @Last Modified time: 2019-06-17 16:34:24
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
 import matplotlib.pyplot as plt
 
 from PySONIC.utils import logger
-from PySONIC.plt import ComparativePlot, SchemePlot
+from PySONIC.plt import CompTimeSeries, GroupedTimeSeries
 from PySONIC.parsers import Parser
 
 
@@ -27,7 +27,7 @@ def main():
     parser.addSpikes()
     parser.addPatches()
     parser.addCmap()
-    parser.addTimeBounds()
+    parser.addTimeRange()
     parser.addCscale()
     args = parser.parse()
     logger.setLevel(args['loglevel'])
@@ -39,27 +39,27 @@ def main():
             return
         for pltvar in args['plot']:
             try:
-                comp_plot = ComparativePlot(args['inputfiles'], pltvar)
+                comp_plot = CompTimeSeries(args['inputfiles'], pltvar)
                 comp_plot.render(
                     spikes=args['spikes'],
                     frequency=args['sr'],
                     patches=args['patches'],
                     cmap=args['cmap'],
                     cscale=args['cscale'],
-                    tbounds=args['tbounds'])
+                    trange=args['trange'])
             except KeyError as e:
                 logger.error(e)
                 return
     else:
-        scheme_plot = SchemePlot(args['inputfiles'], pltscheme=args['pltscheme'])
+        scheme_plot = GroupedTimeSeries(args['inputfiles'], pltscheme=args['pltscheme'])
         scheme_plot.render(
             title=True,
             save=args['save'],
-            directory=args['outputdir'],
+            outputdir=args['outputdir'],
             fig_ext=args['figext'],
             spikes=args['spikes'],
             frequency=args['sr'],
-            tbounds=args['tbounds'])
+            trange=args['trange'])
     if not args['hide']:
         plt.show()
 

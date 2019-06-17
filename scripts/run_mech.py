@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-21 10:46:56
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-15 13:06:28
+# @Last Modified time: 2019-06-17 14:23:50
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 from PySONIC.core import BilayerSonophore, Batch
 from PySONIC.utils import logger
-from PySONIC.plt import SchemePlot
+from PySONIC.plt import GroupedTimeSeries
 from PySONIC.parsers import MechSimParser
 
 
@@ -36,7 +36,7 @@ def main():
 
     # Plot resulting profiles
     if args['plot'] is not None:
-        SchemePlot(pkl_filepaths, pltscheme=args['pltscheme'])()
+        GroupedTimeSeries(pkl_filepaths, pltscheme=args['pltscheme'])()
         plt.show()
 
 

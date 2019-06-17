@@ -3,72 +3,36 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 08:51:45
+# @Last Modified time: 2019-06-17 17:05:04
 
-import re
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 
 from ..core import getModel
-from ..postpro import findPeaks
 from ..utils import *
-from ..constants import SPIKE_MIN_DT, SPIKE_MIN_QAMP, SPIKE_MIN_QPROM
 from .pltutils import *
 
 
-class TimeSeriesPlot:
+class TimeSeriesPlot(GenericPlot):
     ''' Generic interface to build a plot displaying temporal profiles of model simulations. '''
 
-    def __init__(self, filepaths):
-        ''' Constructor.
+    def setTimeLabel(self, ax, tplt, fs):
+        return super().setXLabel(ax, tplt, fs)
 
-            :param filepaths: list of full paths to output data files to be compared
-        '''
-        if not isIterable(filepaths):
-            filepaths = [filepaths]
-        self.filepaths = filepaths
-
-    def __call__(self, *args, **kwargs):
-        return self.render(*args, **kwargs)
-
-    def getData(self, entry, frequency=1, tbounds=None):
-        print(frequency, tbounds)
-        if isinstance(entry, str):
-            data, meta = loadData(entry, frequency)
-        else:
-            data, meta = entry
-        data = data.iloc[::frequency]
-        if tbounds is not None:
-            tmin, tmax = tbounds
-            data = data.loc[(data['t'] >= tmin) & (data['t'] <= tmax)]
-        return data, meta
-
-    def render(*args, **kwargs):
-        return NotImplementedError
+    def setYLabel(self, ax, yplt, fs, grouplabel=None):
+        if grouplabel is not None:
+            yplt['label'] = grouplabel
+        return super().setYLabel(ax, yplt, fs)
 
     def checkInputs(self, *args, **kwargs):
         return NotImplementedError
 
-    def createBackBone(self, *args, **kwargs):
-        return NotImplementedError
-
-    def getSimType(self, fname):
-        ''' Get sim type from filename. '''
-        mo = re.search('(^[A-Z]*)_(.*).pkl', fname)
-        if not mo:
-            raise ValueError('Could not find sim-key in filename: "{}"'.format(fname))
-        return mo.group(1)
-
-    def getTimePltVar(self, tscale):
-        ''' Return time plot variable for a given temporal scale. '''
-        return {
-            'desc': 'time',
-            'label': 'time',
-            'unit': tscale,
-            'factor': {'ms': 1e3, 'us': 1e6}[tscale],
-            'onset': {'ms': 1e-3, 'us': 1e-6}[tscale]
-        }
+    def getStimStates(self, df):
+        try:
+            stimstate = df['stimstate']
+        except KeyError:
+            stimstate = df['states']
+        return stimstate.values
 
     def getStimPulses(self, t, states):
         ''' Determine the onset and offset times of pulses from a stimulation vector.
@@ -93,50 +57,30 @@ class TimeSeriesPlot:
         tpulse_off = t[ipulse_off]
         return tpulse_on, tpulse_off
 
-    def addLegend(self, ax, handles, labels, fs, black=False, straight=False, interactive=False):
+    def addLegend(self, ax, handles, labels, fs, color=None, ls=None):
         lh = ax.legend(handles, labels, loc=1, fontsize=fs, frameon=False)
-        if black:
+        if color is not None:
             for l in lh.get_lines():
-                l.set_color('k')
-        if straight:
+                l.set_color(color)
+        if ls:
             for l in lh.get_lines():
-                l.set_linestyle('-')
+                l.set_linestyle(ls)
 
-    def getStimStates(self, df):
-        try:
-            stimstate = df['stimstate']
-        except KeyError:
-            stimstate = df['states']
-        return stimstate.values
-
-    def materializeSpikes(self, ax, data, tf, yf, color, mode, add_to_legend=False):
-        if 'Qm' not in data:
-            raise ValueError('charge profile not avilable in dataframe')
-
-        # Get spikes details
-        t, Qm = [data[k].values for k in['t', 'Qm']]
-        dt = t[1] - t[0]
-        mpd = int(np.ceil(SPIKE_MIN_DT / dt))
-        ipeaks, prominences, widths, halfmaxbounds, _ = findPeaks(
-            data['Qm'].values, mph=SPIKE_MIN_QAMP, mpd=mpd, mpp=SPIKE_MIN_QPROM)
-        if ipeaks is not None:
-            ax.scatter(t[ipeaks] * tf, Qm[ipeaks] * yf + 10, color=color,
+    def materializeSpikes(self, ax, data, tplt, yplt, color, mode, add_to_legend=False):
+        tspikes, Qspikes, Qprominences, thalfmaxbounds, _ = self.getSpikes(data)
+        if tspikes is not None:
+            ax.scatter(tspikes * tplt['factor'], Qspikes * yplt['factor'] + 10, color=color,
                        label='spikes' if add_to_legend else None, marker='v')
             if mode == 'details':
-                widths *= dt
-                indexes = np.arange(t.size)
-                tleftbounds = np.interp(halfmaxbounds[:, 0], indexes, t, left=np.nan, right=np.nan)
-                trightbounds = np.interp(halfmaxbounds[:, 1], indexes, t, left=np.nan, right=np.nan)
-                for i in range(len(ipeaks)):
-                    ax.plot(np.array([t[ipeaks[i]]] * 2) * tf,
-                            np.array([Qm[ipeaks[i]], Qm[ipeaks[i]] - prominences[i]]) * yf,
-                            '--', color=color,
+                Qbottoms = Qspikes - Qprominences
+                Qmiddles = Qspikes - 0.5 * Qprominences
+                for i in range(len(tspikes)):
+                    ax.plot(np.array([tspikes[i]] * 2) * tplt['factor'],
+                            np.array([Qspikes[i], Qbottoms[i]]) * yplt['factor'], '--', color=color,
                             label='prominences' if i == 0 and add_to_legend else '')
-                    ax.plot(np.array([tleftbounds[i], trightbounds[i]]) * tf,
-                            np.array([Qm[ipeaks[i]] - 0.5 * prominences[i]] * 2) * yf,
-                            '-.', color=color,
+                    ax.plot(thalfmaxbounds[i] * tplt['factor'],
+                            np.array([Qmiddles[i]] * 2) * yplt['factor'], '-.', color=color,
                             label='widths' if i == 0 and add_to_legend else '')
-
         return add_to_legend
 
     def prepareTime(self, t, tplt):
@@ -145,65 +89,19 @@ class TimeSeriesPlot:
             t = np.hstack((tonset, t))
         return t * tplt['factor']
 
-    def addPatches(self, ax, tpatch_on, tpatch_off, tfactor, color='#8A8A8A'):
+    def addPatches(self, ax, tpatch_on, tpatch_off, tplt, color='#8A8A8A'):
         for i in range(tpatch_on.size):
-            ax.axvspan(tpatch_on[i] * tfactor, tpatch_off[i] * tfactor,
+            ax.axvspan(tpatch_on[i] * tplt['factor'], tpatch_off[i] * tplt['factor'],
                        edgecolor='none', facecolor=color, alpha=0.2)
 
-    def postProcess(self, *args, **kwargs):
-        return NotImplementedError
-
-    def addInset(self, fig, ax, inset):
-        ''' Create inset axis. '''
-        inset_ax = fig.add_axes(ax.get_position())
-        inset_ax.set_zorder(1)
-        inset_ax.set_xlim(inset['xlims'][0], inset['xlims'][1])
-        inset_ax.set_ylim(inset['ylims'][0], inset['ylims'][1])
-        inset_ax.set_xticks([])
-        inset_ax.set_yticks([])
-        inset_ax.add_patch(Rectangle((inset['xlims'][0], inset['ylims'][0]),
-                                     inset['xlims'][1] - inset['xlims'][0],
-                                     inset['ylims'][1] - inset['ylims'][0],
-                                     color='w'))
+    def plotInset(self, inset_ax, t, y, tplt, yplt, line, color, lw):
+        inset_window = np.logical_and(t > (inset['xlims'][0] / tplt['factor']),
+                                      t < (inset['xlims'][1] / tplt['factor']))
+        inset_ax.plot(t[inset_window] * tplt['factor'], y[inset_window] * yplt['factor'],
+                      linewidth=lw, linestyle=line, color=color)
         return inset_ax
 
-    def materializeInset(self, ax, inset_ax, inset):
-        ''' Materialize inset with zoom boox. '''
-        # Re-position inset axis
-        axpos = ax.get_position()
-        left, right, = rescale(inset['xcoords'], ax.get_xlim()[0], ax.get_xlim()[1],
-                               axpos.x0, axpos.x0 + axpos.width)
-        bottom, top, = rescale(inset['ycoords'], ax.get_ylim()[0], ax.get_ylim()[1],
-                               axpos.y0, axpos.y0 + axpos.height)
-        inset_ax.set_position([left, bottom, right - left, top - bottom])
-        for i in inset_ax.spines.values():
-            i.set_linewidth(2)
-
-        # Materialize inset target region with contour frame
-        ax.plot(inset['xlims'], [inset['ylims'][0]] * 2, linestyle='-', color='k')
-        ax.plot(inset['xlims'], [inset['ylims'][1]] * 2, linestyle='-', color='k')
-        ax.plot([inset['xlims'][0]] * 2, inset['ylims'], linestyle='-', color='k')
-        ax.plot([inset['xlims'][1]] * 2, inset['ylims'], linestyle='-', color='k')
-
-        # Link target and inset with dashed lines if possible
-        if inset['xcoords'][1] < inset['xlims'][0]:
-            ax.plot([inset['xcoords'][1], inset['xlims'][0]],
-                    [inset['ycoords'][0], inset['ylims'][0]],
-                    linestyle='--', color='k')
-            ax.plot([inset['xcoords'][1], inset['xlims'][0]],
-                    [inset['ycoords'][1], inset['ylims'][1]],
-                    linestyle='--', color='k')
-        elif inset['xcoords'][0] > inset['xlims'][1]:
-            ax.plot([inset['xcoords'][0], inset['xlims'][1]],
-                    [inset['ycoords'][0], inset['ylims'][0]],
-                    linestyle='--', color='k')
-            ax.plot([inset['xcoords'][0], inset['xlims'][1]],
-                    [inset['ycoords'][1], inset['ylims'][1]],
-                    linestyle='--', color='k')
-        else:
-            logger.warning('Inset x-coordinates intersect with those of target region')
-
-    def addInsetPatches(self, ax, inset_ax, inset, tpatch_on, tpatch_off, tfactor, color):
+    def addInsetPatches(self, ax, inset_ax, inset, tpatch_on, tpatch_off, tplt, color):
         ybottom, ytop = ax.get_ylim()
         cond_on = np.logical_and(tpatch_on > (inset['xlims'][0] / tfactor),
                                  tpatch_on < (inset['xlims'][1] / tfactor))
@@ -220,27 +118,8 @@ class TimeSeriesPlot:
                                          tfactor, ytop - ybottom, color=color,
                                          alpha=0.1))
 
-    def removeSpines(self, ax):
-        for item in ['top', 'right']:
-            ax.spines[item].set_visible(False)
 
-    def setTimeLabel(self, ax, tplt, fs):
-        ax.set_xlabel('$\\rm {}\ ({})$'.format(tplt['label'], tplt['unit']), fontsize=fs)
-
-    def setYLabel(self, ax, yplt, fs, grouplabel=None):
-        lbl = grouplabel if grouplabel is not None else yplt['label']
-        ax.set_ylabel('$\\rm {}\ ({})$'.format(lbl, yplt.get('unit', '')), fontsize=fs)
-
-    def setYTicks(self, ax, yticks=None):
-        if yticks is not None:
-            ax.set_yticks(yticks)
-
-    def setTickLabelsFontSize(self, ax, fs):
-        for tick in ax.xaxis.get_major_ticks() + ax.yaxis.get_major_ticks():
-            tick.label.set_fontsize(fs)
-
-
-class ComparativePlot(TimeSeriesPlot):
+class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
     ''' Interface to build a comparative plot displaying profiles of a specific output variable
         across different model simulations. '''
 
@@ -250,26 +129,9 @@ class ComparativePlot(TimeSeriesPlot):
             :param filepaths: list of full paths to output data files to be compared
             :param varname: name of variable to extract and compare
         '''
-        super().__init__(filepaths)
-        self.varname = varname
+        ComparativePlot.__init__(self, filepaths, varname)
 
-    def checkInputs(self, lines, labels, colors, patches):
-        # Input check: labels
-        if labels is not None:
-            if len(labels) != len(self.filepaths):
-                raise ValueError(
-                    'Invalid labels ({}): not matching number of compared files ({})'.format(
-                        len(labels), len(self.filepaths)))
-            if not all(isinstance(x, str) for x in labels):
-                raise TypeError('Invalid labels: must be string typed')
-
-        # Input check: line styles and colors
-        if colors is None:
-            colors = ['C{}'.format(j) for j in range(len(self.filepaths))]
-        if lines is None:
-            lines = ['-'] * len(self.filepaths)
-
-        # Input check: STIM-ON patches
+    def checkPatches(self, patches):
         greypatch = False
         if patches == 'none':
             patches = [False] * len(self.filepaths)
@@ -288,6 +150,13 @@ class ComparativePlot(TimeSeriesPlot):
         else:
             raise ValueError(
                 'Invalid patches: must be either "none", all", "one", or a boolean list')
+        return patches, greypatch
+
+    def checkInputs(self, lines, labels, colors, patches):
+        self.checkLabels(labels)
+        lines = self.checkLines(lines)
+        colors = self.checkColors(colors)
+        patches, greypatch = self.checkPatches(patches)
         return lines, labels, colors, patches, greypatch
 
     def createBackBone(self, figsize):
@@ -300,33 +169,14 @@ class ComparativePlot(TimeSeriesPlot):
         if 'bounds' in yplt:
             ax.set_ylim(*yplt['bounds'])
         self.setTimeLabel(ax, tplt, fs)
-        self.setYLabel(ax, yplt, fs, grouplabel=None)
-        if xticks is not None:  # optional x-ticks
-            ax.set_xticks(xticks)
+        self.setYLabel(ax, yplt, fs)
+        self.setXTicks(ax, xticks)
         self.setYTicks(ax, yticks)
         self.setTickLabelsFontSize(ax, fs)
 
-    def addCmap(self, fig, cmap, handles, zvalues, zinfo, fs, zscale='lin'):
-        # Create colormap and normalizer
-        mymap = plt.get_cmap(cmap)
-        norm, sm = setNormalizer(mymap, (zvalues.min(), zvalues.max()), zscale)
-
-        # Adjust line colors
-        for lh, z in zip(handles, zvalues):
-            lh.set_color(sm.to_rgba(z))
-
-        # Add colorbar
-        fig.subplots_adjust(left=0.1, right=0.8, bottom=0.15, top=0.95, hspace=0.5)
-        cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
-        fig.colorbar(sm, cax=cbarax, orientation='vertical')
-        cbarax.set_ylabel('$\\rm {}\ ({})$'.format(
-            zinfo['desc'].replace(' ', '\ '), zinfo['unit']), fontsize=fs)
-        for item in cbarax.get_yticklabels():
-            item.set_fontsize(fs)
-
     def render(self, figsize=(11, 4), fs=10, lw=2, labels=None, colors=None, lines=None,
-               patches='one', xticks=None, yticks=None, blacklegend=False, straightlegend=False,
-               inset=None, frequency=1, spikes='none', cmap=None, cscale='lin', tbounds=None):
+               patches='one', xticks=None, yticks=None, inset=None, frequency=1, spikes='none',
+               cmap=None, cscale='lin', trange=None):
         ''' Render plot.
 
             :param figsize: figure size (x, y)
@@ -339,12 +189,13 @@ class ComparativePlot(TimeSeriesPlot):
                 with rectangular patches
             :param xticks: list of x-ticks
             :param yticks: list of y-ticks
-            :param blacklegend: boolean indicating whether to use black lines in the legend
-            :param straightlegend: boolean indicating whether to use straight lines in the legend
             :param inset: string indicating whether/how to mark an inset zooming on
                 a particular region of the graph
             :param frequency: frequency at which to plot samples
             :param spikes: string indicating how to show spikes ("none", "marks" or "details")
+            :param cmap: color map to use for colobar-based comparison (if not None)
+            :param cscale: color scale to use for colobar-based comparison
+            :param trange: optional lower and upper bounds to time axis
             :return: figure handle
         '''
         lines, labels, colors, patches, greypatch = self.checkInputs(
@@ -354,19 +205,13 @@ class ComparativePlot(TimeSeriesPlot):
         if inset is not None:
             inset_ax = self.addInset(fig, ax, inset)
 
-        handles = []
-        meta_ref = None
-        zref = None
-        zvalues = []
-        full_labels = []
-
-        tmin, tmax = np.inf, -np.inf
-
         # Loop through data files
+        handles, comp_values, full_labels = [], [], []
+        tmin, tmax = np.inf, -np.inf
         for j, filepath in enumerate(self.filepaths):
 
             # Load data
-            data, meta = self.getData(filepath, frequency, tbounds)
+            data, meta = self.getData(filepath, frequency, trange)
             meta.pop('tcomp')
             full_labels.append(figtitle(meta))
 
@@ -374,23 +219,7 @@ class ComparativePlot(TimeSeriesPlot):
             model = getModel(meta)
 
             # Check consistency of sim types and check differing inputs
-            if meta_ref is None:
-                meta_ref = meta
-            else:
-                if meta['simkey'] != meta_ref['simkey']:
-                    raise ValueError('Invalid comparison: different simulation types')
-                differing = {k: meta[k] != meta_ref[k] for k in meta.keys()}
-                if sum(differing.values()) > 1:
-                    raise ValueError('More than one differing inputs')
-                zkey = (list(differing.keys())[list(differing.values()).index(True)])
-                if zref is None:
-                    zref = zkey
-                    zvalues.append(meta_ref[zkey])
-                    zinfo = model.inputVars().get(zkey, None)
-                else:
-                    if zkey != zref:
-                        raise ValueError('inconsitent differing input')
-                zvalues.append(meta[zkey])
+            comp_values = self.checkConsistency(meta, comp_values)
 
             # Extract time and stim pulses
             t = data['t'].values
@@ -409,44 +238,31 @@ class ComparativePlot(TimeSeriesPlot):
             y = extractPltVar(model, yplt, data, meta, t.size, self.varname)
 
             #  Plot time series
-            handles.append(
-                ax.plot(t, y, linewidth=lw, linestyle=lines[j], color=colors[j])[0])
+            handles.append(ax.plot(t, y, linewidth=lw, linestyle=lines[j], color=colors[j])[0])
 
             # Optional: add spikes
             if self.varname == 'Qm' and spikes != 'none':
-                self.materializeSpikes(
-                    ax, data, tplt['factor'], yplt['factor'], colors[j], spikes)
+                self.materializeSpikes(ax, data, tplt, yplt, colors[j], spikes)
 
             # Plot optional inset
             if inset is not None:
-                inset_window = np.logical_and(t > (inset['xlims'][0] / tplt['factor']),
-                                              t < (inset['xlims'][1] / tplt['factor']))
-                inset_ax.plot(t[inset_window] * tplt['factor'], y[inset_window] * yplt['factor'],
-                              linewidth=lw, linestyle=lines[j], color=colors[j])
+                inset_ax = self.plotInset(inset_ax, t, y, tplt, yplt, lines[j], colors[j], lw)
 
             # Add optional STIM-ON patches
             if patches[j]:
                 ybottom, ytop = ax.get_ylim()
                 color = '#8A8A8A' if greypatch else handles[j].get_color()
-                self.addPatches(ax, tpatch_on, tpatch_off, tplt['factor'], color)
+                self.addPatches(ax, tpatch_on, tpatch_off, tplt, color)
                 if inset is not None:
-                    self.addInsetPatches(
-                        ax, inset_ax, inset, tpatch_on, tpatch_off, tplt['factor'], color)
+                    self.addInsetPatches(ax, inset_ax, inset, tpatch_on, tpatch_off, tplt, color)
 
             tmin, tmax = min(tmin, t.min()), max(tmax, t.max())
 
         # Determine labels
-        if zinfo is not None:
-            zvalues = np.array(zvalues) * zinfo['factor']
-            zlabels = ['$\\rm{} = {}\ {}$'.format(zinfo['label'], z, zinfo['unit'])
-                       for z in zvalues]
-        else:
-            zlabels = zvalues
-        if labels is None:
-            if zlabels is not None:
-                labels = zlabels
-            else:
-                labels = full_labels
+        if self.comp_ref_key is not None:
+            self.comp_info = model.inputVars().get(self.comp_ref_key, None)
+        comp_values, comp_labels = self.getCompLabels(comp_values)
+        labels = self.chooseLabels(labels, comp_labels, full_labels)
 
         # Postprocess figure
         self.postProcess(ax, tplt, yplt, fs, xticks, yticks)
@@ -458,16 +274,18 @@ class ComparativePlot(TimeSeriesPlot):
 
         # Add color legend or label legend
         if cmap is not None:
-            if zinfo is None:
+            if not self.is_unique_comp:
+                raise ValueError('Colormap mode unavailable for multiple differing parameters')
+            if self.comp_info is None:
                 raise ValueError('Colormap mode unavailable for qualitative comparisons')
-            self.addCmap(fig, cmap, handles, zvalues, zinfo, fs, zscale=cscale)
+            self.addCmap(fig, cmap, handles, comp_values, self.comp_info, fs, zscale=cscale)
         else:
-            self.addLegend(ax, handles, labels, fs, black=blacklegend, straight=straightlegend)
+            self.addLegend(ax, handles, labels, fs)
 
         return fig
 
 
-class SchemePlot(TimeSeriesPlot):
+class GroupedTimeSeries(TimeSeriesPlot):
     ''' Interface to build a plot displaying profiles of several output variables
         arranged into specific schemes. '''
 
@@ -497,14 +315,31 @@ class SchemePlot(TimeSeriesPlot):
             ax.set_xticklabels([])
         self.setTimeLabel(axes[-1], tplt, fs)
 
-    def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches=True, title=True,
-               save=False, directory=None, fig_ext='png', frequency=1, spikes='none', tbounds=None):
+    def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches=True, save=False,
+               outputdir=None, fig_ext='png', frequency=1, spikes='none', trange=None):
+        ''' Render plot.
+
+            :param fs: labels fontsize
+            :param lw: linewidth
+            :param labels: list of labels to use in the legend
+            :param colors: list of colors to use for each curve
+            :param lines: list of linestyles
+            :param patches: boolean indicating whether to mark stimulation periods
+                with rectangular patches
+            :param save: boolean indicating whether or not to save the figure(s)
+            :param outputdir: path to output directory in which to save figure(s)
+            :param fig_ext: string indcating figure extension ("png", "pdf", ...)
+            :param frequency: frequency at which to plot samples
+            :param spikes: string indicating how to show spikes ("none", "marks" or "details")
+            :param trange: optional lower and upper bounds to time axis
+            :return: figure handle(s)
+        '''
 
         figs = []
         for filepath in self.filepaths:
 
             # Load data and extract model
-            data, meta = self.getData(filepath, frequency)
+            data, meta = self.getData(filepath, frequency, trange)
             model = getModel(meta)
 
             # Extract time and stim pulses
@@ -559,8 +394,7 @@ class SchemePlot(TimeSeriesPlot):
                     # Optional: add spikes
                     if name == 'Qm' and spikes != 'none':
                         ax_legend_spikes = self.materializeSpikes(
-                            ax, data, tplt['factor'], yplt['factor'],
-                            color, spikes, add_to_legend=True)
+                            ax, data, tplt, yplt, color, spikes, add_to_legend=True)
 
                 # Add legend
                 if nvars > 1 or 'gate' in ax_pltvars[0]['desc'] or ax_legend_spikes:
@@ -570,20 +404,19 @@ class SchemePlot(TimeSeriesPlot):
             for ax in axes:
                 ax.set_xlim(t.min(), t.max())
                 if patches:
-                    self.addPatches(ax, tpatch_on, tpatch_off, tplt['factor'])
+                    self.addPatches(ax, tpatch_on, tpatch_off, tplt)
 
             # Post-process figure
             self.postProcess(axes, tplt, yplt, fs)
-            if title:
-                axes[0].set_title(figtitle(meta), fontsize=fs)
+            axes[0].set_title(figtitle(meta), fontsize=fs)
             fig.tight_layout()
 
             # Save figure if needed (automatic or checked)
             if save:
                 filecode = model.filecode(meta)
-                if directory is None:
-                    directory = os.path.split(filepath)[0]
-                plt_filename = '{}/{}.{}'.format(directory, filecode, fig_ext)
+                if outputdir is None:
+                    outputdir = os.path.split(filepath)[0]
+                plt_filename = '{}/{}.{}'.format(outputdir, filecode, fig_ext)
                 plt.savefig(plt_filename)
                 logger.info('Saving figure as "{}"'.format(plt_filename))
                 plt.close()
@@ -595,20 +428,18 @@ class SchemePlot(TimeSeriesPlot):
 if __name__ == '__main__':
     # example of use
     filepaths = OpenFilesDialog('pkl')[0]
-    comp_plot = ComparativePlot(filepaths, 'Qm')
+    comp_plot = CompTimeSeries(filepaths, 'Qm')
     fig = comp_plot.render(
         lines=['-', '--'],
         labels=['60 kPa', '80 kPa'],
         patches='one',
         colors=['r', 'g'],
-        blacklegend=False,
-        straightlegend=False,
         xticks=[0, 100],
         yticks=[-80, +50],
         inset={'xcoords': [5, 40], 'ycoords': [-35, 45], 'xlims': [57.5, 60.5], 'ylims': [10, 35]}
     )
 
-    scheme_plot = SchemePlot(filepaths)
+    scheme_plot = GroupedTimeSeries(filepaths)
     figs = scheme_plot.render()
 
     plt.show()
