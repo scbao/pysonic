@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 18:40:56
+# @Last Modified time: 2019-06-17 20:42:00
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -164,19 +164,19 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         ax.set_zorder(0)
         return fig, ax
 
-    def postProcess(self, ax, tplt, yplt, fs, xticks, yticks):
+    def postProcess(self, ax, tplt, yplt, fs, meta, prettify):
         self.removeSpines(ax)
         if 'bounds' in yplt:
             ax.set_ylim(*yplt['bounds'])
         self.setTimeLabel(ax, tplt, fs)
         self.setYLabel(ax, yplt, fs)
-        self.setXTicks(ax, xticks)
-        self.setYTicks(ax, yticks)
+        if prettify:
+            self.prettify(ax, xticks=(0, meta['tstim'] * tplt['factor']))
         self.setTickLabelsFontSize(ax, fs)
 
     def render(self, figsize=(11, 4), fs=10, lw=2, labels=None, colors=None, lines=None,
-               patches='one', xticks=None, yticks=None, inset=None, frequency=1, spikes='none',
-               cmap=None, cscale='lin', trange=None):
+               patches='one', inset=None, frequency=1, spikes='none', cmap=None,
+               cscale='lin', trange=None, prettify=False):
         ''' Render plot.
 
             :param figsize: figure size (x, y)
@@ -187,8 +187,6 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             :param lines: list of linestyles
             :param patches: string indicating whether/how to mark stimulation periods
                 with rectangular patches
-            :param xticks: list of x-ticks
-            :param yticks: list of y-ticks
             :param inset: string indicating whether/how to mark an inset zooming on
                 a particular region of the graph
             :param frequency: frequency at which to plot samples
@@ -265,7 +263,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         labels = self.chooseLabels(labels, comp_labels, full_labels)
 
         # Post-process figure
-        self.postProcess(ax, tplt, yplt, fs, xticks, yticks)
+        self.postProcess(ax, tplt, yplt, fs, meta, prettify)
         ax.set_xlim(tmin, tmax)
         fig.tight_layout()
 
@@ -278,7 +276,8 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
                 raise ValueError('Colormap mode unavailable for multiple differing parameters')
             if self.comp_info is None:
                 raise ValueError('Colormap mode unavailable for qualitative comparisons')
-            self.addCmap(fig, cmap, handles, comp_values, self.comp_info, fs, zscale=cscale)
+            self.addCmap(
+                fig, cmap, handles, comp_values, self.comp_info, fs, prettify, zscale=cscale)
         else:
             self.addLegend(ax, handles, labels, fs)
 
@@ -307,16 +306,19 @@ class GroupedTimeSeries(TimeSeriesPlot):
             fig, axes = plt.subplots(naxes, 1, figsize=(11, min(3 * naxes, 9)))
         return fig, axes
 
-    def postProcess(self, axes, tplt, yplt, fs):
+    def postProcess(self, axes, tplt, fs, meta, prettify):
         for ax in axes:
             self.removeSpines(ax)
+            # if prettify:
+            #     self.prettify(ax, xticks=(0, meta['tstim'] * tplt['factor']), yfmt=None)
             self.setTickLabelsFontSize(ax, fs)
         for ax in axes[:-1]:
             ax.set_xticklabels([])
         self.setTimeLabel(axes[-1], tplt, fs)
 
     def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches='one', save=False,
-               outputdir=None, fig_ext='png', frequency=1, spikes='none', trange=None):
+               outputdir=None, fig_ext='png', frequency=1, spikes='none', trange=None,
+               prettify=False):
         ''' Render plot.
 
             :param fs: labels fontsize
@@ -407,7 +409,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
                     self.addPatches(ax, tpatch_on, tpatch_off, tplt)
 
             # Post-process figure
-            self.postProcess(axes, tplt, yplt, fs)
+            self.postProcess(axes, tplt, fs, meta, prettify)
             axes[0].set_title(figtitle(meta), fontsize=fs)
             fig.tight_layout()
 

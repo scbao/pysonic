@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 18:28:31
+# @Last Modified time: 2019-06-17 20:26:38
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,9 +45,6 @@ class PhaseDiagram(ComparativePlot):
     def createBackBone(self, pltvar, tbounds, fs, prettify):
                 # Create figure
         fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-        for ax in axes:
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
 
         # 1st axis: variable as function of time
         ax = axes[0]
@@ -66,11 +63,11 @@ class PhaseDiagram(ComparativePlot):
         ax.plot([pltvar['lim'][0], pltvar['lim'][1]], [0, 0], '--', color='k', linewidth=1)
 
         if prettify:
-            self.prettify(axes[0], tbounds, pltvar['lim'])
-            self.prettify(axes[1], pltvar['lim'], pltvar['dlim'])
+            self.prettify(axes[0], xticks=tbounds, yticks=pltvar['lim'])
+            self.prettify(axes[1], xticks=pltvar['lim'], yticks=pltvar['dlim'])
         for ax in axes:
-            for item in ax.get_xticklabels() + ax.get_yticklabels():
-                item.set_fontsize(fs)
+            self.removeSpines(ax)
+            self.setTickLabelsFontSize(ax, fs)
 
         return fig, axes
 
@@ -99,7 +96,7 @@ class PhaseDiagram(ComparativePlot):
             fig.suptitle(labels[0], fontsize=fs)
 
     def render(self, no_offset=False, no_first=False, labels=None, colors=None,
-               fs=10, lw=2, trange=None, rel_tbounds=None, pretty=True,
+               fs=10, lw=2, trange=None, rel_tbounds=None, prettify=False,
                cmap=None, cscale='lin'):
 
         self.checkInputs(labels)
@@ -114,7 +111,7 @@ class PhaseDiagram(ComparativePlot):
                     self.varname, ', '.join(['"{}"'.format(p) for p in self.phaseplotvars.keys()])))
         pltvar = self.phaseplotvars[self.varname]
 
-        fig, axes = self.createBackBone(pltvar, rel_tbounds * 1e3, fs, pretty)
+        fig, axes = self.createBackBone(pltvar, rel_tbounds * 1e3, fs, prettify)
 
         # Loop through data files
         comp_values, full_labels = [], []
@@ -181,7 +178,8 @@ class PhaseDiagram(ComparativePlot):
             if self.comp_info is None:
                 raise ValueError('Colormap mode unavailable for qualitative comparisons')
             cmap_handles = [h0 + h1 for h0, h1 in zip(handles0, handles1)]
-            self.addCmap(fig, cmap, cmap_handles, comp_values, self.comp_info, fs, zscale=cscale)
+            self.addCmap(
+                fig, cmap, cmap_handles, comp_values, self.comp_info, fs, prettify, zscale=cscale)
         else:
             leg_handles = [x[0] for x in handles0]
             self.addLegend(fig, axes, leg_handles, labels, fs)

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 18:46:09
+# @Last Modified time: 2019-06-17 20:16:17
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -33,6 +33,7 @@ def main():
                     spikes=args['spikes'],
                     frequency=args['sr'],
                     trange=args['trange'],
+                    prettify=args['pretty'],
                     cmap=args['cmap'],
                     cscale=args['cscale']
                 )
@@ -46,6 +47,7 @@ def main():
             spikes=args['spikes'],
             frequency=args['sr'],
             trange=args['trange'],
+            prettify=args['pretty'],
             save=args['save'],
             outputdir=args['outputdir'],
             fig_ext=args['figext']

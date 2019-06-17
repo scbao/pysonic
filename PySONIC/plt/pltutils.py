@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 18:23:59
+# @Last Modified time: 2019-06-17 20:41:18
 
 ''' Useful functions to generate plots. '''
 
@@ -144,11 +144,25 @@ class GenericPlot:
     def createBackBone(self, *args, **kwargs):
         return NotImplementedError
 
-    def prettify(self, ax, xbounds, ybounds):
-        ax.set_xticks(xbounds)
-        ax.set_yticks(ybounds)
-        ax.set_xticklabels(['{:+.1f}'.format(x) for x in ax.get_xticks()])
-        ax.set_yticklabels(['{:+.0f}'.format(x) for x in ax.get_yticks()])
+    def prettify(self, ax, xticks=None, yticks=None, xfmt='{:.0f}', yfmt='{:+.0f}'):
+        try:
+            ticks = ax.get_ticks()
+            ticks = (min(ticks), max(ticks))
+            ax.set_ticks(ticks)
+            ax.set_ticklabels([xfmt.format(x) for x in ticks])
+        except AttributeError:
+            if xticks is None:
+                xticks = ax.get_xticks()
+                xticks = (min(xticks), max(xticks))
+            if yticks is None:
+                yticks = ax.get_yticks()
+                yticks = (min(yticks), max(yticks))
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            if xfmt is not None:
+                ax.set_xticklabels([xfmt.format(x) for x in xticks])
+            if yfmt is not None:
+                ax.set_yticklabels([yfmt.format(y) for y in yticks])
 
     def addInset(self, fig, ax, inset):
         ''' Create inset axis. '''
@@ -225,7 +239,7 @@ class GenericPlot:
     def setYLabel(self, ax, yplt, fs):
         ax.set_ylabel('$\\rm {}\ ({})$'.format(yplt['label'], yplt.get('unit', '')), fontsize=fs)
 
-    def addCmap(self, fig, cmap, handles, comp_values, comp_info, fs, zscale='lin'):
+    def addCmap(self, fig, cmap, handles, comp_values, comp_info, fs, prettify, zscale='lin'):
         # Create colormap and normalizer
         mymap = plt.get_cmap(cmap)
         norm, sm = setNormalizer(mymap, (comp_values.min(), comp_values.max()), zscale)
@@ -241,9 +255,11 @@ class GenericPlot:
         # Add colorbar
         fig.subplots_adjust(left=0.1, right=0.8, bottom=0.15, top=0.95, hspace=0.5)
         cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
-        fig.colorbar(sm, cax=cbarax, orientation='vertical')
+        cbar = fig.colorbar(sm, cax=cbarax, orientation='vertical')
         cbarax.set_ylabel('$\\rm {}\ ({})$'.format(
             comp_info['desc'].replace(' ', '\ '), comp_info['unit']), fontsize=fs)
+        if prettify:
+            self.prettify(cbar)
         for item in cbarax.get_yticklabels():
             item.set_fontsize(fs)
 
