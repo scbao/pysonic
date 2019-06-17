@@ -3,66 +3,54 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-15 15:59:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:08:33
+# @Last Modified time: 2019-06-17 21:12:43
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
+import numpy as np
 import logging
 import matplotlib.pyplot as plt
-from argparse import ArgumentParser
 
 from PySONIC.plt import plotEffectiveVariables
 from PySONIC.utils import logger
-from PySONIC.neurons import getPointNeuron
+from PySONIC.parsers import MechSimParser
 
 # Set logging level
 logger.setLevel(logging.INFO)
 
 
 def main():
-    ap = ArgumentParser()
 
-    # Stimulation parameters
-    ap.add_argument('-n', '--neuron', type=str, default='RS',
-                    help='Neuron name (string)')
-    ap.add_argument('-a', '--radius', type=float, default=None,
-                    help='Sonophore radius (nm)')
-    ap.add_argument('-f', '--freq', type=float, default=None,
-                    help='US frequency (kHz)')
-    ap.add_argument('-A', '--amp', type=float, default=None,
-                    help='Acoustic pressure amplitude (kPa)')
-    ap.add_argument('--log', action='store_true', default=False,
-                    help='Log color scale')
-    ap.add_argument('-c', '--cmap', type=str, default=None,
-                    help='Colormap name')
-    ap.add_argument('--ncol', type=int, default=1,
-                    help='Number of columns in figure')
-    ap.add_argument('-v', '--verbose', default=False, action='store_true',
-                    help='Increase verbosity')
+    parser = MechSimParser()
+    parser.addNeuron()
+    parser.addCscale()
+    parser.addCmap()
+    parser.addNColumns()
+    parser.addNLevels()
+    parser.defaults['neuron'] = 'RS'
+    parser.defaults['radius'] = np.nan
+    parser.defaults['freq'] = np.nan
+    parser.defaults['amp'] = np.nan
+    args = parser.parse()
+    for k in ['charge', 'embedding', 'Cm0', 'Qm0', 'fs', 'mpi', 'pltscheme', 'plot']:
+        del args[k]
+    logger.setLevel(args['loglevel'])
 
-    # Parse arguments
-    args = {key: value for key, value in vars(ap.parse_args()).items() if value is not None}
-    neuron_str = args['neuron']
-    a = args['radius'] * 1e-9 if 'radius' in args else None  # m
-    Fdrive = args['freq'] * 1e3 if 'freq' in args else None  # Hz
-    Adrive = args['amp'] * 1e3 if 'amp' in args else None  # Pa
-    zscale = 'log' if args['log'] else 'lin'
-    cmap = args.get('cmap', None)
-    ncol = args['ncol']
+    # Restrict radius, frequency and amplitude to single values
+    for k in ['radius', 'freq', 'amp']:
+        if len(args[k]) > 1:
+            logger.error('multiple {} values not allowed'.format(k))
+        val = args[k][0]
+        if np.isnan(val):
+            args[k] = None
+        else:
+            args[k] = val
 
-    loglevel = logging.DEBUG if args['verbose'] is True else logging.INFO
-    logger.setLevel(loglevel)
+    for pneuron in args['neuron']:
+        plotEffectiveVariables(
+            pneuron, a=args['radius'], Fdrive=args['freq'], Adrive=args['amp'],
+            zscale=args['cscale'], cmap=args['cmap'], ncolmax=args['ncol'], nlevels=args['nlevels'])
 
-    # Check neuron name validity
-    try:
-        pneuron = getPointNeuron(neuron_str)
-    except ValueError as err:
-        logger.error(err)
-        return
-
-    # Plot effective variables
-    plotEffectiveVariables(pneuron, a=a, Fdrive=Fdrive, Adrive=Adrive,
-                           zscale=zscale, cmap=cmap, ncolmax=ncol)
     plt.show()
 
 

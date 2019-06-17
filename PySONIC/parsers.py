@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 18:52:05
+# @Last Modified time: 2019-06-17 21:12:23
 
 import logging
 import pprint
@@ -91,6 +91,14 @@ class Parser(ArgumentParser):
         self.add_argument(
             '--spikes', type=str, default='none',
             help='How to indicate spikes on charge profile ("none", "marks" or "details")')
+
+    def addNColumns(self):
+        self.add_argument(
+            '--ncol', type=int, default=1, help='Number of columns in figure')
+
+    def addNLevels(self):
+        self.add_argument(
+            '--nlevels', type=int, default=10, help='Number of levels')
 
     def addHideOutput(self):
         self.add_argument(

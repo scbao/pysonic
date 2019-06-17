@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 07:49:41
+# @Last Modified time: 2019-06-17 21:11:02
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -15,8 +15,8 @@ from ..core import NeuronalBilayerSonophore
 from .pltutils import setGrid, setNormalizer
 
 
-def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None,
-                           nlevels=10, zscale='lin', cmap=None, fs=12, ncolmax=1):
+def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10,
+                           zscale='lin', cmap=None, fs=12, ncolmax=1):
     ''' Plot the profiles of effective variables of a specific neuron as a function of charge density
         and another reference variable (z-variable). For each effective variable, one charge-profile
         per z-value is plotted, with a color code based on the z-variable value.
@@ -32,7 +32,6 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None,
         :param ncolmax: max number of columns on the figure
         :return: handle to the created figure
     '''
-
     if sum(isinstance(x, float) for x in [a, Fdrive, Adrive]) < 2:
         raise ValueError('at least 2 parameters in (a, Fdrive, Adrive) must be fixed')
 
@@ -56,9 +55,10 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None,
     prefix = {value: key for key, value in si_prefixes.items()}[1 / zvar['factor']]
 
     # Optional: interpolate along z dimension if nlevels specified
-    if zscale is 'log':
-        znew = np.logspace(np.log10(zref.min()), np.log10(zref.max()), nlevels)
-    elif zscale is 'lin':
+    if zscale == 'log':
+        zref_pos = zref[zref > 0]
+        znew = np.logspace(np.log10(zref_pos.min()), np.log10(zref_pos.max()), nlevels)
+    elif zscale == 'lin':
         znew = np.linspace(zref.min(), zref.max(), nlevels)
     else:
         raise ValueError('unknown scale type (should be "lin" or "log")')
