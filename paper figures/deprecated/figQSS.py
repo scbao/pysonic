@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 08:09:50
+# @Last Modified time: 2019-06-17 22:08:28
 
 ''' Subpanels of the QSS approximation figure. '''
 
@@ -18,6 +18,7 @@ from argparse import ArgumentParser
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.utils import logger, selectDirDialog
 from PySONIC.neurons import getPointNeuron
+from PySONIC.parsers import FigureParser
 
 
 # Plot parameters
@@ -237,22 +238,11 @@ def plotQSSAthr_vs_DC(neurons, a, Fdrive, DCs_dense, DCs_sparse, fs=8, title=Non
 
 
 def main():
-    ap = ArgumentParser()
 
-    # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('-o', '--outdir', type=str, help='Output directory')
-    ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
-    ap.add_argument('-s', '--save', default=False, action='store_true',
-                    help='Save output figures as pdf')
-
-    args = ap.parse_args()
-    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
-    logger.setLevel(loglevel)
-    figset = args.figset
-    if figset == 'all':
-        figset = ['a', 'b', 'c', 'e']
-
+    parser = FigureParser(['a', 'b', 'c', 'd', 'e'])
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
+    figset = args['subset']
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
@@ -279,15 +269,10 @@ def main():
         figs.append(plotQSSAthr_vs_DC(['RS', 'LTS'], a, Fdrive, DCs_dense, DCs_sparse,
                                       title=figbase + 'c'))
 
-    if args.save:
-        try:
-            outdir = selectDirDialog() if args.outdir is None else args.outdir
-        except ValueError as err:
-            logger.error(err)
-            return
+    if args['save']:
         for fig in figs:
             figname = '{}.pdf'.format(fig.canvas.get_window_title())
-            fig.savefig(os.path.join(outdir, figname), transparent=True)
+            fig.savefig(os.path.join(args['outputdir'], figname), transparent=True)
     else:
         plt.show()
 

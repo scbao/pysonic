@@ -3,19 +3,18 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-15 15:59:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 08:07:29
+# @Last Modified time: 2019-06-17 21:55:47
 
 ''' Sub-panels of the effective variables figure. '''
 
 import os
 import matplotlib
 import matplotlib.pyplot as plt
-from argparse import ArgumentParser
-import logging
 
 from PySONIC.plt import plotEffectiveVariables
-from PySONIC.utils import logger, selectDirDialog
+from PySONIC.utils import logger
 from PySONIC.neurons import getPointNeuron
+from PySONIC.parsers import FigureParser
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -27,23 +26,10 @@ figbase = os.path.splitext(__file__)[0]
 
 
 def main():
-    ap = ArgumentParser()
-
-    # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true',
-                    help='Increase verbosity')
-    ap.add_argument('-o', '--outdir', type=str, help='Output directory')
-    ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
-    ap.add_argument('-s', '--save', default=False, action='store_true',
-                    help='Save output figures as pdf')
-
-    args = ap.parse_args()
-    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
-    logger.setLevel(loglevel)
-    figset = args.figset
-    if figset == 'all':
-        figset = ['a', 'b', 'c']
-
+    parser = FigureParser(['a', 'b', 'c'])
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
+    figset = args['subset']
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
@@ -68,15 +54,10 @@ def main():
         fig.canvas.set_window_title(figbase + 'c')
         figs.append(fig)
 
-    if args.save:
-        try:
-            outdir = selectDirDialog() if args.outdir is None else args.outdir
-        except ValueError as err:
-            logger.error(err)
-            return
+    if args['save']:
         for fig in figs:
             figname = '{}.pdf'.format(fig.canvas.get_window_title())
-            fig.savefig(os.path.join(outdir, figname), transparent=True)
+            fig.savefig(os.path.join(args['outputdir'], figname), transparent=True)
     else:
         plt.show()
 

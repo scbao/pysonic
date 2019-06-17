@@ -3,21 +3,20 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 08:08:28
+# @Last Modified time: 2019-06-17 22:01:42
 
 ''' Sub-panels of the NICE and SONIC computation times comparative figure. '''
 
 
 import os
-import logging
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from argparse import ArgumentParser
 
 from PySONIC.utils import *
 from PySONIC.neurons import *
 from PySONIC.plt import cm2inch
+from PySONIC.parsers import FigureParser
 
 from utils import *
 
@@ -235,28 +234,12 @@ def comptime_vs_DC(neurons, a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdi
 
 
 def main():
-    ap = ArgumentParser()
-
-    # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true',
-                    help='Increase verbosity')
-    ap.add_argument('-i', '--inputdir', type=str, help='Input directory')
-    ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
-    ap.add_argument('-s', '--save', default=False, action='store_true',
-                    help='Save output figures as pdf')
-
-    args = ap.parse_args()
-    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
-    logger.setLevel(loglevel)
-    try:
-        inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
-    except ValueError as err:
-        logger.error(err)
-        return
-    figset = args.figset
-    if figset == 'all':
-        figset = ['a', 'b', 'c', 'd']
-
+    parser = FigureParser(['a', 'b', 'c', 'd'])
+    parser.addInputDir()
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
+    figset = args['subset']
+    inputdir = args['inputdir']
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
@@ -293,10 +276,10 @@ def main():
         figs.append(comptime_vs_DC(
             ['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir))
 
-    if args.save:
+    if args['save']:
         for fig in figs:
             figname = '{}.pdf'.format(fig.canvas.get_window_title())
-            fig.savefig(os.path.join(inputdir, figname), transparent=True)
+            fig.savefig(os.path.join(args['outpudir'], figname), transparent=True)
     else:
         plt.show()
 

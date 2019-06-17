@@ -3,21 +3,20 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 09:26:49
+# @Last Modified time: 2019-06-17 22:03:38
 
 ''' Sub-panels of (duty-cycle x amplitude) US activation maps and related Q-V traces. '''
 
 import os
 import numpy as np
-import logging
 import matplotlib
 import matplotlib.pyplot as plt
-from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
-from PySONIC.utils import logger, selectDirDialog, si_format
+from PySONIC.utils import logger, si_format
 from PySONIC.plt import ActivationMap
 from PySONIC.neurons import getPointNeuron
+from PySONIC.parsers import FigureParser
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -72,29 +71,13 @@ def panel(inputdir, pneurons, a, tstim, PRF, amps, DCs, FRbounds, tbounds, Vboun
 
 
 def main():
-    ap = ArgumentParser()
-
-    # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true',
-                    help='Increase verbosity')
-    ap.add_argument('-i', '--inputdir', type=str, help='Input directory')
-    ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
-    ap.add_argument('-s', '--save', default=False, action='store_true',
-                    help='Save output figures as pdf')
-
-    args = ap.parse_args()
-    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
-    logger.setLevel(loglevel)
-    try:
-        inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
-    except ValueError as err:
-        logger.error(err)
-        return
-    figset = args.figset
-    if figset == 'all':
-        figset = ['a', 'b', 'c']
-
-    logger.info('Generating panel {} of {}'.format(figset, figbase))
+    parser = FigureParser(['a', 'b', 'c'])
+    parser.addInputDir()
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
+    figset = args['subset']
+    inputdir = args['inputdir']
+    logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
     pneurons = [getPointNeuron(n) for n in ['RS', 'LTS']]
@@ -108,7 +91,6 @@ def main():
 
     # Generate figures
     try:
-
         figs = []
         if 'a' in figset:
             PRF = 1e1
@@ -137,12 +119,12 @@ def main():
 
     except Exception as e:
         logger.error(e)
-        quit()
+        return
 
-    if args.save:
+    if args['save']:
         for fig in figs:
             figname = '{}.pdf'.format(fig.canvas.get_window_title())
-            fig.savefig(os.path.join(inputdir, figname), transparent=True)
+            fig.savefig(os.path.join(args['outputdir'], figname), transparent=True)
     else:
         plt.show()
 

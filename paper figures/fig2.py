@@ -3,25 +3,24 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 14:24:17
+# @Last Modified time: 2019-06-17 21:55:40
 
 ''' Sub-panels of the model optimization figure. '''
 
 
 import os
-import logging
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.patches import Rectangle
-from argparse import ArgumentParser
 
-from PySONIC.utils import logger, rescale, si_format, selectDirDialog
+from PySONIC.utils import logger, rescale, si_format
 from PySONIC.plt import GroupedTimeSeries, cm2inch
 from PySONIC.constants import NPC_DENSE
 from PySONIC.neurons import getPointNeuron
 from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
+from PySONIC.parsers import FigureParser
 
 
 # Plot parameters
@@ -233,7 +232,7 @@ def Qsolution(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC, fs=12, lw=2, ps=15)
     t, Qm, states = [data[key].values for key in ['t', 'Qm', 'stimstate']]
     t *= 1e3  # ms
     Qm *= 1e5  # nC/cm2
-    _, tpulse_on, tpulse_off = GroupedTimeSeries.getStimPulses(_, t, states)
+    tpulse_on, tpulse_off = GroupedTimeSeries.getStimPulses(_, t, states)
 
     # Add small onset
     t = np.insert(t, 0, -5.0)
@@ -269,22 +268,10 @@ def Qsolution(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC, fs=12, lw=2, ps=15)
 
 
 def main():
-    ap = ArgumentParser()
-
-    # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true', help='Increase verbosity')
-    ap.add_argument('-o', '--outdir', type=str, help='Output directory')
-    ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
-    ap.add_argument('-s', '--save', default=False, action='store_true',
-                    help='Save output figures as pdf')
-
-    args = ap.parse_args()
-    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
-    logger.setLevel(loglevel)
-    figset = args.figset
-    if figset == 'all':
-        figset = ['a', 'b', 'c', 'e']
-
+    parser = FigureParser(['a', 'b', 'c', 'e'])
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
+    figset = args['subset']
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
@@ -314,15 +301,10 @@ def main():
     if 'e' in figset:
         figs.append(Qsolution(nbls, Fdrive, Adrive, tstim, toffset, PRF, DC))
 
-    if args.save:
-        try:
-            outdir = selectDirDialog() if args.outdir is None else args.outdir
-        except ValueError as err:
-            logger.error(err)
-            return
+    if args['save']:
         for fig in figs:
             figname = '{}.pdf'.format(fig.canvas.get_window_title())
-            fig.savefig(os.path.join(outdir, figname), transparent=True)
+            fig.savefig(os.path.join(args['outputdir'], figname), transparent=True)
     else:
         plt.show()
 

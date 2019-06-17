@@ -3,21 +3,19 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-27 17:57:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 08:09:16
+# @Last Modified time: 2019-06-17 22:05:08
 
 ''' Sub-panels of threshold curves for various sonophore radii and US frequencies. '''
 
 import os
-import logging
 import numpy as np
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-from argparse import ArgumentParser
 
-from PySONIC.neurons import getPointNeuron
-from PySONIC.utils import logger, si_format, selectDirDialog
+from PySONIC.utils import logger, si_format
 from PySONIC.plt import cm2inch
+from PySONIC.parsers import FigureParser
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -91,28 +89,12 @@ def plotThresholdAmps(root, neurons, radii, freqs, PRF, tstim, fs=10, colors=Non
 
 
 def main():
-    ap = ArgumentParser()
-
-    # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true',
-                    help='Increase verbosity')
-    ap.add_argument('-i', '--inputdir', type=str, help='Input directory')
-    ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
-    ap.add_argument('-s', '--save', default=False, action='store_true',
-                    help='Save output figures as pdf')
-
-    args = ap.parse_args()
-    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
-    logger.setLevel(loglevel)
-    try:
-        inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
-    except ValueError as err:
-        logger.error(err)
-        return
-    figset = args.figset
-    if figset == 'all':
-        figset = ['a', 'b']
-
+    parser = FigureParser(['a', 'b'])
+    parser.addInputDir()
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
+    figset = args['subset']
+    inputdir = args['inputdir']
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
@@ -140,10 +122,10 @@ def main():
         fig.canvas.set_window_title(figbase + 'b')
         figs.append(fig)
 
-    if args.save:
+    if args['save']:
         for fig in figs:
             figname = '{}.pdf'.format(fig.canvas.get_window_title())
-            fig.savefig(os.path.join(inputdir, figname), transparent=True)
+            fig.savefig(os.path.join(args['outpudir'], figname), transparent=True)
     else:
         plt.show()
 

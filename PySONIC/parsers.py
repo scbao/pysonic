@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 21:40:39
+# @Last Modified time: 2019-06-17 21:51:43
 
 import logging
 import pprint
@@ -191,6 +191,14 @@ class Parser(ArgumentParser):
         self.add_argument(
             '--subset', type=str, nargs='+', default='all',
             choices=choices, help='Run specific subset(s)')
+        self.subset_choices = choices
+        self.to_parse['subset'] = self.parseSubset
+
+    def parseSubset(self, args):
+        if args['subset'] == ['all']:
+            return self.subset_choices
+        else:
+            return args['subset']
 
     def parseTimeRange(self, args):
         if args['trange'] is None:
@@ -267,6 +275,15 @@ class TestParser(Parser):
     def addProfiling(self):
         self.add_argument(
             '--profile', default=False, action='store_true', help='Run with profiling')
+
+
+class FigureParser(Parser):
+
+    def __init__(self, valid_subsets):
+        super().__init__()
+        self.addSubset(valid_subsets + ['all'])
+        self.addSave()
+        self.addOutputDir(dep_key='save')
 
 
 class PlotParser(Parser):

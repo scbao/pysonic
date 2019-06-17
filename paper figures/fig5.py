@@ -3,21 +3,20 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 14:14:12
+# @Last Modified time: 2019-06-17 22:00:32
 
 ''' Sub-panels of the NICE and SONIC accuracies comparative figure. '''
 
 
 import os
-import logging
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from argparse import ArgumentParser
 
 from PySONIC.utils import *
 from PySONIC.neurons import *
 from PySONIC.plt import CompTimeSeries, cm2inch
+from PySONIC.parsers import FigureParser
 
 from utils import *
 
@@ -363,27 +362,14 @@ def spikemetrics_vs_PRF(neuron, a, Fdrive, Adrive, tstim, toffset, PRFs, DC, inp
 
 
 def main():
-    ap = ArgumentParser()
 
-    # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true',
-                    help='Increase verbosity')
-    ap.add_argument('-i', '--inputdir', type=str, help='Input directory')
-    ap.add_argument('-f', '--figset', type=str, help='Figure set', default='a')
-    ap.add_argument('-s', '--save', default=False, action='store_true',
-                    help='Save output figures as pdf')
-
-    args = ap.parse_args()
-    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
-    logger.setLevel(loglevel)
-    try:
-        inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
-    except ValueError as err:
-        logger.error(err)
-        return
-    figset = args.figset
-
-    logger.info('Generating panel {} of {}'.format(figset, figbase))
+    parser = FigureParser(['a', 'b', 'c', 'd', 'e'])
+    parser.addInputDir()
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
+    figset = args['subset']
+    inputdir = args['inputdir']
+    logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
     radii = np.array([16, 22.6, 32, 45.3, 64]) * 1e-9  # m
@@ -410,33 +396,34 @@ def main():
 
     # Generate figures
     figs = []
-    if figset == 'a':
+    if 'a' in figset:
         figs.append(Qprofiles_vs_amp('RS', a, Fdrive, CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
         figs.append(spikemetrics_vs_amp('RS', a, Fdrive, amps, tstim, toffset, inputdir))
-    if figset == 'b':
+    if 'b' in figset:
         figs.append(Qprofiles_vs_freq(
             'RS', a, [freqs.min(), freqs.max()], CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
-        figs.append(spikemetrics_vs_freq('RS', a, freqs, CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
-    if figset == 'c':
+        figs.append(spikemetrics_vs_freq(
+            'RS', a, freqs, CW_Athr_vs_Fdrive, tstim, toffset, inputdir))
+    if 'c' in figset:
         figs.append(Qprofiles_vs_radius(
             'RS', [radii.min(), radii.max()], Fdrive, CW_Athr_vs_radius, tstim, toffset, inputdir))
         figs.append(spikemetrics_vs_radius(
             'RS', radii, Fdrive, CW_Athr_vs_radius, tstim, toffset, inputdir))
-    if figset == 'd':
+    if 'd' in figset:
         figs.append(Qprofiles_vs_DC(
             ['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DC, inputdir))
         figs.append(spikemetrics_vs_DC(
             ['RS', 'LTS'], a, Fdrive, Adrive, tstim, toffset, PRF, DCs, inputdir))
-    if figset == 'e':
+    if 'e' in figset:
         figs.append(Qprofiles_vs_PRF(
             'LTS', a, Fdrive, Adrive, tstim, toffset, PRFs_sparse, DC, inputdir))
         figs.append(spikemetrics_vs_PRF(
             'LTS', a, Fdrive, Adrive, tstim, toffset, PRFs_dense, DC, inputdir))
 
-    if args.save:
+    if args['save']:
         for fig in figs:
             figname = '{}.pdf'.format(fig.canvas.get_window_title())
-            fig.savefig(os.path.join(inputdir, figname), transparent=True)
+            fig.savefig(os.path.join(args['outputdir'], figname), transparent=True)
     else:
         plt.show()
 

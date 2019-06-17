@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 21:37:43
+# @Last Modified time: 2019-06-17 21:51:05
 
 ''' Test the basic functionalities of the package. '''
 
@@ -170,16 +170,14 @@ def main():
         logger.error('profiling can only be run on individual tests')
         return
 
+    print(args['subset'])
+
     # Run test
-    if args['subset'] == ['all']:
-        t0 = time.time()
-        for k, test_func in test_funcs.items():
-            test_func(args['profile'])
-        tcomp = time.time() - t0
-        logger.info('All tests completed in %.0f s', tcomp)
-    else:
-        for s in args['subset']:
-            test_funcs[s](args['profile'])
+    t0 = time.time()
+    for s in args['subset']:
+        test_funcs[s](args['profile'])
+    tcomp = time.time() - t0
+    logger.info('tests completed in %.0f s', tcomp)
 
 
 if __name__ == '__main__':

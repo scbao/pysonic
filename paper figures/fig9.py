@@ -3,21 +3,20 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-12-09 12:06:01
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 14:24:31
+# @Last Modified time: 2019-06-17 22:06:53
 
 ''' Sub-panels of SONIC model validation on an STN neuron (response to CW sonication). '''
 
 import os
-import logging
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from argparse import ArgumentParser
 
 from PySONIC.core import NeuronalBilayerSonophore
 from PySONIC.neurons import getPointNeuron
-from PySONIC.utils import logger, selectDirDialog, Intensity2Pressure
+from PySONIC.utils import logger, Intensity2Pressure
 from PySONIC.plt import CompTimeSeries, GroupedTimeSeries
+from PySONIC.parsers import FigureParser
 
 # Plot parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -29,28 +28,12 @@ figbase = os.path.splitext(__file__)[0]
 
 
 def main():
-    ap = ArgumentParser()
-
-    # Runtime options
-    ap.add_argument('-v', '--verbose', default=False, action='store_true',
-                    help='Increase verbosity')
-    ap.add_argument('-i', '--inputdir', type=str, help='Input directory')
-    ap.add_argument('-f', '--figset', type=str, nargs='+', help='Figure set', default='all')
-    ap.add_argument('-s', '--save', default=False, action='store_true',
-                    help='Save output figures as pdf')
-
-    args = ap.parse_args()
-    loglevel = logging.DEBUG if args.verbose is True else logging.INFO
-    logger.setLevel(loglevel)
-    try:
-        inputdir = selectDirDialog() if args.inputdir is None else args.inputdir
-    except ValueError as err:
-        logger.error(err)
-        return
-    figset = args.figset
-    if figset is 'all':
-        figset = ['a', 'b']
-
+    parser = FigureParser(['a', 'b'])
+    parser.addInputDir()
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
+    figset = args['subset']
+    inputdir = args['inputdir']
     logger.info('Generating panels {} of {}'.format(figset, figbase))
 
     # Parameters
@@ -97,12 +80,12 @@ def main():
             fig.canvas.set_window_title(figbase + 'b {}'.format(title))
             figs.append(fig)
 
-    if args.save:
+    if args['save']:
         for fig in figs:
             s = fig.canvas.get_window_title()
             s = s.replace('(', '- ').replace('/', '_').replace(')', '')
             figname = '{}.pdf'.format(s)
-            fig.savefig(os.path.join(inputdir, figname), transparent=True)
+            fig.savefig(os.path.join(args['outputdir'], figname), transparent=True)
     else:
         plt.show()
 
