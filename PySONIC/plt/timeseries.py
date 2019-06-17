@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 18:12:37
+# @Last Modified time: 2019-06-17 18:40:56
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -315,7 +315,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
             ax.set_xticklabels([])
         self.setTimeLabel(axes[-1], tplt, fs)
 
-    def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches=True, save=False,
+    def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches='one', save=False,
                outputdir=None, fig_ext='png', frequency=1, spikes='none', trange=None):
         ''' Render plot.
 
@@ -403,13 +403,15 @@ class GroupedTimeSeries(TimeSeriesPlot):
             # Set x-limits and add optional patches
             for ax in axes:
                 ax.set_xlim(t.min(), t.max())
-                if patches:
+                if patches != 'none':
                     self.addPatches(ax, tpatch_on, tpatch_off, tplt)
 
             # Post-process figure
             self.postProcess(axes, tplt, yplt, fs)
             axes[0].set_title(figtitle(meta), fontsize=fs)
             fig.tight_layout()
+
+            fig.canvas.set_window_title(model.filecode(meta))
 
             # Save figure if needed (automatic or checked)
             if save:

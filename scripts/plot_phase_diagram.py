@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 18:14:20
+# @Last Modified time: 2019-06-17 18:50:48
 
 ''' Plot phase plane diagram of specific simulation output variables. '''
 
@@ -11,18 +11,12 @@ import matplotlib.pyplot as plt
 
 from PySONIC.utils import logger
 from PySONIC.plt import PhaseDiagram
-from PySONIC.parsers import Parser
+from PySONIC.parsers import PlotParser
 
 
 def main():
-    parser = Parser()
-    parser.addInputFiles()
-    parser.addTimeRange()
-    parser.addLabels()
+    parser = PlotParser()
     parser.addRelativeTimeBounds()
-    parser.addPretty()
-    parser.addCmap()
-    parser.addCscale()
     args = parser.parse()
     logger.setLevel(args['loglevel'])
 
@@ -36,7 +30,9 @@ def main():
         cmap=args['cmap'],
         cscale=args['cscale']
     )
-    plt.show()
+
+    if not args['hide']:
+        plt.show()
 
 
 if __name__ == '__main__':

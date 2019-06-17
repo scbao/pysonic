@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 18:13:56
+# @Last Modified time: 2019-06-17 18:46:09
 
 ''' Plot temporal profiles of specific simulation output variables. '''
 
@@ -11,24 +11,12 @@ import matplotlib.pyplot as plt
 
 from PySONIC.utils import logger
 from PySONIC.plt import CompTimeSeries, GroupedTimeSeries
-from PySONIC.parsers import Parser
+from PySONIC.parsers import TimeSeriesParser
 
 
 def main():
     # Parse command line arguments
-    parser = Parser()
-    parser.addHideOutput()
-    parser.addInputFiles()
-    parser.addOutputDir(dep_key='save')
-    parser.addCompare()
-    parser.addSave()
-    parser.addFigureExtension()
-    parser.addSamplingRate()
-    parser.addSpikes()
-    parser.addPatches()
-    parser.addCmap()
-    parser.addTimeRange()
-    parser.addCscale()
+    parser = TimeSeriesParser()
     args = parser.parse()
     logger.setLevel(args['loglevel'])
 
@@ -41,25 +29,28 @@ def main():
             try:
                 comp_plot = CompTimeSeries(args['inputfiles'], pltvar)
                 comp_plot.render(
+                    patches=args['patches'],
                     spikes=args['spikes'],
                     frequency=args['sr'],
-                    patches=args['patches'],
+                    trange=args['trange'],
                     cmap=args['cmap'],
-                    cscale=args['cscale'],
-                    trange=args['trange'])
+                    cscale=args['cscale']
+                )
             except KeyError as e:
                 logger.error(e)
                 return
     else:
         scheme_plot = GroupedTimeSeries(args['inputfiles'], pltscheme=args['pltscheme'])
         scheme_plot.render(
-            title=True,
-            save=args['save'],
-            outputdir=args['outputdir'],
-            fig_ext=args['figext'],
+            patches=args['patches'],
             spikes=args['spikes'],
             frequency=args['sr'],
-            trange=args['trange'])
+            trange=args['trange'],
+            save=args['save'],
+            outputdir=args['outputdir'],
+            fig_ext=args['figext']
+        )
+
     if not args['hide']:
         plt.show()
 

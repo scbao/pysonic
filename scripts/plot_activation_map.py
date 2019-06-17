@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 16:33:26
+# @Last Modified time: 2019-06-17 18:51:26
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -26,13 +26,13 @@ def main():
     parser.addInputDir()
     parser.addThresholdCurve()
     parser.addInteractive()
+    parser.addSave()
     parser.addAscale()
     parser.addTimeRange(default=(0., 240.))
     parser.addCmap(default='viridis')
     parser.addFiringRateBounds((1e0, 1e3))
     parser.addFiringRateScale()
     parser.addPotentialBounds(default=(-150, 50))
-    parser.addSave()
     parser.outputdir_dep_key = 'save'
     args = parser.parse()
     logger.setLevel(args['loglevel'])
@@ -45,6 +45,7 @@ def main():
                         actmap = ActivationMap(args['inputdir'], pneuron, a, Fdrive, tstim, PRF,
                                                args['amp'], args['DC'])
                         actmap.render(
+                            cmap=args['cmap'],
                             Ascale=args['Ascale'],
                             FRscale=args['FRscale'],
                             FRbounds=args['FRbounds'],

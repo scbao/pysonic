@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 17:47:27
+# @Last Modified time: 2019-06-17 18:52:05
 
 import logging
 import pprint
@@ -243,6 +243,30 @@ class Parser(ArgumentParser):
         for k, parse_method in self.to_parse.items():
             args[k] = parse_method(args)
         return args
+
+
+class PlotParser(Parser):
+    def __init__(self):
+        super().__init__()
+        self.addHideOutput()
+        self.addInputFiles()
+        self.addOutputDir(dep_key='save')
+        self.addSave()
+        self.addFigureExtension()
+        self.addCmap()
+        self.addPretty()
+        self.addTimeRange()
+        self.addCscale()
+        self.addLabels()
+
+
+class TimeSeriesParser(PlotParser):
+    def __init__(self):
+        super().__init__()
+        self.addSpikes()
+        self.addSamplingRate()
+        self.addCompare()
+        self.addPatches()
 
 
 class SimParser(Parser):
