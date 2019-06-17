@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 09:32:29
+# @Last Modified time: 2019-06-17 10:23:34
 
 import os
 import pickle
@@ -22,7 +22,7 @@ from .pltutils import cm2inch, setNormalizer
 class Map:
 
     @staticmethod
-    def computeMeshEdges(x, scale='lin'):
+    def computeMeshEdges(x, scale):
         ''' Compute the appropriate edges of a mesh that quads a linear or logarihtmic distribution.
 
             :param x: the input vector
@@ -49,6 +49,7 @@ class ActivationMap(Map):
         self.amps = amps
         self.DCs = DCs
 
+        self.Ascale = self.getAmpScale()
         self.title = '{} neuron @ {}Hz, {}Hz PRF ({}m sonophore)'.format(
             self.pneuron.name, *si_format([self.Fdrive, self.PRF, self.a]))
         out_fname = 'actmap {} {}Hz PRF{}Hz {}s.csv'.format(
@@ -60,6 +61,15 @@ class ActivationMap(Map):
         else:
             self.data = self.compute()
             np.savetxt(out_fpath, self.data, delimiter=',')
+
+    def getAmpScale(self):
+        Amin, Amax, nA = self.amps.min(), self.amps.max(), self.amps.size
+        if np.all(np.isclose(self.amps, np.logspace(np.log10(Amin), np.log10(Amax), nA))):
+            return 'log'
+        elif np.all(np.isclose(self.amps, np.linspace(Amin, Amax, nA))):
+            return 'lin'
+        else:
+            raise ValueError('Unknown distribution type')
 
     def classify(self, df):
         ''' Classify based on charge temporal profile. '''
@@ -159,8 +169,8 @@ class ActivationMap(Map):
         norm, sm = setNormalizer(mymap, FRbounds, FRscale)
 
         # Compute mesh edges
-        xedges = self.computeMeshEdges(self.DCs)
-        yedges = self.computeMeshEdges(self.amps, scale=Ascale)
+        xedges = self.computeMeshEdges(self.DCs, 'lin')
+        yedges = self.computeMeshEdges(self.amps, self.Ascale)
 
         # Create figure
         fig, ax = plt.subplots(figsize=cm2inch(8, 5.8))
@@ -168,15 +178,17 @@ class ActivationMap(Map):
         ax.set_title(self.title, fontsize=fs)
         ax.set_xlabel('Duty cycle (%)', fontsize=fs, labelpad=-0.5)
         ax.set_ylabel('Amplitude (kPa)', fontsize=fs)
-        if Ascale == 'log':
-            ax.set_yscale('log')
         ax.set_xlim(np.array([self.DCs.min(), self.DCs.max()]) * 1e2)
         for item in ax.get_xticklabels() + ax.get_yticklabels():
             item.set_fontsize(fs)
 
         # Plot activation map with specific color code
         actmap, cmap = self.fit2Colormap(self.data, plt.get_cmap(cmap))
+        if Ascale == 'log':
+            ax.set_yscale('log')
         ax.pcolormesh(xedges * 1e2, yedges * 1e-3, actmap, cmap=mymap, norm=norm)
+        if thresholds:
+            self.addThresholdCurve(ax)
 
         # Plot firing rate colorbar
         pos1 = ax.get_position()  # get the map axis position
@@ -190,9 +202,6 @@ class ActivationMap(Map):
             fig.canvas.mpl_connect(
                 'button_press_event',
                 lambda event: self.onClick(event, (xedges, yedges), tbounds, Vbounds))
-
-        if thresholds:
-            self.addThresholdCurve(ax)
 
         return fig
 
