@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 09:13:54
+# @Last Modified time: 2019-06-17 10:49:46
 
 import logging
 import pprint
@@ -154,6 +154,14 @@ class Parser(ArgumentParser):
         self.add_argument(
             '--threshold', default=False, action='store_true', help='Show threshold amplitudes')
 
+    def addNeuron(self):
+        self.add_argument(
+            '-n', '--neuron', type=str, nargs='+', help='Neuron name (string)')
+        self.to_parse['neuron'] = self.parseNeuron
+
+    def parseNeuron(self, args):
+        return [getPointNeuron(n) for n in args['neuron']]
+
     def addInteractive(self):
         self.add_argument(
             '--interactive', default=False, action='store_true', help='Make interactive')
@@ -230,10 +238,6 @@ class SimParser(Parser):
         self.outputdir = outputdir
         self.addMPI()
         self.addOutputDir()
-
-    def addNeuron(self):
-        self.add_argument(
-            '-n', '--neuron', type=str, nargs='+', help='Neuron name (string)')
 
     def parse(self):
         args = super().parse()
@@ -409,9 +413,6 @@ class PWSimParser(SimParser):
         self.add_argument(
             '--titrate', default=False, action='store_true', help='Perform titration')
 
-    def parseNeuron(self, args):
-        return [getPointNeuron(n) for n in args['neuron']]
-
     def parseAmp(self, args):
         return NotImplementedError
 
@@ -424,7 +425,6 @@ class PWSimParser(SimParser):
     def parse(self, args=None):
         if args is None:
             args = super().parse()
-        args['neuron'] = self.parseNeuron(args)
         for key in ['tstim', 'toffset', 'PRF']:
             args[key] = self.parse2array(args, key, factor=self.factors[key])
         return args

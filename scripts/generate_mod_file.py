@@ -3,40 +3,33 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-03-18 18:06:20
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 08:11:25
+# @Last Modified time: 2019-06-17 10:50:40
 
 import os
-import logging
-from argparse import ArgumentParser
 
-from PySONIC.neurons import getPointNeuron
-from PySONIC.utils import logger, selectDirDialog
+from PySONIC.utils import logger
 from PySONIC.core import NmodlGenerator
+from PySONIC.parsers import Parser
 
 
 def main():
-    ap = ArgumentParser()
-    ap.add_argument('-n', '--neuron', type=str, default='RS', help='Neuron name (string)')
-    ap.add_argument('-o', '--outputdir', type=str, default=None, help='Output directory')
+    parser = Parser()
+    parser.addNeuron()
+    parser.addSave()
+    parser.addOutputDir(dep_key='save')
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
 
-    logger.setLevel(logging.INFO)
-    args = ap.parse_args()
-    try:
-        pneuron = getPointNeuron(args.neuron)
-    except ValueError as err:
-        logger.error(err)
-        return
-    try:
-        outdir = args.outputdir if args.outputdir is not None else selectDirDialog()
-    except ValueError as err:
-        logger.error(err)
-        return
-    outfile = '{}.mod'.format(args.neuron)
-    outpath = os.path.join(outdir, outfile)
-
-    gen = NmodlGenerator(pneuron)
-    logger.info('generating %s neuron MOD file in "%s"', pneuron.name, outdir)
-    gen.print(outpath)
+    for pneuron in args['neuron']:
+        logger.info('generating %s neuron MOD file', pneuron.name)
+        gen = NmodlGenerator(pneuron)
+        if args['save']:
+            outfile = '{}.mod'.format(pneuron.name)
+            outpath = os.path.join(args['outputdir'], outfile)
+            logger.info('dumping MOD file in "%s"', args['outputdir'])
+            gen.dump(outpath)
+        else:
+            gen.print()
 
 
 if __name__ == '__main__':

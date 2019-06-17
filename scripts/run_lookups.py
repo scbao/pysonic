@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 10:01:25
+# @Last Modified time: 2019-06-17 10:49:15
 
 ''' Create lookup table for specific neuron. '''
 
@@ -127,16 +127,7 @@ def main():
     args = parser.parse()
     logger.setLevel(args['loglevel'])
 
-    # print(args['outputdir'])
-
-    for neuron in args['neuron']:
-
-        # Check neuron name validity
-        try:
-            pneuron = getPointNeuron(neuron)
-        except ValueError as err:
-            logger.error(err)
-            return
+    for pneuron in args['neuron']:
 
         # Determine charge vector
         charges = args['charge']

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-03-18 21:17:03
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 15:26:55
+# @Last Modified time: 2019-06-17 10:45:45
 
 import inspect
 import re
@@ -25,8 +25,8 @@ class NmodlGenerator:
         self.pneuron = pneuron
         self.translated_states = [self.translateState(s) for s in self.pneuron.states]
 
-    def print(self, outfile):
-        all_blocks = [
+    def allBlocks(self):
+        return '\n\n'.join([
             self.title(),
             self.description(),
             self.constants(),
@@ -39,9 +39,14 @@ class NmodlGenerator:
             self.initial_block(),
             self.breakpoint_block(),
             self.derivative_block()
-        ]
+        ])
+
+    def print(self):
+        print(self.allBlocks())
+
+    def dump(self, outfile):
         with open(outfile, "w") as fh:
-            fh.write('\n\n'.join(all_blocks))
+            fh.write(self.allBlocks())
 
     def translateState(self, state):
         return '{}{}'.format(state, '1' if state in self.NEURON_protected_vars else '')
