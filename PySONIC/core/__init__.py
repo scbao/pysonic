@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 17:16:01
+# @Last Modified time: 2019-06-17 10:57:14
 
 import inspect
 import sys
@@ -14,7 +14,6 @@ from .model import Model
 from .pneuron import PointNeuron
 from .bls import BilayerSonophore, PmCompMethod, LennardJones
 from .nbls import NeuronalBilayerSonophore
-from .nmodl_generator import NmodlGenerator
 
 from ..neurons import getPointNeuron
 
