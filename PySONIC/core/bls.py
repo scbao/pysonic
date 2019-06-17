@@ -3,11 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-15 18:04:55
+# @Last Modified time: 2019-06-17 21:41:16
 
 from enum import Enum
 import os
-import re
 import json
 import numpy as np
 import pandas as pd

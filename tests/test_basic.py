@@ -3,21 +3,19 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:10:55
+# @Last Modified time: 2019-06-17 21:37:43
 
 ''' Test the basic functionalities of the package. '''
 
 import os
-import sys
-import logging
 import time
 import cProfile
 import pstats
-from argparse import ArgumentParser
 
 from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 from PySONIC.utils import logger
 from PySONIC.neurons import getPointNeuron
+from PySONIC.parsers import TestParser
 
 
 def execute(func_str, globals, locals, is_profiled):
@@ -89,21 +87,21 @@ def test_ASTIM_sonic(is_profiled=False):
     try:
         nbls = NeuronalBilayerSonophore(100e-9, pneuron)
         nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')
-    except ValueError as err:
+    except ValueError:
         logger.debug('Out of range radius: OK')
 
     # test error 2: frequency outside of lookups range
     try:
         nbls = NeuronalBilayerSonophore(a, pneuron)
         nbls.simulate(10e3, Adrive, tstim, toffset, method='sonic')
-    except ValueError as err:
+    except ValueError:
         logger.debug('Out of range frequency: OK')
 
     # test error 3: amplitude outside of lookups range
     try:
         nbls = NeuronalBilayerSonophore(a, pneuron)
         nbls.simulate(Fdrive, 1e6, tstim, toffset, method='sonic')
-    except ValueError as err:
+    except ValueError:
         logger.debug('Out of range amplitude: OK')
 
     # Run simulation
@@ -111,10 +109,10 @@ def test_ASTIM_sonic(is_profiled=False):
             globals(), locals(), is_profiled)
 
 
-def test_ASTIM_full(is_profiled=False):
+def test_ASTIM_dense(is_profiled=False):
     ''' Classic acoustic simulation '''
 
-    logger.info('Test: running ASTIM classic simulation')
+    logger.info('Test: running ASTIM detailed simulation')
 
     # Initialize sonic neuron
     a = 32e-9  # m
@@ -153,60 +151,35 @@ def test_ASTIM_hybrid(is_profiled=False):
             globals(), locals(), is_profiled)
 
 
-def test_all():
-    t0 = time.time()
-    test_MECH()
-    test_ESTIM()
-    test_ASTIM_sonic()
-    test_ASTIM_full()
-    test_ASTIM_hybrid()
-    tcomp = time.time() - t0
-    logger.info('All tests completed in %.0f s', tcomp)
-
-
-
 def main():
 
+    test_funcs = {
+        'MECH': test_MECH,
+        'ESTIM': test_ESTIM,
+        'ASTIM_sonic': test_ASTIM_sonic,
+        'ASTIM_dense': test_ASTIM_dense,
+        'ASTIM_hybrid': test_ASTIM_hybrid
+    }
 
-    # Define valid test sets
-    valid_testsets = [
-        'MECH',
-        'ESTIM',
-        'ASTIM_sonic',
-        'ASTIM_full',
-        'ASTIM_hybrid',
-        'all'
-    ]
-
-    # Define argument parser
-    ap = ArgumentParser()
-
-    ap.add_argument('-t', '--testset', type=str, default='all', choices=valid_testsets,
-                    help='Specific test set')
-    ap.add_argument('-v', '--verbose', default=False, action='store_true',
-                    help='Increase verbosity')
-    ap.add_argument('-p', '--profile', default=False, action='store_true',
-                    help='Profile test set')
+    parser = TestParser(list(test_funcs.keys()))
+    args = parser.parse()
+    logger.setLevel(args['loglevel'])
 
     # Parse arguments
-    args = ap.parse_args()
-    if args.verbose:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
-    if args.profile and args.testset == 'all':
+    if args['profile'] and args['subset'] == 'all':
         logger.error('profiling can only be run on individual tests')
-        sys.exit(2)
+        return
 
     # Run test
-    if args.testset == 'all':
-        test_all()
+    if args['subset'] == ['all']:
+        t0 = time.time()
+        for k, test_func in test_funcs.items():
+            test_func(args['profile'])
+        tcomp = time.time() - t0
+        logger.info('All tests completed in %.0f s', tcomp)
     else:
-        possibles = globals().copy()
-        possibles.update(locals())
-        method = possibles.get('test_{}'.format(args.testset))
-        method(args.profile)
-    sys.exit(0)
+        for s in args['subset']:
+            test_funcs[s](args['profile'])
 
 
 if __name__ == '__main__':

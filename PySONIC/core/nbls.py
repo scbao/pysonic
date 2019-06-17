@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-15 17:35:53
+# @Last Modified time: 2019-06-17 21:42:00
 
 from copy import deepcopy
 import logging
@@ -112,8 +112,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param phi: acoustic drive phase (rad)
             :return: vector of derivatives
         '''
-        dydt_mech = BilayerSonophore.derivatives(self, y[:3], t, Adrive, Fdrive, y[3], phi)
-        dydt_elec = self.pneuron.Qderivatives(y[3:], t, self.Capct(y[1]))
+        dydt_mech = BilayerSonophore.derivatives(self, t, y[:3], Adrive, Fdrive, y[3], phi)
+        dydt_elec = self.pneuron.Qderivatives(t, y[3:], self.Capct(y[1]))
         return dydt_mech + dydt_elec
 
     def effDerivatives(self, t, y, lkp):

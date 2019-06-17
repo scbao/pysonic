@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 21:12:23
+# @Last Modified time: 2019-06-17 21:40:39
 
 import logging
 import pprint
@@ -187,6 +187,11 @@ class Parser(ArgumentParser):
         self.add_argument(
             '--pretty', default=False, action='store_true', help='Make figure pretty')
 
+    def addSubset(self, choices):
+        self.add_argument(
+            '--subset', type=str, nargs='+', default='all',
+            choices=choices, help='Run specific subset(s)')
+
     def parseTimeRange(self, args):
         if args['trange'] is None:
             return None
@@ -251,6 +256,17 @@ class Parser(ArgumentParser):
         for k, parse_method in self.to_parse.items():
             args[k] = parse_method(args)
         return args
+
+
+class TestParser(Parser):
+    def __init__(self, valid_subsets):
+        super().__init__()
+        self.addProfiling()
+        self.addSubset(valid_subsets + ['all'])
+
+    def addProfiling(self):
+        self.add_argument(
+            '--profile', default=False, action='store_true', help='Run with profiling')
 
 
 class PlotParser(Parser):
@@ -517,7 +533,7 @@ class AStimParser(PWSimParser, MechSimParser):
         MechSimParser.__init__(self)
         PWSimParser.__init__(self)
         self.defaults.update({'method': 'sonic'})
-        self.allowed.update({'method': ['classic', 'hybrid', 'sonic']})
+        self.allowed.update({'method': ['full', 'hybrid', 'sonic']})
         self.addMethod()
 
     def addMethod(self):
@@ -529,7 +545,7 @@ class AStimParser(PWSimParser, MechSimParser):
     def parseMethod(self, args):
         for item in args['method']:
             if item not in self.allowed['method']:
-                raise ValueError('Unknown neuron type: "{}"'.format(item))
+                raise ValueError('Unknown method type: "{}"'.format(item))
         return args['method']
 
     def parseAmp(self, args):
