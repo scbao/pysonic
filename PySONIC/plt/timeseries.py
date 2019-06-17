@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 17:05:04
+# @Last Modified time: 2019-06-17 18:12:37
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -264,7 +264,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         comp_values, comp_labels = self.getCompLabels(comp_values)
         labels = self.chooseLabels(labels, comp_labels, full_labels)
 
-        # Postprocess figure
+        # Post-process figure
         self.postProcess(ax, tplt, yplt, fs, xticks, yticks)
         ax.set_xlim(tmin, tmax)
         fig.tight_layout()
@@ -272,7 +272,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         if inset is not None:
             self.materializeInset(ax, inset_ax, inset)
 
-        # Add color legend or label legend
+        # Add labels or colorbar legend
         if cmap is not None:
             if not self.is_unique_comp:
                 raise ValueError('Colormap mode unavailable for multiple differing parameters')

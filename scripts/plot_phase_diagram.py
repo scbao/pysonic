@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 17:54:22
+# @Last Modified time: 2019-06-17 18:14:20
 
 ''' Plot phase plane diagram of specific simulation output variables. '''
 
@@ -21,6 +21,8 @@ def main():
     parser.addLabels()
     parser.addRelativeTimeBounds()
     parser.addPretty()
+    parser.addCmap()
+    parser.addCscale()
     args = parser.parse()
     logger.setLevel(args['loglevel'])
 
@@ -30,7 +32,9 @@ def main():
         trange=args['trange'],
         rel_tbounds=args['rel_tbounds'],
         labels=args['labels'],
-        pretty=args['pretty']
+        pretty=args['pretty'],
+        cmap=args['cmap'],
+        cscale=args['cscale']
     )
     plt.show()
 

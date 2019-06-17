@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 17:37:45
+# @Last Modified time: 2019-06-17 18:23:59
 
 ''' Useful functions to generate plots. '''
 
@@ -144,6 +144,12 @@ class GenericPlot:
     def createBackBone(self, *args, **kwargs):
         return NotImplementedError
 
+    def prettify(self, ax, xbounds, ybounds):
+        ax.set_xticks(xbounds)
+        ax.set_yticks(ybounds)
+        ax.set_xticklabels(['{:+.1f}'.format(x) for x in ax.get_xticks()])
+        ax.set_yticklabels(['{:+.0f}'.format(x) for x in ax.get_yticks()])
+
     def addInset(self, fig, ax, inset):
         ''' Create inset axis. '''
         inset_ax = fig.add_axes(ax.get_position())
@@ -226,7 +232,11 @@ class GenericPlot:
 
         # Adjust line colors
         for lh, z in zip(handles, comp_values):
-            lh.set_color(sm.to_rgba(z))
+            if isIterable(lh):
+                for item in lh:
+                    item.set_color(sm.to_rgba(z))
+            else:
+                lh.set_color(sm.to_rgba(z))
 
         # Add colorbar
         fig.subplots_adjust(left=0.1, right=0.8, bottom=0.15, top=0.95, hspace=0.5)
