@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 14:48:48
+# @Last Modified time: 2019-06-18 16:09:10
 
 from copy import deepcopy
 import logging
@@ -128,10 +128,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: vector of effective system derivatives at time t
         '''
         Qm, *states = y
+        states_dict = dict(zip(self.states, states))
         rates = self.pneuron.interpEffRates(Qm, lkp)
         Vmeff = self.pneuron.interpVmeff(Qm, lkp)
-        dQmdt = - self.pneuron.iNet(Vmeff, states) * 1e-3
-        dstates = self.pneuron.derEffStates(Vmeff, dict(zip(self.pneuron.states, states)), rates)
+        dQmdt = - self.pneuron.iNet(Vmeff, states_dict) * 1e-3
+        dstates = self.pneuron.derEffStates(Vmeff, states_dict, rates)
         return [dQmdt, *[dstates[k] for k in self.pneuron.states]]
 
     def interpEffVariable(self, key, Qm, stim, lkps1D):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 15:34:56
+# @Last Modified time: 2019-06-18 16:18:29
 
 import numpy as np
 from ..core import PointNeuron
@@ -163,11 +163,10 @@ class Thalamic(PointNeuron):
         return self.gLeak * (Vm - self.ELeak)
 
     def currents(self, Vm, states):
-        m, h, n, s, u = states
         return {
-            'iNa': self.iNa(m, h, Vm),
-            'iKd': self.iKd(n, Vm),
-            'iCaT': self.iCaT(s, u, Vm),
+            'iNa': self.iNa(states['m'], states['h'], Vm),
+            'iKd': self.iKd(states['n'], Vm),
+            'iCaT': self.iCaT(states['s'], states['u'], Vm),
             'iLeak': self.iLeak(Vm)
         }  # mA/m2
 
@@ -596,10 +595,9 @@ class ThalamoCortical(Thalamic):
         return self.gHbar * (O + 2 * self.OL(O, C)) * (Vm - self.EH)
 
     def currents(self, Vm, states):
-        m, h, n, s, u, O, C, _, _ = states
-        currents = super().currents(Vm, [m, h, n, s, u])
+        currents = super().currents(Vm, states)
         currents['iKLeak'] = self.iKLeak(Vm)  # mA/m2
-        currents['iH'] = self.iH(O, C, Vm)  # mA/m2
+        currents['iH'] = self.iH(states['O'], states['C'], Vm)  # mA/m2
         return currents
 
     # ------------------------------ Other methods ------------------------------

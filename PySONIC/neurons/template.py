@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 16:02:51
+# @Last Modified time: 2019-06-18 18:12:08
 
 import numpy as np
 
@@ -155,10 +155,9 @@ class TemplateNeuron(PointNeuron):
         return self.gLeak * (Vm - self.ELeak)
 
     def currents(self, Vm, states):
-        m, h, n = states
         return {
-            'iNa': self.iNa(m, h, Vm),
-            'iKd': self.iKd(n, Vm),
+            'iNa': self.iNa(states['m'], states['h'], Vm),
+            'iKd': self.iKd(states['n'], Vm),
             'iLeak': self.iLeak(Vm)
         }  # mA/m2
 

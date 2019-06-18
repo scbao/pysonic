@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 15:34:02
+# @Last Modified time: 2019-06-18 16:12:54
 
 import numpy as np
 from ..core import PointNeuron
@@ -173,11 +173,10 @@ class Cortical(PointNeuron):
         return self.gLeak * (Vm - self.ELeak)
 
     def currents(self, Vm, states):
-        m, h, n, p = states
         return {
-            'iNa': self.iNa(m, h, Vm),
-            'iKd': self.iKd(n, Vm),
-            'iM': self.iM(p, Vm),
+            'iNa': self.iNa(states['m'], states['h'], Vm),
+            'iKd': self.iKd(states['n'], Vm),
+            'iM': self.iM(states['p'], Vm),
             'iLeak': self.iLeak(Vm)
         }  # mA/m2
 
@@ -381,18 +380,14 @@ class CorticalLTS(Cortical):
         return self.gCaTbar * s**2 * u * (Vm - self.ECa)
 
     def currents(self, Vm, states):
-        m, h, n, p, s, u = states
-        currents = super().currents(Vm, [m, h, n, p])
-        currents['iCaT'] = self.iCaT(s, u, Vm)  # mA/m2
+        currents = super().currents(Vm, states)
+        currents['iCaT'] = self.iCaT(states['s'], states['u'], Vm)  # mA/m2
         return currents
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        # Call parent method to compute Sodium and Potassium effective rate constants
         effrates = super().computeEffRates(Vm)
-
-        # Compute Calcium effective rate constants
         effrates['alphas'] = np.mean(self.sinf(Vm) / self.taus(Vm))
         effrates['betas'] = np.mean((1 - self.sinf(Vm)) / self.taus(Vm))
         effrates['alphau'] = np.mean(self.uinf(Vm) / self.tauu(Vm))
@@ -517,14 +512,9 @@ class CorticalIB(Cortical):
         return self.gCaLbar * q**2 * r * (Vm - self.ECa)
 
     def currents(self, Vm, states):
-        m, h, n, p, q, r = states
-        return {
-            'iNa': self.iNa(m, h, Vm),
-            'iKd': self.iKd(n, Vm),
-            'iM': self.iM(p, Vm),
-            'iCaL': self.iCaL(q, r, Vm),
-            'iLeak': self.iLeak(Vm)
-        }  # mA/m2
+        currents = super().currents(Vm, states)
+        currents['iCaL'] = self.iCaL(states['q'], states['r'], Vm),
+        return currents
 
     # ------------------------------ Other methods ------------------------------
 

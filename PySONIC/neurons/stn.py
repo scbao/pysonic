@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 15:35:19
+# @Last Modified time: 2019-06-18 16:19:47
 
 import numpy as np
 from scipy.optimize import brentq
@@ -483,14 +483,13 @@ class OtsukaSTN(PointNeuron):
         return self.gLeak * (Vm - self.ELeak)
 
     def currents(self, Vm, states):
-        a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
         return {
-            'iNa': self.iNa(m, h, Vm),
-            'iKd': self.iKd(n, Vm),
-            'iA': self.iA(a, b, Vm),
-            'iCaT': self.iCaT(p, q, Vm, Cai),
-            'iCaL': self.iCaL(c, d1, d2, Vm, Cai),
-            'iKCa': self.iKCa(r, Vm),
+            'iNa': self.iNa(states['m'], states['h'], Vm),
+            'iKd': self.iKd(states['n'], Vm),
+            'iA': self.iA(states['a'], states['b'], Vm),
+            'iCaT': self.iCaT(states['p'], states['q'], Vm, states['Cai']),
+            'iCaL': self.iCaL(states['c'], states['d1'], states['d2'], Vm, states['Cai']),
+            'iKCa': self.iKCa(states['r'], Vm),
             'iLeak': self.iLeak(Vm)
         }  # mA/m2
 

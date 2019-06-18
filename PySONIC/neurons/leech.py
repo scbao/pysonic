@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 15:56:02
+# @Last Modified time: 2019-06-18 18:20:51
 
 from functools import partialmethod
 import numpy as np
@@ -170,10 +170,10 @@ class LeechTouch(PointNeuron):
             'h': (self.hinf(Vm) - states['h']) / self.tauh(Vm),
             'n': (self.ninf(Vm) - states['n']) / self.taun(Vm),
             's': (self.sinf(Vm) - states['s']) / self.taus,
-            'CNa': self.derNai(states['Nai'], states['m'], states['h'], Vm),
-            'ANa': self.derANa(states['ANa'], states['Nai']),
-            'CCa': self.derCai(states['Cai'], states['s'], Vm),
-            'ACa': self.derACa(states['ACa'], states['Cai'])
+            'Nai': self.derNai(states['Nai'], states['m'], states['h'], Vm),
+            'ANai': self.derANa(states['ANai'], states['Nai']),
+            'Cai': self.derCai(states['Cai'], states['s'], Vm),
+            'ACai': self.derACa(states['ACai'], states['Cai'])
         }
 
     def derEffStates(self, Vm, states, rates):
@@ -182,10 +182,10 @@ class LeechTouch(PointNeuron):
             'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
             'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
             's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
-            'CNa': self.derNai(states['Nai'], states['m'], states['h'], Vm),
-            'ANa': self.derANa(states['ANa'], states['Nai']),
-            'CCa': self.derCai(states['Cai'], states['s'], Vm),
-            'ACa': self.derACa(states['ACa'], states['Cai'])
+            'Nai': self.derNai(states['Nai'], states['m'], states['h'], Vm),
+            'ANai': self.derANa(states['ANai'], states['Nai']),
+            'Cai': self.derCai(states['Cai'], states['s'], Vm),
+            'ACai': self.derACa(states['ACai'], states['Cai'])
         }
 
     # ------------------------------ Steady states ------------------------------
@@ -198,12 +198,11 @@ class LeechTouch(PointNeuron):
             'n': self.ninf(Vm),
             's': self.sinf(Vm)
         }
-
         # pools concentrations and activation steady-states
-        sstates['CNa'] = - self.K_Na * self.iNa(sstates['m'], sstates['h'], Vm)
-        sstates['ANa'] = sstates['CNa']
-        sstates['CCa'] = - self.K_Ca * self.iCa(sstates['s'], Vm)
-        sstates['ACa'] = sstates['CCa']
+        sstates['Nai'] = - self.K_Na * self.iNa(sstates['m'], sstates['h'], Vm)
+        sstates['ANai'] = sstates['Nai']
+        sstates['Cai'] = - self.K_Ca * self.iCa(sstates['s'], Vm)
+        sstates['ACai'] = sstates['Cai']
 
         return sstates
 
@@ -212,10 +211,10 @@ class LeechTouch(PointNeuron):
         qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
 
         # pool concentrations and activation steady-states
-        qsstates['CNa'] = - self.K_Na * self.iNa(qsstates['m'], qsstates['h'], lkp['V'])
-        qsstates['ANa'] = qsstates['CNa']
-        qsstates['CCa'] = - self.K_Ca * self.iCa(qsstates['s'], lkp['V'])
-        qsstates['ACa'] = qsstates['CCa']
+        qsstates['Nai'] = - self.K_Na * self.iNa(qsstates['m'], qsstates['h'], lkp['V'])
+        qsstates['ANai'] = qsstates['Nai']
+        qsstates['Cai'] = - self.K_Ca * self.iCa(qsstates['s'], lkp['V'])
+        qsstates['ACai'] = qsstates['Cai']
 
         return qsstates
 
@@ -277,14 +276,13 @@ class LeechTouch(PointNeuron):
         return self.gLeak * (Vm - self.ELeak)
 
     def currents(self, Vm, states):
-        m, h, n, s, _, ANa, _, ACa = states
         return {
-            'iNa': self.iNa(m, h, Vm),
-            'iKd': self.iKd(n, Vm),
-            'iCa': self.iCa(s, Vm),
+            'iNa': self.iNa(states['m'], states['h'], Vm),
+            'iKd': self.iKd(states['n'], Vm),
+            'iCa': self.iCa(states['s'], Vm),
             'iLeak': self.iLeak(Vm),
-            'iPumpNa': self.iPumpNa(ANa, Vm),
-            'iKCa': self.iKCa(ACa, Vm)
+            'iPumpNa': self.iPumpNa(states['ANai'], Vm),
+            'iKCa': self.iKCa(states['ACai'], Vm)
         }  # mA/m2
 
     # ------------------------------ Other methods ------------------------------
@@ -314,7 +312,7 @@ class LeechMech(PointNeuron):
     # ------------------------------ Biophysical parameters ------------------------------
 
     alphaC_sf = 1e-5  # Calcium activation rate constant scaling factor (M)
-    betaC = 0.1e3     # beta rate for the open-probability of Ca2+-dependent Potassium channels (s-1)
+    betaC = 0.1e3     # beta rate for the open-probability of iKCa channels (s-1)
     T = 293.15        # Room temperature (K)
 
     # ------------------------------ Gating states kinetics ------------------------------
@@ -487,6 +485,15 @@ class LeechMech(PointNeuron):
         '''
         return self.gLeak * (Vm - self.ELeak)
 
+    def currents(self, Vm, states):
+        return {
+            'iNa': self.iNa(states['m'], states['h'], Vm, states['Nai']),
+            'iKd': self.iKd(states['n'], Vm),
+            'iCa': self.iCa(states['s'], Vm, states['Cai']),
+            'iKCa': self.iKCa(states['c'], Vm),
+            'iLeak': self.iLeak(Vm)
+        }  # mA/m2
+
 
 class LeechPressure(LeechMech):
     ''' Leech pressure sensory neuron
@@ -612,16 +619,12 @@ class LeechPressure(LeechMech):
         return self.iCaS * (Cai - self.Cai0) / 1.5
 
     def currents(self, Vm, states):
-        m, h, n, s, c, Nai, Cai = states
-        return {
-            'iNa': self.iNa(m, h, Vm, Nai),
-            'iKd': self.iKd(n, Vm),
-            'iCa': self.iCa(s, Vm, Cai),
-            'iKCa': self.iKCa(c, Vm),
-            'iLeak': self.iLeak(Vm),
-            'iPumpNa': self.iPumpNa(Nai) / 3.,
-            'iPumpCa': self.iPumpCa(Cai)
-        }  # mA/m2
+        currents = super().currents(Vm, states)
+        currents.update({
+            'iPumpNa': self.iPumpNa(states['Nai']) / 3.,
+            'iPumpCa': self.iPumpCa(states['Cai'])
+        })  # mA/m2
+        return currents
 
     # ------------------------------ Other methods ------------------------------
 
@@ -792,15 +795,9 @@ class LeechRetzius(LeechMech):
         return GK * (Vm - self.EK)
 
     def currents(self, Vm, states):
-        m, h, n, s, c, a, b = states
-        return {
-            'iNa': self.iNa(m, h, Vm),
-            'iKd': self.iKd(n, Vm),
-            'iCa': self.iCa(s, Vm),
-            'iLeak': self.iLeak(Vm),
-            'iKCa': self.iKCa(c, Vm),
-            'iA': self.iA(a, b, Vm)
-        }  # mA/m2
+        currents = super().currents(Vm, states)
+        currents['iA'] = self.iA(states['a'], states['b'], Vm)  # mA/m2
+        return currents
 
     # ------------------------------ Other methods ------------------------------
 

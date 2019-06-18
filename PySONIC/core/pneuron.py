@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 14:42:36
+# @Last Modified time: 2019-06-18 18:21:23
 
 import abc
 import inspect
@@ -176,7 +176,7 @@ class PointNeuron(Model):
         return FARADAY * (eCin - eCout) * 1e6  # mC/m3
 
     def getCurrentsNames(self):
-        return list(self.currents(np.nan, [np.nan] * len(self.states)).keys())
+        return list(self.currents(np.nan, {k: np.nan for k in self.states}).keys())
 
     def getPltScheme(self):
         pltscheme = {
@@ -432,9 +432,10 @@ class PointNeuron(Model):
             :return: vector of HH system derivatives at time t
         '''
         Vm, *states = y
-        Iionic = self.iNet(Vm, states)  # mA/m2
+        states_dict = dict(zip(self.states, states))
+        Iionic = self.iNet(Vm, states_dict)  # mA/m2
         dVmdt = (- Iionic + Iinj) / self.Cm0  # mV/s
-        dstates = self.derStates(Vm, dict(zip(self.states, states)))
+        dstates = self.derStates(Vm, states_dict)
         return [dVmdt, *[dstates[k] for k in self.states]]
 
     def Qderivatives(self, t, y, Cm=None):
@@ -450,8 +451,9 @@ class PointNeuron(Model):
             Cm = self.Cm0
         Qm, *states = y
         Vm = Qm / Cm * 1e3  # mV
-        dQmdt = - self.iNet(Vm, states) * 1e-3  # A/m2
-        dstates = self.derStates(Vm, dict(zip(self.states, states)))
+        states_dict = dict(zip(self.states, states))
+        dQmdt = - self.iNet(Vm, states_dict) * 1e-3  # A/m2
+        dstates = self.derStates(Vm, states_dict)
         return [dQmdt, *[dstates[k] for k in self.states]]
 
     def checkInputs(self, Astim, tstim, toffset, PRF, DC):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 15:33:23
+# @Last Modified time: 2019-06-18 16:20:58
 
 import numpy as np
 from ..core import PointNeuron
@@ -214,11 +214,10 @@ class FrankenhaeuserHuxley(PointNeuron):
         return self.gLeak * (Vm - self.ELeak)
 
     def currents(self, Vm, states):
-        m, h, n, p = states
         return {
-            'iNa': self.iNa(m, h, Vm),
-            'iKd': self.iKd(n, Vm),
-            'iP': self.iP(p, Vm),
+            'iNa': self.iNa(states['m'], states['h'], Vm),
+            'iKd': self.iKd(states['n'], Vm),
+            'iP': self.iP(states['p'], Vm),
             'iLeak': self.iLeak(Vm)
         }  # mA/m2
 
