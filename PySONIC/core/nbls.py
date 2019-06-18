@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 16:09:10
+# @Last Modified time: 2019-06-18 23:11:59
 
 from copy import deepcopy
 import logging
@@ -43,6 +43,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             raise ValueError('Invalid neuron type: "{}" (must inherit from PointNeuron class)'
                              .format(pneuron.name))
         self.pneuron = pneuron
+        self.derEffStates = self.buildDerEffStates()
 
         # Initialize BilayerSonophore parent object
         BilayerSonophore.__init__(self, a, pneuron.Cm0, pneuron.Qm0, embedding_depth)
@@ -116,6 +117,26 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         dydt_elec = self.pneuron.Qderivatives(t, y[3:], self.Capct(y[1]))
         return dydt_mech + dydt_elec
 
+    def buildDerEffStates(self):
+        ''' Construct a neuron-specific dictionary of effective derivative functions. '''
+        eff_dstates_funcs = {}
+        for k in self.pneuron.states:
+            der_func_str = 'der{}'.format(k.upper())
+            if hasattr(self.pneuron, der_func_str):
+                # der_func = getattr(pneuron, der_func_str)
+                # args_str = inspect.getargspec(der_func)[0][1:]
+                # args = [states.index(a) for a in args_str]
+                # eff_dstates[k] = der_func(states*cargs))
+                eff_dstates_funcs[k] = None
+            else:
+                eff_dstates_funcs[k] = lambda k, x, rates: (rates['alpha{}'.format(k)] * (1 - x) -
+                                                            rates['beta{}'.format(k)] * x)
+
+        def derEffStates(Vm, states, rates):
+            return {k: func(k, states[k], rates) for k, func in eff_dstates_funcs.items()}
+
+        return derEffStates
+
     def effDerivatives(self, t, y, lkp):
         ''' Compute the derivatives of the n-ODE effective HH system variables,
             based on 1-dimensional linear interpolation of "effective" coefficients
@@ -128,11 +149,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: vector of effective system derivatives at time t
         '''
         Qm, *states = y
-        states_dict = dict(zip(self.states, states))
+        states_dict = dict(zip(self.pneuron.states, states))
         rates = self.pneuron.interpEffRates(Qm, lkp)
         Vmeff = self.pneuron.interpVmeff(Qm, lkp)
         dQmdt = - self.pneuron.iNet(Vmeff, states_dict) * 1e-3
-        dstates = self.pneuron.derEffStates(Vmeff, states_dict, rates)
+        dstates = self.derEffStates(Vmeff, states_dict, rates)
         return [dQmdt, *[dstates[k] for k in self.pneuron.states]]
 
     def interpEffVariable(self, key, Qm, stim, lkps1D):
@@ -304,24 +325,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Return effective coefficients
         return [tcomp, effvars]
-
-    # def buildEffDerivatives(self, pneuron):
-    #     states_names = pneuron.states
-    #     eff_dstates = {}
-    #     for k in states_names:
-    #         der_func_str = 'der{}'.format(k.upper())
-    #         if hasattr(pneuron, der_func_str):
-    #             der_func = getattr(pneuron, der_func_str)
-    #             args_str = inspect.getargspec(cfunc)[0][1:]
-    #             args = [states.index(a) for a in args_str]
-    #             eff_dstates[k] = der_func(states*cargs))
-    #         else:
-    #             eff_dstates[k] = lambda x, Qm, lkp: effDerivative(x, Qm, lkp, k)
-
-    #     def effDerivatives(Qm, states, lkp):
-    #         return eff_dstates
-
-    #     return effDerivatives
 
     def runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC):
         ''' Compute solutions of the system for a specific set of
