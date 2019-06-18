@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:05:53
+# @Last Modified time: 2019-06-18 15:34:56
 
 import numpy as np
 from ..core import PointNeuron
@@ -93,70 +93,22 @@ class Thalamic(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derM(self, Vm, m):
-        ''' Evolution of m-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param m: open-probability of m-gate (-)
-            :return: time derivative of m-gate open-probability (s-1)
-        '''
-        return self.alpham(Vm) * (1 - m) - self.betam(Vm) * m
-
-    def derH(self, Vm, h):
-        ''' Evolution of h-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param h: open-probability of h-gate (-)
-            :return: time derivative of h-gate open-probability (s-1)
-        '''
-        return self.alphah(Vm) * (1 - h) - self.betah(Vm) * h
-
-    def derN(self, Vm, n):
-        ''' Evolution of n-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param n: open-probability of n-gate (-)
-            :return: time derivative of n-gate open-probability (s-1)
-        '''
-        return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
-
-    def derS(self, Vm, s):
-        ''' Evolution of s-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param s: open-probability of s-gate (-)
-            :return: time derivative of s-gate open-probability (s-1)
-        '''
-        return (self.sinf(Vm) - s) / self.taus(Vm)
-
-    def derU(self, Vm, u):
-        ''' Evolution of u-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param u: open-probability of u-gate (-)
-            :return: time derivative of u-gate open-probability (s-1)
-        '''
-        return (self.uinf(Vm) - u) / self.tauu(Vm)
-
     def derStates(self, Vm, states):
-        m, h, n, s, u = states
         return {
-            'm': self.derM(Vm, m),
-            'h': self.derH(Vm, h),
-            'n': self.derN(Vm, n),
-            's': self.derS(Vm, s),
-            'u': self.derU(Vm, u)
+            'm': self.alpham(Vm) * (1 - states['m']) - self.betam(Vm) * states['m'],
+            'h': self.alphah(Vm) * (1 - states['h']) - self.betah(Vm) * states['h'],
+            'n': self.alphan(Vm) * (1 - states['n']) - self.betan(Vm) * states['n'],
+            's': (self.sinf(Vm) - states['s']) / self.taus(Vm),
+            'u': (self.uinf(Vm) - states['u']) / self.tauu(Vm)
         }
 
-    def derEffStates(self, Qm, states, lkp):
-        rates = self.interpEffRates(Qm, lkp)
-        m, h, n, s, u = states
+    def derEffStates(self, Vm, states, rates):
         return {
-            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
-            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
-            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
-            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
-            'u': rates['alphau'] * (1 - u) - rates['betau'] * u
+            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+            's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
+            'u': rates['alphau'] * (1 - states['u']) - rates['betau'] * states['u']
         }
 
     # ------------------------------ Steady states ------------------------------
@@ -540,37 +492,22 @@ class ThalamoCortical(Thalamic):
         return (self.Cai_min - Cai) / self.taur_Cai - self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)
 
     def derStates(self, Vm, states):
-        m, h, n, s, u, O, C, P0, Cai = states
-
-        NaKCa_states = [m, h, n, s, u]
-        dstates = super().derStates(Vm, NaKCa_states)
+        dstates = super().derStates(Vm, states)
         dstates.update({
-            'O': self.derO(C, O, P0, Vm),
-            'C': self.derC(C, O, Vm),
-            'P0': self.derP0(P0, Cai),
-            'Cai': self.derCai(Cai, s, u, Vm)
-
+            'O': self.derO(states['C'], states['O'], states['P0'], Vm),
+            'C': self.derC(states['C'], states['O'], Vm),
+            'P0': self.derP0(states['P0'], states['Cai']),
+            'Cai': self.derCai(states['Cai'], states['s'], states['u'], Vm)
         })
-
         return dstates
 
-    def derEffStates(self, Qm, states, lkp):
-        # Unpack states
-        m, h, n, s, u, O, C, P0, Cai = states
-
-        # Call parent method to compute channels states derivatives
-        dstates = super().derEffStates(Qm, [m, h, n, s, u], lkp)
-
-        iHrates = self.interpEffRates(Qm, lkp, keys=self.getRatesNames(['o']))
-        Vmeff = self.interpVmeff(Qm, lkp)
-
-        # Ih effective states derivatives
-        dstates['C'] = iHrates['betao'] * O - iHrates['alphao'] * C
-        dstates['O'] = - dstates['C'] - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
-        dstates['P0'] = self.derP0(P0, Cai)
-        dstates['Cai'] = self.derCai(Cai, s, u, Vmeff)
-
-        # Merge derivatives and return
+    def derEffStates(self, Vm, states, rates):
+        dstates = super().derEffStates(Vm, states, rates)
+        dstates['C'] = rates['betao'] * states['O'] - rates['alphao'] * states['C']
+        dstates['O'] = (- dstates['C'] - self.k3 * states['O'] * (1 - states['P0']) +
+                        self.k4 * (1 - states['O'] - states['C']))
+        dstates['P0'] = self.derP0(states['P0'], states['Cai'])
+        dstates['Cai'] = self.derCai(states['Cai'], states['s'], states['u'], Vm)
         return dstates
 
     # ------------------------------ Steady states ------------------------------
@@ -676,7 +613,3 @@ class ThalamoCortical(Thalamic):
         effrates['betao'] = np.mean(self.betao(Vm))
 
         return effrates
-
-
-
-

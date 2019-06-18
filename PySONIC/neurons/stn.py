@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:00:01
+# @Last Modified time: 2019-06-18 15:35:19
 
 import numpy as np
 from scipy.optimize import brentq
@@ -295,42 +295,6 @@ class OtsukaSTN(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derA(self, Vm, a):
-        ''' Evolution of a-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param a: open-probability of a-gate (-)
-            :return: time derivative of a-gate open-probability (s-1)
-        '''
-        return (self.ainf(Vm) - a) / self.taua(Vm)
-
-    def derB(self, Vm, b):
-        ''' Evolution of b-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param b: open-probability of b-gate (-)
-            :return: time derivative of b-gate open-probability (s-1)
-        '''
-        return (self.binf(Vm) - b) / self.taub(Vm)
-
-    def derC(self, Vm, c):
-        ''' Evolution of c-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param c: open-probability of c-gate (-)
-            :return: time derivative of c-gate open-probability (s-1)
-        '''
-        return (self.cinf(Vm) - c) / self.tauc(Vm)
-
-    def derD1(self, Vm, d1):
-        ''' Evolution of d1-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param d1: open-probability of d1-gate (-)
-            :return: time derivative of d1-gate open-probability (s-1)
-        '''
-        return (self.d1inf(Vm) - d1) / self.taud1(Vm)
-
     def derD2(self, Cai, d2):
         ''' Evolution of Calcium-dependent d2-gate open-probability
 
@@ -339,51 +303,6 @@ class OtsukaSTN(PointNeuron):
             :return: time derivative of d2-gate open-probability (s-1)
         '''
         return (self.d2inf(Cai) - d2) / self.tau_d2
-
-    def derM(self, Vm, m):
-        ''' Evolution of m-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param m: open-probability of m-gate (-)
-            :return: time derivative of m-gate open-probability (s-1)
-        '''
-        return (self.minf(Vm) - m) / self.taum(Vm)
-
-    def derH(self, Vm, h):
-        ''' Evolution of h-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param h: open-probability of h-gate (-)
-            :return: time derivative of h-gate open-probability (s-1)
-        '''
-        return (self.hinf(Vm) - h) / self.tauh(Vm)
-
-    def derN(self, Vm, n):
-        ''' Evolution of n-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param n: open-probability of n-gate (-)
-            :return: time derivative of n-gate open-probability (s-1)
-        '''
-        return (self.ninf(Vm) - n) / self.taun(Vm)
-
-    def derP(self, Vm, p):
-        ''' Evolution of p-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param p: open-probability of p-gate (-)
-            :return: time derivative of p-gate open-probability (s-1)
-        '''
-        return (self.pinf(Vm) - p) / self.taup(Vm)
-
-    def derQ(self, Vm, q):
-        ''' Evolution of q-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param q: open-probability of q-gate (-)
-            :return: time derivative of q-gate open-probability (s-1)
-        '''
-        return (self.qinf(Vm) - q) / self.tauq(Vm)
 
     def derR(self, Cai, r):
         ''' Evolution of Calcium-dependent r-gate open-probability
@@ -411,41 +330,36 @@ class OtsukaSTN(PointNeuron):
         return - self.iCa_to_Cai_rate * (iCaT + iCaL) - Cai / self.taur_Cai
 
     def derStates(self, Vm, states):
-        a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
-
         return {
-            'a': self.derA(Vm, a),
-            'b': self.derB(Vm, b),
-            'c': self.derC(Vm, c),
-            'd1': self.derD1(Vm, d1),
-            'd2': self.derD2(Cai, d2),
-            'm': self.derM(Vm, m),
-            'h': self.derH(Vm, h),
-            'n': self.derN(Vm, n),
-            'p': self.derP(Vm, p),
-            'q': self.derQ(Vm, q),
-            'r': self.derR(Cai, r),
-            'Cai': self.derCai(p, q, c, d1, d2, Cai, Vm),
+            'a': (self.ainf(Vm) - states['a']) / self.taua(Vm),
+            'b': (self.binf(Vm) - states['b']) / self.taub(Vm),
+            'c': (self.cinf(Vm) - states['c']) / self.tauc(Vm),
+            'd1': (self.d1inf(Vm) - states['d1']) / self.taud1(Vm),
+            'd2': self.derD2(states['Cai'], states['d2']),
+            'm': (self.minf(Vm) - states['m']) / self.taum(Vm),
+            'h': (self.hinf(Vm) - states['h']) / self.tauh(Vm),
+            'n': (self.ninf(Vm) - states['n']) / self.taun(Vm),
+            'p': (self.pinf(Vm) - states['p']) / self.taup(Vm),
+            'q': (self.qinf(Vm) - states['q']) / self.tauq(Vm),
+            'r': self.derR(states['Cai'], states['r']),
+            'Cai': self.derCai(states['p'], states['q'], states['c'], states['d1'], states['d2'],
+                               states['Cai'], Vm),
         }
 
-    def derEffStates(self, Qm, states, lkp):
-        rates = self.interpEffRates(Qm, lkp)
-        Vmeff = self.interpVmeff(Qm, lkp)
-        a, b, c, d1, d2, m, h, n, p, q, r, Cai = states
-
+    def derEffStates(self, Vm, states, rates):
         return {
-            'a': rates['alphaa'] * (1 - a) - rates['betaa'] * a,
-            'b': rates['alphab'] * (1 - b) - rates['betab'] * b,
-            'c': rates['alphac'] * (1 - c) - rates['betac'] * c,
-            'd1': rates['alphad1'] * (1 - d1) - rates['betad1'] * d1,
-            'd2': self.derD2(Cai, d2),
-            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
-            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
-            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
-            'p': rates['alphap'] * (1 - p) - rates['betap'] * p,
-            'q': rates['alphaq'] * (1 - q) - rates['betaq'] * q,
-            'r': self.derR(Cai, r),
-            'Cai': self.derCai(p, q, c, d1, d2, Cai, Vmeff)
+            'a': rates['alphaa'] * (1 - states['a']) - rates['betaa'] * states['a'],
+            'b': rates['alphab'] * (1 - states['b']) - rates['betab'] * states['b'],
+            'c': rates['alphac'] * (1 - states['c']) - rates['betac'] * states['c'],
+            'd1': rates['alphad1'] * (1 - states['d1']) - rates['betad1'] * states['d1'],
+            'd2': self.derD2(states['Cai'], states['d2']),
+            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+            'p': rates['alphap'] * (1 - states['p']) - rates['betap'] * states['p'],
+            'q': rates['alphaq'] * (1 - states['q']) - rates['betaq'] * states['q'],
+            'r': self.derR(states['Cai'], states['r']),
+            'Cai': self.derCai(*[states[x] for x in ['p', 'q', 'c', 'd1', 'd2', 'Cai']], Vm)
         }
 
     # ------------------------------ Steady states ------------------------------
@@ -579,7 +493,6 @@ class OtsukaSTN(PointNeuron):
             'iKCa': self.iKCa(r, Vm),
             'iLeak': self.iLeak(Vm)
         }  # mA/m2
-
 
     # ------------------------------ Other methods ------------------------------
 

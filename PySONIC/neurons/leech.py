@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:05:23
+# @Last Modified time: 2019-06-18 15:56:02
 
 from functools import partialmethod
 import numpy as np
@@ -135,42 +135,6 @@ class LeechTouch(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derM(self, Vm, m):
-        ''' Evolution of m-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param m: open-probability of m-gate (-)
-            :return: time derivative of m-gate open-probability (s-1)
-        '''
-        return (self.minf(Vm) - m) / self.taum  # s-1
-
-    def derH(self, Vm, h):
-        ''' Evolution of h-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param h: open-probability of h-gate (-)
-            :return: time derivative of h-gate open-probability (s-1)
-        '''
-        return (self.hinf(Vm) - h) / self.tauh(Vm)  # s-1
-
-    def derN(self, Vm, n):
-        ''' Evolution of n-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param n: open-probability of n-gate (-)
-            :return: time derivative of n-gate open-probability (s-1)
-        '''
-        return (self.ninf(Vm) - n) / self.taun(Vm)  # s-1
-
-    def derS(self, Vm, s):
-        ''' Evolution of s-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param s: open-probability of s-gate (-)
-            :return: time derivative of s-gate open-probability (s-1)
-        '''
-        return (self.sinf(Vm) - s) / self.taus  # s-1
-
     def derNai(self, Nai, m, h, Vm):
         ''' Evolution of submembrane Sodium concentration.
 
@@ -201,31 +165,27 @@ class LeechTouch(PointNeuron):
         return self._derAion(ACa, Cai, self.taua_KCa)
 
     def derStates(self, Vm, states):
-        m, h, n, s, Nai, ANa, Cai, ACa = states
         return {
-            'm': self.derM(Vm, m),
-            'h': self.derH(Vm, h),
-            'n': self.derN(Vm, n),
-            's': self.derS(Vm, s),
-            'CNa': self.derNai(Nai, m, h, Vm),
-            'ANa': self.derANa(ANa, Nai),
-            'CCa': self.derCai(Cai, s, Vm),
-            'ACa': self.derACa(ACa, Cai)
+            'm': (self.minf(Vm) - states['m']) / self.taum,
+            'h': (self.hinf(Vm) - states['h']) / self.tauh(Vm),
+            'n': (self.ninf(Vm) - states['n']) / self.taun(Vm),
+            's': (self.sinf(Vm) - states['s']) / self.taus,
+            'CNa': self.derNai(states['Nai'], states['m'], states['h'], Vm),
+            'ANa': self.derANa(states['ANa'], states['Nai']),
+            'CCa': self.derCai(states['Cai'], states['s'], Vm),
+            'ACa': self.derACa(states['ACa'], states['Cai'])
         }
 
-    def derEffStates(self, Qm, states, lkp):
-        rates = self.interpEffRates(Qm, lkp)
-        Vmeff = self.interpVmeff(Qm, lkp)
-        m, h, n, s, Nai, ANa, Cai, ACa = states
+    def derEffStates(self, Vm, states, rates):
         return {
-            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
-            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
-            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
-            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
-            'CNa': self.derNai(Nai, m, h, Vmeff),
-            'ANa': self.derANa(ANa, Nai),
-            'CCa': self.derCai(Cai, s, Vmeff),
-            'ACa': self.derACa(ACa, Cai)
+            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+            's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
+            'CNa': self.derNai(states['Nai'], states['m'], states['h'], Vm),
+            'ANa': self.derANa(states['ANa'], states['Nai']),
+            'CCa': self.derCai(states['Cai'], states['s'], Vm),
+            'ACa': self.derACa(states['ACa'], states['Cai'])
         }
 
     # ------------------------------ Steady states ------------------------------
@@ -445,45 +405,6 @@ class LeechMech(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derM(self, Vm, m):
-        ''' Evolution of the m-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param m: open-probability of m-gate (-)
-            :return: derivative of open-probability w.r.t. time (s-1)
-        '''
-        return self.alpham(Vm) * (1 - m) - self.betam(Vm) * m
-
-
-    def derH(self, Vm, h):
-        ''' Evolution of the h-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param h: open-probability of h-gate (-)
-            :return: derivative of open-probability w.r.t. time (s-1)
-        '''
-        return self.alphah(Vm) * (1 - h) - self.betah(Vm) * h
-
-
-    def derN(self, Vm, n):
-        ''' Evolution of the n-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param n: open-probability of n-gate (-)
-            :return: derivative of open-probability w.r.t. time (s-1)
-        '''
-        return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
-
-
-    def derS(self, Vm, s):
-        ''' Evolution of the s-gate open-probability.
-
-            :param Vm: membrane potential (mV)
-            :param s: open-probability of s-gate (-)
-            :return: derivative of open-probability w.r.t. time (s-1)
-        '''
-        return self.alphas(Vm) * (1 - s) - self.betas(Vm) * s
-
     def derC(self, c, Cai):
         ''' Evolution of the c-gate open-probability
 
@@ -492,6 +413,24 @@ class LeechMech(PointNeuron):
             :return: derivative of open-probability w.r.t. time (s-1)
         '''
         return self.alphaC(Cai) * (1 - c) - self.betaC * c
+
+    def derStates(self, Vm, states):
+        return {
+            'm': self.alpham(Vm) * (1 - states['m']) - self.betam(Vm) * states['m'],
+            'h': self.alphah(Vm) * (1 - states['h']) - self.betah(Vm) * states['h'],
+            'n': self.alphan(Vm) * (1 - states['n']) - self.betan(Vm) * states['n'],
+            's': self.alphas(Vm) * (1 - states['s']) - self.betas(Vm) * states['s'],
+            'c': self.derC(states['c'], states['Cai'])
+        }
+
+    def derEffStates(self, Vm, states, rates):
+        return {
+            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+            's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
+            'c': self.derC(states['c'], states['Cai']),
+        }
 
     # ------------------------------ Membrane currents ------------------------------
 
@@ -612,31 +551,24 @@ class LeechPressure(LeechMech):
     # ------------------------------ States derivatives ------------------------------
 
     def derStates(self, Vm, states):
-        m, h, n, s, c, Nai, Cai = states
-        return {
-            'm': self.derM(Vm, m),
-            'h': self.derH(Vm, h),
-            'n': self.derN(Vm, n),
-            's': self.derS(Vm, s),
-            'c': self.derC(c, Cai),
-            'Nai': -(self.iNa(m, h, Vm, Nai) + self.iPumpNa(Nai)) * self.K_Na,
-            'Cai': -(self.iCa(s, Vm, Cai) + self.iPumpCa(Cai)) * self.K_Ca
-        }
+        dstates = super().derStates(Vm, states)
+        dstates.update({
+            'Nai': -(self.iNa(states['m'], states['h'], Vm, states['Nai']) +
+                     self.iPumpNa(states['Nai'])) * self.K_Na,
+            'Cai': -(self.iCa(states['s'], Vm, states['Cai']) +
+                     self.iPumpCa(states['Cai'])) * self.K_Ca
+        })
+        return dstates
 
-    def derEffStates(self, Qm, states, lkp):
-        rates = self.interpEffRates(Qm, lkp)
-        Vmeff = self.interpVmeff(Qm, lkp)
-        m, h, n, s, c, Nai, Cai = states
-
-        return {
-            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
-            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
-            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
-            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
-            'c': self.derC(c, Cai),
-            'Nai': -(self.iNa(m, h, Vmeff, Nai) + self.iPumpNa(Nai)) * self.K_Na,
-            'Cai': -(self.iCa(s, Vmeff, Cai) + self.iPumpCa(Cai)) * self.K_Ca
-        }
+    def derEffStates(self, Vm, states, rates):
+        dstates = super().derEffStates(Vm, states, rates)
+        dstates.update({
+            'Nai': -(self.iNa(states['m'], states['h'], Vm, states['Nai']) +
+                     self.iPumpNa(states['Nai'])) * self.K_Na,
+            'Cai': -(self.iCa(states['s'], Vm, states['Cai']) +
+                     self.iPumpCa(states['Cai'])) * self.K_Ca
+        })
+        return dstates
 
     # ------------------------------ Steady states ------------------------------
 
@@ -812,49 +744,21 @@ class LeechRetzius(LeechMech):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derA(self, Vm, a):
-        ''' Evolution of a-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param a: open-probability of a-gate (-)
-            :return: derivative of open-probability w.r.t. time (s-1)
-        '''
-        return (self.ainf(Vm) - a) / self.taua(Vm)
-
-    def derB(self, Vm, b):
-        ''' Evolution of the b-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param b: open-probability of b-gate (-)
-            :return: derivative of open-probability w.r.t. time (s-1)
-        '''
-        return (self.binf(Vm) - b) / self.taub(Vm)
-
     def derStates(self, Vm, states):
-        m, h, n, s, c, a, b = states
+        dstates = super().derStates(Vm, states)
+        dstates.update({
+            'a': (self.ainf(Vm) - states['a']) / self.taua(Vm),
+            'b': (self.binf(Vm) - states['b']) / self.taub(Vm)
+        })
+        return dstates
 
-        return {
-            'm': self.derM(Vm, m),
-            'h': self.derH(Vm, h),
-            'n': self.derN(Vm, n),
-            's': self.derS(Vm, s),
-            'c': self.derC(c, self.Cai),
-            'a': self.derA(Vm, a),
-            'b': self.derB(Vm, b)
-        }
-
-    def derEffStates(self, Qm, states, lkp):
-        rates = self.interpEffRates(Qm, lkp)
-        m, h, n, s, c, a, b = states
-        return {
-            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
-            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
-            'n': rates['alpham'] * (1 - n) - rates['betam'] * n,
-            's': rates['alphas'] * (1 - s) - rates['betas'] * s,
-            'a': rates['alphaa'] * (1 - a) - rates['betaa'] * a,
-            'b': rates['alphab'] * (1 - b) - rates['betab'] * b,
-            'c': self.derC(c, self.Cai)
-        }
+    def derEffStates(self, Vm, states, rates):
+        dstates = super().derStates(Vm, states, rates)
+        dstates.update({
+            'a': rates['alphaa'] * (1 - states['a']) - rates['betaa'] * states['a'],
+            'b': rates['alphab'] * (1 - states['b']) - rates['betab'] * states['b']
+        })
+        return dstates
 
     # ------------------------------ Steady states ------------------------------
 

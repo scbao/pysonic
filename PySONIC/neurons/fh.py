@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:04:57
+# @Last Modified time: 2019-06-18 15:33:23
 
 import numpy as np
 from ..core import PointNeuron
@@ -145,59 +145,20 @@ class FrankenhaeuserHuxley(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derM(self, Vm, m):
-        ''' Evolution of m-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param m: open-probability of m-gate (-)
-            :return: time derivative of m-gate open-probability (s-1)
-        '''
-        return self.alpham(Vm) * (1 - m) - self.betam(Vm) * m
-
-    def derH(self, Vm, h):
-        ''' Evolution of h-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param h: open-probability of h-gate (-)
-            :return: time derivative of h-gate open-probability (s-1)
-        '''
-        return self.alphah(Vm) * (1 - h) - self.betah(Vm) * h
-
-    def derN(self, Vm, n):
-        ''' Evolution of n-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param n: open-probability of n-gate (-)
-            :return: time derivative of n-gate open-probability (s-1)
-        '''
-        return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
-
-    def derP(self, Vm, p):
-        ''' Evolution of p-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param p: open-probability of p-gate (-)
-            :return: time derivative of p-gate open-probability (s-1)
-        '''
-        return self.alphap(Vm) * (1 - p) - self.betap(Vm) * p
-
     def derStates(self, Vm, states):
-        m, h, n, p = states
         return {
-            'm': self.derM(Vm, m),
-            'h': self.derH(Vm, h),
-            'n': self.derN(Vm, n),
-            'p': self.derP(Vm, p)
+            'm': self.alpham(Vm) * (1 - states['m']) - self.betam(Vm) * states['m'],
+            'h': self.alphah(Vm) * (1 - states['h']) - self.betah(Vm) * states['h'],
+            'n': self.alphan(Vm) * (1 - states['n']) - self.betan(Vm) * states['n'],
+            'p': self.alphap(Vm) * (1 - states['p']) - self.betap(Vm) * states['p']
         }
 
-    def derEffStates(self, Qm, states, lkp):
-        rates = self.interpEffRates(Qm, lkp)
-        m, h, n, p = states
+    def derEffStates(self, Vm, states, rates):
         return {
-            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
-            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
-            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
-            'p': rates['alphap'] * (1 - p) - rates['betap'] * p
+            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+            'p': rates['alphap'] * (1 - states['p']) - rates['betap'] * states['p']
         }
 
     # ------------------------------ Steady states ------------------------------

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 21:58:55
+# @Last Modified time: 2019-06-18 14:42:36
 
 import abc
 import inspect
@@ -234,9 +234,13 @@ class PointNeuron(Model):
             }
             for var in cargs:
                 if var not in ['Vm', 'Cai']:
-                    vfunc = getattr(self, 'der{}{}'.format(var[0].upper(), var[1:]))
-                    desc = cname + re.sub(
-                        '^Evolution of', '', inspect.getdoc(vfunc).splitlines()[0])
+                    der_func_str = 'der{}{}'.format(var[0].upper(), var[1:])
+                    if hasattr(self, der_func_str):
+                        der_func = getattr(self, der_func_str)
+                        desc = cname + re.sub(
+                            '^Evolution of', '', inspect.getdoc(der_func).splitlines()[0])
+                    else:
+                        desc = '{}-gate open probability'.format(var)
                     pltvars[var] = {
                         'desc': desc,
                         'label': var,
@@ -430,7 +434,7 @@ class PointNeuron(Model):
         Vm, *states = y
         Iionic = self.iNet(Vm, states)  # mA/m2
         dVmdt = (- Iionic + Iinj) / self.Cm0  # mV/s
-        dstates = self.derStates(Vm, states)
+        dstates = self.derStates(Vm, dict(zip(self.states, states)))
         return [dVmdt, *[dstates[k] for k in self.states]]
 
     def Qderivatives(self, t, y, Cm=None):
@@ -447,7 +451,7 @@ class PointNeuron(Model):
         Qm, *states = y
         Vm = Qm / Cm * 1e3  # mV
         dQmdt = - self.iNet(Vm, states) * 1e-3  # A/m2
-        dstates = self.derStates(Vm, states)
+        dstates = self.derStates(Vm, dict(zip(self.states, states)))
         return [dQmdt, *[dstates[k] for k in self.states]]
 
     def checkInputs(self, Astim, tstim, toffset, PRF, DC):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:04:46
+# @Last Modified time: 2019-06-18 15:34:02
 
 import numpy as np
 from ..core import PointNeuron
@@ -49,7 +49,6 @@ class Cortical(PointNeuron):
         Vdiff = Vm - self.VT
         beta = 0.28 * self.vtrap(Vdiff - 40, 5)  # ms-1
         return beta * 1e3  # s-1
-
 
     def alphah(self, Vm):
         ''' Voltage-dependent activation rate of h-gate
@@ -109,59 +108,20 @@ class Cortical(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derM(self, Vm, m):
-        ''' Evolution of m-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param m: open-probability of m-gate (-)
-            :return: time derivative of m-gate open-probability (s-1)
-        '''
-        return self.alpham(Vm) * (1 - m) - self.betam(Vm) * m
-
-    def derH(self, Vm, h):
-        ''' Evolution of h-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param h: open-probability of h-gate (-)
-            :return: time derivative of h-gate open-probability (s-1)
-        '''
-        return self.alphah(Vm) * (1 - h) - self.betah(Vm) * h
-
-    def derN(self, Vm, n):
-        ''' Evolution of n-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param n: open-probability of n-gate (-)
-            :return: time derivative of n-gate open-probability (s-1)
-        '''
-        return self.alphan(Vm) * (1 - n) - self.betan(Vm) * n
-
-    def derP(self, Vm, p):
-        ''' Evolution of p-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param p: open-probability of p-gate (-)
-            :return: time derivative of p-gate open-probability (s-1)
-        '''
-        return (self.pinf(Vm) - p) / self.taup(Vm)
-
     def derStates(self, Vm, states):
-        m, h, n, p = states
         return {
-            'm': self.derM(Vm, m),
-            'h': self.derH(Vm, h),
-            'n': self.derN(Vm, n),
-            'p': self.derP(Vm, p)
+            'm': self.alpham(Vm) * (1 - states['m']) - self.betam(Vm) * states['m'],
+            'h': self.alphah(Vm) * (1 - states['h']) - self.betah(Vm) * states['h'],
+            'n': self.alphan(Vm) * (1 - states['n']) - self.betan(Vm) * states['n'],
+            'p': (self.pinf(Vm) - states['p']) / self.taup(Vm)
         }
 
-    def derEffStates(self, Qm, states, lkp):
-        rates = self.interpEffRates(Qm, lkp)
-        m, h, n, p = states
+    def derEffStates(self, Vm, states, rates):
         return {
-            'm': rates['alpham'] * (1 - m) - rates['betam'] * m,
-            'h': rates['alphah'] * (1 - h) - rates['betah'] * h,
-            'n': rates['alphan'] * (1 - n) - rates['betan'] * n,
-            'p': rates['alphap'] * (1 - p) - rates['betap'] * p
+            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+            'p': rates['alphap'] * (1 - states['p']) - rates['betap'] * states['p']
         }
 
     # ------------------------------ Steady states ------------------------------
@@ -383,50 +343,20 @@ class CorticalLTS(Cortical):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derS(self, Vm, s):
-        ''' Evolution of s-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param s: open-probability of s-gate (-)
-            :return: time derivative of s-gate open-probability (s-1)
-        '''
-        return (self.sinf(Vm) - s) / self.taus(Vm)
-
-    def derU(self, Vm, u):
-        ''' Evolution of u-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param u: open-probability of u-gate (-)
-            :return: time derivative of u-gate open-probability (s-1)
-        '''
-        return (self.uinf(Vm) - u) / self.tauu(Vm)
-
     def derStates(self, Vm, states):
-        # Unpack input states
-        *NaK_states, s, u = states
-
-        # Call parent method to compute Sodium and Potassium channels states derivatives
-        dstates = super().derStates(Vm, NaK_states)
-
-        # Compute Calcium channels states derivatives
-        dstates['s'] = self.derS(Vm, s)
-        dstates['u'] = self.derU(Vm, u)
-
+        dstates = super().derStates(Vm, states)
+        dstates.update({
+            's': (self.sinf(Vm) - states['s']) / self.taus(Vm),
+            'u': (self.uinf(Vm) - states['u']) / self.tauu(Vm)
+        })
         return dstates
 
-    def derEffStates(self, Qm, states, lkp):
-        # Unpack input states
-        *NaK_states, s, u = states
-
-        # Call parent method to compute Sodium and Potassium channels states derivatives
-        dstates = super().derEffStates(Qm, NaK_states, lkp)
-
-        # Compute Calcium channels states derivatives
-        Ca_rates = self.interpEffRates(Qm, lkp, keys=self.getRatesNames(['s', 'u']))
-        dstates['s'] = Ca_rates['alphas'] * (1 - s) - Ca_rates['betas'] * s
-        dstates['u'] = Ca_rates['alphau'] * (1 - u) - Ca_rates['betau'] * u
-
-        # Merge all states derivatives and return
+    def derEffStates(self, Vm, states, rates):
+        dstates = super().derEffStates(Vm, states, rates)
+        dstates.update({
+            's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
+            'u': rates['alphau'] * (1 - states['u']) - rates['betau'] * states['u']
+        })
         return dstates
 
     # ------------------------------ Steady states ------------------------------
@@ -549,52 +479,20 @@ class CorticalIB(Cortical):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derQ(self, Vm, q):
-        ''' Evolution of q-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param q: open-probability of q-gate (-)
-            :return: time derivative of q-gate open-probability (s-1)
-        '''
-        return self.alphaq(Vm) * (1 - q) - self.betaq(Vm) * q
-
-    def derR(self, Vm, r):
-        ''' Evolution of r-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param r: open-probability of r-gate (-)
-            :return: time derivative of r-gate open-probability (s-1)
-        '''
-        return self.alphar(Vm) * (1 - r) - self.betar(Vm) * r
-
     def derStates(self, Vm, states):
-        # Unpack input states
-        *NaK_states, q, r = states
-
-        # Call parent method to compute Sodium and Potassium channels states derivatives
-        dstates = super().derStates(Vm, NaK_states)
-
-        # Compute L-type Calcium channels states derivatives
-        dstates['q'] = self.derQ(Vm, q)
-        dstates['r'] = self.derR(Vm, r)
-
-        # Merge all states derivatives and return
+        dstates = super().derStates(Vm, states)
+        dstates.update({
+            'q': self.alphaq(Vm) * (1 - states['q']) - self.betaq(Vm) * states['q'],
+            'r': self.alphar(Vm) * (1 - states['r']) - self.betar(Vm) * states['r']
+        })
         return dstates
 
-    def derEffStates(self, Qm, states, lkp):
-
-        # Unpack input states
-        *NaK_states, q, r = states
-
-        # Call parent method to compute Sodium and Potassium channels states derivatives
-        dstates = super().derEffStates(Qm, NaK_states, lkp)
-
-        # Compute Calcium channels states derivatives
-        Ca_rates = self.interpEffRates(Qm, lkp, keys=self.getRatesNames(['q', 'r']))
-        dstates['q'] = Ca_rates['alphaq'] * (1 - q) - Ca_rates['betaq'] * q
-        dstates['r'] = Ca_rates['alphar'] * (1 - r) - Ca_rates['betar'] * r
-
-        # Merge all states derivatives and return
+    def derEffStates(self, Vm, states, rates):
+        dstates = super().derEffStates(Vm, states, rates)
+        dstates.update({
+            'q': rates['alphaq'] * (1 - states['q']) - rates['betaq'] * states['q'],
+            'r': rates['alphar'] * (1 - states['r']) - rates['betar'] * states['r']
+        })
         return dstates
 
     # ------------------------------ Steady states ------------------------------
