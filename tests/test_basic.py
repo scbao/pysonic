@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 15:45:20
+# @Last Modified time: 2019-06-19 15:50:31
 
 ''' Test the basic functionalities of the package. '''
 
@@ -14,7 +14,7 @@ import pstats
 
 from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 from PySONIC.utils import logger
-from PySONIC.neurons import getPointNeuron
+from PySONIC.neurons import getPointNeuron, getNeuronsDict
 from PySONIC.parsers import TestParser
 
 
@@ -104,9 +104,13 @@ def test_ASTIM_sonic(is_profiled=False):
     except ValueError:
         logger.debug('Out of range amplitude: OK')
 
-    # Run simulation
-    execute("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')",
-            globals(), locals(), is_profiled)
+    # Run simulation on all neurons
+    for name, neuron_class in getNeuronsDict().items():
+        if name not in ('template', 'LeechP', 'LeechT', 'LeechR'):
+            pneuron = neuron_class()
+            nbls = NeuronalBilayerSonophore(a, pneuron)
+            execute("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='sonic')",
+                    globals(), locals(), is_profiled)
 
 
 def test_ASTIM_dense(is_profiled=False):
@@ -143,8 +147,8 @@ def test_ASTIM_hybrid(is_profiled=False):
     # Stimulation parameters
     Fdrive = 350e3  # Hz
     Adrive = 100e3  # Pa
-    tstim = 1e-3  # s
-    toffset = 1e-3  # s
+    tstim = 0.6e-3  # s
+    toffset = 0.1e-3  # s
 
     # Run simulation
     execute("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')",

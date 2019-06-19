@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 15:33:57
+# @Last Modified time: 2019-06-19 16:07:32
 
 import abc
 import inspect
@@ -349,31 +349,6 @@ class PointNeuron(Model):
             :param Vm: array of membrane potential values for an acoustic cycle (mV)
             :return: a dictionary of rate average constants (s-1)
         '''
-
-    def interpEffRates(self, Qm, lkp, keys=None):
-        ''' Interpolate effective rate constants for a given charge density using
-            reference lookup vectors.
-
-            :param Qm: membrane charge density (C/m2)
-            :states: state probabilities of the ion channels
-            :param lkp: dictionary of 1D vectors of "effective" coefficients
-             over the charge domain, for specific frequency and amplitude values.
-            :return: dictionary of interpolated rate constants
-        '''
-        if keys is None:
-            keys = self.rates
-        return {k: np.interp(Qm, lkp['Q'], lkp[k], left=np.nan, right=np.nan) for k in keys}
-
-    def interpVmeff(self, Qm, lkp):
-        ''' Interpolate the effective membrane potential for a given charge density
-            using reference lookup vectors.
-
-            :param Qm: membrane charge density (C/m2)
-            :param lkp: dictionary of 1D vectors of "effective" coefficients
-             over the charge domain, for specific frequency and amplitude values.
-            :return: dictionary of interpolated rate constants
-        '''
-        return np.interp(Qm, lkp['Q'], lkp['V'], left=np.nan, right=np.nan)
 
     # @abc.abstractmethod
     def derEffStates(self, Qm, states, lkp):

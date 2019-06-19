@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 14:43:30
+# @Last Modified time: 2019-06-19 17:52:47
 
 import numpy as np
 from ..core import PointNeuron
@@ -63,14 +63,6 @@ class Cortical(PointNeuron):
             'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n'],
             'p': lambda Vm, x: (self.pinf(Vm) - x['p']) / self.taup(Vm)
         }
-
-    # def derEffStates(self, Vm, states, rates):
-    #     return {
-    #         'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-    #         'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-    #         'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-    #         'p': rates['alphap'] * (1 - states['p']) - rates['betap'] * states['p']
-    #     }
 
     # ------------------------------ Steady states ------------------------------
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 15:37:39
+# @Last Modified time: 2019-06-19 19:11:40
 
 from copy import deepcopy
 import logging
@@ -117,27 +117,26 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         dydt_elec = self.pneuron.Qderivatives(t, y[3:], self.Capct(y[1]))
         return dydt_mech + dydt_elec
 
+    def createLookupStateDerivative(self, k):
+        ''' Create a function that returns a state derivative using lookup rate constants. '''
+        return lambda lkp, x: lkp['alpha{}'.format(k)] * (1 - x[k]) - lkp['beta{}'.format(k)] * x[k]
+
     def buildDerEffStates(self):
         ''' Construct a neuron-specific dictionary of effective derivative functions. '''
-        eff_dstates_funcs = {}
+        eff_dstates = {}
         for k in self.pneuron.statesNames():
-            der_func_str = 'der{}'.format(k.upper())
-            if hasattr(self.pneuron, der_func_str):
-                # der_func = getattr(pneuron, der_func_str)
-                # args_str = inspect.getargspec(der_func)[0][1:]
-                # args = [states.index(a) for a in args_str]
-                # eff_dstates[k] = der_func(states*cargs))
-                eff_dstates_funcs[k] = None
-            else:
-                eff_dstates_funcs[k] = lambda k, x, rates: (rates['alpha{}'.format(k)] * (1 - x) -
-                                                            rates['beta{}'.format(k)] * x)
+            eff_dstates[k] = self.createLookupStateDerivative(k)
 
-        def derEffStates(Vm, states, rates):
-            return {k: func(k, states[k], rates) for k, func in eff_dstates_funcs.items()}
+        def derEffStates():
+            return eff_dstates
 
         return derEffStates
 
-    def effDerivatives(self, t, y, lkp):
+    def getDerEffStates(self, lkp, states):
+        ''' Compute states effective derivatives array given a dictionary of lookup vectors '''
+        return np.array([self.derEffStates()[k](lkp, states) for k in self.pneuron.statesNames()])
+
+    def effDerivatives(self, t, y, lkp1D):
         ''' Compute the derivatives of the n-ODE effective HH system variables,
             based on 1-dimensional linear interpolation of "effective" coefficients
             that summarize the system's behaviour over an acoustic cycle.
@@ -150,26 +149,35 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
         Qm, *states = y
         states_dict = dict(zip(self.pneuron.statesNames(), states))
-        rates = self.pneuron.interpEffRates(Qm, lkp)
-        Vmeff = self.pneuron.interpVmeff(Qm, lkp)
-        dQmdt = - self.pneuron.iNet(Vmeff, states_dict) * 1e-3
-        dstates = self.derEffStates(Vmeff, states_dict, rates)
-        return [dQmdt, *[dstates[k] for k in self.pneuron.statesNames()]]
+        lkp0D = {k: self.interpEffVariable(Qm, lkp1D['Q'], v) for k, v in lkp1D.items()}
+        dQmdt = - self.pneuron.iNet(lkp0D['V'], states_dict) * 1e-3
+        # return [dQmdt, *self.pneuron.getDerEffStates(lkp0D, states_dict)]
+        return [dQmdt, *self.getDerEffStates(lkp0D, states_dict)]
 
-    def interpEffVariable(self, key, Qm, stim, lkps1D):
-        ''' Interpolate Q-dependent effective variable along solution.
+    def interpEffVariable(self, Qm, Qref, yref):
+        ''' Interpolate an effective variable along charge density using lookup vector.
+
+            :param Qm: membrane charge density (C/m2)
+            :param Qref: reference charge density vector (C/m2)
+            :param yref: reference effective variable vector
+            :return: interpolated variable
+        '''
+        return np.interp(Qm, Qref, yref, left=np.nan, right=np.nan)
+
+    def interpOnOffVariable(self, key, Qm, stim, lkp):
+        ''' Interpolate Q-dependent effective variable along ON and OFF periods of a solution.
 
             :param key: lookup variable key
             :param Qm: charge density solution vector
             :param stim: stimulation state solution vector
-            :param lkps1D: dictionary of lookups for ON and OFF states
+            :param lkp: dictionary of lookups for ON and OFF states
             :return: interpolated effective variable vector
         '''
         x = np.zeros(stim.size)
-        x[stim == 0] = np.interp(
-            Qm[stim == 0], lkps1D['OFF']['Q'], lkps1D['OFF'][key], left=np.nan, right=np.nan)
-        x[stim == 1] = np.interp(
-            Qm[stim == 1], lkps1D['ON']['Q'], lkps1D['ON'][key], left=np.nan, right=np.nan)
+        x[stim == 0] = self.interpEffVariable(
+            Qm[stim == 0], lkp['OFF']['Q'], lkp['OFF'][key])
+        x[stim == 1] = self.interpEffVariable(
+            Qm[stim == 1], lkp['ON']['Q'], lkp['ON'][key])
         return x
 
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
@@ -368,7 +376,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             'stimstate': stim,
             'Qm': y[:, 0]
         })
-        data['Vm'] = self.interpEffVariable('V', data['Qm'].values, stim, lkps1D)
+        data['Vm'] = self.interpOnOffVariable('V', data['Qm'].values, stim, lkps1D)
         for key in ['Z', 'ng']:
             data[key] = np.full(t.size, np.nan)
         for i in range(len(self.pneuron.states)):
