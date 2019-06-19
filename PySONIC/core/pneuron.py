@@ -3,11 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 14:32:34
+# @Last Modified time: 2019-06-19 15:33:57
 
 import abc
 import inspect
-import re
 import numpy as np
 import pandas as pd
 
@@ -105,11 +104,19 @@ class PointNeuron(Model):
 
     @abc.abstractmethod
     def steadyStates(self):
-        ''' Dictionary of steady-states functions. '''
+        ''' Dictionary of steady-states functions '''
+
+    def getSteadyStates(self, Vm):
+        ''' Compute array of steady-states for a given membrane potential '''
+        return np.array([self.steadyStates()[k](Vm) for k in self.statesNames()])
 
     @abc.abstractmethod
     def derStates(self):
         ''' Dictionary of states derivatives functions '''
+
+    def getDerStates(self, Vm, states):
+        ''' Compute states derivatives array given a membrane potential and states dictionary '''
+        return np.array([self.derStates()[k](Vm, states) for k in self.statesNames()])
 
     @abc.abstractmethod
     def currents(self):
@@ -457,7 +464,7 @@ class PointNeuron(Model):
         states_dict = dict(zip(self.statesNames(), states))
         Iionic = self.iNet(Vm, states_dict)  # mA/m2
         dVmdt = (- Iionic + Iinj) / self.Cm0  # mV/s
-        return [dVmdt, *[self.derStates()[k](Vm, states_dict) for k in self.statesNames()]]
+        return [dVmdt, *self.getDerStates(Vm, states_dict)]
 
     def Qderivatives(self, t, y, Cm=None):
         ''' Compute the derivatives of the n-ODE HH system variables,
@@ -474,7 +481,7 @@ class PointNeuron(Model):
         Vm = Qm / Cm * 1e3  # mV
         states_dict = dict(zip(self.statesNames(), states))
         dQmdt = - self.iNet(Vm, states_dict) * 1e-3  # A/m2
-        return [dQmdt, *[self.derStates()[k](Vm, states_dict) for k in self.statesNames()]]
+        return [dQmdt, *self.getDerStates(Vm, states_dict)]
 
     def checkInputs(self, Astim, tstim, toffset, PRF, DC):
         ''' Check validity of electrical stimulation parameters.
@@ -547,10 +554,7 @@ class PointNeuron(Model):
         self.checkInputs(Astim, tstim, toffset, PRF, DC)
 
         # Set initial conditions
-        y0 = np.array([
-            self.Vm0,
-            *[self.steadyStates()[k](self.Vm0) for k in self.statesNames()]
-        ])
+        y0 = np.array((self.Vm0, *self.getSteadyStates(self.Vm0)))
 
         # Initialize simulator and compute solution
         logger.debug('Computing solution')

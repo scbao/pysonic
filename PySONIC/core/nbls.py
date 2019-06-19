@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 09:57:54
+# @Last Modified time: 2019-06-19 15:37:39
 
 from copy import deepcopy
 import logging
@@ -197,10 +197,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Z0 = self.balancedefQS(self.ng0, self.Qm0, Pac)
 
         # Set initial conditions
-        steady_states = self.pneuron.steadyStates(self.pneuron.Vm0)
         y0 = np.concatenate((
-            [0., Z0, self.ng0, self.Qm0],
-            [steady_states[k] for k in self.pneuron.statesNames()]))
+            [0., Z0, self.ng0, self.Qm0], self.pneuron.getSteadyStates(self.pneuron.Vm0)))
 
         # Initialize simulator and compute solution
         logger.debug('Computing detailed solution')
@@ -249,11 +247,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         Z0 = self.balancedefQS(self.ng0, self.Qm0, Pac)
 
         # Set initial conditions
-        steady_states = self.pneuron.steadyStates(self.pneuron.Vm0)
         y0 = np.concatenate((
-            [0., Z0, self.ng0, self.Qm0],
-            [steady_states[k] for k in self.pneuron.statesNames()],
-        ))
+            [0., Z0, self.ng0, self.Qm0], self.pneuron.getSteadyStates(self.pneuron.Vm0)))
+
         is_dense_var = np.array([True] * 3 + [False] * (len(self.pneuron.states) + 1))
 
         # Initialize simulator and compute solution
@@ -355,9 +351,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lkps1D[state]['Q'] = Qref
 
         # Set initial conditions
-        steady_states = self.pneuron.steadyStates(self.pneuron.Vm0)
-        y0 = np.insert(
-            np.array([steady_states[k] for k in self.pneuron.statesNames()]), 0, self.Qm0)
+        y0 = np.concatenate(([self.Qm0], self.pneuron.getSteadyStates(self.pneuron.Vm0)))
 
         # Initialize simulator and compute solution
         logger.debug('Computing effective solution')
