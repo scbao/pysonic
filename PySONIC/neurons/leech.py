@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 18:20:51
+# @Last Modified time: 2019-06-19 11:02:44
 
 from functools import partialmethod
 import numpy as np
@@ -69,8 +69,17 @@ class LeechTouch(PointNeuron):
     taua_PumpNa = 0.1  # PumpNa current activation from intracellular Na+
     taua_KCa = 0.01    # KCa current activation from intracellular Ca2+
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n', 's', 'Nai', 'ANai', 'Cai', 'ACai')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        's': 'iCa gate',
+        'Nai': 'submembrane Na+ concentration (arbitrary unit)',
+        'ANa': 'Na+ dependent iPumpNa gate',
+        'Cai': 'submembrane Ca2+ concentration (arbitrary unit)',
+        'ACa': 'Ca2+ dependent iKCa gate'
+    }
 
     def __init__(self):
         super().__init__()
@@ -136,32 +145,19 @@ class LeechTouch(PointNeuron):
     # ------------------------------ States derivatives ------------------------------
 
     def derNai(self, Nai, m, h, Vm):
-        ''' Evolution of submembrane Sodium concentration.
-
-            :param Nai: submembrane Sodium concentration (M)
-            :param m: open-probability of m-gate (-)
-            :param h: open-probability of h-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: time derivative of submembrane Sodium concentration (M/s)
-        '''
-        return self._derCion(Nai, self.iNa(m, h, Vm), self.K_Na, self.taur_Na)
+        ''' Evolution of submembrane Sodium concentration '''
+        return self._derCion(Nai, self.iNa(m, h, Vm), self.K_Na, self.taur_Na)  # M/s
 
     def derCai(self, Cai, s, Vm):
-        ''' Evolution of submembrane Calcium concentration.
-
-            :param Cai: submembrane Calcium concentration (M)
-            :param s: open-probability of s-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: time derivative of submembrane Calcium concentration (M/s)
-        '''
-        return self._derCion(Cai, self.iCa(s, Vm), self.K_Ca, self.taur_Ca)
+        ''' Evolution of submembrane Calcium concentration '''
+        return self._derCion(Cai, self.iCa(s, Vm), self.K_Ca, self.taur_Ca)  # M/s
 
     def derANa(self, ANa, Nai):
-        ''' Evolution of Sodium pool-dependent activation function for iPumpNa. '''
+        ''' Evolution of Na+ dependent iPumpNa gate '''
         return self._derAion(ANa, Nai, self.taua_PumpNa)
 
     def derACa(self, ACa, Cai):
-        ''' Evolution of Calcium pool-dependent activation function for iKCa. '''
+        ''' Evolution of Ca2+ dependent iKCa gate '''
         return self._derAion(ACa, Cai, self.taua_KCa)
 
     def derStates(self, Vm, states):
@@ -171,9 +167,9 @@ class LeechTouch(PointNeuron):
             'n': (self.ninf(Vm) - states['n']) / self.taun(Vm),
             's': (self.sinf(Vm) - states['s']) / self.taus,
             'Nai': self.derNai(states['Nai'], states['m'], states['h'], Vm),
-            'ANai': self.derANa(states['ANai'], states['Nai']),
+            'ANa': self.derANa(states['ANa'], states['Nai']),
             'Cai': self.derCai(states['Cai'], states['s'], Vm),
-            'ACai': self.derACa(states['ACai'], states['Cai'])
+            'ACa': self.derACa(states['ACa'], states['Cai'])
         }
 
     def derEffStates(self, Vm, states, rates):
@@ -183,107 +179,69 @@ class LeechTouch(PointNeuron):
             'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
             's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
             'Nai': self.derNai(states['Nai'], states['m'], states['h'], Vm),
-            'ANai': self.derANa(states['ANai'], states['Nai']),
+            'ANa': self.derANa(states['ANa'], states['Nai']),
             'Cai': self.derCai(states['Cai'], states['s'], Vm),
-            'ACai': self.derACa(states['ACai'], states['Cai'])
+            'ACa': self.derACa(states['ACa'], states['Cai'])
         }
 
     # ------------------------------ Steady states ------------------------------
 
     def steadyStates(self, Vm):
-        # Standard gating dynamics: Solve the equation dx/dt = 0 at Vm for each x-state
         sstates = {
             'm': self.minf(Vm),
             'h': self.hinf(Vm),
             'n': self.ninf(Vm),
             's': self.sinf(Vm)
         }
-        # pools concentrations and activation steady-states
         sstates['Nai'] = - self.K_Na * self.iNa(sstates['m'], sstates['h'], Vm)
-        sstates['ANai'] = sstates['Nai']
+        sstates['ANa'] = sstates['Nai']
         sstates['Cai'] = - self.K_Ca * self.iCa(sstates['s'], Vm)
-        sstates['ACai'] = sstates['Cai']
-
+        sstates['ACa'] = sstates['Cai']
         return sstates
 
     def quasiSteadyStates(self, lkp):
-        # Standard gating dynamics
         qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
-
-        # pool concentrations and activation steady-states
         qsstates['Nai'] = - self.K_Na * self.iNa(qsstates['m'], qsstates['h'], lkp['V'])
-        qsstates['ANai'] = qsstates['Nai']
+        qsstates['ANa'] = qsstates['Nai']
         qsstates['Cai'] = - self.K_Ca * self.iCa(qsstates['s'], lkp['V'])
-        qsstates['ACai'] = qsstates['Cai']
-
+        qsstates['ACa'] = qsstates['Cai']
         return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 
     def iNa(self, m, h, Vm):
-        ''' Sodium current
-
-            :param m: open-probability of m-gate
-            :param h: open-probability of h-gate
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gNabar * m**3 * h * (Vm - self.ENa)
+        ''' Sodium current '''
+        return self.gNabar * m**3 * h * (Vm - self.ENa)  # mA/m2
 
     def iKd(self, n, Vm):
-        ''' Delayed-rectifier Potassium current
-
-            :param n: open-probability of n-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gKdbar * n**2 * (Vm - self.EK)
+        ''' Delayed-rectifier Potassium current '''
+        return self.gKdbar * n**2 * (Vm - self.EK)  # mA/m2
 
     def iCa(self, s, Vm):
-        ''' Calcium current
-
-            :param s: open-probability of s-gate (-)
-            :param u: open-probability of u-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gCabar * s * (Vm - self.ECa)
+        ''' Calcium current '''
+        return self.gCabar * s * (Vm - self.ECa)  # mA/m2
 
     def iKCa(self, ACa, Vm):
-        ''' Calcium-activated Potassium current
-
-            :param ACa: Calcium pool-dependent gate opening (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gKCabar * ACa * (Vm - self.EK)
+        ''' Calcium-activated Potassium current '''
+        return self.gKCabar * ACa * (Vm - self.EK)  # mA/m2
 
     def iPumpNa(self, ANa, Vm):
-        ''' NaK-ATPase pump current
-
-            :param ANa: Sodium pool-dependent gate opening (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gPumpNa * ANa * (Vm - self.EPumpNa)
+        ''' NaK-ATPase pump current '''
+        return self.gPumpNa * ANa * (Vm - self.EPumpNa)  # mA/m2
 
     def iLeak(self, Vm):
-        ''' Non-specific leakage current
+        ''' Non-specific leakage current '''
+        return self.gLeak * (Vm - self.ELeak)  # mA/m2
 
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gLeak * (Vm - self.ELeak)
-
-    def currents(self, Vm, states):
+    def currents(self):
         return {
-            'iNa': self.iNa(states['m'], states['h'], Vm),
-            'iKd': self.iKd(states['n'], Vm),
-            'iCa': self.iCa(states['s'], Vm),
-            'iLeak': self.iLeak(Vm),
-            'iPumpNa': self.iPumpNa(states['ANai'], Vm),
-            'iKCa': self.iKCa(states['ACai'], Vm)
-        }  # mA/m2
+            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
+            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
+            'iCa': lambda Vm, states: self.iCa(states['s'], Vm),
+            'iPumpNa': lambda Vm, states: self.iPumpNa(states['ANa'], Vm),
+            'iKCa': lambda Vm, states: self.iKCa(states['ACa'], Vm),
+            'iLeak': lambda Vm, _: self.iLeak(Vm)
+        }
 
     # ------------------------------ Other methods ------------------------------
 
@@ -318,88 +276,34 @@ class LeechMech(PointNeuron):
     # ------------------------------ Gating states kinetics ------------------------------
 
     def alpham(self, Vm):
-        ''' Voltage-dependent activation rate of m-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
-        '''
-        alpha = -0.03 * (Vm + 28) / (np.exp(- (Vm + 28) / 15) - 1)  # ms-1
-        return alpha * 1e3  # s-1
+        return -0.03 * (Vm + 28) / (np.exp(- (Vm + 28) / 15) - 1) * 1e3  # s-1
 
     def betam(self, Vm):
-        ''' Voltage-dependent inactivation rate of m-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
-        '''
-        beta = 2.7 * np.exp(-(Vm + 53) / 18)  # ms-1
-        return beta * 1e3  # s-1
+        return 2.7 * np.exp(-(Vm + 53) / 18) * 1e3  # s-1
 
     def alphah(self, Vm):
-        ''' Voltage-dependent activation rate of h-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
-        '''
-        alpha = 0.045 * np.exp(-(Vm + 58) / 18)  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.045 * np.exp(-(Vm + 58) / 18) * 1e3  # s-1
 
     def betah(self, Vm):
-        ''' Voltage-dependent inactivation rate of h-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
-
-            .. warning:: the original paper contains an error (multiplication) in the
+        ''' .. warning:: the original paper contains an error (multiplication) in the
             expression of this rate constant, corrected in the mod file on ModelDB (division).
         '''
-        beta = 0.72 / (np.exp(-(Vm + 23) / 14) + 1)  # ms-1
-        return beta * 1e3  # s-1
+        return 0.72 / (np.exp(-(Vm + 23) / 14) + 1) * 1e3  # s-1
 
     def alphan(self, Vm):
-        ''' Voltage-dependent activation rate of n-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
-        '''
-        alpha = -0.024 * (Vm - 17) / (np.exp(-(Vm - 17) / 8) - 1)  # ms-1
-        return alpha * 1e3  # s-1
+        return -0.024 * (Vm - 17) / (np.exp(-(Vm - 17) / 8) - 1) * 1e3  # s-1
 
     def betan(self, Vm):
-        ''' Voltage-dependent inactivation rate of n-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
-        '''
-        beta = 0.2 * np.exp(-(Vm + 48) / 35)  # ms-1
-        return beta * 1e3  # s-1
+        return 0.2 * np.exp(-(Vm + 48) / 35) * 1e3  # s-1
 
     def alphas(self, Vm):
-        ''' Voltage-dependent activation rate of s-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
-        '''
-        alpha = -1.5 * (Vm - 20) / (np.exp(-(Vm - 20) / 5) - 1)  # ms-1
-        return alpha * 1e3  # s-1
+        return -1.5 * (Vm - 20) / (np.exp(-(Vm - 20) / 5) - 1) * 1e3  # s-1
 
     def betas(self, Vm):
-        ''' Voltage-dependent inactivation rate of s-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate constant (s-1)
-        '''
-        beta = 1.5 * np.exp(-(Vm + 25) / 10)  # ms-1
-        return beta * 1e3  # s-1
+        return 1.5 * np.exp(-(Vm + 25) / 10) * 1e3  # s-1
 
     def alphaC(self, Cai):
-        ''' Voltage-dependent activation rate of C-gate
-
-            :param Cai: intracellular Calcium concentration (M)
-            :return: rate constant (s-1)
-        '''
-        alpha = 0.1 * Cai / self.alphaC_sf  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.1 * Cai / self.alphaC_sf * 1e3  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 
@@ -433,66 +337,35 @@ class LeechMech(PointNeuron):
     # ------------------------------ Membrane currents ------------------------------
 
     def iNa(self, m, h, Vm, Nai):
-        ''' Sodium current
-
-            :param m: open-probability of m-gate (-)
-            :param h: open-probability of h-gate (-)
-            :param Vm: membrane potential (mV)
-            :param Nai: intracellular Sodium concentration (M)
-            :return: current per unit area (mA/m2)
-        '''
-        GNa = self.gNabar * m**4 * h
+        ''' Sodium current '''
         ENa = self.nernst(Z_Na, Nai, self.Nao, self.T)  # mV
-        return GNa * (Vm - ENa)
+        return self.gNabar * m**4 * h * (Vm - ENa)  # mA/m2
 
     def iKd(self, n, Vm):
-        ''' Delayed-rectifier Potassium current
-
-            :param n: open-probability of n-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        GK = self.gKdbar * n**2
-        return GK * (Vm - self.EK)
+        ''' Delayed-rectifier Potassium current '''
+        return self.gKdbar * n**2 * (Vm - self.EK)  # mA/m2
 
     def iCa(self, s, Vm, Cai):
-        ''' Calcium current
-
-            :param s: open-probability of s-gate (-)
-            :param Vm: membrane potential (mV)
-            :param Cai: intracellular Calcium concentration (M)
-            :return: current per unit area (mA/m2)
-        '''
-        GCa = self.gCabar * s
+        ''' Calcium current '''
         ECa = self.nernst(Z_Ca, Cai, self.Cao, self.T)  # mV
-        return GCa * (Vm - ECa)
+        return self.gCabar * s * (Vm - ECa)  # mA/m2
 
     def iKCa(self, c, Vm):
-        ''' Calcium-activated Potassium current
-
-            :param c: open-probability of c-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        GKCa = self.gKCabar * c
-        return GKCa * (Vm - self.EK)
+        ''' Calcium-activated Potassium current '''
+        return self.gKCabar * c * (Vm - self.EK)  # mA/m2
 
     def iLeak(self, Vm):
-        ''' Non-specific leakage current
+        ''' Non-specific leakage current '''
+        return self.gLeak * (Vm - self.ELeak)  # mA/m2
 
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gLeak * (Vm - self.ELeak)
-
-    def currents(self, Vm, states):
+    def currents(self):
         return {
-            'iNa': self.iNa(states['m'], states['h'], Vm, states['Nai']),
-            'iKd': self.iKd(states['n'], Vm),
-            'iCa': self.iCa(states['s'], Vm, states['Cai']),
-            'iKCa': self.iKCa(states['c'], Vm),
-            'iLeak': self.iLeak(Vm)
-        }  # mA/m2
+            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm, states['Nai']),
+            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
+            'iCa': lambda Vm, states: self.iCa(states['s'], Vm, states['Cai']),
+            'iKCa': lambda Vm, states: self.iKCa(states['c'], Vm),
+            'iLeak': lambda Vm, _: self.iLeak(Vm)
+        }
 
 
 class LeechPressure(LeechMech):
@@ -539,8 +412,16 @@ class LeechPressure(LeechMech):
     iCaS = 0.1        # Calcium pump current parameter (mA/m2)
     diam = 50e-6      # Cell soma diameter (m)
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n', 's', 'c', 'Nai', 'Cai')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        's': 'iCa gate',
+        'c': 'iKCa gate',
+        'Nai': 'submembrane Na+ concentration (M)',
+        'Cai': 'submembrane Ca2+ concentration (M)'
+    }
 
     def __init__(self):
         ''' Constructor of the class. '''
@@ -603,33 +484,24 @@ class LeechPressure(LeechMech):
     # ------------------------------ Membrane currents ------------------------------
 
     def iPumpNa(self, Nai):
-        ''' NaK-ATPase pump current
-
-            :param Nai: intracellular Sodium concentration (M)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.INaPmax / (1 + np.exp((self.khalf_Na - Nai) / self.ksteep_Na))
+        ''' NaK-ATPase pump current '''
+        return self.INaPmax / (1 + np.exp((self.khalf_Na - Nai) / self.ksteep_Na))  # mA/m2
 
     def iPumpCa(self, Cai):
-        ''' Calcium pump current
+        ''' Calcium pump current '''
+        return self.iCaS * (Cai - self.Cai0) / 1.5  # mA/m2
 
-            :param Cai: intracellular Calcium concentration (M)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.iCaS * (Cai - self.Cai0) / 1.5
-
-    def currents(self, Vm, states):
-        currents = super().currents(Vm, states)
+    def currents(self):
+        currents = super().currents()
         currents.update({
-            'iPumpNa': self.iPumpNa(states['Nai']) / 3.,
-            'iPumpCa': self.iPumpCa(states['Cai'])
-        })  # mA/m2
+            'iPumpNa': lambda Vm, states: self.iPumpNa(states['Nai']) / 3.,
+            'iPumpCa': lambda Vm, states: self.iPumpCa(states['Cai'])
+        })
         return currents
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        # Compute average cycle value for rate constants
         return {
             'alpham': np.mean(self.alpham(Vm)),
             'betam': np.mean(self.betam(Vm)),
@@ -650,6 +522,11 @@ class LeechRetzius(LeechMech):
         postsynaptic potentials in electrically-coupled neurones. Neuroscience 163, 202–212.*
 
         *ModelDB link: https://senselab.med.yale.edu/modeldb/ShowModel.cshtml?model=120910*
+
+        iA current reference:
+        *Beck, H., Ficker, E., and Heinemann, U. (1992). Properties of two voltage-activated
+        potassium currents in acutely isolated juvenile rat dentate gyrus granule cells.
+        J. Neurophysiol. 68, 2086–2099.*
     '''
 
     # Neuron name
@@ -681,68 +558,36 @@ class LeechRetzius(LeechMech):
     # Additional parameters
     Vhalf = -73.1  # half-activation voltage (mV)
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n', 's', 'c', 'a', 'b')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        's': 'iCa gate',
+        'c': 'iKCa gate',
+        'a': 'iA activation gate',
+        'b': 'iA inactivation gate',
+    }
 
     # ------------------------------ Gating states kinetics ------------------------------
 
     def ainf(self, Vm):
-        ''' Steady-state open-probability of a-gate.
-
-            Source:
-            *Beck, H., Ficker, E., and Heinemann, U. (1992). Properties of two voltage-activated
-            potassium currents in acutely isolated juvenile rat dentate gyrus granule cells.
-            J. Neurophysiol. 68, 2086–2099.*
-
-            :param Vm: membrane potential (mV)
-            :return: steady-state open-probability (-)
-        '''
         Vth = -55.0  # mV
         return 0 if Vm <= Vth else min(1, 2 * (Vm - Vth)**3 / ((11 - Vth)**3 + (Vm - Vth)**3))
 
     def taua(self, Vm):
-        ''' Adaptation time constant of a-gate (assuming T = 20°C).
-
-            Source:
-            *Beck, H., Ficker, E., and Heinemann, U. (1992). Properties of two voltage-activated
-            potassium currents in acutely isolated juvenile rat dentate gyrus granule cells.
-            J. Neurophysiol. 68, 2086–2099.*
-
-            :param Vm: membrane potential (mV)
-            :return: adaptation time constant (s)
-        '''
         x = -1.5 * (Vm - self.Vhalf) * 1e-3 * FARADAY / (Rg * self.T)  # [-]
         alpha = np.exp(x)  # ms-1
         beta = np.exp(0.7 * x)  # ms-1
         return max(0.5, beta / (0.3 * (1 + alpha))) * 1e-3  # s
 
     def binf(self, Vm):
-        ''' Steady-state open-probability of b-gate
-
-            Source:
-            *Beck, H., Ficker, E., and Heinemann, U. (1992). Properties of two voltage-activated
-            potassium currents in acutely isolated juvenile rat dentate gyrus granule cells.
-            J. Neurophysiol. 68, 2086–2099.*
-
-            :param Vm: membrane potential (mV)
-            :return: steady-state open-probability (-)
-        '''
         return 1. / (1 + np.exp((self.Vhalf - Vm) / -6.3))
 
     def taub(self, Vm):
-        ''' Adaptation time constant of b-gate (assuming T = 20°C).
-
-            Source:
-            *Beck, H., Ficker, E., and Heinemann, U. (1992). Properties of two voltage-activated
-            potassium currents in acutely isolated juvenile rat dentate gyrus granule cells.
-            J. Neurophysiol. 68, 2086–2099.*
-
-            :param Vm: membrane potential (mV)
-            :return: adaptation time constant (s)
-        '''
-        x = 2 * (Vm - self.Vhalf) * 1e-3 * FARADAY / (Rg * self.T)
-        alpha = np.exp(x)
-        beta = np.exp(0.65 * x)
+        x = 2 * (Vm - self.Vhalf) * 1e-3 * FARADAY / (Rg * self.T)  # [-]
+        alpha = np.exp(x)  # ms-1
+        beta = np.exp(0.65 * x)  # ms-1
         return max(7.5, beta / (0.02 * (1 + alpha))) * 1e-3  # s
 
     # ------------------------------ States derivatives ------------------------------
@@ -784,25 +629,17 @@ class LeechRetzius(LeechMech):
     # ------------------------------ Membrane currents ------------------------------
 
     def iA(self, a, b, Vm):
-        ''' Transient Potassium current
+        ''' Transient Potassium current '''
+        return self.GAMax * a * b * (Vm - self.EK)  # mA/m2
 
-            :param a: open-probability of a-gate
-            :param b: open-probability of b-gate
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        GK = self.GAMax * a * b
-        return GK * (Vm - self.EK)
-
-    def currents(self, Vm, states):
-        currents = super().currents(Vm, states)
-        currents['iA'] = self.iA(states['a'], states['b'], Vm)  # mA/m2
+    def currents(self):
+        currents = super().currents()
+        currents['iA'] = lambda Vm, states: self.iA(states['a'], states['b'], Vm)
         return currents
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        # Compute average cycle value for rate constants
         return {
             'alpham': np.mean(self.alpham(Vm)),
             'betam': np.mean(self.betam(Vm)),

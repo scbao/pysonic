@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 18:12:08
+# @Last Modified time: 2019-06-19 10:34:56
 
 import numpy as np
 
@@ -35,70 +35,32 @@ class TemplateNeuron(PointNeuron):
     # Additional parameters
     VT = -56.2  # Spike threshold adjustment parameter (mV)
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate'
+    }
 
     # ------------------------------ Gating states kinetics ------------------------------
 
     def alpham(self, Vm):
-        ''' Voltage-dependent activation rate of m-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        alpha = 0.32 * self.vtrap(13 - Vdiff, 4)  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.32 * self.vtrap(13 - (Vm - self.VT), 4) * 1e3  # s-1
 
     def betam(self, Vm):
-        ''' Voltage-dependent inactivation rate of m-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        beta = 0.28 * self.vtrap(Vdiff - 40, 5)  # ms-1
-        return beta * 1e3  # s-1
+        return 0.28 * self.vtrap((Vm - self.VT) - 40, 5) * 1e3  # s-1
 
     def alphah(self, Vm):
-        ''' Voltage-dependent activation rate of h-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        alpha = (0.128 * np.exp(-(Vdiff - 17) / 18))  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.128 * np.exp(-((Vm - self.VT) - 17) / 18) * 1e3  # s-1
 
     def betah(self, Vm):
-        ''' Voltage-dependent inactivation rate of h-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        beta = (4 / (1 + np.exp(-(Vdiff - 40) / 5)))  # ms-1
-        return beta * 1e3  # s-1
+        return 4 / (1 + np.exp(-((Vm - self.VT) - 40) / 5)) * 1e3  # s-1
 
     def alphan(self, Vm):
-        ''' Voltage-dependent activation rate of n-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        alpha = 0.032 * self.vtrap(15 - Vdiff, 5)  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.032 * self.vtrap(15 - (Vm - self.VT), 5) * 1e3  # s-1
 
     def betan(self, Vm):
-        ''' Voltage-dependent inactivation rate of n-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        beta = (0.5 * np.exp(-(Vdiff - 10) / 40))  # ms-1
-        return beta * 1e3  # s-1
+        return 0.5 * np.exp(-((Vm - self.VT) - 10) / 40) * 1e3  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 
@@ -128,38 +90,23 @@ class TemplateNeuron(PointNeuron):
     # ------------------------------ Membrane currents ------------------------------
 
     def iNa(self, m, h, Vm):
-        ''' Sodium current
-
-            :param m: open-probability of m-gate (-)
-            :param h: open-probability of h-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gNabar * m**3 * h * (Vm - self.ENa)
+        ''' Sodium current '''
+        return self.gNabar * m**3 * h * (Vm - self.ENa)  # mA/m2
 
     def iKd(self, n, Vm):
-        ''' delayed-rectifier Potassium current
-
-            :param n: open-probability of n-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gKdbar * n**4 * (Vm - self.EK)
+        ''' delayed-rectifier Potassium current '''
+        return self.gKdbar * n**4 * (Vm - self.EK)  # mA/m2
 
     def iLeak(self, Vm):
-        ''' non-specific leakage current
+        ''' non-specific leakage current '''
+        return self.gLeak * (Vm - self.ELeak)  # mA/m2
 
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gLeak * (Vm - self.ELeak)
-
-    def currents(self, Vm, states):
+    def currents(self):
         return {
-            'iNa': self.iNa(states['m'], states['h'], Vm),
-            'iKd': self.iKd(states['n'], Vm),
-            'iLeak': self.iLeak(Vm)
-        }  # mA/m2
+            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
+            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
+            'iLeak': lambda Vm, _: self.iLeak(Vm)
+        }
 
     # ------------------------------ Other methods ------------------------------
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 16:19:47
+# @Last Modified time: 2019-06-19 10:33:17
 
 import numpy as np
 from scipy.optimize import brentq
@@ -150,8 +150,21 @@ class OtsukaSTN(PointNeuron):
     kx_r = -0.08e-6     # M
     tau_r = 2e-3        # s
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('a', 'b', 'c', 'd1', 'd2', 'm', 'h', 'n', 'p', 'q', 'r', 'Cai')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        'a': 'iA activation gate',
+        'b': 'iA inactivation gate',
+        'p': 'iCaT activation gate',
+        'q': 'iCaT inactivation gate',
+        'c': 'iCaL activation gate',
+        'd1': 'iCaL inactivation gate 1',
+        'd2': 'iCaL inactivation gate 2',
+        'r': 'iCaK gate',
+        'Cai': 'submembrane Calcium concentration (M)'
+    }
 
     def __init__(self):
         super().__init__()
@@ -385,7 +398,6 @@ class OtsukaSTN(PointNeuron):
             )
 
     def steadyStates(self, Vm):
-        # voltage-gated steady states
         sstates = {
             'a': self.ainf(Vm),
             'b': self.binf(Vm),
@@ -400,7 +412,6 @@ class OtsukaSTN(PointNeuron):
         sstates['Cai'] = self.Caiinf(Vm, sstates['p'], sstates['q'], sstates['c'], sstates['d1'])
         sstates['d2'] = self.d2inf(sstates['Cai'])
         sstates['r'] = self.rinf(sstates['Cai'])
-
         return sstates
 
     def quasiSteadyStates(self, lkp):
@@ -414,89 +425,49 @@ class OtsukaSTN(PointNeuron):
     # ------------------------------ Membrane currents ------------------------------
 
     def iNa(self, m, h, Vm):
-        ''' Sodium current
-
-            :param m: open-probability of m-gate (-)
-            :param h: open-probability of h-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gNabar * m**3 * h * (Vm - self.ENa)
+        ''' Sodium current '''
+        return self.gNabar * m**3 * h * (Vm - self.ENa)  # mA/m2
 
     def iKd(self, n, Vm):
-        ''' delayed-rectifier Potassium current
-
-            :param n: open-probability of n-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gKdbar * n**4 * (Vm - self.EK)
+        ''' delayed-rectifier Potassium current '''
+        return self.gKdbar * n**4 * (Vm - self.EK)  # mA/m2
 
     def iA(self, a, b, Vm):
-        ''' A-type Potassium current
-
-            :param a: open-probability of a-gate (-)
-            :param b: open-probability of b-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gAbar * a**2 * b * (Vm - self.EK)
+        ''' A-type Potassium current '''
+        return self.gAbar * a**2 * b * (Vm - self.EK)  # mA/m2
 
     def iCaT(self, p, q, Vm, Cai):
-        ''' low-threshold (T-type) Calcium current
-
-            :param p: open-probability of p-gate (-)
-            :param q: open-probability of q-gate (-)
-            :param Vm: membrane potential (mV)
-            :param Cai: submembrane Calcium concentration (M)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gCaTbar * p**2 * q * (Vm - self.nernst(Z_Ca, Cai, self.Cao, self.T))
+        ''' low-threshold (T-type) Calcium current '''
+        return self.gCaTbar * p**2 * q * (Vm - self.nernst(Z_Ca, Cai, self.Cao, self.T))  # mA/m2
 
     def iCaL(self, c, d1, d2, Vm, Cai):
-        ''' high-threshold (L-type) Calcium current
-
-            :param c: open-probability of c-gate (-)
-            :param d1: open-probability of d1-gate (-)
-            :param d2: open-probability of d2-gate (-)
-            :param Vm: membrane potential (mV)
-            :param Cai: submembrane Calcium concentration (M)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gCaLbar * c**2 * d1 * d2 * (Vm - self.nernst(Z_Ca, Cai, self.Cao, self.T))
+        ''' high-threshold (L-type) Calcium current '''
+        return self.gCaLbar * c**2 * d1 * d2 * (
+            Vm - self.nernst(Z_Ca, Cai, self.Cao, self.T))  # mA/m2
 
     def iKCa(self, r, Vm):
-        ''' Calcium-activated Potassium current
-
-            :param r: open-probability of r-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gKCabar * r**2 * (Vm - self.EK)
+        ''' Calcium-activated Potassium current '''
+        return self.gKCabar * r**2 * (Vm - self.EK)  # mA/m2
 
     def iLeak(self, Vm):
-        ''' non-specific leakage current
+        ''' non-specific leakage current '''
+        return self.gLeak * (Vm - self.ELeak)  # mA/m2
 
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gLeak * (Vm - self.ELeak)
-
-    def currents(self, Vm, states):
+    def currents(self):
         return {
-            'iNa': self.iNa(states['m'], states['h'], Vm),
-            'iKd': self.iKd(states['n'], Vm),
-            'iA': self.iA(states['a'], states['b'], Vm),
-            'iCaT': self.iCaT(states['p'], states['q'], Vm, states['Cai']),
-            'iCaL': self.iCaL(states['c'], states['d1'], states['d2'], Vm, states['Cai']),
-            'iKCa': self.iKCa(states['r'], Vm),
-            'iLeak': self.iLeak(Vm)
-        }  # mA/m2
+            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
+            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
+            'iA': lambda Vm, states: self.iA(states['a'], states['b'], Vm),
+            'iCaT': lambda Vm, states: self.iCaT(states['p'], states['q'], Vm, states['Cai']),
+            'iCaL': lambda Vm, states: self.iCaL(
+                states['c'], states['d1'], states['d2'], Vm, states['Cai']),
+            'iKCa': lambda Vm, states: self.iKCa(states['r'], Vm),
+            'iLeak': lambda Vm, _: self.iLeak(Vm)
+        }
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        # Compute average cycle value for rate constants
         return {
             'alphaa': np.mean(self.ainf(Vm) / self.taua(Vm)),
             'betaa': np.mean((1 - self.ainf(Vm)) / self.taua(Vm)),

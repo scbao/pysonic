@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 16:12:54
+# @Last Modified time: 2019-06-19 09:46:54
 
 import numpy as np
 from ..core import PointNeuron
@@ -31,79 +31,27 @@ class Cortical(PointNeuron):
     # ------------------------------ Gating states kinetics ------------------------------
 
     def alpham(self, Vm):
-        ''' Voltage-dependent activation rate of m-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        alpha = 0.32 * self.vtrap(13 - Vdiff, 4)  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.32 * self.vtrap(13 - (Vm - self.VT), 4) * 1e3  # s-1
 
     def betam(self, Vm):
-        ''' Voltage-dependent inactivation rate of m-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        beta = 0.28 * self.vtrap(Vdiff - 40, 5)  # ms-1
-        return beta * 1e3  # s-1
+        return 0.28 * self.vtrap((Vm - self.VT) - 40, 5) * 1e3  # s-1
 
     def alphah(self, Vm):
-        ''' Voltage-dependent activation rate of h-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        alpha = (0.128 * np.exp(-(Vdiff - 17) / 18))  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.128 * np.exp(-((Vm - self.VT) - 17) / 18) * 1e3  # s-1
 
     def betah(self, Vm):
-        ''' Voltage-dependent inactivation rate of h-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        beta = (4 / (1 + np.exp(-(Vdiff - 40) / 5)))  # ms-1
-        return beta * 1e3  # s-1
+        return 4 / (1 + np.exp(-((Vm - self.VT) - 40) / 5)) * 1e3  # s-1
 
     def alphan(self, Vm):
-        ''' Voltage-dependent activation rate of n-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        alpha = 0.032 * self.vtrap(15 - Vdiff, 5)  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.032 * self.vtrap(15 - (Vm - self.VT), 5) * 1e3  # s-1
 
     def betan(self, Vm):
-        ''' Voltage-dependent inactivation rate of n-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        beta = (0.5 * np.exp(-(Vdiff - 10) / 40))  # ms-1
-        return beta * 1e3  # s-1
+        return 0.5 * np.exp(-((Vm - self.VT) - 10) / 40) * 1e3  # s-1
 
     def pinf(self, Vm):
-        ''' Voltage-dependent steady-state opening of p-gate
-
-            :param Vm: membrane potential (mV)
-            :return: steady-state opening (-)
-        '''
         return 1.0 / (1 + np.exp(-(Vm + 35) / 10))
 
     def taup(self, Vm):
-        ''' Voltage-dependent adaptation time for adaptation of p-gate
-
-            :param Vm: membrane potential (mV)
-            :return: adaptation time (s)
-        '''
         return self.TauMax / (3.3 * np.exp((Vm + 35) / 20) + np.exp(-(Vm + 35) / 20))  # s
 
     # ------------------------------ States derivatives ------------------------------
@@ -137,48 +85,28 @@ class Cortical(PointNeuron):
     # ------------------------------ Membrane currents ------------------------------
 
     def iNa(self, m, h, Vm):
-        ''' Sodium current
-
-            :param m: open-probability of m-gate (-)
-            :param h: open-probability of h-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gNabar * m**3 * h * (Vm - self.ENa)
+        ''' Sodium current '''
+        return self.gNabar * m**3 * h * (Vm - self.ENa)  # mA/m2
 
     def iKd(self, n, Vm):
-        ''' delayed-rectifier Potassium current
-
-            :param n: open-probability of n-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gKdbar * n**4 * (Vm - self.EK)
+        ''' delayed-rectifier Potassium current '''
+        return self.gKdbar * n**4 * (Vm - self.EK)  # mA/m2
 
     def iM(self, p, Vm):
-        ''' slow non-inactivating Potassium current
-
-            :param p: open-probability of p-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gMbar * p * (Vm - self.EK)
+        ''' slow non-inactivating Potassium current '''
+        return self.gMbar * p * (Vm - self.EK)  # mA/m2
 
     def iLeak(self, Vm):
-        ''' non-specific leakage current
+        ''' non-specific leakage current '''
+        return self.gLeak * (Vm - self.ELeak)  # mA/m2
 
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gLeak * (Vm - self.ELeak)
-
-    def currents(self, Vm, states):
+    def currents(self):
         return {
-            'iNa': self.iNa(states['m'], states['h'], Vm),
-            'iKd': self.iKd(states['n'], Vm),
-            'iM': self.iM(states['p'], Vm),
-            'iLeak': self.iLeak(Vm)
-        }  # mA/m2
+            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
+            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
+            'iM': lambda Vm, states: self.iM(states['p'], Vm),
+            'iLeak': lambda Vm, _: self.iLeak(Vm)
+        }
 
     # ------------------------------ Other methods ------------------------------
 
@@ -225,8 +153,13 @@ class CorticalRS(Cortical):
     VT = -56.2      # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n', 'p')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        'p': 'iM gate'
+    }
 
 
 class CorticalFS(Cortical):
@@ -259,8 +192,13 @@ class CorticalFS(Cortical):
     VT = -57.9      # Spike threshold adjustment parameter (mV)
     TauMax = 0.502  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n', 'p')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        'p': 'iM gate'
+    }
 
 
 class CorticalLTS(Cortical):
@@ -299,42 +237,29 @@ class CorticalLTS(Cortical):
     TauMax = 4.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
     Vx = -7.0     # Voltage-dependence uniform shift factor at 36°C (mV)
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n', 'p', 's', 'u')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        'p': 'iM gate',
+        's': 'iCaT activation gate',
+        'u': 'iCaT inactivation gate'
+    }
 
     # ------------------------------ Gating states kinetics ------------------------------
 
     def sinf(self, Vm):
-        ''' Voltage-dependent steady-state opening of s-gate
-
-            :param Vm: membrane potential (mV)
-            :return: steady-state opening (-)
-        '''
         return 1.0 / (1.0 + np.exp(-(Vm + self.Vx + 57.0) / 6.2))
 
     def taus(self, Vm):
-        ''' Voltage-dependent adaptation time for adaptation of s-gate
-
-            :param Vm: membrane potential (mV)
-            :return: adaptation time (s)
-        '''
         x = np.exp(-(Vm + self.Vx + 132.0) / 16.7) + np.exp((Vm + self.Vx + 16.8) / 18.2)
         return 1.0 / 3.7 * (0.612 + 1.0 / x) * 1e-3  # s
 
     def uinf(self, Vm):
-        ''' Voltage-dependent steady-state opening of u-gate
-
-            :param Vm: membrane potential (mV)
-            :return: steady-state opening (-)
-        '''
-        return 1.0 / (1.0 + np.exp((Vm + self.Vx + 81.0) / 4.0))  # prob
+        return 1.0 / (1.0 + np.exp((Vm + self.Vx + 81.0) / 4.0))
 
     def tauu(self, Vm):
-        ''' Voltage-dependent adaptation time for adaptation of u-gate
-
-            :param Vm: membrane potential (mV)
-            :return: adaptation time (s)
-        '''
         if Vm + self.Vx < -80.0:
             return 1.0 / 3.7 * np.exp((Vm + self.Vx + 467.0) / 66.6) * 1e-3  # s
         else:
@@ -361,7 +286,6 @@ class CorticalLTS(Cortical):
     # ------------------------------ Steady states ------------------------------
 
     def steadyStates(self, Vm):
-        # Voltage-gated steady-states
         sstates = super().steadyStates(Vm)
         sstates['s'] = self.sinf(Vm)
         sstates['u'] = self.uinf(Vm)
@@ -370,29 +294,24 @@ class CorticalLTS(Cortical):
     # ------------------------------ Membrane currents ------------------------------
 
     def iCaT(self, s, u, Vm):
-        ''' low-threshold (T-type) Calcium current
+        ''' low-threshold (T-type) Calcium current '''
+        return self.gCaTbar * s**2 * u * (Vm - self.ECa)  # mA/m2
 
-            :param s: open-probability of s-gate (-)
-            :param u: open-probability of u-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gCaTbar * s**2 * u * (Vm - self.ECa)
-
-    def currents(self, Vm, states):
-        currents = super().currents(Vm, states)
-        currents['iCaT'] = self.iCaT(states['s'], states['u'], Vm)  # mA/m2
+    def currents(self):
+        currents = super().currents()
+        currents['iCaT'] = lambda Vm, states: self.iCaT(states['s'], states['u'], Vm)
         return currents
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
         effrates = super().computeEffRates(Vm)
-        effrates['alphas'] = np.mean(self.sinf(Vm) / self.taus(Vm))
-        effrates['betas'] = np.mean((1 - self.sinf(Vm)) / self.taus(Vm))
-        effrates['alphau'] = np.mean(self.uinf(Vm) / self.tauu(Vm))
-        effrates['betau'] = np.mean((1 - self.uinf(Vm)) / self.tauu(Vm))
-
+        effrates.update({
+            'alphas': np.mean(self.sinf(Vm) / self.taus(Vm)),
+            'betas': np.mean((1 - self.sinf(Vm)) / self.taus(Vm)),
+            'alphau': np.mean(self.uinf(Vm) / self.tauu(Vm)),
+            'betau': np.mean((1 - self.uinf(Vm)) / self.tauu(Vm))
+        })
         return effrates
 
 
@@ -404,9 +323,10 @@ class CorticalIB(Cortical):
         Y., Markram, H., and Destexhe, A. (2008). Minimal Hodgkin-Huxley type models for
         different classes of cortical and thalamic neurons. Biol Cybern 99, 427–441.*
 
-        *Reuveni, I., Friedman, A., Amitai, Y., and Gutnick, M.J. (1993). Stepwise repolarization
-        from Ca2+ plateaus in neocortical pyramidal cells: evidence for nonhomogeneous distribution
-        of HVA Ca2+ channels in dendrites. J. Neurosci. 13, 4609–4621.*
+        *Reuveni, I., Friedman, A., Amitai, Y., and Gutnick, M.J. (1993). Stepwise
+        repolarization from Ca2+ plateaus in neocortical pyramidal cells: evidence
+        for nonhomogeneous distribution of HVA Ca2+ channels in dendrites.
+        J. Neurosci. 13, 4609–4621.*
     '''
 
     # Neuron name
@@ -431,46 +351,29 @@ class CorticalIB(Cortical):
     VT = -56.2      # Spike threshold adjustment parameter (mV)
     TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n', 'p', 'q', 'r')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        'p': 'iM gate',
+        'q': 'iCaL activation gate',
+        'r': 'iCaL inactivation gate'
+    }
 
     # ------------------------------ Gating states kinetics ------------------------------
 
     def alphaq(self, Vm):
-        ''' Voltage-dependent activation rate of q-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        alpha = 0.055 * self.vtrap(-(Vm + 27), 3.8)  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.055 * self.vtrap(-(Vm + 27), 3.8) * 1e3  # s-1
 
     def betaq(self, Vm):
-        ''' Voltage-dependent inactivation rate of q-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        beta = 0.94 * np.exp(-(Vm + 75) / 17)  # ms-1
-        return beta * 1e3  # s-1
+        return 0.94 * np.exp(-(Vm + 75) / 17) * 1e3  # s-1
 
     def alphar(self, Vm):
-        ''' Voltage-dependent activation rate of r-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        alpha = 0.000457 * np.exp(-(Vm + 13) / 50)  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.000457 * np.exp(-(Vm + 13) / 50) * 1e3  # s-1
 
     def betar(self, Vm):
-        ''' Voltage-dependent inactivation rate of r-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        beta = 0.0065 / (np.exp(-(Vm + 15) / 28) + 1)  # ms-1
-        return beta * 1e3  # s-1
+        return 0.0065 / (np.exp(-(Vm + 15) / 28) + 1) * 1e3  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 
@@ -493,7 +396,6 @@ class CorticalIB(Cortical):
     # ------------------------------ Steady states ------------------------------
 
     def steadyStates(self, Vm):
-        # Voltage-gated steady-states
         sstates = super().steadyStates(Vm)
         sstates['q'] = self.alphaq(Vm) / (self.alphaq(Vm) + self.betaq(Vm))
         sstates['r'] = self.alphar(Vm) / (self.alphar(Vm) + self.betar(Vm))
@@ -502,30 +404,22 @@ class CorticalIB(Cortical):
     # ------------------------------ Membrane currents ------------------------------
 
     def iCaL(self, q, r, Vm):
-        ''' high-threshold (L-type) Calcium current
-
-            :param q: open-probability of q-gate (-)
-            :param r: open-probability of r-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gCaLbar * q**2 * r * (Vm - self.ECa)
+        ''' high-threshold (L-type) Calcium current '''
+        return self.gCaLbar * q**2 * r * (Vm - self.ECa)  # mA/m2
 
     def currents(self, Vm, states):
         currents = super().currents(Vm, states)
-        currents['iCaL'] = self.iCaL(states['q'], states['r'], Vm),
+        currents['iCaL'] = lambda Vm, states: self.iCaL(states['q'], states['r'], Vm)
         return currents
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        # Call parent method to compute Sodium and Potassium effective rate constants
         effrates = super().computeEffRates(Vm)
-
-        # Compute Calcium effective rate constants
-        effrates['alphaq'] = np.mean(self.alphaq(Vm))
-        effrates['betaq'] = np.mean(self.betaq(Vm))
-        effrates['alphar'] = np.mean(self.alphar(Vm))
-        effrates['betar'] = np.mean(self.betar(Vm))
-
+        effrates.update({
+            'alphaq': np.mean(self.alphaq(Vm)),
+            'betaq': np.mean(self.betaq(Vm)),
+            'alphar': np.mean(self.alphar(Vm)),
+            'betar': np.mean(self.betar(Vm))
+        })
         return effrates

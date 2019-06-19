@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 18:21:23
+# @Last Modified time: 2019-06-19 09:56:53
 
 import abc
 import inspect
@@ -28,7 +28,7 @@ class PointNeuron(Model):
     def __init__(self):
         self.Qm0 = self.Cm0 * self.Vm0 * 1e-3  # C/cm2
         if hasattr(self, 'states'):
-            self.rates = self.getRatesNames(self.states)
+            self.rates = self.getRatesNames(self.statesNames())
 
     def __repr__(self):
         return self.__class__.__name__
@@ -100,13 +100,14 @@ class PointNeuron(Model):
     def Vm0(self):
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def currents(self, Vm, states):
-        ''' Compute all ionic currents per unit area.
+    def statesNames(self):
+        return list(self.states.keys())
 
-            :param Vm: membrane potential (mV)
-            :states: state probabilities of the ion channels
-            :return: dictionary of ionic currents per unit area (mA/m2)
+    @abc.abstractmethod
+    def currents(self):
+        ''' Method defining the functions to compute ionic currents per unit area.
+
+            :return: dictionary of functions returning ionic current densities (mA/m2)
         '''
 
     def iNet(self, Vm, states):
@@ -116,7 +117,7 @@ class PointNeuron(Model):
             :states: states of ion channels gating and related variables
             :return: current per unit area (mA/m2)
         '''
-        return sum(self.currents(Vm, states).values())
+        return sum([cfunc(Vm, states) for cfunc in self.currents().values()])
 
     def dQdt(self, Vm, states):
         ''' membrane charge density variation rate
@@ -176,7 +177,7 @@ class PointNeuron(Model):
         return FARADAY * (eCin - eCout) * 1e6  # mC/m3
 
     def getCurrentsNames(self):
-        return list(self.currents(np.nan, {k: np.nan for k in self.states}).keys())
+        return list(self.currents().keys())
 
     def getPltScheme(self):
         pltscheme = {
@@ -252,8 +253,8 @@ class PointNeuron(Model):
             'label': 'I_{net}',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': 'iNet({0}Vm{1}, {2}{3}{4}.values.T)'.format(
-                wrapleft, wrapright, wrapleft[:-1], list(self.states), wrapright[1:]),
+            'func': 'iNet({0}Vm{1}, {2}{3}{4})'.format(
+                wrapleft, wrapright, wrapleft[:-1], self.statesNames(), wrapright[1:]),
             'ls': '--',
             'color': 'black'
         }
@@ -264,7 +265,7 @@ class PointNeuron(Model):
             'unit': 'A/m^2',
             'factor': 1e-3,
             'func': 'dQdt({0}Vm{1}, {2}{3}{4}.values.T)'.format(
-                wrapleft, wrapright, wrapleft[:-1], list(self.states), wrapright[1:]),
+                wrapleft, wrapright, wrapleft[:-1], self.statesNames(), wrapright[1:]),
             'ls': '--',
             'color': 'black'
         }
@@ -303,6 +304,19 @@ class PointNeuron(Model):
             :param Vm: membrane potential (mV)
             :return: dictionary of steady-states
         '''
+
+    def buildDerState(self, key):
+        alphax_str, betax_str = ['{}{}'.format(prefix, key) for prefix in ['alpha', 'beta']]
+        xinf_str, taux_str = ['{}inf'.format(key), 'taux{}'.format(key)]
+        if hasattr(self, alphax_str) and hasattr(self, betax_str):
+            alphax, betax = [getattr(self, x) for x in [alphax_str, betax_str]]
+            return lambda x, Vm: alphax(Vm) * (1 - x) - betax(Vm) * x
+        elif hasattr(self, xinf_str) and hasattr(self, taux_str):
+            xinf, taux = [getattr(self, x) for x in [xinf_str, taux_str]]
+            return lambda x, Vm: (xinf(Vm) - x) / taux(Vm)
+        else:
+            raise ValueError('standard X gating derivatives must be defined via the' +
+                             'alphaX-betaX or Xinf-tauX paradigm')
 
     @abc.abstractmethod
     def derStates(self, Vm, states):
@@ -370,7 +384,7 @@ class PointNeuron(Model):
     def getGates(self):
         ''' Retrieve the names of the neuron's states that match an ion channel gating. '''
         gates = []
-        for x in self.states:
+        for x in self.statesNames():
             if self.isVoltageGated(x):
                 gates.append(x)
         return gates
@@ -397,7 +411,7 @@ class PointNeuron(Model):
              over the charge domain, for specific frequency and amplitude values.
             :return: dictionary of quasi-steady states
         '''
-        return self.qsStates(lkp, self.states)
+        return self.qsStates(lkp, self.statesNames())
 
     def getRates(self, Vm):
         ''' Compute the ion channels rate constants for a given membrane potential.
@@ -432,11 +446,11 @@ class PointNeuron(Model):
             :return: vector of HH system derivatives at time t
         '''
         Vm, *states = y
-        states_dict = dict(zip(self.states, states))
+        states_dict = dict(zip(self.statesNames(), states))
         Iionic = self.iNet(Vm, states_dict)  # mA/m2
         dVmdt = (- Iionic + Iinj) / self.Cm0  # mV/s
         dstates = self.derStates(Vm, states_dict)
-        return [dVmdt, *[dstates[k] for k in self.states]]
+        return [dVmdt, *[dstates[k] for k in self.statesNames()]]
 
     def Qderivatives(self, t, y, Cm=None):
         ''' Compute the derivatives of the n-ODE HH system variables,
@@ -451,10 +465,10 @@ class PointNeuron(Model):
             Cm = self.Cm0
         Qm, *states = y
         Vm = Qm / Cm * 1e3  # mV
-        states_dict = dict(zip(self.states, states))
+        states_dict = dict(zip(self.statesNames(), states))
         dQmdt = - self.iNet(Vm, states_dict) * 1e-3  # A/m2
         dstates = self.derStates(Vm, states_dict)
-        return [dQmdt, *[dstates[k] for k in self.states]]
+        return [dQmdt, *[dstates[k] for k in self.statesNames()]]
 
     def checkInputs(self, Astim, tstim, toffset, PRF, DC):
         ''' Check validity of electrical stimulation parameters.
@@ -528,7 +542,7 @@ class PointNeuron(Model):
 
         # Set initial conditions
         steady_states = self.steadyStates(self.Vm0)
-        y0 = np.array([self.Vm0, *[steady_states[k] for k in self.states]])
+        y0 = np.array([self.Vm0, *[steady_states[k] for k in self.statesNames()]])
 
         # Initialize simulator and compute solution
         logger.debug('Computing solution')
@@ -548,7 +562,7 @@ class PointNeuron(Model):
         })
         data['Qm'] = data['Vm'].values * self.Cm0 * 1e-3
         for i in range(len(self.states)):
-            data[self.states[i]] = y[:, i + 1]
+            data[self.statesNames()[i]] = y[:, i + 1]
 
         # Log number of detected spikes
         nspikes = self.getNSpikes(data)

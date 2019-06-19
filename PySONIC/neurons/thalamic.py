@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 16:18:29
+# @Last Modified time: 2019-06-19 10:28:35
 
 import numpy as np
 from ..core import PointNeuron
@@ -32,64 +32,22 @@ class Thalamic(PointNeuron):
     # ------------------------------ Gating states kinetics ------------------------------
 
     def alpham(self, Vm):
-        ''' Voltage-dependent activation rate of m-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        alpha = 0.32 * self.vtrap(13 - Vdiff, 4)  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.32 * self.vtrap(13 - (Vm - self.VT), 4) * 1e3  # s-1
 
     def betam(self, Vm):
-        ''' Voltage-dependent inactivation rate of m-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        beta = 0.28 * self.vtrap(Vdiff - 40, 5)  # ms-1
-        return beta * 1e3  # s-1
+        return 0.28 * self.vtrap((Vm - self.VT) - 40, 5) * 1e3  # s-1
 
     def alphah(self, Vm):
-        ''' Voltage-dependent activation rate of h-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        alpha = (0.128 * np.exp(-(Vdiff - 17) / 18))  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.128 * np.exp(-((Vm - self.VT) - 17) / 18) * 1e3  # s-1
 
     def betah(self, Vm):
-        ''' Voltage-dependent inactivation rate of h-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        beta = (4 / (1 + np.exp(-(Vdiff - 40) / 5)))  # ms-1
-        return beta * 1e3  # s-1
+        return 4 / (1 + np.exp(-((Vm - self.VT) - 40) / 5)) * 1e3  # s-1
 
     def alphan(self, Vm):
-        ''' Voltage-dependent activation rate of n-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        alpha = 0.032 * self.vtrap(15 - Vdiff, 5)  # ms-1
-        return alpha * 1e3  # s-1
+        return 0.032 * self.vtrap(15 - (Vm - self.VT), 5) * 1e3  # s-1
 
     def betan(self, Vm):
-        ''' Voltage-dependent inactivation rate of n-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.VT
-        beta = (0.5 * np.exp(-(Vdiff - 10) / 40))  # ms-1
-        return beta * 1e3  # s-1
+        return 0.5 * np.exp(-((Vm - self.VT) - 10) / 40) * 1e3  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 
@@ -114,7 +72,6 @@ class Thalamic(PointNeuron):
     # ------------------------------ Steady states ------------------------------
 
     def steadyStates(self, Vm):
-        # Voltage-gated steady-states
         return {
             'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
             'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
@@ -126,54 +83,32 @@ class Thalamic(PointNeuron):
     # ------------------------------ Membrane currents ------------------------------
 
     def iNa(self, m, h, Vm):
-        ''' Sodium current
-
-            :param m: open-probability of m-gate (-)
-            :param h: open-probability of h-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gNabar * m**3 * h * (Vm - self.ENa)
+        ''' Sodium current '''
+        return self.gNabar * m**3 * h * (Vm - self.ENa)  # mA/m2
 
     def iKd(self, n, Vm):
-        ''' delayed-rectifier Potassium current
-
-            :param n: open-probability of n-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
+        ''' delayed-rectifier Potassium current '''
         return self.gKdbar * n**4 * (Vm - self.EK)
 
     def iCaT(self, s, u, Vm):
-        ''' low-threshold (Ts-type) Calcium current
-
-            :param s: open-probability of s-gate (-)
-            :param u: open-probability of u-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gCaTbar * s**2 * u * (Vm - self.ECa)
+        ''' low-threshold (Ts-type) Calcium current '''
+        return self.gCaTbar * s**2 * u * (Vm - self.ECa)  # mA/m2
 
     def iLeak(self, Vm):
-        ''' non-specific leakage current
+        ''' non-specific leakage current '''
+        return self.gLeak * (Vm - self.ELeak)  # mA/m2
 
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gLeak * (Vm - self.ELeak)
-
-    def currents(self, Vm, states):
+    def currents(self):
         return {
-            'iNa': self.iNa(states['m'], states['h'], Vm),
-            'iKd': self.iKd(states['n'], Vm),
-            'iCaT': self.iCaT(states['s'], states['u'], Vm),
-            'iLeak': self.iLeak(Vm)
-        }  # mA/m2
+            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
+            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
+            'iCaT': lambda Vm, states: self.iCaT(states['s'], states['u'], Vm),
+            'iLeak': lambda Vm, _: self.iLeak(Vm)
+        }
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        # Compute average cycle value for rate constants
         return {
             'alpham': np.mean(self.alpham(Vm)),
             'betam': np.mean(self.betam(Vm)),
@@ -222,42 +157,29 @@ class ThalamicRE(Thalamic):
     # Additional parameters
     VT = -67.0  # Spike threshold adjustment parameter (mV)
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n', 's', 'u')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        's': 'iCaT activation gate',
+        'u': 'iCaT inactivation gate'
+    }
 
     # ------------------------------ Gating states kinetics ------------------------------
 
     def sinf(self, Vm):
-        ''' Voltage-dependent steady-state opening of s-gate
-
-            :param Vm: membrane potential (mV)
-            :return: steady-state opening (-)
-        '''
-        return 1.0 / (1.0 + np.exp(-(Vm + 52.0) / 7.4))  # prob
+        return 1.0 / (1.0 + np.exp(-(Vm + 52.0) / 7.4))
 
     def taus(self, Vm):
-        ''' Voltage-dependent adaptation time for adaptation of s-gate
-
-            :param Vm: membrane potential (mV)
-            :return: adaptation time (s)
-        '''
         return (1 + 0.33 / (np.exp((Vm + 27.0) / 10.0) + np.exp(-(Vm + 102.0) / 15.0))) * 1e-3  # s
 
     def uinf(self, Vm):
-        ''' Voltage-dependent steady-state opening of u-gate
-
-            :param Vm: membrane potential (mV)
-            :return: steady-state opening (-)
-        '''
-        return 1.0 / (1.0 + np.exp((Vm + 80.0) / 5.0))  # prob
+        return 1.0 / (1.0 + np.exp((Vm + 80.0) / 5.0))
 
     def tauu(self, Vm):
-        ''' Voltage-dependent adaptation time for adaptation of u-gate
-
-            :param Vm: membrane potential (mV)
-            :return: adaptation time (s)
-        '''
-        return (28.3 + 0.33 / (np.exp((Vm + 48.0) / 4.0) + np.exp(-(Vm + 407.0) / 50.0))) * 1e-3  # s
+        return (28.3 + 0.33 / (
+            np.exp((Vm + 48.0) / 4.0) + np.exp(-(Vm + 407.0) / 50.0))) * 1e-3  # s
 
 
 class ThalamoCortical(Thalamic):
@@ -307,8 +229,18 @@ class ThalamoCortical(Thalamic):
     k3 = 100.0       # intracellular Ca2+ regulation factor (s-1)
     k4 = 1.0         # intracellular Ca2+ regulation factor (s-1)
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n', 's', 'u', 'O', 'C', 'P0', 'Cai')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        's': 'iCaT activation gate',
+        'u': 'iCaT inactivation gate',
+        'C': 'iH gate closed state',
+        'O': 'iH gate open state',
+        'Cai': 'submembrane Ca2+ concentration (M)',
+        'P0': 'proportion of unbound iH regulating factor',
+    }
 
     def __init__(self):
         super().__init__()
@@ -348,102 +280,34 @@ class ThalamoCortical(Thalamic):
     # ------------------------------ Gating states kinetics ------------------------------
 
     def sinf(self, Vm):
-        ''' Voltage-dependent steady-state opening of s-gate
-
-            :param Vm: membrane potential (mV)
-            :return: steady-state opening (-)
-        '''
-        return 1.0 / (1.0 + np.exp(-(Vm + self.Vx + 57.0) / 6.2))  # prob
+        return 1.0 / (1.0 + np.exp(-(Vm + self.Vx + 57.0) / 6.2))
 
     def taus(self, Vm):
-        ''' Voltage-dependent adaptation time for adaptation of s-gate
-
-            :param Vm: membrane potential (mV)
-            :return: adaptation time (s)
-        '''
         x = np.exp(-(Vm + self.Vx + 132.0) / 16.7) + np.exp((Vm + self.Vx + 16.8) / 18.2)
         return 1.0 / 3.7 * (0.612 + 1.0 / x) * 1e-3  # s
 
     def uinf(self, Vm):
-        ''' Voltage-dependent steady-state opening of u-gate
-
-            :param Vm: membrane potential (mV)
-            :return: steady-state opening (-)
-        '''
-        return 1.0 / (1.0 + np.exp((Vm + self.Vx + 81.0) / 4.0))  # prob
+        return 1.0 / (1.0 + np.exp((Vm + self.Vx + 81.0) / 4.0))
 
     def tauu(self, Vm):
-        ''' Voltage-dependent adaptation time for adaptation of u-gate
-
-            :param Vm: membrane potential (mV)
-            :return: adaptation time (s)
-        '''
         if Vm + self.Vx < -80.0:
             return 1.0 / 3.7 * np.exp((Vm + self.Vx + 467.0) / 66.6) * 1e-3  # s
         else:
             return 1 / 3.7 * (np.exp(-(Vm + self.Vx + 22) / 10.5) + 28.0) * 1e-3  # s
 
     def oinf(self, Vm):
-        ''' Voltage-dependent steady-state opening of O-gate
-
-            :param Vm: membrane potential (mV)
-            :return: steady-state opening (-)
-        '''
         return 1.0 / (1.0 + np.exp((Vm + 75.0) / 5.5))
 
     def tauo(self, Vm):
-        ''' Voltage-dependent adaptation time for adaptation of O-gate
-
-            :param Vm: membrane potential (mV)
-            :return: adaptation time (s)
-        '''
-        return 1 / (np.exp(-14.59 - 0.086 * Vm) + np.exp(-1.87 + 0.0701 * Vm)) * 1e-3
+        return 1 / (np.exp(-14.59 - 0.086 * Vm) + np.exp(-1.87 + 0.0701 * Vm)) * 1e-3  # s
 
     def alphao(self, Vm):
-        ''' Voltage-dependent transition rate between closed and open forms of O-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        return self.oinf(Vm) / self.tauo(Vm)
+        return self.oinf(Vm) / self.tauo(Vm)  # s-1
 
     def betao(self, Vm):
-        ''' Voltage-dependent transition rate between open and closed forms of O-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        return (1 - self.oinf(Vm)) / self.tauo(Vm)
+        return (1 - self.oinf(Vm)) / self.tauo(Vm)  # s-1
 
     # ------------------------------ States derivatives ------------------------------
-
-    def derS(self, Vm, s):
-        ''' Evolution of s-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param s: open-probability of s-gate (-)
-            :return: time derivative of s-gate open-probability (s-1)
-        '''
-        return (self.sinf(Vm) - s) / self.taus(Vm)
-
-    def derU(self, Vm, u):
-        ''' Evolution of u-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param u: open-probability of u-gate (-)
-            :return: time derivative of u-gate open-probability (s-1)
-        '''
-        return (self.uinf(Vm) - u) / self.tauu(Vm)
-
-    def derC(self, C, O, Vm):
-        ''' Evolution of O-gate closed-probability
-
-            :param C: closed-probability of O-gate (-)
-            :param O: open-probability of O-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: time derivative of O-gate closed-probability (s-1)
-        '''
-        return self.betao(Vm) * O - self.alphao(Vm) * C
 
     def derO(self, C, O, P0, Vm):
         ''' Evolution of O-gate open-probability
@@ -454,7 +318,8 @@ class ThalamoCortical(Thalamic):
             :param Vm: membrane potential (mV)
             :return: time derivative of O-gate open-probability (s-1)
         '''
-        return - self.derC(C, O, Vm) - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
+        return self.alphao(Vm) * C - self.betao(Vm) * O - self.k3 * O * (1 - P0) +\
+            self.k4 * (1 - O - C)
 
     def OL(self, O, C):
         ''' O-gate locked-open probability.
@@ -490,23 +355,27 @@ class ThalamoCortical(Thalamic):
         '''
         return (self.Cai_min - Cai) / self.taur_Cai - self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)
 
+    def tmp(self, C, O, P0):
+        return - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
+
     def derStates(self, Vm, states):
         dstates = super().derStates(Vm, states)
         dstates.update({
-            'O': self.derO(states['C'], states['O'], states['P0'], Vm),
-            'C': self.derC(states['C'], states['O'], Vm),
-            'P0': self.derP0(states['P0'], states['Cai']),
-            'Cai': self.derCai(states['Cai'], states['s'], states['u'], Vm)
+            'C': self.betao(Vm) * states['O'] - self.alphao(Vm) * states['C'],
+            'Cai': self.derCai(states['Cai'], states['s'], states['u'], Vm),
+            'P0': self.derP0(states['P0'], states['Cai'])
         })
+        dstates['O'] = -dstates['C'] + self.tmp(states['C'], states['O'], states['P0'])
         return dstates
 
     def derEffStates(self, Vm, states, rates):
         dstates = super().derEffStates(Vm, states, rates)
-        dstates['C'] = rates['betao'] * states['O'] - rates['alphao'] * states['C']
-        dstates['O'] = (- dstates['C'] - self.k3 * states['O'] * (1 - states['P0']) +
-                        self.k4 * (1 - states['O'] - states['C']))
-        dstates['P0'] = self.derP0(states['P0'], states['Cai'])
-        dstates['Cai'] = self.derCai(states['Cai'], states['s'], states['u'], Vm)
+        states.update({
+            'C': rates['betao'] * states['O'] - rates['alphao'] * states['C'],
+            'P0': self.derP0(states['P0'], states['Cai']),
+            'Cai': self.derCai(states['Cai'], states['s'], states['u'], Vm)
+        })
+        dstates['O'] = -dstates['C'] + self.tmp(states['C'], states['O'], states['P0'])
         return dstates
 
     # ------------------------------ Steady states ------------------------------
@@ -554,15 +423,11 @@ class ThalamoCortical(Thalamic):
         return BA * self.Oinf(Cai, Vm)
 
     def steadyStates(self, Vm):
-        # Voltage-gated steady-states
         sstates = super().steadyStates(Vm)
-
-        # Other steady-states
         sstates['Cai'] = self.Caiinf(Vm, sstates['s'], sstates['u'])
         sstates['P0'] = self.P0inf(sstates['Cai'])
         sstates['O'] = self.Oinf(sstates['Cai'], Vm)
         sstates['C'] = self.Cinf(sstates['Cai'], Vm)
-
         return sstates
 
     def quasiSteadyStates(self, lkp):
@@ -571,43 +436,32 @@ class ThalamoCortical(Thalamic):
         qsstates['P0'] = self.P0inf(qsstates['Cai'])
         qsstates['O'] = self.Oinf(qsstates['Cai'], lkp['V'])
         qsstates['C'] = self.Cinf(qsstates['Cai'], lkp['V'])
-
         return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 
     def iKLeak(self, Vm):
-        ''' Potassium leakage current
-
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gKLeak * (Vm - self.EK)
+        ''' Potassium leakage current '''
+        return self.gKLeak * (Vm - self.EK)  # mA/m2
 
     def iH(self, O, C, Vm):
-        ''' outward mixed cationic current
+        ''' outward mixed cationic current '''
+        return self.gHbar * (O + 2 * self.OL(O, C)) * (Vm - self.EH)  # mA/m2
 
-            :param C: closed-probability of O-gate (-)
-            :param O: open-probability of O-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gHbar * (O + 2 * self.OL(O, C)) * (Vm - self.EH)
-
-    def currents(self, Vm, states):
-        currents = super().currents(Vm, states)
-        currents['iKLeak'] = self.iKLeak(Vm)  # mA/m2
-        currents['iH'] = self.iH(states['O'], states['C'], Vm)  # mA/m2
+    def currents(self):
+        currents = super().currents()
+        currents.update({
+            'iKLeak': lambda Vm, states: self.iKLeak(Vm),
+            'iH': lambda Vm, states: self.iH(states['O'], states['C'], Vm)
+        })
         return currents
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        # Compute effective coefficients for Sodium, Potassium and Calcium conductances
         effrates = super().computeEffRates(Vm)
-
-        # Compute effective coefficients for Ih conductance
-        effrates['alphao'] = np.mean(self.alphao(Vm))
-        effrates['betao'] = np.mean(self.betao(Vm))
-
+        effrates.update({
+            'alphao': np.mean(self.alphao(Vm)),
+            'betao': np.mean(self.betao(Vm))
+        })
         return effrates

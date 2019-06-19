@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-18 16:20:58
+# @Last Modified time: 2019-06-19 10:09:14
 
 import numpy as np
 from ..core import PointNeuron
@@ -48,8 +48,13 @@ class FrankenhaeuserHuxley(PointNeuron):
     # Additional parameters
     celsius = 20.0  # Temperature (Celsius)
 
-    # ------------------------------ States names (ordered) ------------------------------
-    states = ('m', 'h', 'n', 'p')
+    # ------------------------------ States names & descriptions ------------------------------
+    states = {
+        'm': 'iNa activation gate',
+        'h': 'iNa inactivation gate',
+        'n': 'iKd gate',
+        'p': 'iP gate'
+    }
 
     def __init__(self):
         super().__init__()
@@ -64,84 +69,28 @@ class FrankenhaeuserHuxley(PointNeuron):
     # ------------------------------ Gating states kinetics ------------------------------
 
     def alpham(self, Vm):
-        ''' Voltage-dependent activation rate of m-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.Vm0
-        alpha = 0.36 * self.vtrap(22. - Vdiff, 3.)  # ms-1
-        return self.q10 * alpha * 1e3  # s-1
+        return self.q10 * 0.36 * self.vtrap(22. - (Vm - self.Vm0), 3.) * 1e3  # s-1
 
     def betam(self, Vm):
-        ''' Voltage-dependent inactivation rate of m-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.Vm0
-        beta = 0.4 * self.vtrap(Vdiff - 13., 20.)  # ms-1
-        return self.q10 * beta * 1e3  # s-1
+        return self.q10 * 0.4 * self.vtrap(Vm - self.Vm0 - 13., 20.) * 1e3  # s-1
 
     def alphah(self, Vm):
-        ''' Voltage-dependent activation rate of h-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.Vm0
-        alpha = 0.1 * self.vtrap(Vdiff + 10.0, 6.)  # ms-1
-        return self.q10 * alpha * 1e3  # s-1
+        return self.q10 * 0.1 * self.vtrap(Vm - self.Vm0 + 10.0, 6.) * 1e3  # s-1
 
     def betah(self, Vm):
-        ''' Voltage-dependent inactivation rate of h-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.Vm0
-        beta = 4.5 / (np.exp((45. - Vdiff) / 10.) + 1)  # ms-1
-        return self.q10 * beta * 1e3  # s-1
+        return self.q10 * 4.5 / (np.exp((45. - (Vm - self.Vm0)) / 10.) + 1) * 1e3  # s-1
 
     def alphan(self, Vm):
-        ''' Voltage-dependent activation rate of n-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.Vm0
-        alpha = 0.02 * self.vtrap(35. - Vdiff, 10.0)  # ms-1
-        return self.q10 * alpha * 1e3  # s-1
+        return self.q10 * 0.02 * self.vtrap(35. - (Vm - self.Vm0), 10.0) * 1e3  # s-1
 
     def betan(self, Vm):
-        ''' Voltage-dependent inactivation rate of n-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.Vm0
-        beta = 0.05 * self.vtrap(Vdiff - 10., 10.)  # ms-1
-        return self.q10 * beta * 1e3  # s-1
+        return self.q10 * 0.05 * self.vtrap(Vm - self.Vm0 - 10., 10.) * 1e3  # s-1
 
     def alphap(self, Vm):
-        ''' Voltage-dependent activation rate of p-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.Vm0
-        alpha = 0.006 * self.vtrap(40. - Vdiff, 10.0)  # ms-1
-        return self.q10 * alpha * 1e3  # s-1
+        return self.q10 * 0.006 * self.vtrap(40. - (Vm - self.Vm0), 10.0) * 1e3  # s-1
 
     def betap(self, Vm):
-        ''' Voltage-dependent inactivation rate of p-gate
-
-            :param Vm: membrane potential (mV)
-            :return: rate (s-1)
-        '''
-        Vdiff = Vm - self.Vm0
-        beta = 0.09 * self.vtrap(Vdiff + 25., 20.)  # ms-1
-        return self.q10 * beta * 1e3  # s-1
+        return self.q10 * 0.09 * self.vtrap(Vm - self.Vm0 + 25., 20.) * 1e3  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 
@@ -175,56 +124,35 @@ class FrankenhaeuserHuxley(PointNeuron):
     # ------------------------------ Membrane currents ------------------------------
 
     def iNa(self, m, h, Vm):
-        ''' Sodium current
-
-            :param m: open-probability of m-gate
-            :param h: open-probability of h-gate
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
+        ''' Sodium current '''
         iNa_drive = self.ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
-        return self.pNabar * m**2 * h * iNa_drive
+        return self.pNabar * m**2 * h * iNa_drive  # mA/m2
 
     def iKd(self, n, Vm):
-        ''' delayed-rectifier Potassium current
-
-            :param n: open-probability of n-gate
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
+        ''' delayed-rectifier Potassium current '''
         iKd_drive = self.ghkDrive(Vm, Z_K, self.Ki, self.Ko, self.T)  # mC/m3
-        return self.pKbar * n**2 * iKd_drive
+        return self.pKbar * n**2 * iKd_drive  # mA/m2
 
     def iP(self, p, Vm):
-        ''' non-specific delayed current
-
-            :param p: open-probability of p-gate
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
+        ''' non-specific delayed current '''
         iP_drive = self.ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
-        return self.pPbar * p**2 * iP_drive
+        return self.pPbar * p**2 * iP_drive  # mA/m2
 
     def iLeak(self, Vm):
-        ''' non-specific leakage current
+        ''' non-specific leakage current '''
+        return self.gLeak * (Vm - self.ELeak)  # mA/m2
 
-            :param Vm: membrane potential (mV)
-            :return: current per unit area (mA/m2)
-        '''
-        return self.gLeak * (Vm - self.ELeak)
-
-    def currents(self, Vm, states):
+    def currents(self):
         return {
-            'iNa': self.iNa(states['m'], states['h'], Vm),
-            'iKd': self.iKd(states['n'], Vm),
-            'iP': self.iP(states['p'], Vm),
-            'iLeak': self.iLeak(Vm)
-        }  # mA/m2
+            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
+            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
+            'iP': lambda Vm, states: self.iP(states['p'], Vm),
+            'iLeak': lambda Vm, _: self.iLeak(Vm)
+        }
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        # Compute average cycle value for rate constants
         return {
             'alpham': np.mean(self.alpham(Vm)),
             'betam': np.mean(self.betam(Vm)),
