@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 21:51:43
+# @Last Modified time: 2019-06-19 15:45:14
 
 import logging
 import pprint
@@ -189,8 +189,8 @@ class Parser(ArgumentParser):
 
     def addSubset(self, choices):
         self.add_argument(
-            '--subset', type=str, nargs='+', default='all',
-            choices=choices, help='Run specific subset(s)')
+            '--subset', type=str, nargs='+', default=['all'], choices=choices + ['all'],
+            help='Run specific subset(s)')
         self.subset_choices = choices
         self.to_parse['subset'] = self.parseSubset
 
@@ -270,7 +270,7 @@ class TestParser(Parser):
     def __init__(self, valid_subsets):
         super().__init__()
         self.addProfiling()
-        self.addSubset(valid_subsets + ['all'])
+        self.addSubset(valid_subsets)
 
     def addProfiling(self):
         self.add_argument(
@@ -281,7 +281,7 @@ class FigureParser(Parser):
 
     def __init__(self, valid_subsets):
         super().__init__()
-        self.addSubset(valid_subsets + ['all'])
+        self.addSubset(valid_subsets)
         self.addSave()
         self.addOutputDir(dep_key='save')
 

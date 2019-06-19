@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 21:51:05
+# @Last Modified time: 2019-06-19 15:45:20
 
 ''' Test the basic functionalities of the package. '''
 
@@ -169,8 +169,6 @@ def main():
     if args['profile'] and args['subset'] == 'all':
         logger.error('profiling can only be run on individual tests')
         return
-
-    print(args['subset'])
 
     # Run test
     t0 = time.time()
