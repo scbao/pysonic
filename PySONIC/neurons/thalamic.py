@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 14:27:13
+# @Last Modified time: 2019-06-19 15:19:18
 
 import numpy as np
 from ..core import PointNeuron
@@ -348,9 +348,9 @@ class ThalamoCortical(Thalamic):
 
     # ------------------------------ Steady states ------------------------------
 
-    def Cinf(self, Vm):
+    def Cinf(self, Cai, Vm):
         ''' Steady-state O-gate closed-probability '''
-        return self.betao(Vm) / self.alphao(Vm) * self.Oinf(Vm)
+        return self.betao(Vm) / self.alphao(Vm) * self.Oinf(Cai, Vm)
 
     def Oinf(self, Cai, Vm):
         ''' Steady-state O-gate open-probability '''
@@ -370,7 +370,7 @@ class ThalamoCortical(Thalamic):
         sstates = super().steadyStates()
         sstates.update({
             'O': lambda Vm: self.Oinf(self.Caiinf(Vm), Vm),
-            'C': lambda Vm: self.Cinf(Vm),
+            'C': lambda Vm: self.Cinf(self.Caiinf(Vm), Vm),
             'P0': lambda Vm: self.P0inf(self.Caiinf(Vm)),
             'Cai': lambda Vm: self.Caiinf(Vm)
         })
