@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 09:46:54
+# @Last Modified time: 2019-06-19 14:43:30
 
 import numpy as np
 from ..core import PointNeuron
@@ -56,30 +56,30 @@ class Cortical(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self, Vm, states):
+    def derStates(self):
         return {
-            'm': self.alpham(Vm) * (1 - states['m']) - self.betam(Vm) * states['m'],
-            'h': self.alphah(Vm) * (1 - states['h']) - self.betah(Vm) * states['h'],
-            'n': self.alphan(Vm) * (1 - states['n']) - self.betan(Vm) * states['n'],
-            'p': (self.pinf(Vm) - states['p']) / self.taup(Vm)
+            'm': lambda Vm, x: self.alpham(Vm) * (1 - x['m']) - self.betam(Vm) * x['m'],
+            'h': lambda Vm, x: self.alphah(Vm) * (1 - x['h']) - self.betah(Vm) * x['h'],
+            'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n'],
+            'p': lambda Vm, x: (self.pinf(Vm) - x['p']) / self.taup(Vm)
         }
 
-    def derEffStates(self, Vm, states, rates):
-        return {
-            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-            'p': rates['alphap'] * (1 - states['p']) - rates['betap'] * states['p']
-        }
+    # def derEffStates(self, Vm, states, rates):
+    #     return {
+    #         'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+    #         'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+    #         'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+    #         'p': rates['alphap'] * (1 - states['p']) - rates['betap'] * states['p']
+    #     }
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self, Vm):
+    def steadyStates(self):
         return {
-            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
-            'p': self.pinf(Vm)
+            'm': lambda Vm: self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': lambda Vm: self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': lambda Vm: self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
+            'p': lambda Vm: self.pinf(Vm)
         }
 
     # ------------------------------ Membrane currents ------------------------------
@@ -102,9 +102,9 @@ class Cortical(PointNeuron):
 
     def currents(self):
         return {
-            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
-            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
-            'iM': lambda Vm, states: self.iM(states['p'], Vm),
+            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm),
+            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
+            'iM': lambda Vm, x: self.iM(x['p'], Vm),
             'iLeak': lambda Vm, _: self.iLeak(Vm)
         }
 
@@ -267,28 +267,30 @@ class CorticalLTS(Cortical):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self, Vm, states):
-        dstates = super().derStates(Vm, states)
+    def derStates(self):
+        dstates = super().derStates()
         dstates.update({
-            's': (self.sinf(Vm) - states['s']) / self.taus(Vm),
-            'u': (self.uinf(Vm) - states['u']) / self.tauu(Vm)
+            's': lambda Vm, x: (self.sinf(Vm) - x['s']) / self.taus(Vm),
+            'u': lambda Vm, x: (self.uinf(Vm) - x['u']) / self.tauu(Vm)
         })
         return dstates
 
-    def derEffStates(self, Vm, states, rates):
-        dstates = super().derEffStates(Vm, states, rates)
-        dstates.update({
-            's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
-            'u': rates['alphau'] * (1 - states['u']) - rates['betau'] * states['u']
-        })
-        return dstates
+    # def derEffStates(self, Vm, states, rates):
+    #     dstates = super().derEffStates(Vm, states, rates)
+    #     dstates.update({
+    #         's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
+    #         'u': rates['alphau'] * (1 - states['u']) - rates['betau'] * states['u']
+    #     })
+    #     return dstates
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self, Vm):
-        sstates = super().steadyStates(Vm)
-        sstates['s'] = self.sinf(Vm)
-        sstates['u'] = self.uinf(Vm)
+    def steadyStates(self):
+        sstates = super().steadyStates()
+        sstates.update({
+            's': lambda Vm: self.sinf(Vm),
+            'u': lambda Vm: self.uinf(Vm)
+        })
         return sstates
 
     # ------------------------------ Membrane currents ------------------------------
@@ -299,7 +301,7 @@ class CorticalLTS(Cortical):
 
     def currents(self):
         currents = super().currents()
-        currents['iCaT'] = lambda Vm, states: self.iCaT(states['s'], states['u'], Vm)
+        currents['iCaT'] = lambda Vm, x: self.iCaT(x['s'], x['u'], Vm)
         return currents
 
     # ------------------------------ Other methods ------------------------------
@@ -377,28 +379,30 @@ class CorticalIB(Cortical):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self, Vm, states):
-        dstates = super().derStates(Vm, states)
+    def derStates(self):
+        dstates = super().derStates()
         dstates.update({
-            'q': self.alphaq(Vm) * (1 - states['q']) - self.betaq(Vm) * states['q'],
-            'r': self.alphar(Vm) * (1 - states['r']) - self.betar(Vm) * states['r']
+            'q': lambda Vm, x: self.alphaq(Vm) * (1 - x['q']) - self.betaq(Vm) * x['q'],
+            'r': lambda Vm, x: self.alphar(Vm) * (1 - x['r']) - self.betar(Vm) * x['r']
         })
         return dstates
 
-    def derEffStates(self, Vm, states, rates):
-        dstates = super().derEffStates(Vm, states, rates)
-        dstates.update({
-            'q': rates['alphaq'] * (1 - states['q']) - rates['betaq'] * states['q'],
-            'r': rates['alphar'] * (1 - states['r']) - rates['betar'] * states['r']
-        })
-        return dstates
+    # def derEffStates(self, Vm, states, rates):
+    #     dstates = super().derEffStates(Vm, states, rates)
+    #     dstates.update({
+    #         'q': rates['alphaq'] * (1 - states['q']) - rates['betaq'] * states['q'],
+    #         'r': rates['alphar'] * (1 - states['r']) - rates['betar'] * states['r']
+    #     })
+    #     return dstates
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self, Vm):
-        sstates = super().steadyStates(Vm)
-        sstates['q'] = self.alphaq(Vm) / (self.alphaq(Vm) + self.betaq(Vm))
-        sstates['r'] = self.alphar(Vm) / (self.alphar(Vm) + self.betar(Vm))
+    def steadyStates(self):
+        sstates = super().steadyStates()
+        sstates.update({
+            'q': lambda Vm: self.alphaq(Vm) / (self.alphaq(Vm) + self.betaq(Vm)),
+            'r': lambda Vm: self.alphar(Vm) / (self.alphar(Vm) + self.betar(Vm))
+        })
         return sstates
 
     # ------------------------------ Membrane currents ------------------------------
@@ -407,9 +411,9 @@ class CorticalIB(Cortical):
         ''' high-threshold (L-type) Calcium current '''
         return self.gCaLbar * q**2 * r * (Vm - self.ECa)  # mA/m2
 
-    def currents(self, Vm, states):
-        currents = super().currents(Vm, states)
-        currents['iCaL'] = lambda Vm, states: self.iCaL(states['q'], states['r'], Vm)
+    def currents(self):
+        currents = super().currents()
+        currents['iCaL'] = lambda Vm, x: self.iCaL(x['q'], x['r'], Vm)
         return currents
 
     # ------------------------------ Other methods ------------------------------

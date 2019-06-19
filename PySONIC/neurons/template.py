@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 10:34:56
+# @Last Modified time: 2019-06-19 14:41:42
 
 import numpy as np
 
@@ -64,27 +64,20 @@ class TemplateNeuron(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self, Vm, states):
+    def derStates(self):
         return {
-            'm': self.alpham(Vm) * (1 - states['m']) - self.betam(Vm) * states['m'],
-            'h': self.alphah(Vm) * (1 - states['h']) - self.betah(Vm) * states['h'],
-            'n': self.alphan(Vm) * (1 - states['n']) - self.betan(Vm) * states['n']
-        }
-
-    def derEffStates(self, Vm, states, rates):
-        return {
-            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n']
+            'm': lambda Vm, x: self.alpham(Vm) * (1 - x['m']) - self.betam(Vm) * x['m'],
+            'h': lambda Vm, x: self.alphah(Vm) * (1 - x['h']) - self.betah(Vm) * x['h'],
+            'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n']
         }
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self, Vm):
+    def steadyStates(self):
         return {
-            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
+            'm': lambda Vm: self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': lambda Vm: self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': lambda Vm: self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
         }
 
     # ------------------------------ Membrane currents ------------------------------
@@ -103,8 +96,8 @@ class TemplateNeuron(PointNeuron):
 
     def currents(self):
         return {
-            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
-            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
+            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm),
+            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
             'iLeak': lambda Vm, _: self.iLeak(Vm)
         }
 

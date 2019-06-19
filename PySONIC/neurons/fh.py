@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 10:09:14
+# @Last Modified time: 2019-06-19 14:44:34
 
 import numpy as np
 from ..core import PointNeuron
@@ -94,31 +94,30 @@ class FrankenhaeuserHuxley(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self, Vm, states):
+    def derStates(self):
         return {
-            'm': self.alpham(Vm) * (1 - states['m']) - self.betam(Vm) * states['m'],
-            'h': self.alphah(Vm) * (1 - states['h']) - self.betah(Vm) * states['h'],
-            'n': self.alphan(Vm) * (1 - states['n']) - self.betan(Vm) * states['n'],
-            'p': self.alphap(Vm) * (1 - states['p']) - self.betap(Vm) * states['p']
+            'm': lambda Vm, x: self.alpham(Vm) * (1 - x['m']) - self.betam(Vm) * x['m'],
+            'h': lambda Vm, x: self.alphah(Vm) * (1 - x['h']) - self.betah(Vm) * x['h'],
+            'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n'],
+            'p': lambda Vm, x: self.alphap(Vm) * (1 - x['p']) - self.betap(Vm) * x['p']
         }
 
-    def derEffStates(self, Vm, states, rates):
-        return {
-            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-            'p': rates['alphap'] * (1 - states['p']) - rates['betap'] * states['p']
-        }
+    # def derEffStates(self, Vm, states, rates):
+    #     return {
+    #         'm': ratex['alpham'] * (1 - x[['m']) - ratex['betam'] * x[['m'],
+    #         'h': ratex['alphah'] * (1 - x[['h']) - ratex['betah'] * x[['h'],
+    #         'n': ratex['alphan'] * (1 - x[['n']) - ratex['betan'] * x[['n'],
+    #         'p': ratex['alphap'] * (1 - x[['p']) - ratex['betap'] * x[['p']
+    #     }
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self, Vm):
-        # Solve the equation dx/dt = 0 at Vm for each x-state
+    def steadyStates(self):
         return {
-            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
-            'p': self.alphap(Vm) / (self.alphap(Vm) + self.betap(Vm))
+            'm': lambda Vm: self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': lambda Vm: self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': lambda Vm: self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
+            'p': lambda Vm: self.alphap(Vm) / (self.alphap(Vm) + self.betap(Vm))
         }
 
     # ------------------------------ Membrane currents ------------------------------
@@ -144,9 +143,9 @@ class FrankenhaeuserHuxley(PointNeuron):
 
     def currents(self):
         return {
-            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
-            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
-            'iP': lambda Vm, states: self.iP(states['p'], Vm),
+            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm),
+            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
+            'iP': lambda Vm, x: self.iP(x['p'], Vm),
             'iLeak': lambda Vm, _: self.iLeak(Vm)
         }
 

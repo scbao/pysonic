@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 10:28:35
+# @Last Modified time: 2019-06-19 14:27:13
 
 import numpy as np
 from ..core import PointNeuron
@@ -51,33 +51,33 @@ class Thalamic(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self, Vm, states):
+    def derStates(self):
         return {
-            'm': self.alpham(Vm) * (1 - states['m']) - self.betam(Vm) * states['m'],
-            'h': self.alphah(Vm) * (1 - states['h']) - self.betah(Vm) * states['h'],
-            'n': self.alphan(Vm) * (1 - states['n']) - self.betan(Vm) * states['n'],
-            's': (self.sinf(Vm) - states['s']) / self.taus(Vm),
-            'u': (self.uinf(Vm) - states['u']) / self.tauu(Vm)
+            'm': lambda Vm, s: self.alpham(Vm) * (1 - s['m']) - self.betam(Vm) * s['m'],
+            'h': lambda Vm, s: self.alphah(Vm) * (1 - s['h']) - self.betah(Vm) * s['h'],
+            'n': lambda Vm, s: self.alphan(Vm) * (1 - s['n']) - self.betan(Vm) * s['n'],
+            's': lambda Vm, s: (self.sinf(Vm) - s['s']) / self.taus(Vm),
+            'u': lambda Vm, s: (self.uinf(Vm) - s['u']) / self.tauu(Vm)
         }
 
-    def derEffStates(self, Vm, states, rates):
-        return {
-            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-            's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
-            'u': rates['alphau'] * (1 - states['u']) - rates['betau'] * states['u']
-        }
+    # def derEffStates(self, Vm, states, rates):
+    #     return {
+    #         'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+    #         'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+    #         'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+    #         's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
+    #         'u': rates['alphau'] * (1 - states['u']) - rates['betau'] * states['u']
+    #     }
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self, Vm):
+    def steadyStates(self):
         return {
-            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
-            's': self.sinf(Vm),
-            'u': self.uinf(Vm)
+            'm': lambda Vm: self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': lambda Vm: self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': lambda Vm: self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
+            's': lambda Vm: self.sinf(Vm),
+            'u': lambda Vm: self.uinf(Vm)
         }
 
     # ------------------------------ Membrane currents ------------------------------
@@ -189,9 +189,12 @@ class ThalamoCortical(Thalamic):
         *Pospischil, M., Toledo-Rodriguez, M., Monier, C., Piwkowska, Z., Bal, T., Frégnac, Y.,
         Markram, H., and Destexhe, A. (2008). Minimal Hodgkin-Huxley type models for different
         classes of cortical and thalamic neurons. Biol Cybern 99, 427–441.*
+
         *Destexhe, A., Bal, T., McCormick, D.A., and Sejnowski, T.J. (1996). Ionic mechanisms
         underlying synchronized oscillations and propagating waves in a model of ferret
         thalamic slices. J. Neurophysiol. 76, 2049–2070.*
+
+        Model of Ca2+ buffering and contribution from iCaT derived from:
         *McCormick, D.A., and Huguenard, J.R. (1992). A model of the electrophysiological
         properties of thalamocortical relay neurons. J. Neurophysiol. 68, 1384–1400.*
     '''
@@ -247,6 +250,10 @@ class ThalamoCortical(Thalamic):
         self.rates = self.getRatesNames(['m', 'h', 'n', 's', 'u', 'O'])
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
         # self.states += ['O', 'C', 'P0', 'Cai']
+
+    def OL(self, O, C):
+        ''' O-gate locked-open probability '''
+        return 1 - O - C
 
     def getPltScheme(self):
         pltscheme = super().getPltScheme()
@@ -309,134 +316,75 @@ class ThalamoCortical(Thalamic):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derO(self, C, O, P0, Vm):
-        ''' Evolution of O-gate open-probability
-
-            :param C: closed-probability of O-gate (-)
-            :param O: open-probability of O-gate (-)
-            :param P0: proportion of Ih channels regulating factor in unbound state (-)
-            :param Vm: membrane potential (mV)
-            :return: time derivative of O-gate open-probability (s-1)
-        '''
-        return self.alphao(Vm) * C - self.betao(Vm) * O - self.k3 * O * (1 - P0) +\
-            self.k4 * (1 - O - C)
-
-    def OL(self, O, C):
-        ''' O-gate locked-open probability.
-
-            :param O: open-probability of O-gate (-)
-            :param C: closed-probability of O-gate (-)
-            :return: loked-open-probability of O-gate (-)
-
-        '''
-        return 1 - O - C
-
-    def derP0(self, P0, Cai):
-        ''' Evolution of unbound probability of Ih regulating factor.
-
-            :param P0: unbound probability of Ih regulating factor (-)
-            :param Cai: submembrane Calcium concentration (M)
-            :return: time derivative of ubnound probability (s-1)
-        '''
-        return self.k2 * (1 - P0) - self.k1 * P0 * Cai**self.nCa
-
     def derCai(self, Cai, s, u, Vm):
-        ''' Evolution of submembrane Calcium concentration.
+        return (self.Cai_min - Cai) / self.taur_Cai -\
+            self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)  # M/s
 
-            Model of Ca2+ buffering and contribution from iCaT derived from:
-            *McCormick, D.A., and Huguenard, J.R. (1992). A model of the electrophysiological
-            properties of thalamocortical relay neurons. J. Neurophysiol. 68, 1384–1400.*
+    def derC(self, O, C, Vm):
+        return self.betao(Vm) * O - self.alphao(Vm) * C  # s-1
 
-            :param Cai: submembrane Calcium concentration (M)
-            :param s: open-probability of s-gate (-)
-            :param u: open-probability of u-gate (-)
-            :param Vm: membrane potential (mV)
-            :return: time derivative of submembrane Calcium concentration (M/s)
-        '''
-        return (self.Cai_min - Cai) / self.taur_Cai - self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)
+    def derO(self, O, C, P0, Vm):
+        return -self.derC(O, C, Vm) - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)  # s-1
 
-    def tmp(self, C, O, P0):
-        return - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)
-
-    def derStates(self, Vm, states):
-        dstates = super().derStates(Vm, states)
+    def derStates(self):
+        dstates = super().derStates()
         dstates.update({
-            'C': self.betao(Vm) * states['O'] - self.alphao(Vm) * states['C'],
-            'Cai': self.derCai(states['Cai'], states['s'], states['u'], Vm),
-            'P0': self.derP0(states['P0'], states['Cai'])
+            'C': lambda Vm, s: self.derC(s['O'], s['C'], Vm),
+            'O': lambda Vm, s: self.derO(s['O'], s['C'], s['P0'], Vm),
+            'P0': lambda Vm, s: self.k2 * (1 - s['P0']) - self.k1 * s['P0'] * s['Cai']**self.nCa,
+            'Cai': lambda Vm, s: self.derCai(s['Cai'], s['s'], s['u'], Vm),
         })
-        dstates['O'] = -dstates['C'] + self.tmp(states['C'], states['O'], states['P0'])
         return dstates
 
-    def derEffStates(self, Vm, states, rates):
-        dstates = super().derEffStates(Vm, states, rates)
-        states.update({
-            'C': rates['betao'] * states['O'] - rates['alphao'] * states['C'],
-            'P0': self.derP0(states['P0'], states['Cai']),
-            'Cai': self.derCai(states['Cai'], states['s'], states['u'], Vm)
-        })
-        dstates['O'] = -dstates['C'] + self.tmp(states['C'], states['O'], states['P0'])
-        return dstates
+    # def derEffStates(self, Vm, states, rates):
+    #     dstates = super().derEffStates(Vm, states, rates)
+    #     states.update({
+    #         'C': rates['betao'] * states['O'] - rates['alphao'] * states['C'],
+    #         'P0': self.k2 * (1 - states['P0']) - self.k1 * states['P0'] * states['Cai']**self.nCa,
+    #         'Cai': self.derCai(states['Cai'], states['s'], states['u'], Vm)
+    #     })
+    #     dstates['O'] = -dstates['C'] + self.tmp(states['C'], states['O'], states['P0'])
+    #     return dstates
 
     # ------------------------------ Steady states ------------------------------
 
-    def Caiinf(self, Vm, s, u):
-        ''' Find the steady-state intracellular Calcium concentration for a
-            specific membrane potential and voltage-gated channel states.
-
-            :param Vm: membrane potential (mV)
-            :param s: open-probability of s-gate
-            :param u: open-probability of u-gate
-            :return: steady-state Calcium concentration in submembrane space (M)
-        '''
-        return self.Cai_min - self.taur_Cai * self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)
-
-    def P0inf(self, Cai):
-        ''' Find the steady-state unbound probability of Ih regulating factor
-            for a specific intracellular Calcium concentration.
-
-            :param Cai : Calcium concentration in submembrane space (M)
-            :return: steady-state unbound probability of Ih regulating factor
-        '''
-        return self.k2 / (self.k2 + self.k1 * Cai**self.nCa)
+    def Cinf(self, Vm):
+        ''' Steady-state O-gate closed-probability '''
+        return self.betao(Vm) / self.alphao(Vm) * self.Oinf(Vm)
 
     def Oinf(self, Cai, Vm):
-        ''' Find the steady-state O-gate open-probability for specific
-            membrane potential and intracellular Calcium concentration.
+        ''' Steady-state O-gate open-probability '''
+        return self.k4 / (self.k3 * (1 - self.P0inf(Cai)) + self.k4 * (
+            1 + self.betao(Vm) / self.alphao(Vm)))
 
-            :param Cai : Calcium concentration in submembrane space (M)
-            :param Vm: membrane potential (mV)
-            :return: steady-state O-gate open-probability
-        '''
-        BA = self.betao(Vm) / self.alphao(Vm)
-        return self.k4 / (self.k3 * (1 - self.P0inf(Cai)) + self.k4 * (1 + BA))
+    def P0inf(self, Cai):
+        ''' Steady-state unbound probability of Ih regulating factor '''
+        return self.k2 / (self.k2 + self.k1 * Cai**self.nCa)
 
-    def Cinf(self, Cai, Vm):
-        ''' Find the steady-state O-gate closed-probability for specific
-            membrane potential and intracellular Calcium concentration.
+    def Caiinf(self, Vm):
+        ''' Steady-state intracellular Calcium concentration '''
+        return self.Cai_min - self.taur_Cai * self.iCa_to_Cai_rate * self.iCaT(
+            self.sinf(Vm), self.uinf(Vm), Vm)  # M
 
-            :param Cai : Calcium concentration in submembrane space (M)
-            :param Vm: membrane potential (mV)
-            :return: steady-state O-gate closed-probability
-        '''
-        BA = self.betao(Vm) / self.alphao(Vm)
-        return BA * self.Oinf(Cai, Vm)
-
-    def steadyStates(self, Vm):
-        sstates = super().steadyStates(Vm)
-        sstates['Cai'] = self.Caiinf(Vm, sstates['s'], sstates['u'])
-        sstates['P0'] = self.P0inf(sstates['Cai'])
-        sstates['O'] = self.Oinf(sstates['Cai'], Vm)
-        sstates['C'] = self.Cinf(sstates['Cai'], Vm)
+    def steadyStates(self):
+        sstates = super().steadyStates()
+        sstates.update({
+            'O': lambda Vm: self.Oinf(self.Caiinf(Vm), Vm),
+            'C': lambda Vm: self.Cinf(Vm),
+            'P0': lambda Vm: self.P0inf(self.Caiinf(Vm)),
+            'Cai': lambda Vm: self.Caiinf(Vm)
+        })
         return sstates
 
-    def quasiSteadyStates(self, lkp):
-        qsstates = super().quasiSteadyStates(lkp)
-        qsstates['Cai'] = self.Caiinf(lkp['V'], qsstates['s'], qsstates['u'])
-        qsstates['P0'] = self.P0inf(qsstates['Cai'])
-        qsstates['O'] = self.Oinf(qsstates['Cai'], lkp['V'])
-        qsstates['C'] = self.Cinf(qsstates['Cai'], lkp['V'])
-        return qsstates
+    # def quasiSteadyStates(self, lkp):
+    #     qsstates = super().quasiSteadyStates(lkp)
+    #     qsstates.update({
+    #         'O': self.Oinf(self.Caiinf(lkp['V']), lkp['V']),
+    #         'C': self.Cinf(lkp['V']),
+    #         'P0': self.P0inf(self.Caiinf(lkp['V'])),
+    #         'Cai': self.Caiinf(lkp['V'])
+    #     })
+    #     return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 

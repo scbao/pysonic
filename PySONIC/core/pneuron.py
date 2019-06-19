@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 09:56:53
+# @Last Modified time: 2019-06-19 14:32:34
 
 import abc
 import inspect
@@ -104,11 +104,16 @@ class PointNeuron(Model):
         return list(self.states.keys())
 
     @abc.abstractmethod
-    def currents(self):
-        ''' Method defining the functions to compute ionic currents per unit area.
+    def steadyStates(self):
+        ''' Dictionary of steady-states functions. '''
 
-            :return: dictionary of functions returning ionic current densities (mA/m2)
-        '''
+    @abc.abstractmethod
+    def derStates(self):
+        ''' Dictionary of states derivatives functions '''
+
+    @abc.abstractmethod
+    def currents(self):
+        ''' Dictionary of ionic currents functions (returning current densities in mA/m2) '''
 
     def iNet(self, Vm, states):
         ''' net membrane current
@@ -234,16 +239,9 @@ class PointNeuron(Model):
                                                           for a in cargs]))
             }
             for var in cargs:
-                if var not in ['Vm', 'Cai']:
-                    der_func_str = 'der{}{}'.format(var[0].upper(), var[1:])
-                    if hasattr(self, der_func_str):
-                        der_func = getattr(self, der_func_str)
-                        desc = cname + re.sub(
-                            '^Evolution of', '', inspect.getdoc(der_func).splitlines()[0])
-                    else:
-                        desc = '{}-gate open probability'.format(var)
+                if var != 'Vm':
                     pltvars[var] = {
-                        'desc': desc,
+                        'desc': self.states[var],
                         'label': var,
                         'bounds': (-0.1, 1.1)
                     }
@@ -297,35 +295,44 @@ class PointNeuron(Model):
         return list(sum(
             [['alpha{}'.format(x.lower()), 'beta{}'.format(x.lower())] for x in states], []))
 
-    @abc.abstractmethod
-    def steadyStates(self, Vm):
-        ''' Compute the steady-state values for a specific membrane potential value.
 
-            :param Vm: membrane potential (mV)
-            :return: dictionary of steady-states
+    def derStateFunc(self, key):
+        ''' Infer on state derivative function based prsence of alphax/betax or xinf/taux
+            methods/attribuets in the class.
+
+            :param key: state name
+            :return state derivative function.
         '''
-
-    def buildDerState(self, key):
+        print('hello')
         alphax_str, betax_str = ['{}{}'.format(prefix, key) for prefix in ['alpha', 'beta']]
         xinf_str, taux_str = ['{}inf'.format(key), 'taux{}'.format(key)]
         if hasattr(self, alphax_str) and hasattr(self, betax_str):
             alphax, betax = [getattr(self, x) for x in [alphax_str, betax_str]]
-            return lambda x, Vm: alphax(Vm) * (1 - x) - betax(Vm) * x
+            if callable(alphax):
+                if callable(betax):
+                    return lambda Vm, d: alphax(Vm) * (1 - d[key]) - betax(Vm) * d[key]
+                else:
+                    return lambda Vm, d: alphax(Vm) * (1 - d[key]) - betax * d[key]
+            else:
+                if callable(betax):
+                    return lambda Vm, d: alphax * (1 - d[key]) - betax(Vm) * d[key]
+                else:
+                    return lambda _, d: alphax * (1 - d[key]) - betax * d[key]
         elif hasattr(self, xinf_str) and hasattr(self, taux_str):
             xinf, taux = [getattr(self, x) for x in [xinf_str, taux_str]]
-            return lambda x, Vm: (xinf(Vm) - x) / taux(Vm)
+            if callable(xinf):
+                if callable(taux):
+                    return lambda Vm, d: (xinf(Vm) - d[key]) / taux(Vm)
+                else:
+                    return lambda Vm, d: (xinf(Vm) - d[key]) / taux
+            else:
+                if callable(taux):
+                    return lambda Vm, d: (xinf - d[key]) / taux(Vm)
+                else:
+                    return lambda _, d: (xinf - d[key]) / taux
         else:
             raise ValueError('standard X gating derivatives must be defined via the' +
                              'alphaX-betaX or Xinf-tauX paradigm')
-
-    @abc.abstractmethod
-    def derStates(self, Vm, states):
-        ''' Compute the derivatives of channel states.
-
-            :param Vm: membrane potential (mV)
-            :states: state probabilities of the ion channels
-            :return: current per unit area (mA/m2)
-        '''
 
     @abc.abstractmethod
     def computeEffRates(self, Vm):
@@ -361,7 +368,7 @@ class PointNeuron(Model):
         '''
         return np.interp(Qm, lkp['Q'], lkp['V'], left=np.nan, right=np.nan)
 
-    @abc.abstractmethod
+    # @abc.abstractmethod
     def derEffStates(self, Qm, states, lkp):
         ''' Compute the effective derivatives of channel states, based on
             1-dimensional linear interpolation of "effective" coefficients
@@ -412,6 +419,7 @@ class PointNeuron(Model):
             :return: dictionary of quasi-steady states
         '''
         return self.qsStates(lkp, self.statesNames())
+        # return {k: func(lkp['Vm']) for k, func in self.steadyStates().items()}
 
     def getRates(self, Vm):
         ''' Compute the ion channels rate constants for a given membrane potential.
@@ -449,8 +457,7 @@ class PointNeuron(Model):
         states_dict = dict(zip(self.statesNames(), states))
         Iionic = self.iNet(Vm, states_dict)  # mA/m2
         dVmdt = (- Iionic + Iinj) / self.Cm0  # mV/s
-        dstates = self.derStates(Vm, states_dict)
-        return [dVmdt, *[dstates[k] for k in self.statesNames()]]
+        return [dVmdt, *[self.derStates()[k](Vm, states_dict) for k in self.statesNames()]]
 
     def Qderivatives(self, t, y, Cm=None):
         ''' Compute the derivatives of the n-ODE HH system variables,
@@ -467,8 +474,7 @@ class PointNeuron(Model):
         Vm = Qm / Cm * 1e3  # mV
         states_dict = dict(zip(self.statesNames(), states))
         dQmdt = - self.iNet(Vm, states_dict) * 1e-3  # A/m2
-        dstates = self.derStates(Vm, states_dict)
-        return [dQmdt, *[dstates[k] for k in self.statesNames()]]
+        return [dQmdt, *[self.derStates()[k](Vm, states_dict) for k in self.statesNames()]]
 
     def checkInputs(self, Astim, tstim, toffset, PRF, DC):
         ''' Check validity of electrical stimulation parameters.
@@ -541,8 +547,10 @@ class PointNeuron(Model):
         self.checkInputs(Astim, tstim, toffset, PRF, DC)
 
         # Set initial conditions
-        steady_states = self.steadyStates(self.Vm0)
-        y0 = np.array([self.Vm0, *[steady_states[k] for k in self.statesNames()]])
+        y0 = np.array([
+            self.Vm0,
+            *[self.steadyStates()[k](self.Vm0) for k in self.statesNames()]
+        ])
 
         # Initialize simulator and compute solution
         logger.debug('Computing solution')

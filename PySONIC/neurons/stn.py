@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 10:33:17
+# @Last Modified time: 2019-06-19 14:46:17
 
 import numpy as np
 from scipy.optimize import brentq
@@ -308,119 +308,81 @@ class OtsukaSTN(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derD2(self, Cai, d2):
-        ''' Evolution of Calcium-dependent d2-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param d2: open-probability of d2-gate (-)
-            :return: time derivative of d2-gate open-probability (s-1)
-        '''
-        return (self.d2inf(Cai) - d2) / self.tau_d2
-
-    def derR(self, Cai, r):
-        ''' Evolution of Calcium-dependent r-gate open-probability
-
-            :param Vm: membrane potential (mV)
-            :param s: open-probability of r-gate (-)
-            :return: time derivative of r-gate open-probability (s-1)
-        '''
-        return (self.rinf(Cai) - r) / self.tau_r
-
     def derCai(self, p, q, c, d1, d2, Cai, Vm):
-        ''' Evolution of Calcium concentration in submembrane space.
-
-            :param p: open-probability of p-gate
-            :param q: open-probability of q-gate
-            :param c: open-probability of c-gate
-            :param d1: open-probability of d1-gate
-            :param d2: open-probability of d2-gate
-            :param Cai: Calcium concentration in submembranal space (M)
-            :param Vm: membrane potential (mV)
-            :return: time derivative of Calcium concentration in submembrane space (M/s)
-        '''
         iCaT = self.iCaT(p, q, Vm, Cai)
         iCaL = self.iCaL(c, d1, d2, Vm, Cai)
-        return - self.iCa_to_Cai_rate * (iCaT + iCaL) - Cai / self.taur_Cai
+        return - self.iCa_to_Cai_rate * (iCaT + iCaL) - Cai / self.taur_Cai  # M/s
 
-    def derStates(self, Vm, states):
+    def derStates(self):
         return {
-            'a': (self.ainf(Vm) - states['a']) / self.taua(Vm),
-            'b': (self.binf(Vm) - states['b']) / self.taub(Vm),
-            'c': (self.cinf(Vm) - states['c']) / self.tauc(Vm),
-            'd1': (self.d1inf(Vm) - states['d1']) / self.taud1(Vm),
-            'd2': self.derD2(states['Cai'], states['d2']),
-            'm': (self.minf(Vm) - states['m']) / self.taum(Vm),
-            'h': (self.hinf(Vm) - states['h']) / self.tauh(Vm),
-            'n': (self.ninf(Vm) - states['n']) / self.taun(Vm),
-            'p': (self.pinf(Vm) - states['p']) / self.taup(Vm),
-            'q': (self.qinf(Vm) - states['q']) / self.tauq(Vm),
-            'r': self.derR(states['Cai'], states['r']),
-            'Cai': self.derCai(states['p'], states['q'], states['c'], states['d1'], states['d2'],
-                               states['Cai'], Vm),
+            'a': lambda Vm, x: (self.ainf(Vm) - x['a']) / self.taua(Vm),
+            'b': lambda Vm, x: (self.binf(Vm) - x['b']) / self.taub(Vm),
+            'c': lambda Vm, x: (self.cinf(Vm) - x['c']) / self.tauc(Vm),
+            'd1': lambda Vm, x: (self.d1inf(Vm) - x['d1']) / self.taud1(Vm),
+            'd2': lambda Vm, x: (self.d2inf(x['Cai']) - x['d2']) / self.tau_d2,
+            'm': lambda Vm, x: (self.minf(Vm) - x['m']) / self.taum(Vm),
+            'h': lambda Vm, x: (self.hinf(Vm) - x['h']) / self.tauh(Vm),
+            'n': lambda Vm, x: (self.ninf(Vm) - x['n']) / self.taun(Vm),
+            'p': lambda Vm, x: (self.pinf(Vm) - x['p']) / self.taup(Vm),
+            'q': lambda Vm, x: (self.qinf(Vm) - x['q']) / self.tauq(Vm),
+            'r': lambda Vm, x: (self.rinf(x['Cai']) - x['r']) / self.tau_r,
+            'Cai': lambda Vm, x: self.derCai(
+                *[x[k] for k in ['p', 'q', 'c', 'd1', 'd2', 'Cai']], Vm)
         }
 
-    def derEffStates(self, Vm, states, rates):
-        return {
-            'a': rates['alphaa'] * (1 - states['a']) - rates['betaa'] * states['a'],
-            'b': rates['alphab'] * (1 - states['b']) - rates['betab'] * states['b'],
-            'c': rates['alphac'] * (1 - states['c']) - rates['betac'] * states['c'],
-            'd1': rates['alphad1'] * (1 - states['d1']) - rates['betad1'] * states['d1'],
-            'd2': self.derD2(states['Cai'], states['d2']),
-            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-            'p': rates['alphap'] * (1 - states['p']) - rates['betap'] * states['p'],
-            'q': rates['alphaq'] * (1 - states['q']) - rates['betaq'] * states['q'],
-            'r': self.derR(states['Cai'], states['r']),
-            'Cai': self.derCai(*[states[x] for x in ['p', 'q', 'c', 'd1', 'd2', 'Cai']], Vm)
-        }
+    # def derEffStates(self, Vm, states, rates):
+    #     return {
+    #         'a': rates['alphaa'] * (1 - states['a']) - rates['betaa'] * states['a'],
+    #         'b': rates['alphab'] * (1 - states['b']) - rates['betab'] * states['b'],
+    #         'c': rates['alphac'] * (1 - states['c']) - rates['betac'] * states['c'],
+    #         'd1': rates['alphad1'] * (1 - states['d1']) - rates['betad1'] * states['d1'],
+    #         'd2': (self.d2inf(states['Cai']) - states['d2']) / self.tau_d2,
+    #         'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+    #         'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+    #         'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+    #         'p': rates['alphap'] * (1 - states['p']) - rates['betap'] * states['p'],
+    #         'q': rates['alphaq'] * (1 - states['q']) - rates['betaq'] * states['q'],
+    #         'r': (self.rinf(states['Cai']) - states['r']) / self.tau_r,
+    #         'Cai': self.derCai(*[states[x] for x in ['p', 'q', 'c', 'd1', 'd2', 'Cai']], Vm)
+    #     }
 
     # ------------------------------ Steady states ------------------------------
 
-    def Caiinf(self, Vm, p, q, c, d1):
-        ''' Find the steady-state intracellular Calcium concentration for a
-            specific membrane potential and voltage-gated channel states.
-
-            :param Vm: membrane potential (mV)
-            :param p: open-probability of p-gate
-            :param q: open-probability of q-gate
-            :param c: open-probability of c-gate
-            :param d1: open-probability of d1-gate
-            :return: steady-state Calcium concentration in submembrane space (M)
-        '''
+    def Caiinf(self, Vm):
+        ''' Steady-state intracellular Calcium concentration '''
         if isinstance(Vm, np.ndarray):
-            return np.array([self.Caiinf(Vm[i], p[i], q[i], c[i], d1[i]) for i in range(Vm.size)])
+            return np.array([self.Caiinf(v) for v in Vm])
         else:
             return brentq(
-                lambda x: self.derCai(p, q, c, d1, self.d2inf(x), x, Vm),
+                lambda x: self.derCai(self.pinf(Vm), self.qinf(Vm), self.cinf(Vm),
+                                      self.d1inf(Vm), self.d2inf(x), x, Vm),
                 self.Cai0 * 1e-4, self.Cai0 * 1e3,
                 xtol=1e-16
             )
 
-    def steadyStates(self, Vm):
-        sstates = {
-            'a': self.ainf(Vm),
-            'b': self.binf(Vm),
-            'c': self.cinf(Vm),
-            'd1': self.d1inf(Vm),
-            'm': self.minf(Vm),
-            'h': self.hinf(Vm),
-            'n': self.ninf(Vm),
-            'p': self.pinf(Vm),
-            'q': self.qinf(Vm)
+    def steadyStates(self):
+        return {
+            'a': lambda Vm: self.ainf(Vm),
+            'b': lambda Vm: self.binf(Vm),
+            'c': lambda Vm: self.cinf(Vm),
+            'd1': lambda Vm: self.d1inf(Vm),
+            'd2': lambda Vm: self.d2inf(self.Caiinf(Vm)),
+            'm': lambda Vm: self.minf(Vm),
+            'h': lambda Vm: self.hinf(Vm),
+            'n': lambda Vm: self.ninf(Vm),
+            'p': lambda Vm: self.pinf(Vm),
+            'q': lambda Vm: self.qinf(Vm),
+            'r': lambda Vm: self.rinf(self.Caiinf(Vm)),
+            'Cai': lambda Vm: self.Caiinf(Vm)
         }
-        sstates['Cai'] = self.Caiinf(Vm, sstates['p'], sstates['q'], sstates['c'], sstates['d1'])
-        sstates['d2'] = self.d2inf(sstates['Cai'])
-        sstates['r'] = self.rinf(sstates['Cai'])
-        return sstates
 
-    def quasiSteadyStates(self, lkp):
-        qsstates = self.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
-        qsstates['Cai'] = self.Caiinf(lkp['V'], qsstates['p'], qsstates['q'], qsstates['c'],
-                                      qsstates['d1'])
-        qsstates['d2'] = self.d2inf(qsstates['Cai'])
-        qsstates['r'] = self.rinf(qsstates['Cai'])
-        return qsstates
+    # def quasiSteadyStates(self, lkp):
+    #     qsstates = self.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
+    #     qsstates['Cai'] = self.Caiinf(lkp['V'], qsstates['p'], qsstates['q'], qsstates['c'],
+    #                                   qsstates['d1'])
+    #     qsstates['d2'] = self.d2inf(qsstates['Cai'])
+    #     qsstates['r'] = self.rinf(qsstates['Cai'])
+    #     return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 
@@ -455,13 +417,13 @@ class OtsukaSTN(PointNeuron):
 
     def currents(self):
         return {
-            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
-            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
-            'iA': lambda Vm, states: self.iA(states['a'], states['b'], Vm),
-            'iCaT': lambda Vm, states: self.iCaT(states['p'], states['q'], Vm, states['Cai']),
-            'iCaL': lambda Vm, states: self.iCaL(
-                states['c'], states['d1'], states['d2'], Vm, states['Cai']),
-            'iKCa': lambda Vm, states: self.iKCa(states['r'], Vm),
+            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm),
+            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
+            'iA': lambda Vm, x: self.iA(x['a'], x['b'], Vm),
+            'iCaT': lambda Vm, x: self.iCaT(x['p'], x['q'], Vm, x['Cai']),
+            'iCaL': lambda Vm, x: self.iCaL(
+                x['c'], x['d1'], x['d2'], Vm, x['Cai']),
+            'iKCa': lambda Vm, x: self.iKCa(x['r'], Vm),
             'iLeak': lambda Vm, _: self.iLeak(Vm)
         }
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 11:02:44
+# @Last Modified time: 2019-06-19 15:11:30
 
 from functools import partialmethod
 import numpy as np
@@ -160,52 +160,59 @@ class LeechTouch(PointNeuron):
         ''' Evolution of Ca2+ dependent iKCa gate '''
         return self._derAion(ACa, Cai, self.taua_KCa)
 
-    def derStates(self, Vm, states):
+    def derStates(self):
         return {
-            'm': (self.minf(Vm) - states['m']) / self.taum,
-            'h': (self.hinf(Vm) - states['h']) / self.tauh(Vm),
-            'n': (self.ninf(Vm) - states['n']) / self.taun(Vm),
-            's': (self.sinf(Vm) - states['s']) / self.taus,
-            'Nai': self.derNai(states['Nai'], states['m'], states['h'], Vm),
-            'ANa': self.derANa(states['ANa'], states['Nai']),
-            'Cai': self.derCai(states['Cai'], states['s'], Vm),
-            'ACa': self.derACa(states['ACa'], states['Cai'])
+            'm': lambda Vm, x: (self.minf(Vm) - x['m']) / self.taum,
+            'h': lambda Vm, x: (self.hinf(Vm) - x['h']) / self.tauh(Vm),
+            'n': lambda Vm, x: (self.ninf(Vm) - x['n']) / self.taun(Vm),
+            's': lambda Vm, x: (self.sinf(Vm) - x['s']) / self.taus,
+            'Nai': lambda Vm, x: self.derNai(x['Nai'], x['m'], x['h'], Vm),
+            'ANa': lambda Vm, x: self.derANa(x['ANa'], x['Nai']),
+            'Cai': lambda Vm, x: self.derCai(x['Cai'], x['s'], Vm),
+            'ACa': lambda Vm, x: self.derACa(x['ACa'], x['Cai'])
         }
 
-    def derEffStates(self, Vm, states, rates):
-        return {
-            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-            's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
-            'Nai': self.derNai(states['Nai'], states['m'], states['h'], Vm),
-            'ANa': self.derANa(states['ANa'], states['Nai']),
-            'Cai': self.derCai(states['Cai'], states['s'], Vm),
-            'ACa': self.derACa(states['ACa'], states['Cai'])
-        }
+    # def derEffStates(self, Vm, states, rates):
+    #     return {
+    #         'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+    #         'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+    #         'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+    #         's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
+    #         'Nai': self.derNai(states['Nai'], states['m'], states['h'], Vm),
+    #         'ANa': self.derANa(states['ANa'], states['Nai']),
+    #         'Cai': self.derCai(states['Cai'], states['s'], Vm),
+    #         'ACa': self.derACa(states['ACa'], states['Cai'])
+    #     }
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self, Vm):
-        sstates = {
-            'm': self.minf(Vm),
-            'h': self.hinf(Vm),
-            'n': self.ninf(Vm),
-            's': self.sinf(Vm)
-        }
-        sstates['Nai'] = - self.K_Na * self.iNa(sstates['m'], sstates['h'], Vm)
-        sstates['ANa'] = sstates['Nai']
-        sstates['Cai'] = - self.K_Ca * self.iCa(sstates['s'], Vm)
-        sstates['ACa'] = sstates['Cai']
-        return sstates
+    def Naiinf(self, Vm):
+        ''' Steady.state Sodium intracellular concentration. '''
+        return -self.K_Na * self.iNa(self.minf(Vm), self.hinf(Vm), Vm)
 
-    def quasiSteadyStates(self, lkp):
-        qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
-        qsstates['Nai'] = - self.K_Na * self.iNa(qsstates['m'], qsstates['h'], lkp['V'])
-        qsstates['ANa'] = qsstates['Nai']
-        qsstates['Cai'] = - self.K_Ca * self.iCa(qsstates['s'], lkp['V'])
-        qsstates['ACa'] = qsstates['Cai']
-        return qsstates
+    def Caiinf(self, Vm):
+        ''' Steady.state Calcium intracellular concentration. '''
+        return -self.K_Ca * self.iCa(self.sinf(Vm), Vm)
+
+    def steadyStates(self):
+        return {
+            'm': lambda Vm: self.minf(Vm),
+            'h': lambda Vm: self.hinf(Vm),
+            'n': lambda Vm: self.ninf(Vm),
+            's': lambda Vm: self.sinf(Vm),
+            'Nai': lambda Vm: self.Naiinf(Vm),
+            'ANa': lambda Vm: self.Naiinf(Vm),
+            'Cai': lambda Vm: self.Caiinf(Vm),
+            'ACa': lambda Vm: self.Caiinf(Vm)
+        }
+
+    # def quasiSteadyStates(self, lkp):
+    #     qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
+    #     qsstates['Nai'] = - self.K_Na * self.iNa(qsstates['m'], qsstates['h'], lkp['V'])
+    #     qsstates['ANa'] = qsstates['Nai']
+    #     qsstates['Cai'] = - self.K_Ca * self.iCa(qsstates['s'], lkp['V'])
+    #     qsstates['ACa'] = qsstates['Cai']
+    #     return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 
@@ -235,11 +242,11 @@ class LeechTouch(PointNeuron):
 
     def currents(self):
         return {
-            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
-            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
-            'iCa': lambda Vm, states: self.iCa(states['s'], Vm),
-            'iPumpNa': lambda Vm, states: self.iPumpNa(states['ANa'], Vm),
-            'iKCa': lambda Vm, states: self.iKCa(states['ACa'], Vm),
+            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm),
+            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
+            'iCa': lambda Vm, x: self.iCa(x['s'], Vm),
+            'iPumpNa': lambda Vm, x: self.iPumpNa(x['ANa'], Vm),
+            'iKCa': lambda Vm, x: self.iKCa(x['ACa'], Vm),
             'iLeak': lambda Vm, _: self.iLeak(Vm)
         }
 
@@ -308,30 +315,35 @@ class LeechMech(PointNeuron):
     # ------------------------------ States derivatives ------------------------------
 
     def derC(self, c, Cai):
-        ''' Evolution of the c-gate open-probability
+        ''' Evolution of the c-gate open-probability '''
+        return self.alphaC(Cai) * (1 - c) - self.betaC * c  # s-1
 
-            :param c: open-probability of c-gate (-)
-            :param Cai: intracellular Calcium concentration (M)
-            :return: derivative of open-probability w.r.t. time (s-1)
-        '''
-        return self.alphaC(Cai) * (1 - c) - self.betaC * c
-
-    def derStates(self, Vm, states):
+    def derStates(self):
         return {
-            'm': self.alpham(Vm) * (1 - states['m']) - self.betam(Vm) * states['m'],
-            'h': self.alphah(Vm) * (1 - states['h']) - self.betah(Vm) * states['h'],
-            'n': self.alphan(Vm) * (1 - states['n']) - self.betan(Vm) * states['n'],
-            's': self.alphas(Vm) * (1 - states['s']) - self.betas(Vm) * states['s'],
-            'c': self.derC(states['c'], states['Cai'])
+            'm': lambda Vm, x: self.alpham(Vm) * (1 - x['m']) - self.betam(Vm) * x['m'],
+            'h': lambda Vm, x: self.alphah(Vm) * (1 - x['h']) - self.betah(Vm) * x['h'],
+            'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n'],
+            's': lambda Vm, x: self.alphas(Vm) * (1 - x['s']) - self.betas(Vm) * x['s'],
+            'c': lambda Vm, x: self.derC(x['c'], x['Cai'])
         }
 
-    def derEffStates(self, Vm, states, rates):
+    # def derEffStates(self, Vm, states, rates):
+    #     return {
+    #         'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
+    #         'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
+    #         'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
+    #         's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
+    #         'c': self.derC(states['c'], states['Cai']),
+    #     }
+
+    # ------------------------------ Steady states ------------------------------
+
+    def steadyStates(self):
         return {
-            'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-            'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-            'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-            's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
-            'c': self.derC(states['c'], states['Cai']),
+            'm': lambda Vm: self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
+            'h': lambda Vm: self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
+            'n': lambda Vm: self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
+            's': lambda Vm: self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm)),
         }
 
     # ------------------------------ Membrane currents ------------------------------
@@ -360,10 +372,10 @@ class LeechMech(PointNeuron):
 
     def currents(self):
         return {
-            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm, states['Nai']),
-            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
-            'iCa': lambda Vm, states: self.iCa(states['s'], Vm, states['Cai']),
-            'iKCa': lambda Vm, states: self.iKCa(states['c'], Vm),
+            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm, x['Nai']),
+            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
+            'iCa': lambda Vm, x: self.iCa(x['s'], Vm, x['Cai']),
+            'iKCa': lambda Vm, x: self.iKCa(x['c'], Vm),
             'iLeak': lambda Vm, _: self.iLeak(Vm)
         }
 
@@ -438,48 +450,48 @@ class LeechPressure(LeechMech):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self, Vm, states):
-        dstates = super().derStates(Vm, states)
+    def derStates(self):
+        dstates = super().derStates()
         dstates.update({
-            'Nai': -(self.iNa(states['m'], states['h'], Vm, states['Nai']) +
-                     self.iPumpNa(states['Nai'])) * self.K_Na,
-            'Cai': -(self.iCa(states['s'], Vm, states['Cai']) +
-                     self.iPumpCa(states['Cai'])) * self.K_Ca
+            'Nai': lambda Vm, x: -(self.iNa(x['m'], x['h'], Vm, x['Nai']) +
+                                   self.iPumpNa(x['Nai'])) * self.K_Na,
+            'Cai': lambda Vm, x: -(self.iCa(x['s'], Vm, x['Cai']) +
+                                   self.iPumpCa(x['Cai'])) * self.K_Ca
         })
         return dstates
 
-    def derEffStates(self, Vm, states, rates):
-        dstates = super().derEffStates(Vm, states, rates)
-        dstates.update({
-            'Nai': -(self.iNa(states['m'], states['h'], Vm, states['Nai']) +
-                     self.iPumpNa(states['Nai'])) * self.K_Na,
-            'Cai': -(self.iCa(states['s'], Vm, states['Cai']) +
-                     self.iPumpCa(states['Cai'])) * self.K_Ca
-        })
-        return dstates
+    # def derEffStates(self, Vm, states, rates):
+    #     dstates = super().derEffStates(Vm, states, rates)
+    #     dstates.update({
+    #         'Nai': -(self.iNa(states['m'], states['h'], Vm, states['Nai']) +
+    #                  self.iPumpNa(states['Nai'])) * self.K_Na,
+    #         'Cai': -(self.iCa(states['s'], Vm, states['Cai']) +
+    #                  self.iPumpCa(states['Cai'])) * self.K_Ca
+    #     })
+    #     return dstates
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self, Vm):
-        sstates = {
-            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
-            's': self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm)),
-            'Nai': self.Nai0,
-            'Cai': self.Cai0
-        }
-        sstates['c'] = self.alphaC(sstates['Cai']) / (self.alphaC(sstates['Cai']) + self.betaC)
+    def cinf(self, Cai):
+        return self.alphaC(Cai) / (self.alphaC(Cai) + self.betaC)
+
+    def steadyStates(self):
+        sstates = super().steadyStates()
+        sstates.update({
+            'Nai': lambda _: self.Nai0,
+            'Cai': lambda _: self.Cai0,
+            'c': lambda _: self.cinf(self.Cai0)
+        })
         return sstates
 
-    def quasiSteadyStates(self, lkp):
-        qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
-        qsstates.update({
-            'Nai': self.Nai0,
-            'Cai': self.Cai0
-        })
-        qsstates['c'] = self.alphaC(qsstates['Cai']) / (self.alphaC(qsstates['Cai']) + self.betaC)
-        return qsstates
+    # def quasiSteadyStates(self, lkp):
+    #     qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
+    #     qsstates.update({
+    #         'Nai': self.Nai0,
+    #         'Cai': self.Cai0
+    #     })
+    #     qsstates['c'] = self.alphaC(qsstates['Cai']) / (self.alphaC(qsstates['Cai']) + self.betaC)
+    #     return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 
@@ -494,8 +506,8 @@ class LeechPressure(LeechMech):
     def currents(self):
         currents = super().currents()
         currents.update({
-            'iPumpNa': lambda Vm, states: self.iPumpNa(states['Nai']) / 3.,
-            'iPumpCa': lambda Vm, states: self.iPumpCa(states['Cai'])
+            'iPumpNa': lambda Vm, x: self.iPumpNa(x['Nai']) / 3.,
+            'iPumpCa': lambda Vm, x: self.iPumpCa(x['Cai'])
         })
         return currents
 
@@ -610,21 +622,17 @@ class LeechRetzius(LeechMech):
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self, Vm):
-        return {
-            'm': self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
-            's': self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm)),
-            'c': self.alphaC(self.Cai) / (self.alphaC(self.Cai) + self.betaC),
-            'a': self.ainf(Vm),
-            'b': self.binf(Vm)
-        }
+    def steadyStates(self):
+        sstates = super().steadyStates()
+        sstates.update({
+            'a': lambda Vm: self.ainf(Vm),
+            'b': lambda Vm: self.binf(Vm)
+        })
 
-    def quasiSteadyStates(self, lkp):
-        qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's', 'a', 'b'])
-        qsstates['c'] = self.alphaC(self.Cai) / (self.alphaC(self.Cai) + self.betaC),
-        return qsstates
+    # def quasiSteadyStates(self, lkp):
+    #     qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's', 'a', 'b'])
+    #     qsstates['c'] = self.alphaC(self.Cai) / (self.alphaC(self.Cai) + self.betaC),
+    #     return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 
@@ -634,7 +642,7 @@ class LeechRetzius(LeechMech):
 
     def currents(self):
         currents = super().currents()
-        currents['iA'] = lambda Vm, states: self.iA(states['a'], states['b'], Vm)
+        currents['iA'] = lambda Vm, x: self.iA(x['a'], x['b'], Vm)
         return currents
 
     # ------------------------------ Other methods ------------------------------
