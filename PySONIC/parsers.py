@@ -3,8 +3,9 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 15:45:14
+# @Last Modified time: 2019-06-20 09:45:48
 
+import os
 import logging
 import pprint
 import numpy as np
@@ -12,6 +13,8 @@ from argparse import ArgumentParser
 
 from .utils import Intensity2Pressure, selectDirDialog, OpenFilesDialog, isIterable
 from .neurons import getPointNeuron
+
+DEFAULT_OUTPUT_FOLDER = os.path.abspath(os.path.split(__file__)[0] + '../../../../dump')
 
 
 class Parser(ArgumentParser):
@@ -236,8 +239,11 @@ class Parser(ArgumentParser):
         if hasattr(self, 'outputdir') and self.outputdir is not None:
             return self.outputdir
         else:
-            return self.parseDir(
-                'outputdir', args, 'Select output directory', self.outputdir_dep_key)
+            if args['outputdir'] is not None and args['outputdir'] == 'dump':
+                return DEFAULT_OUTPUT_FOLDER
+            else:
+                return self.parseDir(
+                    'outputdir', args, 'Select output directory', self.outputdir_dep_key)
 
     def parseLogLevel(self, args):
         return logging.DEBUG if args.pop('verbose') else logging.INFO

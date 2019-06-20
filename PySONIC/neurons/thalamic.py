@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 15:19:18
+# @Last Modified time: 2019-06-20 10:03:59
 
 import numpy as np
 from ..core import PointNeuron
@@ -59,15 +59,6 @@ class Thalamic(PointNeuron):
             's': lambda Vm, s: (self.sinf(Vm) - s['s']) / self.taus(Vm),
             'u': lambda Vm, s: (self.uinf(Vm) - s['u']) / self.tauu(Vm)
         }
-
-    # def derEffStates(self, Vm, states, rates):
-    #     return {
-    #         'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-    #         'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-    #         'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-    #         's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
-    #         'u': rates['alphau'] * (1 - states['u']) - rates['betau'] * states['u']
-    #     }
 
     # ------------------------------ Steady states ------------------------------
 
@@ -262,8 +253,7 @@ class ThalamoCortical(Thalamic):
         return pltscheme
 
     def getPltVars(self, wrapleft='df["', wrapright='"]'):
-        pltvars = super().getPltVars(wrapleft, wrapright)
-        pltvars.update({
+        return {**super().getPltVars(wrapleft, wrapright), **{
             'Cai': {
                 'desc': 'sumbmembrane Ca2+ concentration',
                 'label': '[Ca^{2+}]_i',
@@ -281,8 +271,7 @@ class ThalamoCortical(Thalamic):
                 'label': 'P_0',
                 'bounds': (-0.1, 1.1)
             }
-        })
-        return pltvars
+        }}
 
     # ------------------------------ Gating states kinetics ------------------------------
 
@@ -327,14 +316,12 @@ class ThalamoCortical(Thalamic):
         return -self.derC(O, C, Vm) - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)  # s-1
 
     def derStates(self):
-        dstates = super().derStates()
-        dstates.update({
+        return {**super().derStates(), **{
             'C': lambda Vm, s: self.derC(s['O'], s['C'], Vm),
             'O': lambda Vm, s: self.derO(s['O'], s['C'], s['P0'], Vm),
             'P0': lambda Vm, s: self.k2 * (1 - s['P0']) - self.k1 * s['P0'] * s['Cai']**self.nCa,
             'Cai': lambda Vm, s: self.derCai(s['Cai'], s['s'], s['u'], Vm),
-        })
-        return dstates
+        }}
 
     # def derEffStates(self, Vm, states, rates):
     #     dstates = super().derEffStates(Vm, states, rates)
@@ -367,14 +354,12 @@ class ThalamoCortical(Thalamic):
             self.sinf(Vm), self.uinf(Vm), Vm)  # M
 
     def steadyStates(self):
-        sstates = super().steadyStates()
-        sstates.update({
+        return {**super().steadyStates(), **{
             'O': lambda Vm: self.Oinf(self.Caiinf(Vm), Vm),
             'C': lambda Vm: self.Cinf(self.Caiinf(Vm), Vm),
             'P0': lambda Vm: self.P0inf(self.Caiinf(Vm)),
             'Cai': lambda Vm: self.Caiinf(Vm)
-        })
-        return sstates
+        }}
 
     # def quasiSteadyStates(self, lkp):
     #     qsstates = super().quasiSteadyStates(lkp)
@@ -397,19 +382,15 @@ class ThalamoCortical(Thalamic):
         return self.gHbar * (O + 2 * self.OL(O, C)) * (Vm - self.EH)  # mA/m2
 
     def currents(self):
-        currents = super().currents()
-        currents.update({
+        return {**super().currents(), **{
             'iKLeak': lambda Vm, states: self.iKLeak(Vm),
             'iH': lambda Vm, states: self.iH(states['O'], states['C'], Vm)
-        })
-        return currents
+        }}
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        effrates = super().computeEffRates(Vm)
-        effrates.update({
+        return {**super().computeEffRates(Vm), **{
             'alphao': np.mean(self.alphao(Vm)),
             'betao': np.mean(self.betao(Vm))
-        })
-        return effrates
+        }}

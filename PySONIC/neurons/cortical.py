@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 17:52:47
+# @Last Modified time: 2019-06-20 09:54:27
 
 import numpy as np
 from ..core import PointNeuron
@@ -260,30 +260,18 @@ class CorticalLTS(Cortical):
     # ------------------------------ States derivatives ------------------------------
 
     def derStates(self):
-        dstates = super().derStates()
-        dstates.update({
+        return {**super().derStates(), **{
             's': lambda Vm, x: (self.sinf(Vm) - x['s']) / self.taus(Vm),
             'u': lambda Vm, x: (self.uinf(Vm) - x['u']) / self.tauu(Vm)
-        })
-        return dstates
-
-    # def derEffStates(self, Vm, states, rates):
-    #     dstates = super().derEffStates(Vm, states, rates)
-    #     dstates.update({
-    #         's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
-    #         'u': rates['alphau'] * (1 - states['u']) - rates['betau'] * states['u']
-    #     })
-    #     return dstates
+        }}
 
     # ------------------------------ Steady states ------------------------------
 
     def steadyStates(self):
-        sstates = super().steadyStates()
-        sstates.update({
+        return {**super().steadyStates(), **{
             's': lambda Vm: self.sinf(Vm),
             'u': lambda Vm: self.uinf(Vm)
-        })
-        return sstates
+        }}
 
     # ------------------------------ Membrane currents ------------------------------
 
@@ -292,21 +280,19 @@ class CorticalLTS(Cortical):
         return self.gCaTbar * s**2 * u * (Vm - self.ECa)  # mA/m2
 
     def currents(self):
-        currents = super().currents()
-        currents['iCaT'] = lambda Vm, x: self.iCaT(x['s'], x['u'], Vm)
-        return currents
+        return {**super().currents(), **{
+            'iCaT': lambda Vm, x: self.iCaT(x['s'], x['u'], Vm)
+        }}
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        effrates = super().computeEffRates(Vm)
-        effrates.update({
+        return {**super().computeEffRates(Vm), **{
             'alphas': np.mean(self.sinf(Vm) / self.taus(Vm)),
             'betas': np.mean((1 - self.sinf(Vm)) / self.taus(Vm)),
             'alphau': np.mean(self.uinf(Vm) / self.tauu(Vm)),
             'betau': np.mean((1 - self.uinf(Vm)) / self.tauu(Vm))
-        })
-        return effrates
+        }}
 
 
 class CorticalIB(Cortical):
@@ -372,30 +358,18 @@ class CorticalIB(Cortical):
     # ------------------------------ States derivatives ------------------------------
 
     def derStates(self):
-        dstates = super().derStates()
-        dstates.update({
+        return {**super().derStates(), **{
             'q': lambda Vm, x: self.alphaq(Vm) * (1 - x['q']) - self.betaq(Vm) * x['q'],
             'r': lambda Vm, x: self.alphar(Vm) * (1 - x['r']) - self.betar(Vm) * x['r']
-        })
-        return dstates
-
-    # def derEffStates(self, Vm, states, rates):
-    #     dstates = super().derEffStates(Vm, states, rates)
-    #     dstates.update({
-    #         'q': rates['alphaq'] * (1 - states['q']) - rates['betaq'] * states['q'],
-    #         'r': rates['alphar'] * (1 - states['r']) - rates['betar'] * states['r']
-    #     })
-    #     return dstates
+        }}
 
     # ------------------------------ Steady states ------------------------------
 
     def steadyStates(self):
-        sstates = super().steadyStates()
-        sstates.update({
+        return {**super().steadyStates(), **{
             'q': lambda Vm: self.alphaq(Vm) / (self.alphaq(Vm) + self.betaq(Vm)),
             'r': lambda Vm: self.alphar(Vm) / (self.alphar(Vm) + self.betar(Vm))
-        })
-        return sstates
+        }}
 
     # ------------------------------ Membrane currents ------------------------------
 
@@ -404,18 +378,16 @@ class CorticalIB(Cortical):
         return self.gCaLbar * q**2 * r * (Vm - self.ECa)  # mA/m2
 
     def currents(self):
-        currents = super().currents()
-        currents['iCaL'] = lambda Vm, x: self.iCaL(x['q'], x['r'], Vm)
-        return currents
+        return {**super().currents(), **{
+            'iCaL': lambda Vm, x: self.iCaL(x['q'], x['r'], Vm)
+        }}
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        effrates = super().computeEffRates(Vm)
-        effrates.update({
+        return {**super().computeEffRates(Vm), **{
             'alphaq': np.mean(self.alphaq(Vm)),
             'betaq': np.mean(self.betaq(Vm)),
             'alphar': np.mean(self.alphar(Vm)),
             'betar': np.mean(self.betar(Vm))
-        })
-        return effrates
+        }}

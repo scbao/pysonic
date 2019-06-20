@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 16:07:32
+# @Last Modified time: 2019-06-20 08:59:17
 
 import abc
 import inspect
@@ -302,7 +302,6 @@ class PointNeuron(Model):
         return list(sum(
             [['alpha{}'.format(x.lower()), 'beta{}'.format(x.lower())] for x in states], []))
 
-
     def derStateFunc(self, key):
         ''' Infer on state derivative function based prsence of alphax/betax or xinf/taux
             methods/attribuets in the class.
@@ -348,18 +347,6 @@ class PointNeuron(Model):
 
             :param Vm: array of membrane potential values for an acoustic cycle (mV)
             :return: a dictionary of rate average constants (s-1)
-        '''
-
-    # @abc.abstractmethod
-    def derEffStates(self, Qm, states, lkp):
-        ''' Compute the effective derivatives of channel states, based on
-            1-dimensional linear interpolation of "effective" coefficients
-            that summarize the system's behaviour over an acoustic cycle.
-
-            :param Qm: membrane charge density (C/m2)
-            :states: state probabilities of the ion channels
-            :param lkp: dictionary of 1D vectors of "effective" coefficients
-             over the charge domain, for specific frequency and amplitude values.
         '''
 
     def Qbounds(self):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 14:44:34
+# @Last Modified time: 2019-06-20 10:07:53
 
 import numpy as np
 from ..core import PointNeuron
@@ -101,14 +101,6 @@ class FrankenhaeuserHuxley(PointNeuron):
             'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n'],
             'p': lambda Vm, x: self.alphap(Vm) * (1 - x['p']) - self.betap(Vm) * x['p']
         }
-
-    # def derEffStates(self, Vm, states, rates):
-    #     return {
-    #         'm': ratex['alpham'] * (1 - x[['m']) - ratex['betam'] * x[['m'],
-    #         'h': ratex['alphah'] * (1 - x[['h']) - ratex['betah'] * x[['h'],
-    #         'n': ratex['alphan'] * (1 - x[['n']) - ratex['betan'] * x[['n'],
-    #         'p': ratex['alphap'] * (1 - x[['p']) - ratex['betap'] * x[['p']
-    #     }
 
     # ------------------------------ Steady states ------------------------------
 

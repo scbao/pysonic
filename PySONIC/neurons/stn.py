@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 15:53:28
+# @Last Modified time: 2019-06-20 10:07:34
 
 import numpy as np
 from scipy.optimize import brentq
@@ -326,26 +326,24 @@ class OtsukaSTN(PointNeuron):
             'p': lambda Vm, x: (self.pinf(Vm) - x['p']) / self.taup(Vm),
             'q': lambda Vm, x: (self.qinf(Vm) - x['q']) / self.tauq(Vm),
             'r': lambda Vm, x: (self.rinf(x['Cai']) - x['r']) / self.tau_r,
-            'Cai': lambda Vm, x: self.derCai(
-                *[x[k] for k in ['p', 'q', 'c', 'd1', 'd2', 'Cai']], Vm)
+            'Cai': lambda Vm, x: self.derCai(x['p'], x['q'], x['c'], x['d1'], x['d2'], x['Cai'], Vm)
         }
 
-    def derEffStates(self):
-        return {
-            'a': lambda Vm, x, rates: rates['alphaa'] * (1 - x['a']) - rates['betaa'] * x['a'],
-            'b': lambda Vm, x, rates: rates['alphab'] * (1 - x['b']) - rates['betab'] * x['b'],
-            'c': lambda Vm, x, rates: rates['alphac'] * (1 - x['c']) - rates['betac'] * x['c'],
-            'd1': lambda Vm, x, rates: rates['alphad1'] * (1 - x['d1']) - rates['betad1'] * x['d1'],
-            'd2': lambda Vm, x, rates: (self.d2inf(x['Cai']) - x['d2']) / self.tau_d2,
-            'm': lambda Vm, x, rates: rates['alpham'] * (1 - x['m']) - rates['betam'] * x['m'],
-            'h': lambda Vm, x, rates: rates['alphah'] * (1 - x['h']) - rates['betah'] * x['h'],
-            'n': lambda Vm, x, rates: rates['alphan'] * (1 - x['n']) - rates['betan'] * x['n'],
-            'p': lambda Vm, x, rates: rates['alphap'] * (1 - x['p']) - rates['betap'] * x['p'],
-            'q': lambda Vm, x, rates: rates['alphaq'] * (1 - x['q']) - rates['betaq'] * x['q'],
-            'r': lambda Vm, x, rates: (self.rinf(x['Cai']) - x['r']) / self.tau_r,
-            'Cai': lambda Vm, x, rates: self.derCai(
-                *[x[k] for k in ['p', 'q', 'c', 'd1', 'd2', 'Cai']], Vm)
-        }
+    # def derEffStates(self):
+    #     return {
+    #         'a': lambda Vm, x, rates: rates['alphaa'] * (1 - x['a']) - rates['betaa'] * x['a'],
+    #         'b': lambda Vm, x, rates: rates['alphab'] * (1 - x['b']) - rates['betab'] * x['b'],
+    #         'c': lambda Vm, x, rates: rates['alphac'] * (1 - x['c']) - rates['betac'] * x['c'],
+    #         'd1': lambda Vm, x, rates: rates['alphad1'] * (1 - x['d1']) - rates['betad1'] * x['d1'],
+    #         'd2': lambda Vm, x, rates: (self.d2inf(x['Cai']) - x['d2']) / self.tau_d2,
+    #         'm': lambda Vm, x, rates: rates['alpham'] * (1 - x['m']) - rates['betam'] * x['m'],
+    #         'h': lambda Vm, x, rates: rates['alphah'] * (1 - x['h']) - rates['betah'] * x['h'],
+    #         'n': lambda Vm, x, rates: rates['alphan'] * (1 - x['n']) - rates['betan'] * x['n'],
+    #         'p': lambda Vm, x, rates: rates['alphap'] * (1 - x['p']) - rates['betap'] * x['p'],
+    #         'q': lambda Vm, x, rates: rates['alphaq'] * (1 - x['q']) - rates['betaq'] * x['q'],
+    #         'r': lambda Vm, x, rates: (self.rinf(x['Cai']) - x['r']) / self.tau_r,
+    #         'Cai': lambda Vm, x, rates: self.derCai(x['p'], x['q'], x['c'], x['d1'], x['d2'], x['Cai'], Vm)
+    #     }
 
     # def derEffStates(self, Vm, states, rates):
     #     return {

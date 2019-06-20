@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 19:11:40
+# @Last Modified time: 2019-06-20 10:06:29
 
 from copy import deepcopy
 import logging
@@ -55,14 +55,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return s + ')'
 
     def params(self):
-        params = super().params()
-        params.update(self.pneuron.params())
-        return params
+        return {**super().params(), **self.pneuron.params()}
 
     def getPltVars(self, wrapleft='df["', wrapright='"]'):
-        pltvars = super().getPltVars(wrapleft, wrapright)
-        pltvars.update(self.pneuron.getPltVars(wrapleft, wrapright))
-        return pltvars
+        return {**super().getPltVars(wrapleft, wrapright),
+                **self.pneuron.getPltVars(wrapleft, wrapright)}
 
     def getPltScheme(self):
         return self.pneuron.getPltScheme()
@@ -316,8 +313,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             Vm = Qm / Cm * 1e3  # mV
 
             # Compute average cycle value for membrane potential and rate constants
-            effvars.append({'V': np.mean(Vm)})
-            effvars[-1].update(self.pneuron.computeEffRates(Vm))
+            effvars.append(**{'V': np.mean(Vm)}, **self.pneuron.computeEffRates(Vm))
 
         # Log process
         log = '{}: lookups @ {}Hz, {}Pa, {:.2f} nC/cm2'.format(

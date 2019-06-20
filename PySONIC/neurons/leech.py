@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 15:11:30
+# @Last Modified time: 2019-06-20 10:03:00
 
 from functools import partialmethod
 import numpy as np
@@ -379,6 +379,20 @@ class LeechMech(PointNeuron):
             'iLeak': lambda Vm, _: self.iLeak(Vm)
         }
 
+    # ------------------------------ Other methods ------------------------------
+
+    def computeEffRates(self, Vm):
+        return {
+            'alpham': np.mean(self.alpham(Vm)),
+            'betam': np.mean(self.betam(Vm)),
+            'alphah': np.mean(self.alphah(Vm)),
+            'betah': np.mean(self.betah(Vm)),
+            'alphan': np.mean(self.alphan(Vm)),
+            'betan': np.mean(self.betan(Vm)),
+            'alphas': np.mean(self.alphas(Vm)),
+            'betas': np.mean(self.betas(Vm))
+        }
+
 
 class LeechPressure(LeechMech):
     ''' Leech pressure sensory neuron
@@ -451,14 +465,12 @@ class LeechPressure(LeechMech):
     # ------------------------------ States derivatives ------------------------------
 
     def derStates(self):
-        dstates = super().derStates()
-        dstates.update({
+        return {**super().derStates(), **{
             'Nai': lambda Vm, x: -(self.iNa(x['m'], x['h'], Vm, x['Nai']) +
                                    self.iPumpNa(x['Nai'])) * self.K_Na,
             'Cai': lambda Vm, x: -(self.iCa(x['s'], Vm, x['Cai']) +
                                    self.iPumpCa(x['Cai'])) * self.K_Ca
-        })
-        return dstates
+        }}
 
     # def derEffStates(self, Vm, states, rates):
     #     dstates = super().derEffStates(Vm, states, rates)
@@ -476,13 +488,11 @@ class LeechPressure(LeechMech):
         return self.alphaC(Cai) / (self.alphaC(Cai) + self.betaC)
 
     def steadyStates(self):
-        sstates = super().steadyStates()
-        sstates.update({
+        return {**super().steadyStates(), **{
             'Nai': lambda _: self.Nai0,
             'Cai': lambda _: self.Cai0,
             'c': lambda _: self.cinf(self.Cai0)
-        })
-        return sstates
+        }}
 
     # def quasiSteadyStates(self, lkp):
     #     qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
@@ -504,26 +514,10 @@ class LeechPressure(LeechMech):
         return self.iCaS * (Cai - self.Cai0) / 1.5  # mA/m2
 
     def currents(self):
-        currents = super().currents()
-        currents.update({
+        return {**super().currents(), **{
             'iPumpNa': lambda Vm, x: self.iPumpNa(x['Nai']) / 3.,
             'iPumpCa': lambda Vm, x: self.iPumpCa(x['Cai'])
-        })
-        return currents
-
-    # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {
-            'alpham': np.mean(self.alpham(Vm)),
-            'betam': np.mean(self.betam(Vm)),
-            'alphah': np.mean(self.alphah(Vm)),
-            'betah': np.mean(self.betah(Vm)),
-            'alphan': np.mean(self.alphan(Vm)),
-            'betan': np.mean(self.betan(Vm)),
-            'alphas': np.mean(self.alphas(Vm)),
-            'betas': np.mean(self.betas(Vm))
-        }
+        }}
 
 
 class LeechRetzius(LeechMech):
@@ -605,29 +599,24 @@ class LeechRetzius(LeechMech):
     # ------------------------------ States derivatives ------------------------------
 
     def derStates(self, Vm, states):
-        dstates = super().derStates(Vm, states)
-        dstates.update({
+        return {**super().derStates(Vm, states), **{
             'a': (self.ainf(Vm) - states['a']) / self.taua(Vm),
             'b': (self.binf(Vm) - states['b']) / self.taub(Vm)
-        })
-        return dstates
+        }}
 
     def derEffStates(self, Vm, states, rates):
-        dstates = super().derStates(Vm, states, rates)
-        dstates.update({
+        return {**super().derStates(Vm, states, rates), **{
             'a': rates['alphaa'] * (1 - states['a']) - rates['betaa'] * states['a'],
             'b': rates['alphab'] * (1 - states['b']) - rates['betab'] * states['b']
-        })
-        return dstates
+        }}
 
     # ------------------------------ Steady states ------------------------------
 
     def steadyStates(self):
-        sstates = super().steadyStates()
-        sstates.update({
+        return {**super().steadyStates(), **{
             'a': lambda Vm: self.ainf(Vm),
             'b': lambda Vm: self.binf(Vm)
-        })
+        }}
 
     # def quasiSteadyStates(self, lkp):
     #     qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's', 'a', 'b'])
@@ -641,24 +630,16 @@ class LeechRetzius(LeechMech):
         return self.GAMax * a * b * (Vm - self.EK)  # mA/m2
 
     def currents(self):
-        currents = super().currents()
-        currents['iA'] = lambda Vm, x: self.iA(x['a'], x['b'], Vm)
-        return currents
+        return {**super().currents(), **{
+            'iA': lambda Vm, x: self.iA(x['a'], x['b'], Vm)
+        }}
 
     # ------------------------------ Other methods ------------------------------
 
     def computeEffRates(self, Vm):
-        return {
-            'alpham': np.mean(self.alpham(Vm)),
-            'betam': np.mean(self.betam(Vm)),
-            'alphah': np.mean(self.alphah(Vm)),
-            'betah': np.mean(self.betah(Vm)),
-            'alphan': np.mean(self.alphan(Vm)),
-            'betan': np.mean(self.betan(Vm)),
-            'alphas': np.mean(self.alphas(Vm)),
-            'betas': np.mean(self.betas(Vm)),
+        return {**super().computeEffRates(Vm), **{
             'alphaa': np.mean(self.ainf(Vm) / self.taua(Vm)),
             'betaa': np.mean((1 - self.ainf(Vm)) / self.taua(Vm)),
             'alphab': np.mean(self.binf(Vm) / self.taub(Vm)),
             'betab': np.mean((1 - self.binf(Vm)) / self.taub(Vm))
-        }
+        }}
