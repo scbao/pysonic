@@ -3,14 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 21:17:46
+# @Last Modified time: 2019-06-20 17:33:29
 
 import numpy as np
-from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
 from ..utils import logger, si_prefixes, isWithin
-from ..neurons import getLookups2D, getLookupsOff
+from ..neurons import getNeuronLookup
 from ..core import NeuronalBilayerSonophore
 from .pltutils import setGrid, setNormalizer
 
@@ -121,19 +120,37 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
     if cmap is None:
         cmap = 'viridis'
 
+    # Get lookups and re-organize them
+    lkp = getNeuronLookup(pneuron.name)
+    Qref = lkp.refs['Q']
+    lkp.rename('V', 'Vm')
+    lkp['Cm'] = Qref / lkp['Vm'] * 1e3  # uF/cm2
+
+    # Sort keys for display
+    keys = lkp.outputs()
+    del keys[keys.index('Cm')]
+    del keys[keys.index('Vm')]
+    keys = ['Cm', 'Vm'] + keys
+
     # Get reference US-OFF lookups (1D)
-    _, lookupsoff = getLookupsOff(pneuron.name)
+    lookupsoff = lkp.projectOff()
 
     nbls = NeuronalBilayerSonophore(32e-9, pneuron)
     pltvars = nbls.getPltVars()
 
     # Get 2D lookups at specific combination
-    zref, Qref, lookups2D, zvar = getLookups2D(pneuron.name, a=a, Fdrive=Fdrive, Adrive=Adrive)
-    _, lookupsoff = getLookupsOff(pneuron.name)
-    for lookups in [lookups2D, lookupsoff]:
-        lookups.pop('ng')
-        lookups['Cm'] = Qref / lookups['V'] * 1e5  # uF/cm2
+    inputs = {}
+    for k, v in {'a': a, 'f': Fdrive, 'A': Adrive}.items():
+        if v is not None:
+            inputs[k] = v
+    lookups2D = lkp.projectN(inputs)
 
+    # Get z-variable from remaining inputs
+    for key in lookups2D.inputs():
+        if key != 'Q':
+            zkey = key
+            zref = lookups2D.refs[key]
+    zvar = nbls.inputVars()[{'a': 'a', 'f': 'Fdrive', 'A': 'Adrive'}[zkey]]
     zref *= zvar['factor']
     prefix = {value: key for key, value in si_prefixes.items()}[1 / zvar['factor']]
 
@@ -146,13 +163,8 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
     else:
         raise ValueError('unknown scale type (should be "lin" or "log")')
     znew = np.array([isWithin(zvar['label'], z, (zref.min(), zref.max())) for z in znew])
-    lookups2D = {key: interp1d(zref, y2D, axis=0)(znew) for key, y2D in lookups2D.items()}
+    lookups2D = lookups2D.project(zkey, znew)
     zref = znew
-
-    for lookups in [lookups2D, lookupsoff]:
-        lookups['Vm'] = lookups.pop('V')  # mV
-        lookups['Cm'] = Qref / lookups['Vm'] * 1e3  # uF/cm2
-    keys = ['Cm', 'Vm'] + list(lookups2D.keys())[:-2]
 
     #  Define color code
     mymap = plt.get_cmap(cmap)
@@ -160,7 +172,7 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
 
     # Plot
     logger.info('plotting')
-    nrows, ncols = setGrid(len(lookups2D), ncolmax=ncolmax)
+    nrows, ncols = setGrid(len(keys), ncolmax=ncolmax)
     xvar = pltvars['Qm']
     Qbounds = np.array([Qref.min(), Qref.max()]) * xvar['factor']
 

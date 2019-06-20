@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 10:07:34
+# @Last Modified time: 2019-06-20 10:11:34
 
 import numpy as np
 from scipy.optimize import brentq
@@ -329,37 +329,22 @@ class OtsukaSTN(PointNeuron):
             'Cai': lambda Vm, x: self.derCai(x['p'], x['q'], x['c'], x['d1'], x['d2'], x['Cai'], Vm)
         }
 
-    # def derEffStates(self):
-    #     return {
-    #         'a': lambda Vm, x, rates: rates['alphaa'] * (1 - x['a']) - rates['betaa'] * x['a'],
-    #         'b': lambda Vm, x, rates: rates['alphab'] * (1 - x['b']) - rates['betab'] * x['b'],
-    #         'c': lambda Vm, x, rates: rates['alphac'] * (1 - x['c']) - rates['betac'] * x['c'],
-    #         'd1': lambda Vm, x, rates: rates['alphad1'] * (1 - x['d1']) - rates['betad1'] * x['d1'],
-    #         'd2': lambda Vm, x, rates: (self.d2inf(x['Cai']) - x['d2']) / self.tau_d2,
-    #         'm': lambda Vm, x, rates: rates['alpham'] * (1 - x['m']) - rates['betam'] * x['m'],
-    #         'h': lambda Vm, x, rates: rates['alphah'] * (1 - x['h']) - rates['betah'] * x['h'],
-    #         'n': lambda Vm, x, rates: rates['alphan'] * (1 - x['n']) - rates['betan'] * x['n'],
-    #         'p': lambda Vm, x, rates: rates['alphap'] * (1 - x['p']) - rates['betap'] * x['p'],
-    #         'q': lambda Vm, x, rates: rates['alphaq'] * (1 - x['q']) - rates['betaq'] * x['q'],
-    #         'r': lambda Vm, x, rates: (self.rinf(x['Cai']) - x['r']) / self.tau_r,
-    #         'Cai': lambda Vm, x, rates: self.derCai(x['p'], x['q'], x['c'], x['d1'], x['d2'], x['Cai'], Vm)
-    #     }
-
-    # def derEffStates(self, Vm, states, rates):
-    #     return {
-    #         'a': rates['alphaa'] * (1 - states['a']) - rates['betaa'] * states['a'],
-    #         'b': rates['alphab'] * (1 - states['b']) - rates['betab'] * states['b'],
-    #         'c': rates['alphac'] * (1 - states['c']) - rates['betac'] * states['c'],
-    #         'd1': rates['alphad1'] * (1 - states['d1']) - rates['betad1'] * states['d1'],
-    #         'd2': (self.d2inf(states['Cai']) - states['d2']) / self.tau_d2,
-    #         'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-    #         'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-    #         'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-    #         'p': rates['alphap'] * (1 - states['p']) - rates['betap'] * states['p'],
-    #         'q': rates['alphaq'] * (1 - states['q']) - rates['betaq'] * states['q'],
-    #         'r': (self.rinf(states['Cai']) - states['r']) / self.tau_r,
-    #         'Cai': self.derCai(*[states[x] for x in ['p', 'q', 'c', 'd1', 'd2', 'Cai']], Vm)
-    #     }
+    def derEffStates(self):
+        return {
+            'a': lambda Vm, x, rates: rates['alphaa'] * (1 - x['a']) - rates['betaa'] * x['a'],
+            'b': lambda Vm, x, rates: rates['alphab'] * (1 - x['b']) - rates['betab'] * x['b'],
+            'c': lambda Vm, x, rates: rates['alphac'] * (1 - x['c']) - rates['betac'] * x['c'],
+            'd1': lambda Vm, x, rates: rates['alphad1'] * (1 - x['d1']) - rates['betad1'] * x['d1'],
+            'd2': lambda Vm, x, rates: (self.d2inf(x['Cai']) - x['d2']) / self.tau_d2,
+            'm': lambda Vm, x, rates: rates['alpham'] * (1 - x['m']) - rates['betam'] * x['m'],
+            'h': lambda Vm, x, rates: rates['alphah'] * (1 - x['h']) - rates['betah'] * x['h'],
+            'n': lambda Vm, x, rates: rates['alphan'] * (1 - x['n']) - rates['betan'] * x['n'],
+            'p': lambda Vm, x, rates: rates['alphap'] * (1 - x['p']) - rates['betap'] * x['p'],
+            'q': lambda Vm, x, rates: rates['alphaq'] * (1 - x['q']) - rates['betaq'] * x['q'],
+            'r': lambda Vm, x, rates: (self.rinf(x['Cai']) - x['r']) / self.tau_r,
+            'Cai': lambda Vm, x, rates: self.derCai(
+                x['p'], x['q'], x['c'], x['d1'], x['d2'], x['Cai'], Vm)
+        }
 
     # ------------------------------ Steady states ------------------------------
 

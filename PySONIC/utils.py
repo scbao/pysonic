@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-14 09:45:00
+# @Last Modified time: 2019-06-20 15:33:40
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -273,7 +273,7 @@ def isWithin(name, val, bounds, rel_tol=1e-9):
         :return: original or corrected value
     '''
     if isIterable(val):
-        return [isWithin(name, v, bounds, rel_tol) for v in val]
+        return np.array([isWithin(name, v, bounds, rel_tol) for v in val])
     if val >= bounds[0] and val <= bounds[1]:
         return val
     elif val < bounds[0] and math.isclose(val, bounds[0], rel_tol=rel_tol):

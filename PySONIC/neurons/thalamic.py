@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 10:03:59
+# @Last Modified time: 2019-06-20 11:56:26
 
 import numpy as np
 from ..core import PointNeuron
@@ -53,11 +53,11 @@ class Thalamic(PointNeuron):
 
     def derStates(self):
         return {
-            'm': lambda Vm, s: self.alpham(Vm) * (1 - s['m']) - self.betam(Vm) * s['m'],
-            'h': lambda Vm, s: self.alphah(Vm) * (1 - s['h']) - self.betah(Vm) * s['h'],
-            'n': lambda Vm, s: self.alphan(Vm) * (1 - s['n']) - self.betan(Vm) * s['n'],
-            's': lambda Vm, s: (self.sinf(Vm) - s['s']) / self.taus(Vm),
-            'u': lambda Vm, s: (self.uinf(Vm) - s['u']) / self.tauu(Vm)
+            'm': lambda Vm, x: self.alpham(Vm) * (1 - x['m']) - self.betam(Vm) * x['m'],
+            'h': lambda Vm, x: self.alphah(Vm) * (1 - x['h']) - self.betah(Vm) * x['h'],
+            'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n'],
+            's': lambda Vm, x: (self.sinf(Vm) - x['s']) / self.taus(Vm),
+            'u': lambda Vm, x: (self.uinf(Vm) - x['u']) / self.tauu(Vm)
         }
 
     # ------------------------------ Steady states ------------------------------
@@ -317,21 +317,20 @@ class ThalamoCortical(Thalamic):
 
     def derStates(self):
         return {**super().derStates(), **{
-            'C': lambda Vm, s: self.derC(s['O'], s['C'], Vm),
-            'O': lambda Vm, s: self.derO(s['O'], s['C'], s['P0'], Vm),
-            'P0': lambda Vm, s: self.k2 * (1 - s['P0']) - self.k1 * s['P0'] * s['Cai']**self.nCa,
-            'Cai': lambda Vm, s: self.derCai(s['Cai'], s['s'], s['u'], Vm),
+            'C': lambda Vm, x: self.derC(x['O'], x['C'], Vm),
+            'O': lambda Vm, x: self.derO(x['O'], x['C'], x['P0'], Vm),
+            'P0': lambda _, x: self.k2 * (1 - x['P0']) - self.k1 * x['P0'] * x['Cai']**self.nCa,
+            'Cai': lambda Vm, x: self.derCai(x['Cai'], x['s'], x['u'], Vm),
         }}
 
-    # def derEffStates(self, Vm, states, rates):
-    #     dstates = super().derEffStates(Vm, states, rates)
-    #     states.update({
-    #         'C': rates['betao'] * states['O'] - rates['alphao'] * states['C'],
-    #         'P0': self.k2 * (1 - states['P0']) - self.k1 * states['P0'] * states['Cai']**self.nCa,
-    #         'Cai': self.derCai(states['Cai'], states['s'], states['u'], Vm)
-    #     })
-    #     dstates['O'] = -dstates['C'] + self.tmp(states['C'], states['O'], states['P0'])
-    #     return dstates
+    def derEffStates(self):
+        return {**super().derEffStates(), **{
+            'C': lambda lkp, x: lkp['betao'] * x['O'] - lkp['alphao'] * x['C'],
+            'O': lambda lkp, x: lkp['alphao'] * x['C'] - lkp['betao'] * x['O'] -
+            self.k3 * x['O'] * (1 - x['P0']) + self.k4 * (1 - x['O'] - x['C']),
+            'P0': lambda _, x: self.k2 * (1 - x['P0']) - self.k1 * x['P0'] * x['Cai']**self.nCa,
+            'Cai': lambda lkp, x: self.derCai(x['Cai'], x['s'], x['u'], lkp['V'])
+        }}
 
     # ------------------------------ Steady states ------------------------------
 

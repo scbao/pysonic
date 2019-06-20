@@ -3,13 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 10:06:29
+# @Last Modified time: 2019-06-20 17:33:43
 
+import re
+import inspect
 from copy import deepcopy
 import logging
 import numpy as np
 import pandas as pd
-from scipy.interpolate import interp1d
 from scipy.integrate import solve_ivp
 
 from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator
@@ -17,7 +18,7 @@ from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .model import Model
 from .batches import createQueue
-from ..neurons import getLookups2D, getLookupsDCavg
+from ..neurons import getNeuronLookup
 from ..utils import *
 from ..constants import *
 from ..postpro import getFixedPoints
@@ -43,7 +44,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             raise ValueError('Invalid neuron type: "{}" (must inherit from PointNeuron class)'
                              .format(pneuron.name))
         self.pneuron = pneuron
-        self.derEffStates = self.buildDerEffStates()
+        if hasattr(self.pneuron, 'derEffStates'):
+            self.derEffStates = self.pneuron.derEffStates
+        else:
+            self.derEffStates = self.buildDerEffStates()
 
         # Initialize BilayerSonophore parent object
         BilayerSonophore.__init__(self, a, pneuron.Cm0, pneuron.Qm0, embedding_depth)
@@ -120,9 +124,53 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     def buildDerEffStates(self):
         ''' Construct a neuron-specific dictionary of effective derivative functions. '''
+
+        def getSource(f):
+            fsource = inspect.getsource(f).strip().split(':', 2)[-1]
+            if fsource[-1] == ',':
+                fsource = fsource[:-1]
+            return fsource
+
+        def getFuncCalls(s):
+            func_pattern = '[a-z_A-Z]+\([^\)]*\)'
+            return re.findall(func_pattern, s)
+
+        def getFuncNameArgs(s):
+            name, args = s[:-1].replace(' ', '').split('(', 1)
+            return name, args.split(',')
+
         eff_dstates = {}
+        eff_dstates_source = {}
         for k in self.pneuron.statesNames():
-            eff_dstates[k] = self.createLookupStateDerivative(k)
+            dfunc = self.pneuron.derStates()[k]
+
+            # Get derivative function source code
+            fsource = getSource(dfunc)
+            print(k, fsource)
+
+            # Count number of calls to Vm in expression
+            n_Vm_calls = fsource.count('Vm')
+            print('--->', n_Vm_calls, 'Vm calls')
+
+            # If no reference to Vm -> derivative function unchanged
+            if n_Vm_calls == 0:
+                eff_dstates[k] = dfunc
+                eff_dstates_source[k] = fsource
+            else:
+                # Identify function calls in expression
+                func_calls = getFuncCalls(fsource)
+                print(func_calls)
+
+                # For each function, determine arguments
+                for fcall in func_calls:
+                    fname, fargs = getFuncNameArgs(fcall)
+                    print(fname, fargs)
+                    if len(fargs) == 1 and fargs[0] == 'Vm':
+                        print('only Vm!')
+
+                eff_dstates[k] = self.createLookupStateDerivative(k)
+
+            print('\n')
 
         def derEffStates():
             return eff_dstates
@@ -146,22 +194,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
         Qm, *states = y
         states_dict = dict(zip(self.pneuron.statesNames(), states))
-        lkp0D = {k: self.interpEffVariable(Qm, lkp1D['Q'], v) for k, v in lkp1D.items()}
+        lkp0D = lkp1D.interpolate1D('Q', Qm)
         dQmdt = - self.pneuron.iNet(lkp0D['V'], states_dict) * 1e-3
-        # return [dQmdt, *self.pneuron.getDerEffStates(lkp0D, states_dict)]
         return [dQmdt, *self.getDerEffStates(lkp0D, states_dict)]
 
-    def interpEffVariable(self, Qm, Qref, yref):
-        ''' Interpolate an effective variable along charge density using lookup vector.
-
-            :param Qm: membrane charge density (C/m2)
-            :param Qref: reference charge density vector (C/m2)
-            :param yref: reference effective variable vector
-            :return: interpolated variable
-        '''
-        return np.interp(Qm, Qref, yref, left=np.nan, right=np.nan)
-
-    def interpOnOffVariable(self, key, Qm, stim, lkp):
+    def interpOnOffVariable(self, key, Qm, stim, lkps):
         ''' Interpolate Q-dependent effective variable along ON and OFF periods of a solution.
 
             :param key: lookup variable key
@@ -171,10 +208,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: interpolated effective variable vector
         '''
         x = np.zeros(stim.size)
-        x[stim == 0] = self.interpEffVariable(
-            Qm[stim == 0], lkp['OFF']['Q'], lkp['OFF'][key])
-        x[stim == 1] = self.interpEffVariable(
-            Qm[stim == 1], lkp['ON']['Q'], lkp['ON'][key])
+        x[stim == 0] = lkps['OFF'].interpolate1D('Q', Qm[stim == 0], var_key=key)
+        x[stim == 1] = lkps['ON'].interpolate1D('Q', Qm[stim == 1], var_key=key)
         return x
 
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):
@@ -254,7 +289,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Set initial conditions
         y0 = np.concatenate((
             [0., Z0, self.ng0, self.Qm0], self.pneuron.getSteadyStates(self.pneuron.Vm0)))
-
         is_dense_var = np.array([True] * 3 + [False] * (len(self.pneuron.states) + 1))
 
         # Initialize simulator and compute solution
@@ -340,19 +374,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
         # Load appropriate 2D lookups
-        Aref, Qref, lkps2D, _ = getLookups2D(self.pneuron.name, a=self.a, Fdrive=Fdrive)
-
-        # Check that acoustic amplitude is within lookup range
-        Adrive = isWithin('amplitude', Adrive, (Aref.min(), Aref.max()))
+        lkp2D = getNeuronLookup(self.pneuron.name).projectN({'a': self.a, 'f': Fdrive})
 
         # Interpolate 2D lookups at zero and US amplitude
         logger.debug('Interpolating lookups at A = %.2f kPa and A = 0', Adrive * 1e-3)
-        lkps1D = {state: {key: interp1d(Aref, y2D, axis=0)(val) for key, y2D in lkps2D.items()}
-                  for state, val in {'ON': Adrive, 'OFF': 0.}.items()}
-
-        # Add reference charge vector to 1D lookup dictionaries
-        for state in lkps1D.keys():
-            lkps1D[state]['Q'] = Qref
+        lkps1D = {'ON': lkp2D.project('A', Adrive), 'OFF': lkp2D.project('A', 0.)}
 
         # Set initial conditions
         y0 = np.concatenate(([self.Qm0], self.pneuron.getSteadyStates(self.pneuron.Vm0)))
@@ -471,7 +497,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Default amplitude interval
         if Arange is None:
-            Arange = [0., getLookups2D(self.pneuron.name, a=self.a, Fdrive=Fdrive)[0].max()]
+            Arange = [0., getNeuronLookup(self.pneuron.name).refs['A'].max()]
 
         return binarySearch(
             lambda x: xfunc(self.simulate(*x)[0]),
@@ -722,7 +748,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Default amplitude interval
         if Arange is None:
-            Arange = [0., getLookups2D(self.pneuron.name, a=self.a, Fdrive=Fdrive)[0].max()]
+            Arange = [0., getNeuronLookup(self.pneuron.name).refs['A'].max()]
 
         # Titration function
         def xfunc(x):
