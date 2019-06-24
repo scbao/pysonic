@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 21:41:16
+# @Last Modified time: 2019-06-20 20:12:14
 
 from enum import Enum
 import os
@@ -38,6 +38,42 @@ def LennardJones(x, beta, alpha, C, m, n):
         :return: Lennard-Jones potential at given distance (2x)
     '''
     return C * (np.power((alpha / (2 * x + beta)), m) - np.power((alpha / (2 * x + beta)), n))
+
+
+def lookup(func):
+
+    lookup_path = os.path.join(os.path.split(__file__)[0], 'bls_lookups.json')
+
+    def wrapper(obj):
+        # lookup_path = obj.getLookupsPath()
+        akey = '{:.1f}'.format(obj.a * 1e9)
+        Qkey = '{:.2f}'.format(obj.Qm0 * 1e5)
+
+        # Open lookup files
+        try:
+            with open(lookup_path, 'r') as fh:
+                lookups = json.load(fh)
+        except FileNotFoundError:
+            lookups = {}
+
+        # If info not in lookups, compute parameters and add them
+        if akey not in lookups or Qkey not in lookups[akey]:
+            func(obj)
+            if akey not in lookups:
+                lookups[akey] = {Qkey: {'LJ_approx': obj.LJ_approx, 'Delta_eq': obj.Delta}}
+            else:
+                lookups[akey][Qkey] = {'LJ_approx': obj.LJ_approx, 'Delta_eq': obj.Delta}
+            logger.debug('Saving BLS derived parameters to lookup file')
+            with open(lookup_path, 'w') as fh:
+                json.dump(lookups, fh, indent=2)
+
+        # If lookup exists, load parameters from it
+        else:
+            logger.debug('Loading BLS derived parameters from lookup file')
+            obj.LJ_approx = lookups[akey][Qkey]['LJ_approx']
+            obj.Delta = lookups[akey][Qkey]['Delta_eq']
+
+    return wrapper
 
 
 class BilayerSonophore(Model):
@@ -95,40 +131,8 @@ class BilayerSonophore(Model):
         else:
             self.kA_tissue = 0.
 
-        # Check existence of lookups for derived parameters
-        lookups = self.getLookups()
-        akey = '{:.1f}'.format(a * 1e9)
-        Qkey = '{:.2f}'.format(Qm0 * 1e5)
-
-        # If no lookup, compute parameters and store them in lookup
-        if akey not in lookups or Qkey not in lookups[akey]:
-
-            # Find Delta that cancels out Pm + Pec at Z = 0 (m)
-            if self.Qm0 == 0.0:
-                D_eq = self.Delta_
-            else:
-                (D_eq, Pnet_eq) = self.findDeltaEq(self.Qm0)
-                assert Pnet_eq < PNET_EQ_MAX, 'High Pnet at Z = 0 with ∆ = %.2f nm' % (D_eq * 1e9)
-            self.Delta = D_eq
-
-            # Find optimal Lennard-Jones parameters to approximate PMavg
-            (LJ_approx, std_err, _) = self.LJfitPMavg()
-            assert std_err < PMAVG_STD_ERR_MAX, 'High error in PmAvg nonlinear fit:'\
-                ' std_err =  %.2f Pa' % std_err
-            self.LJ_approx = LJ_approx
-
-            if akey not in lookups:
-                lookups[akey] = {Qkey: {'LJ_approx': LJ_approx, 'Delta_eq': D_eq}}
-            else:
-                lookups[akey][Qkey] = {'LJ_approx': LJ_approx, 'Delta_eq': D_eq}
-            logger.debug('Saving BLS derived parameters to lookup file')
-            self.saveLookups(lookups)
-
-        # If lookup exists, load parameters from it
-        else:
-            logger.debug('Loading BLS derived parameters from lookup file')
-            self.LJ_approx = lookups[akey][Qkey]['LJ_approx']
-            self.Delta = lookups[akey][Qkey]['Delta_eq']
+        # Compute Pm params
+        self.computePMparams()
 
         # Compute initial volume and gas content
         self.V0 = np.pi * self.Delta * self.a**2
@@ -181,20 +185,20 @@ class BilayerSonophore(Model):
             'Qm': '{:.1f}nCcm2'.format(Qm * 1e5)
         }
 
-    def getLookupsPath(self):
-        return os.path.join(os.path.split(__file__)[0], 'bls_lookups.json')
+    @lookup
+    def computePMparams(self):
+        # Find Delta that cancels out Pm + Pec at Z = 0 (m)
+        if self.Qm0 == 0.0:
+            D_eq = self.Delta_
+        else:
+            (D_eq, Pnet_eq) = self.findDeltaEq(self.Qm0)
+            assert Pnet_eq < PNET_EQ_MAX, 'High Pnet at Z = 0 with ∆ = %.2f nm' % (D_eq * 1e9)
+        self.Delta = D_eq
 
-    def getLookups(self):
-        try:
-            with open(self.getLookupsPath()) as fh:
-                sample = json.load(fh)
-            return sample
-        except FileNotFoundError:
-            return {}
-
-    def saveLookups(self, lookups):
-        with open(self.getLookupsPath(), 'w') as fh:
-            json.dump(lookups, fh, indent=2)
+        # Find optimal Lennard-Jones parameters to approximate PMavg
+        (self.LJ_approx, std_err, _) = self.LJfitPMavg()
+        assert std_err < PMAVG_STD_ERR_MAX, 'High error in PmAvg nonlinear fit:'\
+            ' std_err =  %.2f Pa' % std_err
 
     def getPltScheme(self):
         return {

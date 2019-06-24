@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 17:33:43
+# @Last Modified time: 2019-06-20 19:31:44
 
 import re
 import inspect
@@ -208,8 +208,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: interpolated effective variable vector
         '''
         x = np.zeros(stim.size)
-        x[stim == 0] = lkps['OFF'].interpolate1D('Q', Qm[stim == 0], var_key=key)
-        x[stim == 1] = lkps['ON'].interpolate1D('Q', Qm[stim == 1], var_key=key)
+        x[stim == 0] = lkps['OFF'].interpVar(Qm[stim == 0], 'Q', key)
+        x[stim == 1] = lkps['ON'].interpVar(Qm[stim == 1], 'Q', key)
         return x
 
     def runFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, phi=np.pi):

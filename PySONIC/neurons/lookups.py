@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-06 21:15:32
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 17:32:51
+# @Last Modified time: 2019-06-20 19:30:41
 
 import os
 import re
@@ -23,8 +23,10 @@ class Lookup:
     def __init__(self, refs, tables):
         self.refs = refs
         self.tables = tables
-        for table in self.tables.values():
-            assert table.shape == self.dims(), 'Table dimensions not matching reference vectors'
+        for k, v in self.tables.items():
+            if v.shape != self.dims():
+                raise ValueError('{} Table dimensions {} does not match references {}'.format(
+                    k, v.shape, self.dims()))
 
     def __repr__(self):
         return 'Lookup{}D({})'.format(self.ndims(), ', '.join(self.inputs()))
@@ -93,6 +95,13 @@ class Lookup:
             lkp = lkp.project(k, v)
         return lkp
 
+    def interpVar(self, ref_value, ref_key, var_key):
+        return np.interp(
+            ref_value, self.refs[ref_key], self.tables[var_key], left=np.nan, right=np.nan)
+
+    def interpolate1D(self, key, value):
+        return {k: self.interpVar(value, key, k) for k in self.outputs()}
+
     def projectOff(self):
         # Interpolate at zero amplitude
         lkp0 = self.project('A', 0.)
@@ -131,13 +140,6 @@ class Lookup:
 
     def projectFs(self):
         pass
-
-    def interpolate1D(self, key, value, var_key=None):
-        if var_key is None:
-            return {k: self.interpolate1D(key, value, var_key=k) for k in self.tables.keys()}
-        else:
-            return np.interp(
-                value, self.refs[key], self.tables[var_key], left=np.nan, right=np.nan)
 
 
 class SmartLookup(Lookup):
