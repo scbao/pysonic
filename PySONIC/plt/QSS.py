@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 07:48:59
+# @Last Modified time: 2019-06-25 23:15:42
 
 import inspect
 import logging
@@ -115,12 +115,13 @@ def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):
 
     # Compute neuron-specific charge and amplitude dependent QS states at this amplitude
     nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
-    _, Qref, lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
-    lookups['Q'] = Qref
+    lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
+    Qref = lookups.refs['Q']
     Vmeff = lookups['V']
 
     # Compute QSS currents and 1D charge variation array
-    currents = pneuron.currents(Vmeff, np.array([QSS[k] for k in pneuron.states]))
+    states = {k: QSS[k] for k in pneuron.states}
+    currents = {name: cfunc(Vmeff, states) for name, cfunc in pneuron.currents().items()}
     iNet = sum(currents.values())
     dQdt = -iNet
 
@@ -219,9 +220,10 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
     nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
 
     # Get reference dictionaries for zero amplitude
-    _, Qref, lookups0, QSS0 = nbls.quasiSteadyStates(Fdrive, amps=0., squeeze_output=True)
+    lookups0, QSS0 = nbls.quasiSteadyStates(Fdrive, amps=0., squeeze_output=True)
     Vmeff0 = lookups0['V']
-    df0 = QSS0
+    Qref = lookups0.refs['Q']
+    df0 = QSS0.tables
     df0['Vm'] = Vmeff0
 
     # Create figure
@@ -273,9 +275,9 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
     norm, sm = setNormalizer(mymap, (zref.min(), zref.max()), zscale)
 
     # Get amplitude-dependent QSS dictionary
-    _, Qref, lookups, QSS = nbls.quasiSteadyStates(
+    lookups, QSS = nbls.quasiSteadyStates(
         Fdrive, amps=amps, DCs=DC, squeeze_output=True)
-    df = QSS
+    df = QSS.tables
     df['Vm'] = lookups['V']
 
     # Plot QSS profiles for various amplitudes
@@ -314,16 +316,15 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
 def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=logging.INFO):
 
     # Compute 2D QSS charge variation array
-    _, Qref, lookups, QSS = nbls.quasiSteadyStates(
+    lkp2d, QSS = nbls.quasiSteadyStates(
         Fdrive, amps=amps, DCs=DC, squeeze_output=True)
-    dQdt = -nbls.pneuron.iNet(lookups['V'], np.array([QSS[k] for k in nbls.pneuron.states]))  # mA/m2
+    dQdt = -nbls.pneuron.iNet(lkp2d['V'], QSS.tables)  # mA/m2
 
     # Generate batch queue
     queue = []
     for iA, Adrive in enumerate(amps):
-        lookups1D = {k: v[iA, :] for k, v in lookups.items()}
-        lookups1D['Q'] = Qref
-        queue.append([Fdrive, Adrive, DC, lookups1D, dQdt[iA, :]])
+        lkp1d = lkp2d.project('A', Adrive)
+        queue.append([Fdrive, Adrive, DC, lkp1d, dQdt[iA, :]])
 
     # Run batch to find stable and unstable fixed points at each amplitude
     batch = Batch(nbls.fixedPointsQSS, queue)

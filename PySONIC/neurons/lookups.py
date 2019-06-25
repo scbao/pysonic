@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-06 21:15:32
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-24 20:41:25
+# @Last Modified time: 2019-06-25 23:18:14
 
 import os
 import re
@@ -11,7 +11,7 @@ import pickle
 import numpy as np
 from scipy.interpolate import interp1d
 
-from ..utils import isWithin, logger
+from ..utils import isWithin, logger, isIterable
 
 
 NEURONS_LOOKUP_DIR = os.path.split(__file__)[0]
@@ -23,7 +23,7 @@ class Lookup:
     def __init__(self, refs, tables):
         self.refs = refs
         self.tables = SmartDict(tables)
-        for k, v in self.tables.items():
+        for k, v in self.items():
             if v.shape != self.dims():
                 raise ValueError('{} Table dimensions {} does not match references {}'.format(
                     k, v.shape, self.dims()))
@@ -39,6 +39,18 @@ class Lookup:
 
     def __setitem__(self, key, value):
         self.tables[key] = value
+
+    def keys(self):
+        return self.tables.keys()
+
+    def values(self):
+        return self.tables.values()
+
+    def items(self):
+        return self.tables.items()
+
+    def refitems(self):
+        return self.refs.items()
 
     def pop(self, key):
         x = self.tables[key]
@@ -58,7 +70,15 @@ class Lookup:
         return list(self.refs.keys())
 
     def outputs(self):
-        return list(self.tables.keys())
+        return list(self.keys())
+
+    def squeeze(self):
+        new_tables = {k: v.squeeze() for k, v in self.items()}
+        new_refs = {}
+        for k, v in self.refitems():
+            if v.size > 1:
+                new_refs[k] = v
+        return self.__class__(new_refs, new_tables)
 
     def getAxisIndex(self, key):
         assert key in self.inputs(), 'Unkown input dimension: {}'.format(key)
@@ -66,7 +86,7 @@ class Lookup:
 
     def project(self, key, value):
         ''' Interpolate tables at specific value(s) along a given dimension. '''
-        if isinstance(value, float) or isinstance(value, int):
+        if not isIterable(value):
             delete_input_dim = True
         else:
             delete_input_dim = False
@@ -77,7 +97,7 @@ class Lookup:
         # print('interpolating lookup along {} (axis {}) at {}'.format(key, axis, value))
 
         new_tables = {}
-        for k, v in self.tables.items():
+        for k, v in self.items():
             new_tables[k] = interp1d(self.refs[key], v, axis=axis)(value)
         new_refs = self.refs.copy()
         if delete_input_dim:
@@ -108,12 +128,12 @@ class Lookup:
 
         # Move charge axis to end in all tables
         Qaxis = lkp0.getAxisIndex('Q')
-        for k, v in lkp0.tables.items():
+        for k, v in lkp0.items():
             lkp0.tables[k] = np.moveaxis(v, Qaxis, -1)
 
         # Iterate along dimensions and take first value along corresponding axis
         for i in range(lkp0.ndims() - 1):
-            for k, v in lkp0.tables.items():
+            for k, v in lkp0.items():
                 lkp0.tables[k] = v[0]
 
         # Keep only charge vector in references
@@ -121,22 +141,63 @@ class Lookup:
 
         return lkp0
 
-    def projectDCavg(self, amps, DCs):
+    def move(self, key, index):
+        if index == -1:
+            index = self.ndims() - 1
+        iref = self.getAxisIndex(key)
+        for k in self.keys():
+            self.tables[k] = np.moveaxis(self.tables[k], iref, index)
+        refkeys = list(self.refs.keys())
+        del refkeys[iref]
+        refkeys = refkeys[:index] + [key] + refkeys[index:]
+        self.refs = {k: self.refs[k] for k in refkeys}
+
+    def projectDCs(self, amps=None, DCs=1.):
+        if amps is None:
+            amps = self.refs['A']
+        elif not isIterable(amps):
+            amps = np.array([amps])
+
+        if not isIterable(DCs):
+            DCs = np.array([DCs])
+
+        # project lookups at zero and defined amps
+        if amps is None:
+            amps = self.refs['A']
         lkp0 = self.project('A', 0.)
         lkps = self.project('A', amps)
-        nQ = self.refs['Q'].size
+
+        # Retrieve amplitude axis index, and move amplitude to first axis
+        A_axis = lkps.getAxisIndex('A')
+        lkps.move('A', 0)
+
+        # Define empty tables dictionary
         tables_DCavg = {}
+
+        # For each variable
         for var_key in lkp0.outputs():
-            x_on, x_off = lkp0.tables[var_key], lkps.tables[var_key]
-            x_avg = np.empty((amps.size, nQ, DCs.size))
+
+            # Get OFF and ON (for all amps) variable values
+            x_on, x_off = lkps.tables[var_key], lkp0.tables[var_key]
+
+            # Initialize empty table to gather DC-averaged variable (DC size + ON table shape)
+            x_avg = np.empty((DCs.size, *x_on.shape))
+
+            # Compute the DC-averaged variable for each amplitude-DC combination
             for iA, Adrive in enumerate(amps):
                 for iDC, DC in enumerate(DCs):
-                    x_avg[iA, :, iDC] = x_on[iA, :] * DC + x_off * (1 - DC)
+                    x_avg[iDC, iA] = x_on[iA] * DC + x_off * (1 - DC)
+
+            # Assign table in dictionary
             tables_DCavg[var_key] = x_avg
 
-        refs_DCavg = {k: v for k, v in self.refs.items()}
-        refs_DCavg['DC'] = DCs
-        return self.__class__(refs_DCavg, tables_DCavg)
+        refs_DCavg = {**{'DC': DCs}, **lkps.refs}
+        lkp = self.__class__(refs_DCavg, tables_DCavg)
+
+        # Move DC ot last axis and amplitude back to its original axis
+        lkp.move('DC', -1)
+        lkp.move('A', A_axis)
+        return lkp
 
     def projectFs(self):
         pass
@@ -187,6 +248,11 @@ class SmartDict():
                 m = self.xinf_pattern.match(key)
                 if m is not None:
                     return self.xinf(m.group(1))
+                else:
+                    raise KeyError(key)
+
+    def __setitem__(self, key, value):
+        self.d[key] = value
 
 
 def getNeuronLookupsFileName(name, a=None, Fdrive=None, Adrive=None, fs=False):
@@ -260,61 +326,3 @@ def getLookupsCompTime(name):
 #     lookups2D = {key: interp1d(fsref, y3D, axis=2)(fs) for key, y3D in lookups3D.items()}
 
 #     return Aref, Qref, lookups2D
-
-
-# def getLookupsDCavg(name, a, Fdrive, amps=None, charges=None, DCs=1.0):
-#     ''' Get the DC-averaged lookups of a specific neuron for a combination of US amplitudes,
-#         charge densities and duty cycles, at a specific US frequency.
-
-#         :param name: name of point-neuron model
-#         :param a: sonophore radius (m)
-#         :param Fdrive: US frequency (Hz)
-#         :param amps: US amplitudes (Pa)
-#         :param charges: membrane charge densities (C/m2)
-#         :param DCs: duty cycle value(s)
-#         :return: 4-tuple with reference values of US amplitude and charge density,
-#             as well as interpolated Vmeff and QSS gating variables
-#     '''
-
-#     # Get lookups for specific (a, f, A) combination
-#     Aref, Qref, lookups2D, _ = getLookups2D(name, a=a, Fdrive=Fdrive)
-#     if 'ng' in lookups2D:
-#         lookups2D.pop('ng')
-
-#     # Derive inputs from lookups reference if not provided
-#     if amps is None:
-#         amps = Aref
-#     if charges is None:
-#         charges = Qref
-
-#     # Transform inputs into arrays if single value provided
-#     if isinstance(amps, float):
-#         amps = np.array([amps])
-#     if isinstance(charges, float):
-#         charges = np.array([charges])
-#     if isinstance(DCs, float):
-#         DCs = np.array([DCs])
-#     nA, nQ, nDC = amps.size, charges.size, DCs.size
-#     # cs = {True: 's', False: ''}
-#     # logger.debug('%u amplitude%s, %u charge%s, %u DC%s',
-#     #              nA, cs[nA > 1], nQ, cs[nQ > 1], nDC, cs[nDC > 1])
-
-#     # Re-interpolate lookups at input charges
-#     lookups2D = {key: interp1d(Qref, y2D, axis=1)(charges) for key, y2D in lookups2D.items()}
-
-#     # Interpolate US-ON (for each input amplitude) and US-OFF (A = 0) lookups
-#     amps = isWithin('amplitude', amps, (Aref.min(), Aref.max()))
-#     lookups_on = {key: interp1d(Aref, y2D, axis=0)(amps) for key, y2D in lookups2D.items()}
-#     lookups_off = {key: interp1d(Aref, y2D, axis=0)(0.0) for key, y2D in lookups2D.items()}
-
-#     # Compute DC-averaged lookups
-#     lookups_DCavg = {}
-#     for key in lookups2D.keys():
-#         x_on, x_off = lookups_on[key], lookups_off[key]
-#         x_avg = np.empty((nA, nQ, nDC))
-#         for iA, Adrive in enumerate(amps):
-#             for iDC, DC in enumerate(DCs):
-#                 x_avg[iA, :, iDC] = x_on[iA, :] * DC + x_off * (1 - DC)
-#         lookups_DCavg[key] = x_avg
-
-#     return amps, charges, lookups_DCavg

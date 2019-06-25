@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 18:07:25
+# @Last Modified time: 2019-06-25 19:39:37
 
 import numpy as np
 from ..core import PointNeuron
@@ -338,12 +338,12 @@ class ThalamoCortical(Thalamic):
             self.sinf(Vm), self.uinf(Vm), Vm)  # M
 
     def steadyStates(self):
-        return {**super().steadyStates(), **{
-            'O': lambda Vm: self.Oinf(self.Caiinf(Vm), Vm),
-            'C': lambda Vm: self.Cinf(self.Caiinf(Vm), Vm),
-            'P0': lambda Vm: self.P0inf(self.Caiinf(Vm)),
-            'Cai': lambda Vm: self.Caiinf(Vm)
-        }}
+        sstates = super().steadyStates()
+        sstates['Cai'] = lambda Vm: self.Caiinf(Vm)
+        sstates['O'] = lambda Vm: self.Oinf(sstates['Cai'](Vm), Vm)
+        sstates['C'] = lambda Vm: self.Cinf(sstates['Cai'](Vm), Vm)
+        sstates['P0'] = lambda Vm: self.P0inf(sstates['Cai'](Vm))
+        return sstates
 
     # def quasiSteadyStates(self, lkp):
     #     qsstates = super().quasiSteadyStates(lkp)

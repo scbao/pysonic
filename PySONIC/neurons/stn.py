@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 19:19:19
+# @Last Modified time: 2019-06-25 19:40:37
 
 import numpy as np
 from scipy.optimize import brentq
@@ -330,33 +330,34 @@ class OtsukaSTN(PointNeuron):
 
     # ------------------------------ Steady states ------------------------------
 
-    def Caiinf(self, Vm):
+    def Caiinf(self, p, q, c, d1, Vm):
         ''' Steady-state intracellular Calcium concentration '''
         if isinstance(Vm, np.ndarray):
             return np.array([self.Caiinf(v) for v in Vm])
         else:
             return brentq(
-                lambda x: self.derCai(self.pinf(Vm), self.qinf(Vm), self.cinf(Vm),
-                                      self.d1inf(Vm), self.d2inf(x), x, Vm),
+                lambda x: self.derCai(p, q, c, d1, self.d2inf(x), x, Vm),
                 self.Cai0 * 1e-4, self.Cai0 * 1e3,
                 xtol=1e-16
             )
 
     def steadyStates(self):
-        return {
+        sstates = {
             'a': lambda Vm: self.ainf(Vm),
             'b': lambda Vm: self.binf(Vm),
             'c': lambda Vm: self.cinf(Vm),
             'd1': lambda Vm: self.d1inf(Vm),
-            'd2': lambda Vm: self.d2inf(self.Caiinf(Vm)),
             'm': lambda Vm: self.minf(Vm),
             'h': lambda Vm: self.hinf(Vm),
             'n': lambda Vm: self.ninf(Vm),
             'p': lambda Vm: self.pinf(Vm),
             'q': lambda Vm: self.qinf(Vm),
-            'r': lambda Vm: self.rinf(self.Caiinf(Vm)),
-            'Cai': lambda Vm: self.Caiinf(Vm)
+            'Cai': lambda Vm: self.Caiinf(
+                self.pinf(Vm), self.qinf(Vm), self.cinf(Vm), self.d1inf(Vm), Vm)
         }
+        sstates['d2'] = lambda Vm: self.d2inf(sstates['Cai'](Vm))
+        sstates['r'] = lambda Vm: self.rinf(sstates['Cai'](Vm))
+        return sstates
 
     # def quasiSteadyStates(self, lkp):
     #     qsstates = self.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])

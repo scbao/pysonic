@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 18:00:35
+# @Last Modified time: 2019-06-25 23:18:04
 
 from copy import deepcopy
 import logging
@@ -16,7 +16,7 @@ from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .model import Model
 from .batches import createQueue
-from ..neurons import getNeuronLookup
+from ..neurons import getNeuronLookup, Lookup
 from ..utils import *
 from ..constants import *
 from ..postpro import getFixedPoints
@@ -480,26 +480,36 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
 
         # Get DC-averaged lookups interpolated at the appropriate amplitudes and charges
-        amps, charges, lookups = getLookupsDCavg(
-            self.pneuron.name, self.a, Fdrive, amps, charges, DCs)
+        lkp = getNeuronLookup(self.pneuron.name).projectDCs(
+            amps=amps, DCs=DCs).projectN({'a': self.a, 'f': Fdrive})
+        if charges is not None:
+            lkp = lkp.project('Q', charges)
+
+        # Specify dimensions with A and DC as the first two axes
+        A_axis = lkp.getAxisIndex('A')
+        lkp.move('A', 0)
+        lkp.move('DC', 1)
+        nA, nDC = lkp.dims()[:2]
 
         # Compute QSS states using these lookups
-        nA, nQ, nDC = lookups['V'].shape
-        QSS = {k: np.empty((nA, nQ, nDC)) for k in self.pneuron.statesNames()}
+        QSS = {k: np.empty(lkp.dims()) for k in self.pneuron.statesNames()}
         for iA in range(nA):
             for iDC in range(nDC):
-                QSS_1D = self.pneuron.quasiSteadyStates(
-                    {k: v[iA, :, iDC] for k, v in lookups.items()})
+                QSS_1D = self.pneuron.quasiSteadyStates({k: v[iA, iDC] for k, v in lkp.items()})
                 for k in QSS.keys():
-                    QSS[k][iA, :, iDC] = QSS_1D[k]
+                    QSS[k][iA, iDC] = QSS_1D[k]
+        QSS = Lookup(lkp.refs, QSS)
+
+        for item in [lkp, QSS]:
+            item.move('A', A_axis)
+            item.move('DC', -1)
 
         # Compress outputs if needed
         if squeeze_output:
-            QSS = {k: v.squeeze() for k, v in QSS.items()}
-            lookups = {k: v.squeeze() for k, v in lookups.items()}
+            QSS = QSS.squeeze()
+            lkp = lkp.squeeze()
 
-        # Return reference inputs and outputs
-        return amps, charges, lookups, QSS
+        return lkp, QSS
 
     def iNetQSS(self, Qm, Fdrive, Adrive, DC):
         ''' Compute quasi-steady state net membrane current for a given combination
@@ -511,9 +521,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param DC: duty cycle (-)
             :return: net membrane current (mA/m2)
         '''
-        _, _, lookups, QSS = self.quasiSteadyStates(
+        lkp, QSS = self.quasiSteadyStates(
             Fdrive, amps=Adrive, charges=Qm, DCs=DC, squeeze_output=True)
-        return self.pneuron.iNet(lookups['V'], np.array(list(QSS.values())))  # mA/m2
+        return self.pneuron.iNet(lkp['V'], QSS)  # mA/m2
 
     def evaluateStability(self, Qm0, states0, lkp):
         ''' Integrate the effective differential system from a given starting point,
@@ -608,8 +618,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Extract stable and unstable fixed points from QSS charge variation profile
         def dfunc(Qm):
             return - self.iNetQSS(Qm, Fdrive, Adrive, DC)
-        SFP_candidates = getFixedPoints(lkp['Q'], dQdt, filter='stable', der_func=dfunc).tolist()
-        UFPs = getFixedPoints(lkp['Q'], dQdt, filter='unstable', der_func=dfunc).tolist()
+        SFP_candidates = getFixedPoints(
+            lkp.refs['Q'], dQdt, filter='stable', der_func=dfunc).tolist()
+        UFPs = getFixedPoints(
+            lkp.refs['Q'], dQdt, filter='unstable', der_func=dfunc).tolist()
         SFPs = []
 
         pltvars = self.getPltVars()
@@ -667,11 +679,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             return SFPs, UFPs
 
     def isStableQSS(self, Fdrive, Adrive, DC):
-            _, Qref, lookups, QSS = self.quasiSteadyStates(
+            lookups, QSS = self.quasiSteadyStates(
                 Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
-            lookups['Q'] = Qref
-            dQdt = -self.pneuron.iNet(
-                lookups['V'], np.array([QSS[k] for k in self.pneuron.statesNames()]))  # mA/m2
+            dQdt = -self.pneuron.iNet(lookups['V'], QSS.tables)  # mA/m2
             SFPs, _ = self.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)
             return len(SFPs) > 0
 

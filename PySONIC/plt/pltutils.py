@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 09:06:06
+# @Last Modified time: 2019-06-25 23:03:26
 
 ''' Useful functions to generate plots. '''
 

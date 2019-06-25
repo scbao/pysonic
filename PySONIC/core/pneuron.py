@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 18:22:10
+# @Last Modified time: 2019-06-25 23:01:02
 
 import abc
 import re
@@ -400,7 +400,7 @@ class PointNeuron(Model):
             'label': 'dQ_m/dt',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': 'dQdt({0}Vm{1}, {2}{3}{4}.values.T)'.format(
+            'func': 'dQdt({0}Vm{1}, {2}{3}{4})'.format(
                 wrapleft, wrapright, wrapleft[:-1], self.statesNames(), wrapright[1:]),
             'ls': '--',
             'color': 'black'
