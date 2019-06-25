@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 17:53:09
+# @Last Modified time: 2019-06-25 18:09:08
 
 from functools import partialmethod
 import numpy as np
@@ -83,7 +83,6 @@ class LeechTouch(PointNeuron):
 
     def __init__(self):
         super().__init__()
-        self.rates = self.getRatesNames(['m', 'h', 'n', 's'])
         self.K_Na = self.K_Na_original * self.surface * self.curr_factor
         self.K_Ca = self.K_Ca_original * self.surface * self.curr_factor
 
@@ -403,7 +402,6 @@ class LeechPressure(LeechMech):
     def __init__(self):
         ''' Constructor of the class. '''
         super().__init__()
-        self.rates = self.getRatesNames(['m', 'h', 'n', 's'])
 
         # Surface to volume ratio of the (spherical) cell soma (m-1)
         SV_ratio = 6 / self.diam

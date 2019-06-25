@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 17:55:35
+# @Last Modified time: 2019-06-25 18:15:45
 
 import abc
 import re
@@ -27,9 +27,13 @@ class PointNeuron(Model):
     simkey = 'ESTIM'  # keyword used to characterize simulations made with this model
 
     def __init__(self):
+        # Determine neuron's resting charge density
         self.Qm0 = self.Cm0 * self.Vm0 * 1e-3  # C/cm2
-        if hasattr(self, 'states'):
-            self.rates = self.getRatesNames(self.statesNames())
+
+        # Parse pneuron object to create derEffStates and effRates methods
+        self.parse()
+        # self.printDerEffStates()
+        # self.printEffRates()
 
     def __repr__(self):
         return self.__class__.__name__
@@ -226,6 +230,8 @@ class PointNeuron(Model):
             # Create the modified lambda expression and evaluate it
             eff_dstates_str[k], eff_dstates[k] = createStateEffectiveDerivative(dfunc_exp)
 
+        self.rates = list(eff_rates.keys())
+
         # Define methods that return dictionaries of effective states derivatives
         # and effective rates functions, along with their corresponding string equivalents
         if not hasattr(self, 'derEffStates'):
@@ -400,10 +406,13 @@ class PointNeuron(Model):
             'color': 'black'
         }
 
-        for x in self.getGates():
-            for rate in ['alpha', 'beta']:
-                pltvars['{}{}'.format(rate, x)] = {
-                    'label': '\\{}_{{{}}}'.format(rate, x),
+        for rate in self.rates:
+            if 'alpha' in rate:
+                prefix, suffix = 'alpha', rate[5:]
+            else:
+                prefix, suffix = 'beta', rate[4:]
+                pltvars['{}'.format(rate)] = {
+                    'label': '\\{}_{{{}}}'.format(prefix, suffix),
                     'unit': 'ms^{-1}',
                     'factor': 1e-3
                 }
@@ -422,10 +431,6 @@ class PointNeuron(Model):
     def firingRateProfile(*args, **kwargs):
         return computeFRProfile(*args, **kwargs)
 
-    def getRatesNames(self, states):
-        ''' Return a list of names of the alpha and beta rates of the neuron. '''
-        return list(self.effRates.keys())
-
     def Qbounds(self):
         ''' Determine bounds of membrane charge physiological range for a given neuron. '''
         return np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
@@ -433,14 +438,6 @@ class PointNeuron(Model):
     def isVoltageGated(self, state):
         ''' Determine whether a given state is purely voltage-gated or not.'''
         return 'alpha{}'.format(state.lower()) in self.rates
-
-    def getGates(self):
-        ''' Retrieve the names of the neuron's states that match an ion channel gating. '''
-        gates = []
-        for x in self.statesNames():
-            if self.isVoltageGated(x):
-                gates.append(x)
-        return gates
 
     def qsStates(self, lkp, states):
         ''' Compute a collection of quasi steady states using the standard
@@ -466,29 +463,6 @@ class PointNeuron(Model):
         '''
         return self.qsStates(lkp, self.statesNames())
         # return {k: func(lkp['Vm']) for k, func in self.steadyStates().items()}
-
-    def getRates(self, Vm):
-        ''' Compute the ion channels rate constants for a given membrane potential.
-
-            :param Vm: membrane potential (mV)
-            :return: a dictionary of rate constants and their values at the given potential.
-        '''
-        rates = {}
-        for x in self.getGates():
-            x = x.lower()
-            alpha_str, beta_str = ['{}{}'.format(s, x.lower()) for s in ['alpha', 'beta']]
-            inf_str, tau_str = ['{}inf'.format(x.lower()), 'tau{}'.format(x.lower())]
-            if hasattr(self, 'alpha{}'.format(x)):
-                alphax = getattr(self, alpha_str)(Vm)
-                betax = getattr(self, beta_str)(Vm)
-            elif hasattr(self, '{}inf'.format(x)):
-                xinf = getattr(self, inf_str)(Vm)
-                taux = getattr(self, tau_str)(Vm)
-                alphax = xinf / taux
-                betax = 1 / taux - alphax
-            rates[alpha_str] = alphax
-            rates[beta_str] = betax
-        return rates
 
     def Vderivatives(self, t, y, Iinj):
         ''' Compute the derivatives of a V-cast HH system for a

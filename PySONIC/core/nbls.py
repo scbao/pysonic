@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 17:53:56
+# @Last Modified time: 2019-06-25 18:00:35
 
 from copy import deepcopy
 import logging
@@ -42,11 +42,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             raise ValueError('Invalid neuron type: "{}" (must inherit from PointNeuron class)'
                              .format(pneuron.name))
         self.pneuron = pneuron
-
-        # Parse pneuron object to create derEffStates method (along with corresponding expression)
-        self.pneuron.parse()
-        # self.pneuron.printDerEffStates()
-        # self.pneuron.printEffRates()
 
         # Initialize BilayerSonophore parent object
         BilayerSonophore.__init__(self, a, pneuron.Cm0, pneuron.Qm0, embedding_depth)

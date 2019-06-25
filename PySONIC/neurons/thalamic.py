@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 17:36:35
+# @Last Modified time: 2019-06-25 18:07:25
 
 import numpy as np
 from ..core import PointNeuron
@@ -238,9 +238,7 @@ class ThalamoCortical(Thalamic):
 
     def __init__(self):
         super().__init__()
-        self.rates = self.getRatesNames(['m', 'h', 'n', 's', 'u', 'O'])
         self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
-        # self.states += ['O', 'C', 'P0', 'Cai']
 
     def OL(self, O, C):
         ''' O-gate locked-open probability '''
