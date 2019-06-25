@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 18:09:48
+# @Last Modified time: 2019-06-25 19:19:19
 
 import numpy as np
 from scipy.optimize import brentq
