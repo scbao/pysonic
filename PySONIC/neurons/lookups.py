@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-06 21:15:32
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 19:30:41
+# @Last Modified time: 2019-06-24 20:41:25
 
 import os
 import re
@@ -22,7 +22,7 @@ class Lookup:
 
     def __init__(self, refs, tables):
         self.refs = refs
-        self.tables = tables
+        self.tables = SmartDict(tables)
         for k, v in self.tables.items():
             if v.shape != self.dims():
                 raise ValueError('{} Table dimensions {} does not match references {}'.format(
@@ -100,7 +100,7 @@ class Lookup:
             ref_value, self.refs[ref_key], self.tables[var_key], left=np.nan, right=np.nan)
 
     def interpolate1D(self, key, value):
-        return {k: self.interpVar(value, key, k) for k in self.outputs()}
+        return SmartDict({k: self.interpVar(value, key, k) for k in self.outputs()})
 
     def projectOff(self):
         # Interpolate at zero amplitude
@@ -142,21 +142,33 @@ class Lookup:
         pass
 
 
-class SmartLookup(Lookup):
+class SmartDict():
 
     # Key patterns
     suffix_pattern = '[A-Za-z0-9_]+'
     xinf_pattern = re.compile('^({})inf$'.format(suffix_pattern))
     taux_pattern = re.compile('^tau({})$'.format(suffix_pattern))
 
+    def __init__(self, d):
+        self.d = d
+
     def __repr__(self):
-        return 'Smart' + super().__repr__()
+        return 'SmartDict(' + ', '.join(self.d.keys())
+
+    def items(self):
+        return self.d.items()
+
+    def keys(self):
+        return self.d.keys()
+
+    def values(self):
+        return self.d.values()
 
     def alphax(self, x):
-        return self.tables['alpha{}'.format(x)]
+        return self.d['alpha{}'.format(x)]
 
     def betax(self, x):
-        return self.tables['beta{}'.format(x)]
+        return self.d['beta{}'.format(x)]
 
     def taux(self, x):
         return 1 / (self.alphax(x) + self.betax(x))
@@ -165,8 +177,8 @@ class SmartLookup(Lookup):
         return self.alphax(x) * self.taux(x)
 
     def __getitem__(self, key):
-        if key in self.tables:
-            return self.tables[key]
+        if key in self.d:
+            return self.d[key]
         else:
             m = self.taux_pattern.match(key)
             if m is not None:
@@ -202,7 +214,7 @@ def getNeuronLookup(name, **kwargs):
         frame = pickle.load(fh)
     if 'ng' in frame['lookup']:
         del frame['lookup']['ng']
-    return SmartLookup(frame['input'], frame['lookup'])
+    return Lookup(frame['input'], frame['lookup'])
 
 
 def getLookupsCompTime(name):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 11:56:26
+# @Last Modified time: 2019-06-25 13:41:54
 
 import numpy as np
 from ..core import PointNeuron
@@ -309,27 +309,14 @@ class ThalamoCortical(Thalamic):
         return (self.Cai_min - Cai) / self.taur_Cai -\
             self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)  # M/s
 
-    def derC(self, O, C, Vm):
-        return self.betao(Vm) * O - self.alphao(Vm) * C  # s-1
-
-    def derO(self, O, C, P0, Vm):
-        return -self.derC(O, C, Vm) - self.k3 * O * (1 - P0) + self.k4 * (1 - O - C)  # s-1
-
     def derStates(self):
         return {**super().derStates(), **{
-            'C': lambda Vm, x: self.derC(x['O'], x['C'], Vm),
-            'O': lambda Vm, x: self.derO(x['O'], x['C'], x['P0'], Vm),
+            'C': lambda Vm, x: self.betao(Vm) * x['O'] - self.alphao(Vm) * x['C'],
+            'O': lambda Vm, x: (self.alphao(Vm) * x['C'] - self.betao(Vm) * x['O'] -
+                                self.k3 * x['O'] * (1 - x['P0']) + self.k4 * (1 - x['O'] - x['C'])),
             'P0': lambda _, x: self.k2 * (1 - x['P0']) - self.k1 * x['P0'] * x['Cai']**self.nCa,
-            'Cai': lambda Vm, x: self.derCai(x['Cai'], x['s'], x['u'], Vm),
-        }}
-
-    def derEffStates(self):
-        return {**super().derEffStates(), **{
-            'C': lambda lkp, x: lkp['betao'] * x['O'] - lkp['alphao'] * x['C'],
-            'O': lambda lkp, x: lkp['alphao'] * x['C'] - lkp['betao'] * x['O'] -
-            self.k3 * x['O'] * (1 - x['P0']) + self.k4 * (1 - x['O'] - x['C']),
-            'P0': lambda _, x: self.k2 * (1 - x['P0']) - self.k1 * x['P0'] * x['Cai']**self.nCa,
-            'Cai': lambda lkp, x: self.derCai(x['Cai'], x['s'], x['u'], lkp['V'])
+            'Cai': lambda Vm, x: ((self.Cai_min - x['Cai']) / self.taur_Cai -
+                                  self.iCa_to_Cai_rate * self.iCaT(x['s'], x['u'], Vm))  # M/s
         }}
 
     # ------------------------------ Steady states ------------------------------

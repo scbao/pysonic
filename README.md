@@ -162,7 +162,6 @@ To add a new point-neuron model, follow this procedure:
 10. Modify the other required methods of the class:
   - The `currents` method that takes a membrane potential value `Vm` and a states vector as inputs, and returns a dictionary of membrane currents
   - The `derStates` method that takes the membrane potential `Vm` and a states vector as inputs, and returns a dictionary of states derivatives
-  - The `derEffStates` method that takes a membrane charge density value `Qm`, a states vector, and a lookup dictionary as inputs, and returns a dictionary of effective states derivatives
   - The `steadyStates` method that takes a membrane potential value `Vm` as input, and returns a dictionary of steady-states
   - The `computeEffRates` method that takes a membrane potential array `Vm` as input, and returns a dictionary of effective (i.e. averaged over the `Vm` array) voltage-gated states
 11. Add the neuron class to the package, by importing it in the `__init__.py` file of the `neurons` sub-folder:

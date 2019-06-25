@@ -3,9 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 08:59:17
+# @Last Modified time: 2019-06-25 14:48:27
 
 import abc
+import re
+import pprint
 import inspect
 import numpy as np
 import pandas as pd
@@ -117,6 +119,74 @@ class PointNeuron(Model):
     def getDerStates(self, Vm, states):
         ''' Compute states derivatives array given a membrane potential and states dictionary '''
         return np.array([self.derStates()[k](Vm, states) for k in self.statesNames()])
+
+    def buildDerEffStates(self):
+        ''' Construct a neuron-specific dictionary of effective derivative functions. '''
+
+        def getLambdaSource(dict_entry):
+            clean_dict_entry = re.sub(
+                ' +', ' ',
+                inspect.getsource(dict_entry).replace('\n', ' ')).strip()
+            if clean_dict_entry[-1] == ',':
+                clean_dict_entry = clean_dict_entry[:-1]
+            fsource = clean_dict_entry.split(':', 1)[-1].strip()
+            lambda_pattern = 'lambda ([a-z_A-Z,0-9\s]*): (.+)'
+            return re.match(lambda_pattern, fsource).groups()
+
+        def getFuncCalls(s):
+            func_pattern = '([a-z_A-Z]*).([a-z_A-Z][a-z_A-Z0-9]*)\(([^\)]*)\)'
+            return re.finditer(func_pattern, s)
+
+        def createStateEffectiveDerivative(expr):
+            lambda_expr = 'lambda lkp, x: {}'.format(expr)
+            lambda_expr_self = 'lambda self, lkp, x: {}'.format(expr)
+            f = eval(lambda_expr_self)
+            return lambda_expr, lambda *args: f(self, *args)
+
+        eff_dstates, eff_dstates_str = {}, {}
+        for k in self.statesNames():
+            # Get derivative function source code
+            dfunc = self.derStates()[k]
+            dfunc_args, dfunc_exp = getLambdaSource(dfunc)
+
+            # Identify each function call in expression
+            matches = getFuncCalls(dfunc_exp)
+            for m in matches:
+                # Determine function arguments
+                fprefix, fname, fargs = m.groups()
+                fcall = '{}({})'.format(fname, fargs)
+                if fprefix:
+                    fcall = '{}.{}'.format(fprefix, fcall)
+                args_list = fargs.split(',')
+
+                # If sole argument is Vm, replace function call by lookup retrieval in expression
+                if len(args_list) == 1 and args_list[0] == 'Vm':
+                    lkp_key = "lkp['{}']".format(fname)
+                    dfunc_exp = dfunc_exp.replace(fcall, lkp_key)
+
+            # Replace Vm by lkp['V'] in expression
+            dfunc_exp = dfunc_exp.replace('Vm', "lkp['V']")
+
+            # Create the modified lambda expression and evaluate it
+            eff_dstates_str[k], eff_dstates[k] = createStateEffectiveDerivative(dfunc_exp)
+
+            pp = pprint.PrettyPrinter(indent=4)
+
+        def printDerEffStates():
+            pp.pprint(eff_dstates_str)
+
+            # print(k, dfunc_exp)
+        # print(eff_dstates_str)
+
+        def derEffStates():
+            return eff_dstates
+
+        return derEffStates, printDerEffStates
+
+    def getDerEffStates(self, lkp, states):
+        ''' Compute states effective derivatives array given a dictionary of lookup vectors '''
+        return np.array([
+            self.derEffStates()[k](lkp, states) for k in self.statesNames()])
 
     @abc.abstractmethod
     def currents(self):

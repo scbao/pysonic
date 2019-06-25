@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 10:03:00
+# @Last Modified time: 2019-06-25 14:54:27
 
 from functools import partialmethod
 import numpy as np
@@ -172,18 +172,6 @@ class LeechTouch(PointNeuron):
             'ACa': lambda Vm, x: self.derACa(x['ACa'], x['Cai'])
         }
 
-    # def derEffStates(self, Vm, states, rates):
-    #     return {
-    #         'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-    #         'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-    #         'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-    #         's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
-    #         'Nai': self.derNai(states['Nai'], states['m'], states['h'], Vm),
-    #         'ANa': self.derANa(states['ANa'], states['Nai']),
-    #         'Cai': self.derCai(states['Cai'], states['s'], Vm),
-    #         'ACa': self.derACa(states['ACa'], states['Cai'])
-    #     }
-
     # ------------------------------ Steady states ------------------------------
 
     def Naiinf(self, Vm):
@@ -327,15 +315,6 @@ class LeechMech(PointNeuron):
             'c': lambda Vm, x: self.derC(x['c'], x['Cai'])
         }
 
-    # def derEffStates(self, Vm, states, rates):
-    #     return {
-    #         'm': rates['alpham'] * (1 - states['m']) - rates['betam'] * states['m'],
-    #         'h': rates['alphah'] * (1 - states['h']) - rates['betah'] * states['h'],
-    #         'n': rates['alphan'] * (1 - states['n']) - rates['betan'] * states['n'],
-    #         's': rates['alphas'] * (1 - states['s']) - rates['betas'] * states['s'],
-    #         'c': self.derC(states['c'], states['Cai']),
-    #     }
-
     # ------------------------------ Steady states ------------------------------
 
     def steadyStates(self):
@@ -472,16 +451,6 @@ class LeechPressure(LeechMech):
                                    self.iPumpCa(x['Cai'])) * self.K_Ca
         }}
 
-    # def derEffStates(self, Vm, states, rates):
-    #     dstates = super().derEffStates(Vm, states, rates)
-    #     dstates.update({
-    #         'Nai': -(self.iNa(states['m'], states['h'], Vm, states['Nai']) +
-    #                  self.iPumpNa(states['Nai'])) * self.K_Na,
-    #         'Cai': -(self.iCa(states['s'], Vm, states['Cai']) +
-    #                  self.iPumpCa(states['Cai'])) * self.K_Ca
-    #     })
-    #     return dstates
-
     # ------------------------------ Steady states ------------------------------
 
     def cinf(self, Cai):
@@ -600,14 +569,8 @@ class LeechRetzius(LeechMech):
 
     def derStates(self, Vm, states):
         return {**super().derStates(Vm, states), **{
-            'a': (self.ainf(Vm) - states['a']) / self.taua(Vm),
-            'b': (self.binf(Vm) - states['b']) / self.taub(Vm)
-        }}
-
-    def derEffStates(self, Vm, states, rates):
-        return {**super().derStates(Vm, states, rates), **{
-            'a': rates['alphaa'] * (1 - states['a']) - rates['betaa'] * states['a'],
-            'b': rates['alphab'] * (1 - states['b']) - rates['betab'] * states['b']
+            'a': lambda Vm, x: (self.ainf(Vm) - x['a']) / self.taua(Vm),
+            'b': lambda Vm, x: (self.binf(Vm) - x['b']) / self.taub(Vm)
         }}
 
     # ------------------------------ Steady states ------------------------------
