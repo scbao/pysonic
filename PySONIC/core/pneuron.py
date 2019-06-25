@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 14:48:27
+# @Last Modified time: 2019-06-25 17:55:35
 
 import abc
 import re
@@ -120,7 +120,7 @@ class PointNeuron(Model):
         ''' Compute states derivatives array given a membrane potential and states dictionary '''
         return np.array([self.derStates()[k](Vm, states) for k in self.statesNames()])
 
-    def buildDerEffStates(self):
+    def parse(self):
         ''' Construct a neuron-specific dictionary of effective derivative functions. '''
 
         def getLambdaSource(dict_entry):
@@ -143,13 +143,66 @@ class PointNeuron(Model):
             f = eval(lambda_expr_self)
             return lambda_expr, lambda *args: f(self, *args)
 
+        def defineConstLambda(const):
+            return lambda _: const
+
+        def addEffRates(expr, d, dstr):
+            # Define patterns
+            suffix_pattern = '[A-Za-z0-9_]+'
+            xinf_pattern = re.compile('^({})inf$'.format(suffix_pattern))
+            taux_pattern = re.compile('^tau({})$'.format(suffix_pattern))
+            alphax_pattern = re.compile('^alpha({})$'.format(suffix_pattern))
+            betax_pattern = re.compile('^beta({})$'.format(suffix_pattern))
+            err_str = 'gating states must be defined via the alphaX-betaX or Xinf-tauX paradigm'
+
+            # If expression matches alpha or beta rate -> return corresponding
+            # effective rate function
+            if alphax_pattern.match(expr) or betax_pattern.match(expr):
+                try:
+                    ratex = getattr(self, expr)
+                    d[expr] = np.vectorize(lambda Vm: np.mean(ratex(Vm)))
+                except AttributeError:
+                    raise ValueError(err_str)
+                dstr[expr] = 'lambda Vm: np.mean(self.{}(Vm))'.format(expr)
+
+            # If expression matches xinf or taux -> add corresponding alpha and beta
+            # effective rates functions
+            else:
+                for pattern in [taux_pattern, xinf_pattern]:
+                    m = pattern.match(expr)
+                    if m:
+                        k = m.group(1)
+                        alphax_str, betax_str = ['{}{}'.format(p, k) for p in ['alpha', 'beta']]
+                        xinf_str, taux_str = ['{}inf'.format(k), 'tau{}'.format(k)]
+                        try:
+                            xinf, taux = [getattr(self, s) for s in [xinf_str, taux_str]]
+                            # If taux is a constant, define a lambda function that returns it
+                            if not callable(taux):
+                                taux = defineConstLambda(taux)
+                            d[alphax_str] = np.vectorize(
+                                lambda Vm: np.mean(xinf(Vm) / taux(Vm)))
+                            d[betax_str] = np.vectorize(
+                                lambda Vm: np.mean((1 - xinf(Vm)) / taux(Vm)))
+                        except AttributeError:
+                            raise ValueError(err_str)
+                        dstr.update({
+                            alphax_str: 'lambda Vm: np.mean(self.{}(Vm) / self.{}(Vm))'.format(
+                                xinf_str, taux_str),
+                            betax_str: 'lambda Vm: np.mean((1 - self.{}(Vm)) / self.{}(Vm))'.format(
+                                xinf_str, taux_str)
+                        })
+
+        # Initialize empty dictionaries to gather effective derivatives functions
+        # and effective rates functions
         eff_dstates, eff_dstates_str = {}, {}
-        for k in self.statesNames():
+        eff_rates, eff_rates_str = {}, {}
+
+        # For each state derivative
+        for k, dfunc in self.derStates().items():
             # Get derivative function source code
-            dfunc = self.derStates()[k]
             dfunc_args, dfunc_exp = getLambdaSource(dfunc)
 
-            # Identify each function call in expression
+            # For each internal function call in the derivative function expression
             matches = getFuncCalls(dfunc_exp)
             for m in matches:
                 # Determine function arguments
@@ -159,10 +212,13 @@ class PointNeuron(Model):
                     fcall = '{}.{}'.format(fprefix, fcall)
                 args_list = fargs.split(',')
 
-                # If sole argument is Vm, replace function call by lookup retrieval in expression
+                # If sole argument is Vm
                 if len(args_list) == 1 and args_list[0] == 'Vm':
-                    lkp_key = "lkp['{}']".format(fname)
-                    dfunc_exp = dfunc_exp.replace(fcall, lkp_key)
+                    # Replace function call by lookup retrieval in expression
+                    dfunc_exp = dfunc_exp.replace(fcall, "lkp['{}']".format(fname))
+
+                    # Add the corresponding effective rate function(s) to the dictionnary
+                    addEffRates(fname, eff_rates, eff_rates_str)
 
             # Replace Vm by lkp['V'] in expression
             dfunc_exp = dfunc_exp.replace('Vm', "lkp['V']")
@@ -170,23 +226,22 @@ class PointNeuron(Model):
             # Create the modified lambda expression and evaluate it
             eff_dstates_str[k], eff_dstates[k] = createStateEffectiveDerivative(dfunc_exp)
 
-            pp = pprint.PrettyPrinter(indent=4)
-
-        def printDerEffStates():
-            pp.pprint(eff_dstates_str)
-
-            # print(k, dfunc_exp)
-        # print(eff_dstates_str)
-
-        def derEffStates():
-            return eff_dstates
-
-        return derEffStates, printDerEffStates
+        # Define methods that return dictionaries of effective states derivatives
+        # and effective rates functions, along with their corresponding string equivalents
+        if not hasattr(self, 'derEffStates'):
+            self.derEffStates = lambda: eff_dstates
+            self.printDerEffStates = lambda: pprint.PrettyPrinter(indent=4).pprint(eff_dstates_str)
+        if not hasattr(self, 'effRates'):
+            self.effRates = lambda: eff_rates
+            self.printEffRates = lambda: pprint.PrettyPrinter(indent=4).pprint(eff_rates_str)
 
     def getDerEffStates(self, lkp, states):
         ''' Compute states effective derivatives array given a dictionary of lookup vectors '''
         return np.array([
             self.derEffStates()[k](lkp, states) for k in self.statesNames()])
+
+    def getEffRates(self, Vm):
+        return {k: v(Vm) for k, v in self.effRates().items()}
 
     @abc.abstractmethod
     def currents(self):
@@ -369,55 +424,7 @@ class PointNeuron(Model):
 
     def getRatesNames(self, states):
         ''' Return a list of names of the alpha and beta rates of the neuron. '''
-        return list(sum(
-            [['alpha{}'.format(x.lower()), 'beta{}'.format(x.lower())] for x in states], []))
-
-    def derStateFunc(self, key):
-        ''' Infer on state derivative function based prsence of alphax/betax or xinf/taux
-            methods/attribuets in the class.
-
-            :param key: state name
-            :return state derivative function.
-        '''
-        print('hello')
-        alphax_str, betax_str = ['{}{}'.format(prefix, key) for prefix in ['alpha', 'beta']]
-        xinf_str, taux_str = ['{}inf'.format(key), 'taux{}'.format(key)]
-        if hasattr(self, alphax_str) and hasattr(self, betax_str):
-            alphax, betax = [getattr(self, x) for x in [alphax_str, betax_str]]
-            if callable(alphax):
-                if callable(betax):
-                    return lambda Vm, d: alphax(Vm) * (1 - d[key]) - betax(Vm) * d[key]
-                else:
-                    return lambda Vm, d: alphax(Vm) * (1 - d[key]) - betax * d[key]
-            else:
-                if callable(betax):
-                    return lambda Vm, d: alphax * (1 - d[key]) - betax(Vm) * d[key]
-                else:
-                    return lambda _, d: alphax * (1 - d[key]) - betax * d[key]
-        elif hasattr(self, xinf_str) and hasattr(self, taux_str):
-            xinf, taux = [getattr(self, x) for x in [xinf_str, taux_str]]
-            if callable(xinf):
-                if callable(taux):
-                    return lambda Vm, d: (xinf(Vm) - d[key]) / taux(Vm)
-                else:
-                    return lambda Vm, d: (xinf(Vm) - d[key]) / taux
-            else:
-                if callable(taux):
-                    return lambda Vm, d: (xinf - d[key]) / taux(Vm)
-                else:
-                    return lambda _, d: (xinf - d[key]) / taux
-        else:
-            raise ValueError('standard X gating derivatives must be defined via the' +
-                             'alphaX-betaX or Xinf-tauX paradigm')
-
-    @abc.abstractmethod
-    def computeEffRates(self, Vm):
-        ''' Get the effective rate constants of ion channels, averaged along an acoustic cycle,
-            for future use in effective simulations.
-
-            :param Vm: array of membrane potential values for an acoustic cycle (mV)
-            :return: a dictionary of rate average constants (s-1)
-        '''
+        return list(self.effRates.keys())
 
     def Qbounds(self):
         ''' Determine bounds of membrane charge physiological range for a given neuron. '''

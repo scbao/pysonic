@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 13:41:54
+# @Last Modified time: 2019-06-25 17:36:35
 
 import numpy as np
 from ..core import PointNeuron
@@ -371,12 +371,4 @@ class ThalamoCortical(Thalamic):
         return {**super().currents(), **{
             'iKLeak': lambda Vm, states: self.iKLeak(Vm),
             'iH': lambda Vm, states: self.iH(states['O'], states['C'], Vm)
-        }}
-
-    # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {**super().computeEffRates(Vm), **{
-            'alphao': np.mean(self.alphao(Vm)),
-            'betao': np.mean(self.betao(Vm))
         }}

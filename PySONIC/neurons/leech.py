@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 14:54:27
+# @Last Modified time: 2019-06-25 17:53:09
 
 from functools import partialmethod
 import numpy as np
@@ -238,20 +238,6 @@ class LeechTouch(PointNeuron):
             'iLeak': lambda Vm, _: self.iLeak(Vm)
         }
 
-    # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {
-            'alpham': np.mean(self.minf(Vm) / self.taum(Vm)),
-            'betam': np.mean((1 - self.minf(Vm)) / self.taum(Vm)),
-            'alphah': np.mean(self.hinf(Vm) / self.tauh(Vm)),
-            'betah': np.mean((1 - self.hinf(Vm)) / self.tauh(Vm)),
-            'alphan': np.mean(self.ninf(Vm) / self.taun(Vm)),
-            'betan': np.mean((1 - self.ninf(Vm)) / self.taun(Vm)),
-            'alphas': np.mean(self.sinf(Vm) / self.taus(Vm)),
-            'betas': np.mean((1 - self.sinf(Vm)) / self.taus(Vm))
-        }
-
 
 class LeechMech(PointNeuron):
     ''' Generic leech neuron
@@ -356,20 +342,6 @@ class LeechMech(PointNeuron):
             'iCa': lambda Vm, x: self.iCa(x['s'], Vm, x['Cai']),
             'iKCa': lambda Vm, x: self.iKCa(x['c'], Vm),
             'iLeak': lambda Vm, _: self.iLeak(Vm)
-        }
-
-    # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {
-            'alpham': np.mean(self.alpham(Vm)),
-            'betam': np.mean(self.betam(Vm)),
-            'alphah': np.mean(self.alphah(Vm)),
-            'betah': np.mean(self.betah(Vm)),
-            'alphan': np.mean(self.alphan(Vm)),
-            'betan': np.mean(self.betan(Vm)),
-            'alphas': np.mean(self.alphas(Vm)),
-            'betas': np.mean(self.betas(Vm))
         }
 
 
@@ -595,14 +567,4 @@ class LeechRetzius(LeechMech):
     def currents(self):
         return {**super().currents(), **{
             'iA': lambda Vm, x: self.iA(x['a'], x['b'], Vm)
-        }}
-
-    # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {**super().computeEffRates(Vm), **{
-            'alphaa': np.mean(self.ainf(Vm) / self.taua(Vm)),
-            'betaa': np.mean((1 - self.ainf(Vm)) / self.taua(Vm)),
-            'alphab': np.mean(self.binf(Vm) / self.taub(Vm)),
-            'betab': np.mean((1 - self.binf(Vm)) / self.taub(Vm))
         }}

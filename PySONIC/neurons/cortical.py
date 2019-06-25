@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 14:51:06
+# @Last Modified time: 2019-06-25 17:35:32
 
 import numpy as np
 from ..core import PointNeuron
@@ -98,20 +98,6 @@ class Cortical(PointNeuron):
             'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
             'iM': lambda Vm, x: self.iM(x['p'], Vm),
             'iLeak': lambda Vm, _: self.iLeak(Vm)
-        }
-
-    # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {
-            'alpham': np.mean(self.alpham(Vm)),
-            'betam': np.mean(self.betam(Vm)),
-            'alphah': np.mean(self.alphah(Vm)),
-            'betah': np.mean(self.betah(Vm)),
-            'alphan': np.mean(self.alphan(Vm)),
-            'betan': np.mean(self.betan(Vm)),
-            'alphap': np.mean(self.pinf(Vm) / self.taup(Vm)),
-            'betap': np.mean((1 - self.pinf(Vm)) / self.taup(Vm))
         }
 
 
@@ -284,16 +270,6 @@ class CorticalLTS(Cortical):
             'iCaT': lambda Vm, x: self.iCaT(x['s'], x['u'], Vm)
         }}
 
-    # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {**super().computeEffRates(Vm), **{
-            'alphas': np.mean(self.sinf(Vm) / self.taus(Vm)),
-            'betas': np.mean((1 - self.sinf(Vm)) / self.taus(Vm)),
-            'alphau': np.mean(self.uinf(Vm) / self.tauu(Vm)),
-            'betau': np.mean((1 - self.uinf(Vm)) / self.tauu(Vm))
-        }}
-
 
 class CorticalIB(Cortical):
     ''' Cortical intrinsically bursting neuron
@@ -380,14 +356,4 @@ class CorticalIB(Cortical):
     def currents(self):
         return {**super().currents(), **{
             'iCaL': lambda Vm, x: self.iCaL(x['q'], x['r'], Vm)
-        }}
-
-    # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {**super().computeEffRates(Vm), **{
-            'alphaq': np.mean(self.alphaq(Vm)),
-            'betaq': np.mean(self.betaq(Vm)),
-            'alphar': np.mean(self.alphar(Vm)),
-            'betar': np.mean(self.betar(Vm))
         }}

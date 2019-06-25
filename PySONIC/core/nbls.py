@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 14:56:00
+# @Last Modified time: 2019-06-25 17:53:56
 
 from copy import deepcopy
 import logging
@@ -43,9 +43,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                              .format(pneuron.name))
         self.pneuron = pneuron
 
-        # Create point-neuron derEffStates method (along with corresponding expression)
-        self.pneuron.derEffStates, self.printDerEffStates = self.pneuron.buildDerEffStates()
-        # self.printDerEffStates()
+        # Parse pneuron object to create derEffStates method (along with corresponding expression)
+        self.pneuron.parse()
+        # self.pneuron.printDerEffStates()
+        # self.pneuron.printEffRates()
 
         # Initialize BilayerSonophore parent object
         BilayerSonophore.__init__(self, a, pneuron.Cm0, pneuron.Qm0, embedding_depth)
@@ -282,7 +283,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             Vm = Qm / Cm * 1e3  # mV
 
             # Compute average cycle value for membrane potential and rate constants
-            effvars.append(**{'V': np.mean(Vm)}, **self.pneuron.computeEffRates(Vm))
+            effvars.append({**{'V': np.mean(Vm)}, **self.pneuron.getEffRates(Vm)})
 
         # Log process
         log = '{}: lookups @ {}Hz, {}Pa, {:.2f} nC/cm2'.format(

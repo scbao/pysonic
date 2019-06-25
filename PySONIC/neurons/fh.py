@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 10:07:53
+# @Last Modified time: 2019-06-25 17:39:02
 
 import numpy as np
 from ..core import PointNeuron
@@ -139,18 +139,4 @@ class FrankenhaeuserHuxley(PointNeuron):
             'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
             'iP': lambda Vm, x: self.iP(x['p'], Vm),
             'iLeak': lambda Vm, _: self.iLeak(Vm)
-        }
-
-    # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {
-            'alpham': np.mean(self.alpham(Vm)),
-            'betam': np.mean(self.betam(Vm)),
-            'alphah': np.mean(self.alphah(Vm)),
-            'betah': np.mean(self.betah(Vm)),
-            'alphan': np.mean(self.alphan(Vm)),
-            'betan': np.mean(self.betan(Vm)),
-            'alphap': np.mean(self.alphap(Vm)),
-            'betap': np.mean(self.betap(Vm))
         }

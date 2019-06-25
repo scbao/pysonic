@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 14:50:18
+# @Last Modified time: 2019-06-25 17:27:07
 
 import numpy as np
 from scipy.optimize import brentq
@@ -411,28 +411,6 @@ class OtsukaSTN(PointNeuron):
         }
 
     # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {
-            'alphaa': np.mean(self.ainf(Vm) / self.taua(Vm)),
-            'betaa': np.mean((1 - self.ainf(Vm)) / self.taua(Vm)),
-            'alphab': np.mean(self.binf(Vm) / self.taub(Vm)),
-            'betab': np.mean((1 - self.binf(Vm)) / self.taub(Vm)),
-            'alphac': np.mean(self.cinf(Vm) / self.tauc(Vm)),
-            'betac': np.mean((1 - self.cinf(Vm)) / self.tauc(Vm)),
-            'alphad1': np.mean(self.d1inf(Vm) / self.taud1(Vm)),
-            'betad1': np.mean((1 - self.d1inf(Vm)) / self.taud1(Vm)),
-            'alpham': np.mean(self.minf(Vm) / self.taum(Vm)),
-            'betam': np.mean((1 - self.minf(Vm)) / self.taum(Vm)),
-            'alphah': np.mean(self.hinf(Vm) / self.tauh(Vm)),
-            'betah': np.mean((1 - self.hinf(Vm)) / self.tauh(Vm)),
-            'alphan': np.mean(self.ninf(Vm) / self.taun(Vm)),
-            'betan': np.mean((1 - self.ninf(Vm)) / self.taun(Vm)),
-            'alphap': np.mean(self.pinf(Vm) / self.taup(Vm)),
-            'betap': np.mean((1 - self.pinf(Vm)) / self.taup(Vm)),
-            'alphaq': np.mean(self.qinf(Vm) / self.tauq(Vm)),
-            'betaq': np.mean((1 - self.qinf(Vm)) / self.tauq(Vm))
-        }
 
     def getLowIntensities(self):
         ''' Return an array of acoustic intensities (W/m2) used to study the STN neuron in

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-19 14:41:42
+# @Last Modified time: 2019-06-25 17:38:45
 
 import numpy as np
 
@@ -102,13 +102,3 @@ class TemplateNeuron(PointNeuron):
         }
 
     # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {
-            'alpham': np.mean(self.alpham(Vm)),
-            'betam': np.mean(self.betam(Vm)),
-            'alphah': np.mean(self.alphah(Vm)),
-            'betah': np.mean(self.betah(Vm)),
-            'alphan': np.mean(self.alphan(Vm)),
-            'betan': np.mean(self.betan(Vm))
-        }

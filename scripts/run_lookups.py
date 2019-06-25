@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 10:49:15
+# @Last Modified time: 2019-06-25 17:26:56
 
 ''' Create lookup table for specific neuron. '''
 
@@ -14,7 +14,7 @@ import logging
 import numpy as np
 
 from PySONIC.utils import logger, isIterable
-from PySONIC.neurons import getPointNeuron, NEURONS_LOOKUP_DIR, getNeuronLookupsFileName
+from PySONIC.neurons import NEURONS_LOOKUP_DIR, getNeuronLookupsFileName
 from PySONIC.core import NeuronalBilayerSonophore, createQueue, Batch
 from PySONIC.parsers import MechSimParser
 
