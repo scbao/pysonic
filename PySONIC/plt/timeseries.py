@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 20:42:00
+# @Last Modified time: 2019-06-25 18:26:04
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -377,7 +377,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
                     ax_pltvars[0]['ls'] = '-'
 
                 # Set y-axis unit and bounds
-                self.setYLabel(ax, ax_pltvars[0], fs, grouplabel=grouplabel)
+                self.setYLabel(ax, ax_pltvars[0].copy(), fs, grouplabel=grouplabel)
                 if 'bounds' in ax_pltvars[0]:
                     ax_min = min([ap['bounds'][0] for ap in ax_pltvars])
                     ax_max = max([ap['bounds'][1] for ap in ax_pltvars])
