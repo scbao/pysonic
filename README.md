@@ -161,7 +161,7 @@ To add a new point-neuron model, follow this procedure:
 9. Modify/add **membrane currents** (`iXX` methods) of your model. Those methods take relevant gating states and the membrane potential `Vm` as inputs, and must return a current density in `mA/m2`. **You also need to modify the docstring accordingly, as this information is used by the package**
 10. Modify the other required methods of the class:
   - The `currents` method that takes a membrane potential value `Vm` and a states vector as inputs, and returns a dictionary of membrane currents
-  - The `derStates` method that takes the membrane potential `Vm` and a states vector as inputs, and returns a dictionary of states derivatives
+  - The `derStates` method that takes the membrane potential `Vm` and a states vector as inputs, and returns a dictionary of lambda function returning states derivatives. **This method is automatically parsed to generate the equivalent `derEffStates` method used in coarse-grained US simulations. Hence, make sure that all internal calls to functions that depend solely on `Vm` appear directly in these lambda expressions and are not hidden inside nested function calls.**
   - The `steadyStates` method that takes a membrane potential value `Vm` as input, and returns a dictionary of steady-states
   - The `computeEffRates` method that takes a membrane potential array `Vm` as input, and returns a dictionary of effective (i.e. averaged over the `Vm` array) voltage-gated states
 11. Add the neuron class to the package, by importing it in the `__init__.py` file of the `neurons` sub-folder:
