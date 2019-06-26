@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 13:30:27
+# @Last Modified time: 2019-06-26 19:15:08
 
 from enum import Enum
 import os
@@ -609,13 +609,36 @@ class BilayerSonophore(Model):
         # return - (3/2 - 2*R/H) * U**2 / R
         return -(3 * U**2) / (2 * R)
 
-    def derivatives(self, t, y, Adrive, Fdrive, Qm, phi, Pm_comp_method=PmCompMethod.predict):
+    def checkInputs(self, Fdrive, Adrive, Qm, phi):
+        ''' Check validity of stimulation parameters
+
+            :param Fdrive: acoustic drive frequency (Hz)
+            :param Adrive: acoustic drive amplitude (Pa)
+            :param phi: acoustic drive phase (rad)
+            :param Qm: imposed membrane charge density (C/m2)
+        '''
+        if not all(isinstance(param, float) for param in [Fdrive, Adrive, Qm, phi]):
+            raise TypeError('Invalid stimulation parameters (must be float typed)')
+        if Fdrive <= 0:
+            raise ValueError('Invalid US driving frequency: {} kHz (must be strictly positive)'
+                             .format(Fdrive * 1e-3))
+        if Adrive < 0:
+            raise ValueError('Invalid US pressure amplitude: {} kPa (must be positive or null)'
+                             .format(Adrive * 1e-3))
+        if Qm < CHARGE_RANGE[0] or Qm > CHARGE_RANGE[1]:
+            raise ValueError('Invalid applied charge: {} nC/cm2 (must be within [{}, {}] interval'
+                             .format(Qm * 1e5, CHARGE_RANGE[0] * 1e5, CHARGE_RANGE[1] * 1e5))
+        if phi < 0 or phi >= 2 * np.pi:
+            raise ValueError('Invalid US pressure phase: {:.2f} rad (must be within [0, 2 PI[ rad'
+                             .format(phi))
+
+    def derivatives(self, t, y, Fdrive, Adrive, Qm, phi, Pm_comp_method=PmCompMethod.predict):
         ''' Evolution of the mechanical system
 
             :param t: time instant (s)
             :param y: vector of HH system variables at time t
-            :param Adrive: acoustic drive amplitude (Pa)
             :param Fdrive: acoustic drive frequency (Hz)
+            :param Adrive: acoustic drive amplitude (Pa)
             :param Qm: membrane charge density (F/m2)
             :param phi: acoustic drive phase (rad)
             :param Pm_comp_method: computation method for average intermolecular pressure
@@ -649,29 +672,6 @@ class BilayerSonophore(Model):
         # Return derivatives vector
         return [dUdt, dZdt, dngdt]
 
-    def checkInputs(self, Fdrive, Adrive, Qm, phi):
-        ''' Check validity of stimulation parameters
-
-            :param Fdrive: acoustic drive frequency (Hz)
-            :param Adrive: acoustic drive amplitude (Pa)
-            :param phi: acoustic drive phase (rad)
-            :param Qm: imposed membrane charge density (C/m2)
-        '''
-        if not all(isinstance(param, float) for param in [Fdrive, Adrive, Qm, phi]):
-            raise TypeError('Invalid stimulation parameters (must be float typed)')
-        if Fdrive <= 0:
-            raise ValueError('Invalid US driving frequency: {} kHz (must be strictly positive)'
-                             .format(Fdrive * 1e-3))
-        if Adrive < 0:
-            raise ValueError('Invalid US pressure amplitude: {} kPa (must be positive or null)'
-                             .format(Adrive * 1e-3))
-        if Qm < CHARGE_RANGE[0] or Qm > CHARGE_RANGE[1]:
-            raise ValueError('Invalid applied charge: {} nC/cm2 (must be within [{}, {}] interval'
-                             .format(Qm * 1e5, CHARGE_RANGE[0] * 1e5, CHARGE_RANGE[1] * 1e5))
-        if phi < 0 or phi >= 2 * np.pi:
-            raise ValueError('Invalid US pressure phase: {:.2f} rad (must be within [0, 2 PI[ rad'
-                             .format(phi))
-
     def simulate(self, Fdrive, Adrive, Qm, phi=np.pi, Pm_comp_method=PmCompMethod.predict):
         ''' Simulate until periodic stabilization for a specific set of ultrasound parameters,
             and return output data in a dataframe.
@@ -701,7 +701,7 @@ class BilayerSonophore(Model):
 
         # Initialize simulator and compute solution
         simulator = PeriodicSimulator(
-            lambda t, y: self.derivatives(t, y, Adrive, Fdrive, Qm, phi, Pm_comp_method),
+            lambda t, y: self.derivatives(t, y, Fdrive, Adrive, Qm, phi, Pm_comp_method),
             ivars_to_check=[1, 2])
         (t, y, stim), tcomp = simulator(y0, dt, 1. / Fdrive, monitor_time=True)
         logger.debug('completed in %ss', si_format(tcomp, 1))

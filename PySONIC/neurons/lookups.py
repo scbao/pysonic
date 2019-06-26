@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-06 21:15:32
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 14:43:47
+# @Last Modified time: 2019-06-26 19:43:16
 
 import os
 import re
@@ -115,12 +115,29 @@ class Lookup:
             lkp = lkp.project(k, v)
         return lkp
 
+    def move(self, key, index):
+        if index == -1:
+            index = self.ndims() - 1
+        iref = self.getAxisIndex(key)
+        for k in self.keys():
+            self.tables[k] = np.moveaxis(self.tables[k], iref, index)
+        refkeys = list(self.refs.keys())
+        del refkeys[iref]
+        refkeys = refkeys[:index] + [key] + refkeys[index:]
+        self.refs = {k: self.refs[k] for k in refkeys}
+
     def interpVar(self, ref_value, ref_key, var_key):
         return np.interp(
             ref_value, self.refs[ref_key], self.tables[var_key], left=np.nan, right=np.nan)
 
     def interpolate1D(self, key, value):
         return SmartDict({k: self.interpVar(value, key, k) for k in self.outputs()})
+
+
+class SmartLookup(Lookup):
+
+    def __repr__(self):
+        return 'Smart' + super().__repr__()
 
     def projectOff(self):
         # Interpolate at zero amplitude
@@ -140,17 +157,6 @@ class Lookup:
         lkp0.refs = {'Q': lkp0.refs['Q']}
 
         return lkp0
-
-    def move(self, key, index):
-        if index == -1:
-            index = self.ndims() - 1
-        iref = self.getAxisIndex(key)
-        for k in self.keys():
-            self.tables[k] = np.moveaxis(self.tables[k], iref, index)
-        refkeys = list(self.refs.keys())
-        del refkeys[iref]
-        refkeys = refkeys[:index] + [key] + refkeys[index:]
-        self.refs = {k: self.refs[k] for k in refkeys}
 
     def projectDCs(self, amps=None, DCs=1.):
         if amps is None:
@@ -198,9 +204,6 @@ class Lookup:
         lkp.move('DC', -1)
         lkp.move('A', A_axis)
         return lkp
-
-    def projectFs(self):
-        pass
 
 
 class SmartDict():
@@ -280,7 +283,16 @@ def getNeuronLookup(name, **kwargs):
         frame = pickle.load(fh)
     if 'ng' in frame['lookup']:
         del frame['lookup']['ng']
-    return Lookup(frame['input'], frame['lookup'])
+    refs = frame['input']
+
+    # Move fs to last reference dimension
+    keys = list(refs.keys())
+    if 'fs' in keys and keys.index('fs') < len(keys) - 1:
+        del keys[keys.index('fs')]
+        keys.append('fs')
+        refs = {k: refs[k] for k in keys}
+
+    return SmartLookup(refs, frame['lookup'])
 
 
 def getLookupsCompTime(name):
@@ -299,35 +311,6 @@ def getLookupsCompTime(name):
     return np.sum(tcomps4D)
 
 
-# def getLookups2Dfs(name, a, Fdrive, fs):
-
-#     # Check lookup file existence
-#     lookup_path = getNeuronLookupsFilePath(name, a=a, Fdrive=Fdrive, fs=True)
-#     if not os.path.isfile(lookup_path):
-#         raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
-
-#     # Load lookups dictionary
-#     logger.debug('Loading %s lookup table with fs = %.0f%%', name, fs * 1e2)
-#     with open(lookup_path, 'rb') as fh:
-#         df = pickle.load(fh)
-#         inputs = df['input']
-#         lookups3D = df['lookup']
-
-#     # Retrieve 1D inputs from lookups dictionary
-#     fsref = inputs['fs']
-#     Aref = inputs['A']
-#     Qref = inputs['Q']
-
-#     # Check that fs is within lookup range
-#     fs = isWithin('coverage', fs, (fsref.min(), fsref.max()))
-
-#     # Perform projection at fs
-#     logger.debug('Interpolating lookups at fs = %s%%', fs * 1e2)
-#     lookups2D = {key: interp1d(fsref, y3D, axis=2)(fs) for key, y3D in lookups3D.items()}
-
-#     return Aref, Qref, lookups2D
-
-
 if __name__ == '__main__':
 
     refs = {
@@ -342,7 +325,7 @@ if __name__ == '__main__':
         'betam': np.ones(dims) * 3
     }
 
-    lkp4d = Lookup(refs, tables)
+    lkp4d = SmartLookup(refs, tables)
     print(lkp4d, lkp4d.dims())
     lkp1d = lkp4d.projectN({'a': 32e-9, 'f': 500e3, 'A': 100e3})
     print(lkp1d, lkp1d.dims())

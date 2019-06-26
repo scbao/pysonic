@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 17:26:56
+# @Last Modified time: 2019-06-26 19:25:18
 
 ''' Create lookup table for specific neuron. '''
 
