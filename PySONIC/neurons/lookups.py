@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-06 21:15:32
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 23:18:14
+# @Last Modified time: 2019-06-26 14:43:47
 
 import os
 import re
@@ -326,3 +326,26 @@ def getLookupsCompTime(name):
 #     lookups2D = {key: interp1d(fsref, y3D, axis=2)(fs) for key, y3D in lookups3D.items()}
 
 #     return Aref, Qref, lookups2D
+
+
+if __name__ == '__main__':
+
+    refs = {
+        'a': np.logspace(np.log10(16), np.log10(64), 5) * 1e-9,
+        'f': np.array([100, 200, 500, 1e3, 2e3, 3e3, 4e3]) * 1e3,
+        'A': np.logspace(np.log10(1), np.log10(600), 100) * 1e3,
+        'Q': np.arange(-80, 50)
+    }
+    dims = [refs[x].shape for x in refs.keys()]
+    tables = {
+        'alpham': np.ones(dims) * 2,
+        'betam': np.ones(dims) * 3
+    }
+
+    lkp4d = Lookup(refs, tables)
+    print(lkp4d, lkp4d.dims())
+    lkp1d = lkp4d.projectN({'a': 32e-9, 'f': 500e3, 'A': 100e3})
+    print(lkp1d, lkp1d.dims())
+
+    for k in ['alpham', 'betam', 'taum', 'minf']:
+        print(k, lkp1d[k])
