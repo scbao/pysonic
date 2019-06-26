@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 21:55:40
+# @Last Modified time: 2019-06-26 13:08:09
 
 ''' Sub-panels of the model optimization figure. '''
 
@@ -176,7 +176,7 @@ def cycleAveraging(bls, pneuron, Fdrive, Adrive, Qm, fs=12, lw=2, ps=15):
     # Compute variables evolution over last acoustic cycle
     t_last = t[-NPC_DENSE:] * 1e6  # us
     Z_last = Z[-NPC_DENSE:]  # m
-    Cm = bls.v_Capct(Z_last) * 1e2  # uF/m2
+    Cm = bls.v_capacitance(Z_last) * 1e2  # uF/m2
     Vm = Qm / Cm * 1e5  # mV
     yvars = {
         'C_m': Cm,  # uF/cm2

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 20:12:14
+# @Last Modified time: 2019-06-26 13:30:27
 
 from enum import Enum
 import os
@@ -41,6 +41,7 @@ def LennardJones(x, beta, alpha, C, m, n):
 
 
 def lookup(func):
+    ''' Load parameters from lookup file, or compute them and sotre them in lookup file. '''
 
     lookup_path = os.path.join(os.path.split(__file__)[0], 'bls_lookups.json')
 
@@ -144,7 +145,7 @@ class BilayerSonophore(Model):
             s += ', d={}m'.format(si_format(self.d, precision=1, space=' '))
         return s + ')'
 
-    def inputVars(self):
+    def inputs(self):
         return {
             'a': {
                 'desc': 'sonophore radius',
@@ -185,30 +186,7 @@ class BilayerSonophore(Model):
             'Qm': '{:.1f}nCcm2'.format(Qm * 1e5)
         }
 
-    @lookup
-    def computePMparams(self):
-        # Find Delta that cancels out Pm + Pec at Z = 0 (m)
-        if self.Qm0 == 0.0:
-            D_eq = self.Delta_
-        else:
-            (D_eq, Pnet_eq) = self.findDeltaEq(self.Qm0)
-            assert Pnet_eq < PNET_EQ_MAX, 'High Pnet at Z = 0 with ∆ = %.2f nm' % (D_eq * 1e9)
-        self.Delta = D_eq
-
-        # Find optimal Lennard-Jones parameters to approximate PMavg
-        (self.LJ_approx, std_err, _) = self.LJfitPMavg()
-        assert std_err < PMAVG_STD_ERR_MAX, 'High error in PmAvg nonlinear fit:'\
-            ' std_err =  %.2f Pa' % std_err
-
-    def getPltScheme(self):
-        return {
-            'P_{AC}': ['Pac'],
-            'Z': ['Z'],
-            'n_g': ['ng']
-        }
-
     def getPltVars(self, wrapleft='df["', wrapright='"]'):
-        ''' Return a dictionary with information about all plot variables related to the model. '''
         return {
             'Pac': {
                 'desc': 'acoustic pressure',
@@ -257,8 +235,15 @@ class BilayerSonophore(Model):
                 'unit': 'uF/cm^2',
                 'factor': 1e2,
                 'bounds': (0.0, 1.5),
-                'func': 'v_Capct({0}Z{1})'.format(wrapleft, wrapright)
+                'func': 'v_capacitance({0}Z{1})'.format(wrapleft, wrapright)
             }
+        }
+
+    def getPltScheme(self):
+        return {
+            'P_{AC}': ['Pac'],
+            'Z': ['Z'],
+            'n_g': ['ng']
         }
 
     def curvrad(self, Z):
@@ -296,7 +281,7 @@ class BilayerSonophore(Model):
         return np.pi * self.a**2 * self.Delta\
             * (1 + (Z / (3 * self.Delta) * (3 + Z**2 / self.a**2)))
 
-    def arealstrain(self, Z):
+    def arealStrain(self, Z):
         ''' Areal strain of the stretched leaflet
             epsilon = (S - S0)/S0 = (Z/a)^2
 
@@ -305,7 +290,7 @@ class BilayerSonophore(Model):
         '''
         return (Z / self.a)**2
 
-    def Capct(self, Z):
+    def capacitance(self, Z):
         ''' Membrane capacitance
             (parallel-plate capacitor evaluated at average inter-layer distance)
 
@@ -319,11 +304,11 @@ class BilayerSonophore(Model):
                     (Z + (self.a**2 - Z**2 - Z * self.Delta) / (2 * Z) *
                      np.log((2 * Z + self.Delta) / self.Delta)))
 
-    def v_Capct(self, Z):
-        ''' Vectorized Capct function '''
-        return np.array(list(map(self.Capct, Z)))
+    def v_capacitance(self, Z):
+        ''' Vectorized capacitance function '''
+        return np.array(list(map(self.capacitance, Z)))
 
-    def derCapct(self, Z, U):
+    def derCapacitance(self, Z, U):
         ''' Evolution of membrane capacitance
 
             :param Z: leaflet apex deflection (m)
@@ -336,7 +321,7 @@ class BilayerSonophore(Model):
                    np.log((2 * Z + self.Delta) / self.Delta)) / (2 * Z**2)))
         return dCmdZ * U
 
-    def localdef(self, r, Z, R):
+    def localDeflection(self, r, Z, R):
         ''' Local leaflet deflection at specific radial distance
             (signed)
 
@@ -368,7 +353,7 @@ class BilayerSonophore(Model):
             :param R: leaflet curvature radius (m)
             :return: local intermolecular pressure (Pa)
         '''
-        z = self.localdef(r, Z, R)
+        z = self.localDeflection(r, Z, R)
         relgap = (2 * z + self.Delta) / self.Delta_
         return self.pDelta * ((1 / relgap)**self.m - (1 / relgap)**self.n)
 
@@ -439,6 +424,21 @@ class BilayerSonophore(Model):
 
         LJ_approx = {"x0": x0_opt, "C": C_opt, "nrep": nrep_opt, "nattr": nattr_opt}
         return (LJ_approx, std_err, max_err)
+
+    @lookup
+    def computePMparams(self):
+        # Find Delta that cancels out Pm + Pec at Z = 0 (m)
+        if self.Qm0 == 0.0:
+            D_eq = self.Delta_
+        else:
+            (D_eq, Pnet_eq) = self.findDeltaEq(self.Qm0)
+            assert Pnet_eq < PNET_EQ_MAX, 'High Pnet at Z = 0 with ∆ = %.2f nm' % (D_eq * 1e9)
+        self.Delta = D_eq
+
+        # Find optimal Lennard-Jones parameters to approximate PMavg
+        (self.LJ_approx, std_err, _) = self.LJfitPMavg()
+        assert std_err < PMAVG_STD_ERR_MAX, 'High error in PmAvg nonlinear fit:'\
+            ' std_err =  %.2f Pa' % std_err
 
     def PMavgpred(self, Z):
         ''' Approximated average intermolecular pressure
@@ -542,7 +542,7 @@ class BilayerSonophore(Model):
             :param Z: leaflet apex deflection (m)
             :return: circumferential elastic tension (N/m)
         '''
-        return self.kA * self.arealstrain(Z)
+        return self.kA * self.arealStrain(Z)
 
     def TEtissue(self, Z):
         ''' Elastic tension in surrounding viscoelastic layer
@@ -550,7 +550,7 @@ class BilayerSonophore(Model):
             :param Z: leaflet apex deflection (m)
             :return: circumferential elastic tension (N/m)
         '''
-        return self.kA_tissue * self.arealstrain(Z)
+        return self.kA_tissue * self.arealStrain(Z)
 
     def TEtot(self, Z):
         ''' Total elastic tension (leaflet + surrounding viscoelastic layer)
@@ -672,27 +672,8 @@ class BilayerSonophore(Model):
             raise ValueError('Invalid US pressure phase: {:.2f} rad (must be within [0, 2 PI[ rad'
                              .format(phi))
 
-    def meta(self, Fdrive, Adrive, Qm):
-        ''' Return information about object and simulation parameters.
-
-            :param Fdrive: US frequency (Hz)
-            :param Adrive: acoustic pressure amplitude (Pa)
-            :param Qm: applied membrane charge density (C/m2)
-            :return: meta-data dictionary
-        '''
-        return {
-            'simkey': self.simkey,
-            'a': self.a,
-            'd': self.d,
-            'Cm0': self.Cm0,
-            'Qm0': self.Qm0,
-            'Fdrive': Fdrive,
-            'Adrive': Adrive,
-            'Qm': Qm
-        }
-
     def simulate(self, Fdrive, Adrive, Qm, phi=np.pi, Pm_comp_method=PmCompMethod.predict):
-        ''' Simulate system until periodic stabilization for a specific set of ultrasound parameters,
+        ''' Simulate until periodic stabilization for a specific set of ultrasound parameters,
             and return output data in a dataframe.
 
             :param Fdrive: acoustic drive frequency (Hz)
@@ -739,6 +720,18 @@ class BilayerSonophore(Model):
         # Return dataframe and computation time
         return data, tcomp
 
+    def meta(self, Fdrive, Adrive, Qm):
+        return {
+            'simkey': self.simkey,
+            'a': self.a,
+            'd': self.d,
+            'Cm0': self.Cm0,
+            'Qm0': self.Qm0,
+            'Fdrive': Fdrive,
+            'Adrive': Adrive,
+            'Qm': Qm
+        }
+
     def getCycleProfiles(self, Fdrive, Adrive, Qm):
         ''' Simulate mechanical system and compute pressures over the last acoustic cycle
 
@@ -766,7 +759,7 @@ class BilayerSonophore(Model):
         data = {
             't': t,
             'Z': Z,
-            'Cm': self.v_Capct(Z),
+            'Cm': self.v_capacitance(Z),
             'P_M': self.v_PMavg(Z, R, self.surface(Z)),
             'P_Q': self.Pelec(Z, Qm),
             'P_{VE}': self.PEtot(Z, R) + self.PVleaflet(U, R),

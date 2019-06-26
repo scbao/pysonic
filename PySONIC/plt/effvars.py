@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 17:33:29
+# @Last Modified time: 2019-06-26 11:57:04
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -150,7 +150,7 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
         if key != 'Q':
             zkey = key
             zref = lookups2D.refs[key]
-    zvar = nbls.inputVars()[{'a': 'a', 'f': 'Fdrive', 'A': 'Adrive'}[zkey]]
+    zvar = nbls.inputs()[{'a': 'a', 'f': 'Fdrive', 'A': 'Adrive'}[zkey]]
     zref *= zvar['factor']
     prefix = {value: key for key, value in si_prefixes.items()}[1 / zvar['factor']]
 

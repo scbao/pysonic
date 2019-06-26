@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 20:26:38
+# @Last Modified time: 2019-06-26 11:57:13
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -164,7 +164,7 @@ class PhaseDiagram(ComparativePlot):
 
         # Determine labels
         if self.comp_ref_key is not None:
-            self.comp_info = model.inputVars().get(self.comp_ref_key, None)
+            self.comp_info = model.inputs().get(self.comp_ref_key, None)
         comp_values, comp_labels = self.getCompLabels(comp_values)
         labels = self.chooseLabels(labels, comp_labels, full_labels)
 

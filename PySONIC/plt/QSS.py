@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 23:15:42
+# @Last Modified time: 2019-06-26 13:02:22
 
 import inspect
 import logging
@@ -339,7 +339,7 @@ def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=loggin
 
 
 def runAndGetStab(nbls, *args):
-    return nbls.pneuron.getStabilizationValue(nbls.load(*args)[0])
+    return nbls.pneuron.getStabilizationValue(nbls.getOutput(*args)[0])
 
 
 @fileCache(
