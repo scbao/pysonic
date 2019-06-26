@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 11:57:21
+# @Last Modified time: 2019-06-26 20:01:09
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,7 +34,8 @@ class TimeSeriesPlot(GenericPlot):
             stimstate = df['states']
         return stimstate.values
 
-    def getStimPulses(self, t, states):
+    @classmethod
+    def getStimPulses(cls, t, states):
         ''' Determine the onset and offset times of pulses from a stimulation vector.
 
             :param t: time vector (s).
