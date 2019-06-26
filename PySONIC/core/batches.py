@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 13:44:33
+# @Last Modified time: 2019-06-26 13:51:06
 
 ''' Utility functions used in simulations '''
 

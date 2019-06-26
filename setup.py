@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-13 09:40:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 13:46:21
+# @Last Modified time: 2019-06-26 13:50:32
 
 import os
 from setuptools import setup
@@ -21,7 +21,7 @@ setup(
                Cavitation** (SONIC) model to compute individual neural responses to acoustic \
                stimuli, as predicted by the *intramembrane cavitation* hypothesis.',
     long_description=readme(),
-    url='???',
+    url='https://iopscience.iop.org/article/10.1088/1741-2552/ab1685',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
