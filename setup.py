@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-13 09:40:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:11:26
+# @Last Modified time: 2019-06-26 13:46:21
 
 import os
 from setuptools import setup
@@ -40,13 +40,10 @@ setup(
         'scipy>=0.17',
         'matplotlib>=2'
         'pandas>=0.22.0',
-        'openpyxl>=2.4',
-        'pyyaml>=3.11',
-        'pycallgraph>=1.0.1',
         'colorlog>=3.0.1',
         'tqdm>=4.3',
-        'nolds>=0.5',
-        'lockfile>=0.1.2'
+        'lockfile>=0.1.2',
+        'multiprocess>=0.70'
     ],
     zip_safe=False
 )

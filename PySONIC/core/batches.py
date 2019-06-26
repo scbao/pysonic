@@ -3,12 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:01:18
+# @Last Modified time: 2019-06-26 13:44:33
 
 ''' Utility functions used in simulations '''
 
 import logging
-import multiprocessing as mp
+import multiprocess as mp
 import numpy as np
 
 from ..utils import logger
