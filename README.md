@@ -4,14 +4,15 @@
 
 ## Content of repository
 
-### Core model classes
+### Models
 
-The package contains three core model classes:
+The package contains four model classes:
+- `Model` defines the generic interface of a model, including mandatory attributes and methods for simulating it.
 - `BilayerSonophore` defines the underlying **biomechanical model of intramembrane cavitation**.
 - `PointNeuron` defines an abstract generic interface to **conductance-based point-neuron electrical models**. It is inherited by classes defining the different neuron types with specific membrane dynamics.
 - `NeuronalBilayerSonophore` defines the **full electromechanical model for any given neuron type**. To do so, it inherits from `BilayerSonophore` and receives a specific `PointNeuron` object at initialization.
 
-All three classes contain a `simulate` method to simulate the underlying model's behavior for a given set of stimulation and physiological parameters. The `NeuronalBilayerSonophore.simulate` method contains an additional `method` argument defining whether to perform a detailed (`full`), coarse-grained (`sonic`) or hybrid (`hybrid`) integration of the differential system.
+All model classes contain a `simulate` method to simulate the underlying model's behavior for a given set of stimulation and physiological parameters. The `NeuronalBilayerSonophore.simulate` method contains an additional `method` argument defining whether to perform a detailed (`full`), coarse-grained (`sonic`) or hybrid (`hybrid`) integration of the differential system.
 
 ### Simulators
 
@@ -46,7 +47,7 @@ Several conductance-based point-neuron models are implemented that inherit from 
 
 # Requirements
 
-- Python 3.6 or more
+- Python 3.6+
 
 # Installation
 
