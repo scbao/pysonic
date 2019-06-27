@@ -3,13 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 11:57:04
+# @Last Modified time: 2019-06-27 14:24:57
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from ..utils import logger, si_prefixes, isWithin
-from ..neurons import getNeuronLookup
 from ..core import NeuronalBilayerSonophore
 from .pltutils import setGrid, setNormalizer
 
@@ -120,8 +119,11 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
     if cmap is None:
         cmap = 'viridis'
 
+    nbls = NeuronalBilayerSonophore(32e-9, pneuron)
+    pltvars = nbls.getPltVars()
+
     # Get lookups and re-organize them
-    lkp = getNeuronLookup(pneuron.name)
+    lkp = nbls.getLookup()
     Qref = lkp.refs['Q']
     lkp.rename('V', 'Vm')
     lkp['Cm'] = Qref / lkp['Vm'] * 1e3  # uF/cm2
@@ -134,9 +136,6 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
 
     # Get reference US-OFF lookups (1D)
     lookupsoff = lkp.projectOff()
-
-    nbls = NeuronalBilayerSonophore(32e-9, pneuron)
-    pltvars = nbls.getPltVars()
 
     # Get 2D lookups at specific combination
     inputs = {}

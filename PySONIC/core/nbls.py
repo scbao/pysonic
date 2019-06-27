@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 19:48:39
+# @Last Modified time: 2019-06-27 14:23:20
 
 from copy import deepcopy
 import logging
@@ -16,10 +16,13 @@ from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .model import Model
 from .batches import createQueue
-from ..neurons import getNeuronLookup, SmartLookup
 from ..utils import *
 from ..constants import *
 from ..postpro import getFixedPoints
+from .lookup import SmartLookup
+
+
+NEURONS_LOOKUP_DIR = os.path.abspath(os.path.split(__file__)[0] + "/../neurons/")
 
 
 class NeuronalBilayerSonophore(BilayerSonophore):
@@ -285,10 +288,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     def _runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs):
         # Load appropriate 2D lookups
         if fs < 1:
-            lkp2d = getNeuronLookup(
-                self.pneuron.name, a=self.a, Fdrive=Fdrive, fs=True).project('fs', fs)
+            lkp2d = self.getLookup(a=self.a, Fdrive=Fdrive, fs=True).project('fs', fs)
         else:
-            lkp2d = getNeuronLookup(self.pneuron.name).projectN({'a': self.a, 'f': Fdrive})
+            lkp2d = self.getLookup().projectN({'a': self.a, 'f': Fdrive})
 
         # Interpolate 2D lookups at zero and US amplitude
         logger.debug('Interpolating lookups at A = %.2f kPa and A = 0', Adrive * 1e-3)
@@ -438,7 +440,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Default amplitude interval
         if Arange is None:
-            Arange = [0., getNeuronLookup(self.pneuron.name).refs['A'].max()]
+            Arange = [0., self.getLookup().refs['A'].max()]
 
         return binarySearch(
             lambda x: xfunc(self.simulate(*x)[0]),
@@ -459,8 +461,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
 
         # Get DC-averaged lookups interpolated at the appropriate amplitudes and charges
-        lkp = getNeuronLookup(self.pneuron.name).projectDCs(
-            amps=amps, DCs=DCs).projectN({'a': self.a, 'f': Fdrive})
+        lkp = self.getLookup().projectDCs(amps=amps, DCs=DCs).projectN({'a': self.a, 'f': Fdrive})
         if charges is not None:
             lkp = lkp.project('Q', charges)
 
@@ -668,7 +669,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Default amplitude interval
         if Arange is None:
-            Arange = [0., getNeuronLookup(self.pneuron.name).refs['A'].max()]
+            Arange = [0., self.getLookup().refs['A'].max()]
 
         # Titration function
         def xfunc(x):
@@ -680,3 +681,37 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return binarySearch(
             xfunc,
             [Fdrive, DC], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM)
+
+    def getLookupFileName(self, a=None, Fdrive=None, Adrive=None, fs=False):
+        fname = '{}_lookups'.format(self.pneuron.name)
+        if a is not None:
+            fname += '_{:.0f}nm'.format(a * 1e9)
+        if Fdrive is not None:
+            fname += '_{:.0f}kHz'.format(Fdrive * 1e-3)
+        if Adrive is not None:
+            fname += '_{:.0f}kPa'.format(Adrive * 1e-3)
+        if fs is True:
+            fname += '_fs'
+        return '{}.pkl'.format(fname)
+
+    def getLookupFilePath(self, *args, **kwargs):
+        return os.path.join(NEURONS_LOOKUP_DIR, self.getLookupFileName(*args, **kwargs))
+
+    def getLookup(self, *args, **kwargs):
+        lookup_path = self.getLookupFilePath(*args, **kwargs)
+        if not os.path.isfile(lookup_path):
+            raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
+        with open(lookup_path, 'rb') as fh:
+            frame = pickle.load(fh)
+        if 'ng' in frame['lookup']:
+            del frame['lookup']['ng']
+        refs = frame['input']
+
+        # Move fs to last reference dimension
+        keys = list(refs.keys())
+        if 'fs' in keys and keys.index('fs') < len(keys) - 1:
+            del keys[keys.index('fs')]
+            keys.append('fs')
+            refs = {k: refs[k] for k in keys}
+
+        return SmartLookup(refs, frame['lookup'])

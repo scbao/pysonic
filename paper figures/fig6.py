@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 22:01:42
+# @Last Modified time: 2019-06-27 14:29:08
 
 ''' Sub-panels of the NICE and SONIC computation times comparative figure. '''
 
@@ -17,6 +17,7 @@ from PySONIC.utils import *
 from PySONIC.neurons import *
 from PySONIC.plt import cm2inch
 from PySONIC.parsers import FigureParser
+from PySONIC.core import NeuronalBilayerSonophore
 
 from utils import *
 
@@ -30,6 +31,23 @@ figbase = os.path.splitext(__file__)[0]
 
 time_indicators = [1, 60, 60**2, 60**2 * 24, 60**2 * 24 * 7]
 time_indicators_labels = ['1 s', '1 min', '1 hour', '1 day', '1 week']
+
+
+def getLookupsCompTime(name):
+
+    # Check lookup file existence
+    nbls = NeuronalBilayerSonophore(32e-9, getPointNeuron(name))
+    lookup_path = nbls.getLookupFilePath()
+    if not os.path.isfile(lookup_path):
+        raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
+
+    # Load lookups dictionary
+    logger.debug('Loading comp times')
+    with open(lookup_path, 'rb') as fh:
+        df = pickle.load(fh)
+        tcomps4D = df['tcomp']
+
+    return np.sum(tcomps4D)
 
 
 def comptime_vs_amp(neuron, a, Fdrive, amps, tstim, toffset, inputdir, fs=8, lw=2, ps=4):

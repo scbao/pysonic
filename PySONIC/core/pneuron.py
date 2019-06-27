@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-27 12:58:53
+# @Last Modified time: 2019-06-27 14:33:04
 
 import abc
 import re
@@ -14,6 +14,7 @@ import pandas as pd
 
 from .batches import createQueue
 from .model import Model
+from .lookup import SmartLookup
 from .simulators import PWSimulator
 from ..postpro import findPeaks, computeFRProfile
 from ..constants import *
@@ -180,11 +181,11 @@ class PointNeuron(Model):
                 prefix, suffix = 'alpha', rate[5:]
             else:
                 prefix, suffix = 'beta', rate[4:]
-                pltvars['{}'.format(rate)] = {
-                    'label': '\\{}_{{{}}}'.format(prefix, suffix),
-                    'unit': 'ms^{-1}',
-                    'factor': 1e-3
-                }
+            pltvars['{}'.format(rate)] = {
+                'label': '\\{}_{{{}}}'.format(prefix, suffix),
+                'unit': 'ms^{-1}',
+                'factor': 1e-3
+            }
 
         pltvars['FR'] = {
             'desc': 'riring rate',
@@ -241,6 +242,14 @@ class PointNeuron(Model):
     def getEffRates(self, Vm):
         ''' Compute array of effective rate constants for a given membrane potential vector. '''
         return {k: np.mean(np.vectorize(v)(Vm)) for k, v in self.effRates().items()}
+
+    def getLookup(self):
+        ''' Get lookup of membrane potential rate constants interpolated along the neuron's
+            charge physiological range. '''
+        Qref = np.arange(*self.Qbounds(), 1e-5)  # C/m2
+        Vref = Qref / self.Cm0 * 1e3  # mV
+        tables = {k: np.vectorize(v)(Vref) for k, v in self.effRates().items()}
+        return SmartLookup({'Q': Qref}, {**{'V': Vref}, **tables})
 
     @abc.abstractmethod
     def currents(self):

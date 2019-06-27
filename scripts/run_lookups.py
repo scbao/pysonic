@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 19:25:18
+# @Last Modified time: 2019-06-27 14:20:05
 
 ''' Create lookup table for specific neuron. '''
 
@@ -14,7 +14,6 @@ import logging
 import numpy as np
 
 from PySONIC.utils import logger, isIterable
-from PySONIC.neurons import NEURONS_LOOKUP_DIR, getNeuronLookupsFileName
 from PySONIC.core import NeuronalBilayerSonophore, createQueue, Batch
 from PySONIC.parsers import MechSimParser
 
@@ -115,7 +114,7 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
 
 def main():
 
-    parser = MechSimParser(outputdir=NEURONS_LOOKUP_DIR)
+    parser = MechSimParser(outputdir='.')
     parser.addNeuron()
     parser.addTest()
     parser.defaults['neuron'] = 'RS'
@@ -136,11 +135,11 @@ def main():
                 pneuron.Qbounds()[0], pneuron.Qbounds()[1] + 1e-5, 1e-5)  # C/m2
 
         # Determine output filename
+        f = NeuronalBilayerSonophore(32e-9, pneuron).getLookupFilePath
         if args['fs'].size == 1 and args['fs'][0] == 1.:
-            lookup_fname = getNeuronLookupsFileName(pneuron.name)
+            lookup_fpath = f()
         else:
-            lookup_fname = getNeuronLookupsFileName(
-                pneuron.name, a=args['radius'][0], Fdrive=args['freq'][0], fs=True)
+            lookup_fpath = f(a=args['radius'][0], Fdrive=args['freq'][0], fs=True)
 
         # Combine inputs into single list
         inputs = [args[x] for x in ['radius', 'freq', 'amp']] + [charges, args['fs']]
@@ -150,9 +149,7 @@ def main():
             for i, x in enumerate(inputs):
                 if x is not None and x.size > 1:
                     inputs[i] = np.array([x.min(), x.max()])
-            lookup_fname = '{}_test{}'.format(*os.path.splitext(lookup_fname))
-
-        lookup_fpath = os.path.join(args['outputdir'], lookup_fname)
+            lookup_fpath = '{}_test{}'.format(*os.path.splitext(lookup_fpath))
 
         # Check if lookup file already exists
         if os.path.isfile(lookup_fpath):

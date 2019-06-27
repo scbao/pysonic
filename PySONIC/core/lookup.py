@@ -1,20 +1,15 @@
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
 # @Email: theo.lemaire@epfl.ch
-# @Date:   2019-06-06 21:15:32
+# @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 19:43:16
+# @Last Modified time: 2019-06-27 14:22:05
 
-import os
 import re
-import pickle
 import numpy as np
 from scipy.interpolate import interp1d
 
-from ..utils import isWithin, logger, isIterable
-
-
-NEURONS_LOOKUP_DIR = os.path.split(__file__)[0]
+from ..utils import isWithin, isIterable
 
 
 class Lookup:
@@ -257,58 +252,8 @@ class SmartDict():
     def __setitem__(self, key, value):
         self.d[key] = value
 
-
-def getNeuronLookupsFileName(name, a=None, Fdrive=None, Adrive=None, fs=False):
-    fname = '{}_lookups'.format(name)
-    if a is not None:
-        fname += '_{:.0f}nm'.format(a * 1e9)
-    if Fdrive is not None:
-        fname += '_{:.0f}kHz'.format(Fdrive * 1e-3)
-    if Adrive is not None:
-        fname += '_{:.0f}kPa'.format(Adrive * 1e-3)
-    if fs is True:
-        fname += '_fs'
-    return '{}.pkl'.format(fname)
-
-
-def getNeuronLookupsFilePath(*args, **kwargs):
-    return os.path.join(NEURONS_LOOKUP_DIR, getNeuronLookupsFileName(*args, **kwargs))
-
-
-def getNeuronLookup(name, **kwargs):
-    lookup_path = getNeuronLookupsFilePath(name, **kwargs)
-    if not os.path.isfile(lookup_path):
-        raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
-    with open(lookup_path, 'rb') as fh:
-        frame = pickle.load(fh)
-    if 'ng' in frame['lookup']:
-        del frame['lookup']['ng']
-    refs = frame['input']
-
-    # Move fs to last reference dimension
-    keys = list(refs.keys())
-    if 'fs' in keys and keys.index('fs') < len(keys) - 1:
-        del keys[keys.index('fs')]
-        keys.append('fs')
-        refs = {k: refs[k] for k in keys}
-
-    return SmartLookup(refs, frame['lookup'])
-
-
-def getLookupsCompTime(name):
-
-    # Check lookup file existence
-    lookup_path = getNeuronLookupsFilePath(name)
-    if not os.path.isfile(lookup_path):
-        raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
-
-    # Load lookups dictionary
-    logger.debug('Loading comp times')
-    with open(lookup_path, 'rb') as fh:
-        df = pickle.load(fh)
-        tcomps4D = df['tcomp']
-
-    return np.sum(tcomps4D)
+    def pop(self, key):
+        return self.d.pop(key)
 
 
 if __name__ == '__main__':

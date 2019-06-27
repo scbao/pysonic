@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 10:57:14
+# @Last Modified time: 2019-06-27 14:09:37
 
 import inspect
 import sys
@@ -13,7 +13,8 @@ from .batches import Batch, createQueue
 from .model import Model
 from .pneuron import PointNeuron
 from .bls import BilayerSonophore, PmCompMethod, LennardJones
-from .nbls import NeuronalBilayerSonophore
+from .nbls import *
+from .lookup import *
 
 from ..neurons import getPointNeuron
 
