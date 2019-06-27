@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-27 14:23:20
+# @Last Modified time: 2019-06-27 15:05:11
 
 from copy import deepcopy
 import logging
@@ -287,10 +287,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     def _runSONIC(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs):
         # Load appropriate 2D lookups
-        if fs < 1:
-            lkp2d = self.getLookup(a=self.a, Fdrive=Fdrive, fs=True).project('fs', fs)
-        else:
-            lkp2d = self.getLookup().projectN({'a': self.a, 'f': Fdrive})
+        lkp2d = self.getLookup2D(Fdrive, fs)
 
         # Interpolate 2D lookups at zero and US amplitude
         logger.debug('Interpolating lookups at A = %.2f kPa and A = 0', Adrive * 1e-3)
@@ -715,3 +712,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             refs = {k: refs[k] for k in keys}
 
         return SmartLookup(refs, frame['lookup'])
+
+    def getLookup2D(self, Fdrive, fs):
+        if fs < 1:
+            lkp2d = self.getLookup(a=self.a, Fdrive=Fdrive, fs=True).project('fs', fs)
+        else:
+            lkp2d = self.getLookup().projectN({'a': self.a, 'f': Fdrive})
+        return lkp2d

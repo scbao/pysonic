@@ -3,10 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 19:15:46
+# @Last Modified time: 2019-06-27 16:03:57
 
 import os
-from inspect import signature
+from inspect import signature, getdoc
 import pickle
 import abc
 import inspect
@@ -47,6 +47,10 @@ class Model(metaclass=abc.ABCMeta):
         inst_attrs = [a for a in inst_attrs if not toAvoid(a[0]) and a not in class_attrs]
         params_dict = {a[0]: a[1] for a in class_attrs + inst_attrs}
         return params_dict
+
+    @classmethod
+    def description(cls):
+        return inspect.getdoc(cls).split('\n', 1)[0].strip()
 
     @property
     @abc.abstractmethod
