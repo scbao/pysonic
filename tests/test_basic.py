@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-27 10:45:25
+# @Last Modified time: 2019-06-27 10:59:33
 
 ''' Test the basic functionalities of the package. '''
 
@@ -11,6 +11,7 @@ import os
 import time
 import cProfile
 import pstats
+import inspect
 
 from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
 from PySONIC.utils import logger
@@ -18,7 +19,9 @@ from PySONIC.neurons import getPointNeuron, getNeuronsDict
 from PySONIC.parsers import TestParser
 
 
-class TestSims:
+class TestBase:
+
+    prefix = 'test_'
 
     def execute(self, func_str, globals, locals, is_profiled):
         ''' Execute function with or without profiling. '''
@@ -32,6 +35,34 @@ class TestSims:
             stats.print_stats()
         else:
             eval(func_str, globals, locals)
+
+    def main(self):
+
+        # Build list of candidate testsets
+        methods = inspect.getmembers(self, predicate=inspect.ismethod)
+        testsets = {}
+        n = len(self.prefix)
+        for name, obj in methods:
+            if name[:n] == self.prefix:
+                testsets[name[n:]] = obj
+
+        # Parse command line arguments
+        parser = TestParser(list(testsets.keys()))
+        args = parser.parse()
+        logger.setLevel(args['loglevel'])
+        if args['profile'] and args['subset'] == 'all':
+            logger.error('profiling can only be run on individual tests')
+            return
+
+        # Run appropriate tests
+        t0 = time.time()
+        for s in args['subset']:
+            testsets[s](args['profile'])
+        tcomp = time.time() - t0
+        logger.info('tests completed in %.0f s', tcomp)
+
+
+class TestSims(TestBase):
 
     def test_MECH(self, is_profiled=False):
         logger.info('Test: running MECH simulation')
@@ -114,31 +145,6 @@ class TestSims:
         nbls = NeuronalBilayerSonophore(a, pneuron)
         self.execute("nbls.simulate(Fdrive, Adrive, tstim, toffset, method='hybrid')",
                      globals(), locals(), is_profiled)
-
-    def main(self):
-        test_funcs = {
-            'MECH': self.test_MECH,
-            'ESTIM': self.test_ESTIM,
-            'ASTIM_sonic': self.test_ASTIM_sonic,
-            'ASTIM_full': self.test_ASTIM_full,
-            'ASTIM_hybrid': self.test_ASTIM_hybrid
-        }
-
-        parser = TestParser(list(test_funcs.keys()))
-        args = parser.parse()
-        logger.setLevel(args['loglevel'])
-
-        # Parse arguments
-        if args['profile'] and args['subset'] == 'all':
-            logger.error('profiling can only be run on individual tests')
-            return
-
-        # Run test
-        t0 = time.time()
-        for s in args['subset']:
-            test_funcs[s](args['profile'])
-        tcomp = time.time() - t0
-        logger.info('tests completed in %.0f s', tcomp)
 
 
 if __name__ == '__main__':
