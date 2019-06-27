@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 13:33:06
+# @Last Modified time: 2019-06-27 12:58:53
 
 import abc
 import re
@@ -240,7 +240,7 @@ class PointNeuron(Model):
 
     def getEffRates(self, Vm):
         ''' Compute array of effective rate constants for a given membrane potential vector. '''
-        return {k: v(Vm) for k, v in self.effRates().items()}
+        return {k: np.mean(np.vectorize(v)(Vm)) for k, v in self.effRates().items()}
 
     @abc.abstractmethod
     def currents(self):
@@ -601,11 +601,10 @@ class PointNeuron(Model):
             # effective rate function
             if alphax_pattern.match(expr) or betax_pattern.match(expr):
                 try:
-                    ratex = getattr(self, expr)
-                    d[expr] = np.vectorize(lambda Vm: np.mean(ratex(Vm)))
+                    d[expr] = getattr(self, expr)
                 except AttributeError:
                     raise ValueError(err_str)
-                dstr[expr] = 'lambda Vm: np.mean(self.{}(Vm))'.format(expr)
+                dstr[expr] = 'self.{}'.format(expr)
 
             # If expression matches xinf or taux -> add corresponding alpha and beta
             # effective rates functions
@@ -621,16 +620,14 @@ class PointNeuron(Model):
                             # If taux is a constant, define a lambda function that returns it
                             if not callable(taux):
                                 taux = defineConstLambda(taux)
-                            d[alphax_str] = np.vectorize(
-                                lambda Vm: np.mean(xinf(Vm) / taux(Vm)))
-                            d[betax_str] = np.vectorize(
-                                lambda Vm: np.mean((1 - xinf(Vm)) / taux(Vm)))
+                            d[alphax_str] = lambda Vm: xinf(Vm) / taux(Vm)
+                            d[betax_str] = lambda Vm: (1 - xinf(Vm)) / taux(Vm)
                         except AttributeError:
                             raise ValueError(err_str)
                         dstr.update({
-                            alphax_str: 'lambda Vm: np.mean(self.{}(Vm) / self.{}(Vm))'.format(
+                            alphax_str: 'lambda Vm: self.{}(Vm) / self.{}(Vm)'.format(
                                 xinf_str, taux_str),
-                            betax_str: 'lambda Vm: np.mean((1 - self.{}(Vm)) / self.{}(Vm))'.format(
+                            betax_str: 'lambda Vm: (1 - self.{}(Vm)) / self.{}(Vm)'.format(
                                 xinf_str, taux_str)
                         })
 
