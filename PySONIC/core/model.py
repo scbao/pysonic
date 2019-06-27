@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-27 16:03:57
+# @Last Modified time: 2019-06-27 19:12:54
 
 import os
 from inspect import signature, getdoc
@@ -104,11 +104,11 @@ class Model(metaclass=abc.ABCMeta):
         ''' Check the validity of simulation input parameters. '''
         raise NotImplementedError
 
-    # @property
-    # @abc.abstractmethod
-    # def derivatives(self, *args, **kwargs):
-    #     ''' Compute ODE derivatives for a specific set of ODE states and external parameters. '''
-    #     raise NotImplementedError
+    @property
+    @abc.abstractmethod
+    def derivatives(self, *args, **kwargs):
+        ''' Compute ODE derivatives for a specific set of ODE states and external parameters. '''
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
