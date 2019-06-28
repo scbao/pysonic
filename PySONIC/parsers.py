@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 09:45:48
+# @Last Modified time: 2019-06-28 14:06:25
 
 import os
 import logging
@@ -534,6 +534,10 @@ class EStimParser(PWSimParser):
             help='Amplitude range {} (mA/m2)'.format(self.dist_str))
         self.to_parse['amp'] = self.parseAmp
 
+    def addVext(self):
+        self.add_argument(
+            '--Vext', nargs='+', type=float, help='Extracellular potential (mV)')
+
     def parseAmp(self, args):
         if args.pop('titrate'):
             return None
@@ -543,10 +547,6 @@ class EStimParser(PWSimParser):
         else:
             amps = np.array(Astim) * self.factors['amp']  # mA/m2
         return amps
-
-    def parse(self):
-        args = super().parse()
-        return args
 
 
 class AStimParser(PWSimParser, MechSimParser):

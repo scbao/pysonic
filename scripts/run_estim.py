@@ -3,13 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 14:23:46
+# @Last Modified time: 2019-06-28 15:52:30
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
 import matplotlib.pyplot as plt
 
-from PySONIC.core import Batch
+from PySONIC.core import Batch, PointNeuron
 from PySONIC.utils import logger
 from PySONIC.plt import GroupedTimeSeries
 from PySONIC.parsers import EStimParser
@@ -25,8 +25,8 @@ def main():
     logger.info("Starting E-STIM simulation batch")
     pkl_filepaths = []
     inputs = [args[k] for k in ['amp', 'tstim', 'toffset', 'PRF', 'DC']]
+    queue = PointNeuron.simQueue(*inputs, outputdir=args['outputdir'])
     for pneuron in args['neuron']:
-        queue = pneuron.simQueue(*inputs, outputdir=args['outputdir'])
         batch = Batch(pneuron.runAndSave, queue)
         pkl_filepaths += batch(mpi=args['mpi'], loglevel=args['loglevel'])
 

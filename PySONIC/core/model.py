@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-27 19:12:54
+# @Last Modified time: 2019-06-28 16:09:28
 
 import os
 from inspect import signature, getdoc
@@ -50,11 +50,11 @@ class Model(metaclass=abc.ABCMeta):
 
     @classmethod
     def description(cls):
-        return inspect.getdoc(cls).split('\n', 1)[0].strip()
+        return getdoc(cls).split('\n', 1)[0].strip()
 
-    @property
+    @staticmethod
     @abc.abstractmethod
-    def inputs(self):
+    def inputs():
         ''' Return an informative dictionary on input variables used to simulate the model. '''
         raise NotImplementedError
 
@@ -90,7 +90,8 @@ class Model(metaclass=abc.ABCMeta):
         ''' Return a dictionary model plot variables grouped by context. '''
         raise NotImplementedError
 
-    def simQueue(self, *args, outputdir=None):
+    @staticmethod
+    def simQueue(*args, outputdir=None):
         ''' Create a simulation queue from a combination of simulation parameters. '''
         queue = createQueue(*args)
         if outputdir is not None:
@@ -98,7 +99,7 @@ class Model(metaclass=abc.ABCMeta):
                 item.insert(0, outputdir)
         return queue
 
-    @property
+    @staticmethod
     @abc.abstractmethod
     def checkInputs(self, *args):
         ''' Check the validity of simulation input parameters. '''

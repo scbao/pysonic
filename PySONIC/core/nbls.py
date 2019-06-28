@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-27 15:05:11
+# @Last Modified time: 2019-06-28 16:10:25
 
 from copy import deepcopy
 import logging
@@ -68,10 +68,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     def filecode(self, *args):
         return Model.filecode(self, *args)
 
-    def inputs(self):
+    @staticmethod
+    def inputs():
         # Get parent input vars and supress irrelevant entries
-        bls_vars = super().inputs()
-        pneuron_vars = self.pneuron.inputs()
+        bls_vars = BilayerSonophore.inputs()
+        pneuron_vars = PointNeuron.inputs()
         del bls_vars['Qm']
         del pneuron_vars['Astim']
 
@@ -320,7 +321,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Return dataframe and computation time
         return data, tcomp
 
-    def simQueue(self, freqs, amps, durations, offsets, PRFs, DCs, fs, methods, outputdir=None):
+    @staticmethod
+    def simQueue(freqs, amps, durations, offsets, PRFs, DCs, fs, methods, outputdir=None):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
             parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 
@@ -377,8 +379,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             ', fs = {:.2f}%'.format(fs * 1e2) if fs < 1.0 else '')
 
         # Check validity of stimulation parameters
-        BilayerSonophore.checkInputs(self, Fdrive, Adrive, 0.0, 0.0)
-        self.pneuron.checkInputs(Adrive, tstim, toffset, PRF, DC)
+        BilayerSonophore.checkInputs(Fdrive, Adrive, 0.0, 0.0)
+        PointNeuron.checkInputs(Adrive, tstim, toffset, PRF, DC)
 
         # Call appropriate simulation function
         try:

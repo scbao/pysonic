@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-27 16:02:52
+# @Last Modified time: 2019-06-28 16:10:04
 
 import abc
 import re
@@ -55,7 +55,8 @@ class PointNeuron(Model):
         ''' Neuron's resting membrane potential(mV). '''
         raise NotImplementedError
 
-    def inputs(self):
+    @staticmethod
+    def inputs():
         return {
             'Astim': {
                 'desc': 'current density amplitude',
@@ -360,7 +361,8 @@ class PointNeuron(Model):
         return self.qsStates(lkp, self.statesNames())
         # return {k: func(lkp['Vm']) for k, func in self.steadyStates().items()}
 
-    def simQueue(self, amps, durations, offsets, PRFs, DCs, outputdir=None):
+    @staticmethod
+    def simQueue(amps, durations, offsets, PRFs, DCs, outputdir=None):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
             parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 
@@ -387,7 +389,8 @@ class PointNeuron(Model):
                 item.insert(0, outputdir)
         return queue
 
-    def checkInputs(self, Astim, tstim, toffset, PRF, DC):
+    @staticmethod
+    def checkInputs(Astim, tstim, toffset, PRF, DC):
         ''' Check validity of electrical stimulation parameters.
 
             :param Astim: pulse amplitude (mA/m2)

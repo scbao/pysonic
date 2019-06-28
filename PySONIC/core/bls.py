@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 19:15:08
+# @Last Modified time: 2019-06-28 16:09:48
 
 from enum import Enum
 import os
@@ -145,7 +145,8 @@ class BilayerSonophore(Model):
             s += ', d={}m'.format(si_format(self.d, precision=1, space=' '))
         return s + ')'
 
-    def inputs(self):
+    @staticmethod
+    def inputs():
         return {
             'a': {
                 'desc': 'sonophore radius',
@@ -609,7 +610,8 @@ class BilayerSonophore(Model):
         # return - (3/2 - 2*R/H) * U**2 / R
         return -(3 * U**2) / (2 * R)
 
-    def checkInputs(self, Fdrive, Adrive, Qm, phi):
+    @staticmethod
+    def checkInputs(Fdrive, Adrive, Qm, phi):
         ''' Check validity of stimulation parameters
 
             :param Fdrive: acoustic drive frequency (Hz)
