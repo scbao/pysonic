@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 11:57:13
+# @Last Modified time: 2019-06-29 20:24:36
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,10 +39,8 @@ class PhaseDiagram(ComparativePlot):
         }
     }
 
-    def __init__(self, filepaths, varname):
-        super().__init__(filepaths, varname)
-
-    def createBackBone(self, pltvar, tbounds, fs, prettify):
+    @classmethod
+    def createBackBone(cls, pltvar, tbounds, fs, prettify):
                 # Create figure
         fig, axes = plt.subplots(1, 2, figsize=(8, 4))
 
@@ -63,18 +61,19 @@ class PhaseDiagram(ComparativePlot):
         ax.plot([pltvar['lim'][0], pltvar['lim'][1]], [0, 0], '--', color='k', linewidth=1)
 
         if prettify:
-            self.prettify(axes[0], xticks=tbounds, yticks=pltvar['lim'])
-            self.prettify(axes[1], xticks=pltvar['lim'], yticks=pltvar['dlim'])
+            cls.prettify(axes[0], xticks=tbounds, yticks=pltvar['lim'])
+            cls.prettify(axes[1], xticks=pltvar['lim'], yticks=pltvar['dlim'])
         for ax in axes:
-            self.removeSpines(ax)
-            self.setTickLabelsFontSize(ax, fs)
+            cls.removeSpines(ax)
+            cls.setTickLabelsFontSize(ax, fs)
 
         return fig, axes
 
     def checkInputs(self, labels):
         self.checkLabels(labels)
 
-    def extractSpikesData(self, t, y, tbounds, rel_tbounds, tspikes):
+    @staticmethod
+    def extractSpikesData(t, y, tbounds, rel_tbounds, tspikes):
         spikes_tvec, spikes_yvec, spikes_dydtvec = [], [], []
         for j, (tspike, tbound) in enumerate(zip(tspikes, tbounds)):
             left_bound = max(tbound[0], rel_tbounds[0] + tspike)

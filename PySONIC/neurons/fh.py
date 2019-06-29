@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 17:39:02
+# @Last Modified time: 2019-06-29 19:45:34
 
 import numpy as np
 from ..core import PointNeuron
@@ -56,87 +56,103 @@ class FrankenhaeuserHuxley(PointNeuron):
         'p': 'iP gate'
     }
 
-    def __init__(self):
-        super().__init__()
-        self.q10 = 3**((self.celsius - 20) / 10)
-        self.T = self.celsius + CELSIUS_2_KELVIN
+    def __new__(cls):
+        cls.q10 = 3**((cls.celsius - 20) / 10)
+        cls.T = cls.celsius + CELSIUS_2_KELVIN
+        return super(FrankenhaeuserHuxley, cls).__new__(cls)
 
-    def getPltVars(self, wrapleft='df["', wrapright='"]'):
+    @classmethod
+    def getPltVars(cls, wrapleft='df["', wrapright='"]'):
         pltvars = super().getPltVars(wrapleft, wrapright)
         pltvars['Qm']['bounds'] = (-150, 100)
         return pltvars
 
     # ------------------------------ Gating states kinetics ------------------------------
 
-    def alpham(self, Vm):
-        return self.q10 * 0.36 * self.vtrap(22. - (Vm - self.Vm0), 3.) * 1e3  # s-1
+    @classmethod
+    def alpham(cls, Vm):
+        return cls.q10 * 0.36 * cls.vtrap(22. - (Vm - cls.Vm0), 3.) * 1e3  # s-1
 
-    def betam(self, Vm):
-        return self.q10 * 0.4 * self.vtrap(Vm - self.Vm0 - 13., 20.) * 1e3  # s-1
+    @classmethod
+    def betam(cls, Vm):
+        return cls.q10 * 0.4 * cls.vtrap(Vm - cls.Vm0 - 13., 20.) * 1e3  # s-1
 
-    def alphah(self, Vm):
-        return self.q10 * 0.1 * self.vtrap(Vm - self.Vm0 + 10.0, 6.) * 1e3  # s-1
+    @classmethod
+    def alphah(cls, Vm):
+        return cls.q10 * 0.1 * cls.vtrap(Vm - cls.Vm0 + 10.0, 6.) * 1e3  # s-1
 
-    def betah(self, Vm):
-        return self.q10 * 4.5 / (np.exp((45. - (Vm - self.Vm0)) / 10.) + 1) * 1e3  # s-1
+    @classmethod
+    def betah(cls, Vm):
+        return cls.q10 * 4.5 / (np.exp((45. - (Vm - cls.Vm0)) / 10.) + 1) * 1e3  # s-1
 
-    def alphan(self, Vm):
-        return self.q10 * 0.02 * self.vtrap(35. - (Vm - self.Vm0), 10.0) * 1e3  # s-1
+    @classmethod
+    def alphan(cls, Vm):
+        return cls.q10 * 0.02 * cls.vtrap(35. - (Vm - cls.Vm0), 10.0) * 1e3  # s-1
 
-    def betan(self, Vm):
-        return self.q10 * 0.05 * self.vtrap(Vm - self.Vm0 - 10., 10.) * 1e3  # s-1
+    @classmethod
+    def betan(cls, Vm):
+        return cls.q10 * 0.05 * cls.vtrap(Vm - cls.Vm0 - 10., 10.) * 1e3  # s-1
 
-    def alphap(self, Vm):
-        return self.q10 * 0.006 * self.vtrap(40. - (Vm - self.Vm0), 10.0) * 1e3  # s-1
+    @classmethod
+    def alphap(cls, Vm):
+        return cls.q10 * 0.006 * cls.vtrap(40. - (Vm - cls.Vm0), 10.0) * 1e3  # s-1
 
-    def betap(self, Vm):
-        return self.q10 * 0.09 * self.vtrap(Vm - self.Vm0 + 25., 20.) * 1e3  # s-1
+    @classmethod
+    def betap(cls, Vm):
+        return cls.q10 * 0.09 * cls.vtrap(Vm - cls.Vm0 + 25., 20.) * 1e3  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self):
+    @classmethod
+    def derStates(cls):
         return {
-            'm': lambda Vm, x: self.alpham(Vm) * (1 - x['m']) - self.betam(Vm) * x['m'],
-            'h': lambda Vm, x: self.alphah(Vm) * (1 - x['h']) - self.betah(Vm) * x['h'],
-            'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n'],
-            'p': lambda Vm, x: self.alphap(Vm) * (1 - x['p']) - self.betap(Vm) * x['p']
+            'm': lambda Vm, x: cls.alpham(Vm) * (1 - x['m']) - cls.betam(Vm) * x['m'],
+            'h': lambda Vm, x: cls.alphah(Vm) * (1 - x['h']) - cls.betah(Vm) * x['h'],
+            'n': lambda Vm, x: cls.alphan(Vm) * (1 - x['n']) - cls.betan(Vm) * x['n'],
+            'p': lambda Vm, x: cls.alphap(Vm) * (1 - x['p']) - cls.betap(Vm) * x['p']
         }
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self):
+    @classmethod
+    def steadyStates(cls):
         return {
-            'm': lambda Vm: self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': lambda Vm: self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': lambda Vm: self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
-            'p': lambda Vm: self.alphap(Vm) / (self.alphap(Vm) + self.betap(Vm))
+            'm': lambda Vm: cls.alpham(Vm) / (cls.alpham(Vm) + cls.betam(Vm)),
+            'h': lambda Vm: cls.alphah(Vm) / (cls.alphah(Vm) + cls.betah(Vm)),
+            'n': lambda Vm: cls.alphan(Vm) / (cls.alphan(Vm) + cls.betan(Vm)),
+            'p': lambda Vm: cls.alphap(Vm) / (cls.alphap(Vm) + cls.betap(Vm))
         }
 
     # ------------------------------ Membrane currents ------------------------------
 
-    def iNa(self, m, h, Vm):
+    @classmethod
+    def iNa(cls, m, h, Vm):
         ''' Sodium current '''
-        iNa_drive = self.ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
-        return self.pNabar * m**2 * h * iNa_drive  # mA/m2
+        iNa_drive = cls.ghkDrive(Vm, Z_Na, cls.Nai, cls.Nao, cls.T)  # mC/m3
+        return cls.pNabar * m**2 * h * iNa_drive  # mA/m2
 
-    def iKd(self, n, Vm):
+    @classmethod
+    def iKd(cls, n, Vm):
         ''' delayed-rectifier Potassium current '''
-        iKd_drive = self.ghkDrive(Vm, Z_K, self.Ki, self.Ko, self.T)  # mC/m3
-        return self.pKbar * n**2 * iKd_drive  # mA/m2
+        iKd_drive = cls.ghkDrive(Vm, Z_K, cls.Ki, cls.Ko, cls.T)  # mC/m3
+        return cls.pKbar * n**2 * iKd_drive  # mA/m2
 
-    def iP(self, p, Vm):
+    @classmethod
+    def iP(cls, p, Vm):
         ''' non-specific delayed current '''
-        iP_drive = self.ghkDrive(Vm, Z_Na, self.Nai, self.Nao, self.T)  # mC/m3
-        return self.pPbar * p**2 * iP_drive  # mA/m2
+        iP_drive = cls.ghkDrive(Vm, Z_Na, cls.Nai, cls.Nao, cls.T)  # mC/m3
+        return cls.pPbar * p**2 * iP_drive  # mA/m2
 
-    def iLeak(self, Vm):
+    @classmethod
+    def iLeak(cls, Vm):
         ''' non-specific leakage current '''
-        return self.gLeak * (Vm - self.ELeak)  # mA/m2
+        return cls.gLeak * (Vm - cls.ELeak)  # mA/m2
 
-    def currents(self):
+    @classmethod
+    def currents(cls):
         return {
-            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm),
-            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
-            'iP': lambda Vm, x: self.iP(x['p'], Vm),
-            'iLeak': lambda Vm, _: self.iLeak(Vm)
+            'iNa': lambda Vm, x: cls.iNa(x['m'], x['h'], Vm),
+            'iKd': lambda Vm, x: cls.iKd(x['n'], Vm),
+            'iP': lambda Vm, x: cls.iP(x['p'], Vm),
+            'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }

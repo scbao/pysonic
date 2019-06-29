@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 16:33:52
+# @Last Modified time: 2019-06-29 20:20:21
 
 import os
 import pickle
@@ -96,7 +96,8 @@ class ActivationMap(Map):
             FRs = 1 / np.diff(t[ispikes])
             return np.mean(FRs)
 
-    def correctAmp(self, A):
+    @staticmethod
+    def correctAmp(A):
         return np.round(A * 1e-3, 1) * 1e3
 
     def compute(self):
@@ -120,7 +121,8 @@ class ActivationMap(Map):
                     actmap[i, j] = self.classify(df)
         return actmap
 
-    def adjustFRbounds(self, actmap):
+    @staticmethod
+    def adjustFRbounds(actmap):
         ''' Check firing rate bounding. '''
         minFR, maxFR = (actmap[actmap > 0].min(), actmap.max())
         logger.info('FR range: %.0f - %.0f Hz', minFR, maxFR)
@@ -136,7 +138,8 @@ class ActivationMap(Map):
                     'Maximal firing rate (%.0f Hz) is above defined upper bound (%.0f Hz)',
                     maxFR, FRbounds[1])
 
-    def fit2Colormap(self, actmap, cmap):
+    @staticmethod
+    def fit2Colormap(actmap, cmap):
         actmap[actmap == -1] = np.nan
         actmap[actmap == 0] = 1e-3
         cmap.set_bad('silver')
@@ -255,7 +258,7 @@ class ActivationMap(Map):
         t, Qm, Vm = [df[k].values for k in ['t', 'Qm', 'Vm']]
         t = np.hstack((np.array([-tonset, t[0]]), t))  # s
         Vm = np.hstack((np.array([self.pneuron.Vm0] * 2), Vm))  # mV
-        Qm = np.hstack((np.array([self.pneuron.Qm0] * 2), Qm))  # C/m2
+        Qm = np.hstack((np.array([self.pneuron.Qm0()] * 2), Qm))  # C/m2
         t *= 1e3  # ms
         Qm *= 1e5  # nC/cm2
 

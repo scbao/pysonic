@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-28 14:06:25
+# @Last Modified time: 2019-06-29 13:55:58
 
 import os
 import logging
@@ -12,7 +12,7 @@ import numpy as np
 from argparse import ArgumentParser
 
 from .utils import Intensity2Pressure, selectDirDialog, OpenFilesDialog, isIterable
-from .neurons import getPointNeuron
+from .neurons import getPointNeuron, CorticalRS
 
 DEFAULT_OUTPUT_FOLDER = os.path.abspath(os.path.split(__file__)[0] + '../../../../dump')
 
@@ -339,8 +339,8 @@ class MechSimParser(SimParser):
         self.defaults.update({
             'radius': 32.0,  # nm
             'embedding': 0.,  # um
-            'Cm0': getPointNeuron('RS').Cm0 * 1e2,  # uF/m2
-            'Qm0': getPointNeuron('RS').Qm0 * 1e5,  # nC/m2
+            'Cm0': CorticalRS.Cm0 * 1e2,  # uF/m2
+            'Qm0': CorticalRS.Qm0() * 1e5,  # nC/m2
             'freq': 500.0,  # kHz
             'amp': 100.0,  # kPa
             'charge': 0.,  # nC/cm2

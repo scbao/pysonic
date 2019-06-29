@@ -3,17 +3,19 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-27 14:20:42
+# @Last Modified time: 2019-06-29 20:01:34
 
+from types import MethodType
 import inspect
 import sys
 
-from .template import TemplateNeuron
-from .cortical import CorticalRS, CorticalFS, CorticalLTS, CorticalIB
-from .thalamic import ThalamicRE, ThalamoCortical
-from .leech import LeechTouch, LeechPressure, LeechRetzius
-from .stn import OtsukaSTN
-from .fh import FrankenhaeuserHuxley
+from ..core.translators import PointNeuronTranslator
+from .template import *
+from .cortical import *
+from .thalamic import *
+from .leech import *
+from .stn import *
+from .fh import *
 
 
 def getNeuronsDict():
@@ -34,3 +36,19 @@ def getPointNeuron(name):
     except KeyError:
         raise ValueError('"{}" neuron not found. Implemented neurons are: {}'.format(
             name, ', '.join(list(neuron_classes.keys()))))
+
+
+def create_derEffStates(eff_dstates):
+    return lambda self: eff_dstates
+
+
+def create_effRates(eff_rates):
+    return lambda: eff_rates
+
+
+for pname, pclass in getNeuronsDict().items():
+    translator = PointNeuronTranslator(pclass)
+    eff_dstates = translator.parseDerStates()
+    pclass.derEffStates = MethodType(create_derEffStates(eff_dstates), pclass)
+    pclass.effRates = MethodType(create_effRates(translator.eff_rates), pclass)
+    pclass.rates = list(translator.eff_rates.keys())

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 20:01:09
+# @Last Modified time: 2019-06-29 20:18:39
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,10 +16,12 @@ from .pltutils import *
 class TimeSeriesPlot(GenericPlot):
     ''' Generic interface to build a plot displaying temporal profiles of model simulations. '''
 
-    def setTimeLabel(self, ax, tplt, fs):
+    @classmethod
+    def setTimeLabel(cls, ax, tplt, fs):
         return super().setXLabel(ax, tplt, fs)
 
-    def setYLabel(self, ax, yplt, fs, grouplabel=None):
+    @classmethod
+    def setYLabel(cls, ax, yplt, fs, grouplabel=None):
         if grouplabel is not None:
             yplt['label'] = grouplabel
         return super().setYLabel(ax, yplt, fs)
@@ -27,7 +29,8 @@ class TimeSeriesPlot(GenericPlot):
     def checkInputs(self, *args, **kwargs):
         return NotImplementedError
 
-    def getStimStates(self, df):
+    @staticmethod
+    def getStimStates(df):
         try:
             stimstate = df['stimstate']
         except KeyError:
@@ -58,7 +61,8 @@ class TimeSeriesPlot(GenericPlot):
         tpulse_off = t[ipulse_off]
         return tpulse_on, tpulse_off
 
-    def addLegend(self, ax, handles, labels, fs, color=None, ls=None):
+    @staticmethod
+    def addLegend(ax, handles, labels, fs, color=None, ls=None):
         lh = ax.legend(handles, labels, loc=1, fontsize=fs, frameon=False)
         if color is not None:
             for l in lh.get_lines():
@@ -67,8 +71,9 @@ class TimeSeriesPlot(GenericPlot):
             for l in lh.get_lines():
                 l.set_linestyle(ls)
 
-    def materializeSpikes(self, ax, data, tplt, yplt, color, mode, add_to_legend=False):
-        tspikes, Qspikes, Qprominences, thalfmaxbounds, _ = self.getSpikes(data)
+    @classmethod
+    def materializeSpikes(cls, ax, data, tplt, yplt, color, mode, add_to_legend=False):
+        tspikes, Qspikes, Qprominences, thalfmaxbounds, _ = cls.getSpikes(data)
         if tspikes is not None:
             ax.scatter(tspikes * tplt['factor'], Qspikes * yplt['factor'] + 10, color=color,
                        label='spikes' if add_to_legend else None, marker='v')
@@ -84,25 +89,29 @@ class TimeSeriesPlot(GenericPlot):
                             label='widths' if i == 0 and add_to_legend else '')
         return add_to_legend
 
-    def prepareTime(self, t, tplt):
+    @staticmethod
+    def prepareTime(t, tplt):
         if tplt['onset'] > 0.0:
             tonset = np.array([-tplt['onset'], -t[0] - t[1]])
             t = np.hstack((tonset, t))
         return t * tplt['factor']
 
-    def addPatches(self, ax, tpatch_on, tpatch_off, tplt, color='#8A8A8A'):
+    @staticmethod
+    def addPatches(ax, tpatch_on, tpatch_off, tplt, color='#8A8A8A'):
         for i in range(tpatch_on.size):
             ax.axvspan(tpatch_on[i] * tplt['factor'], tpatch_off[i] * tplt['factor'],
                        edgecolor='none', facecolor=color, alpha=0.2)
 
-    def plotInset(self, inset_ax, t, y, tplt, yplt, line, color, lw):
+    @staticmethod
+    def plotInset(inset_ax, t, y, tplt, yplt, line, color, lw):
         inset_window = np.logical_and(t > (inset['xlims'][0] / tplt['factor']),
                                       t < (inset['xlims'][1] / tplt['factor']))
         inset_ax.plot(t[inset_window] * tplt['factor'], y[inset_window] * yplt['factor'],
                       linewidth=lw, linestyle=line, color=color)
         return inset_ax
 
-    def addInsetPatches(self, ax, inset_ax, inset, tpatch_on, tpatch_off, tplt, color):
+    @staticmethod
+    def addInsetPatches(ax, inset_ax, inset, tpatch_on, tpatch_off, tplt, color):
         ybottom, ytop = ax.get_ylim()
         cond_on = np.logical_and(tpatch_on > (inset['xlims'][0] / tfactor),
                                  tpatch_on < (inset['xlims'][1] / tfactor))
@@ -160,20 +169,22 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         patches, greypatch = self.checkPatches(patches)
         return lines, labels, colors, patches, greypatch
 
-    def createBackBone(self, figsize):
+    @staticmethod
+    def createBackBone(figsize):
         fig, ax = plt.subplots(figsize=figsize)
         ax.set_zorder(0)
         return fig, ax
 
-    def postProcess(self, ax, tplt, yplt, fs, meta, prettify):
-        self.removeSpines(ax)
+    @classmethod
+    def postProcess(cls, ax, tplt, yplt, fs, meta, prettify):
+        cls.removeSpines(ax)
         if 'bounds' in yplt:
             ax.set_ylim(*yplt['bounds'])
-        self.setTimeLabel(ax, tplt, fs)
-        self.setYLabel(ax, yplt, fs)
+        cls.setTimeLabel(ax, tplt, fs)
+        cls.setYLabel(ax, yplt, fs)
         if prettify:
-            self.prettify(ax, xticks=(0, meta['tstim'] * tplt['factor']))
-        self.setTickLabelsFontSize(ax, fs)
+            cls.prettify(ax, xticks=(0, meta['tstim'] * tplt['factor']))
+        cls.setTickLabelsFontSize(ax, fs)
 
     def render(self, figsize=(11, 4), fs=10, lw=2, labels=None, colors=None, lines=None,
                patches='one', inset=None, frequency=1, spikes='none', cmap=None,
@@ -298,7 +309,8 @@ class GroupedTimeSeries(TimeSeriesPlot):
         super().__init__(filepaths)
         self.pltscheme = pltscheme
 
-    def createBackBone(self, pltscheme):
+    @staticmethod
+    def createBackBone(pltscheme):
         naxes = len(pltscheme)
         if naxes == 1:
             fig, ax = plt.subplots(figsize=(11, 4))
@@ -307,15 +319,16 @@ class GroupedTimeSeries(TimeSeriesPlot):
             fig, axes = plt.subplots(naxes, 1, figsize=(11, min(3 * naxes, 9)))
         return fig, axes
 
-    def postProcess(self, axes, tplt, fs, meta, prettify):
+    @classmethod
+    def postProcess(cls, axes, tplt, fs, meta, prettify):
         for ax in axes:
-            self.removeSpines(ax)
+            cls.removeSpines(ax)
             # if prettify:
-            #     self.prettify(ax, xticks=(0, meta['tstim'] * tplt['factor']), yfmt=None)
-            self.setTickLabelsFontSize(ax, fs)
+            #     cls.prettify(ax, xticks=(0, meta['tstim'] * tplt['factor']), yfmt=None)
+            cls.setTickLabelsFontSize(ax, fs)
         for ax in axes[:-1]:
             ax.set_xticklabels([])
-        self.setTimeLabel(axes[-1], tplt, fs)
+        cls.setTimeLabel(axes[-1], tplt, fs)
 
     def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches='one', save=False,
                outputdir=None, fig_ext='png', frequency=1, spikes='none', trange=None,

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 18:09:08
+# @Last Modified time: 2019-06-29 19:13:48
 
 from functools import partialmethod
 import numpy as np
@@ -81,14 +81,15 @@ class LeechTouch(PointNeuron):
         'ACa': 'Ca2+ dependent iKCa gate'
     }
 
-    def __init__(self):
-        super().__init__()
-        self.K_Na = self.K_Na_original * self.surface * self.curr_factor
-        self.K_Ca = self.K_Ca_original * self.surface * self.curr_factor
+    def __new__(cls):
+        cls.K_Na = cls.K_Na_original * cls.surface * cls.curr_factor
+        cls.K_Ca = cls.K_Ca_original * cls.surface * cls.curr_factor
+        return super(LeechTouch, cls).__new__(cls)
 
     # ------------------------------ Gating states kinetics ------------------------------
 
-    def _xinf(self, Vm, halfmax, slope, power):
+    @staticmethod
+    def _xinf(Vm, halfmax, slope, power):
         ''' Generic function computing the steady-state open-probability of a
             particular ion channel gate at a given voltage.
 
@@ -100,7 +101,8 @@ class LeechTouch(PointNeuron):
         '''
         return 1 / (1 + np.exp((Vm - halfmax) / slope))**power
 
-    def _taux(self, Vm, halfmax, slope, tauMax, tauMin):
+    @staticmethod
+    def _taux(Vm, halfmax, slope, tauMax, tauMin):
         ''' Generic function computing the voltage-dependent, adaptation time constant
             of a particular ion channel gate at a given voltage.
 
@@ -111,7 +113,8 @@ class LeechTouch(PointNeuron):
         '''
         return (tauMax - tauMin) / (1 + np.exp((Vm - halfmax) / slope)) + tauMin
 
-    def _derCion(self, Cion, Iion, Kion, tau):
+    @staticmethod
+    def _derCion(Cion, Iion, Kion, tau):
         ''' Generic function computing the time derivative of the concentration
             of a specific ion in its intracellular pool.
 
@@ -123,7 +126,8 @@ class LeechTouch(PointNeuron):
         '''
         return (Kion * (-Iion) - Cion) / tau
 
-    def _derAion(self, Aion, Cion, tau):
+    @staticmethod
+    def _derAion(Aion, Cion, tau):
         ''' Generic function computing the time derivative of the concentration and time
             dependent activation function, for a specific pool-dependent ionic current.
 
@@ -143,54 +147,62 @@ class LeechTouch(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derNai(self, Nai, m, h, Vm):
+    @classmethod
+    def derNai(cls, Nai, m, h, Vm):
         ''' Evolution of submembrane Sodium concentration '''
-        return self._derCion(Nai, self.iNa(m, h, Vm), self.K_Na, self.taur_Na)  # M/s
+        return cls._derCion(Nai, cls.iNa(m, h, Vm), cls.K_Na, cls.taur_Na)  # M/s
 
-    def derCai(self, Cai, s, Vm):
+    @classmethod
+    def derCai(cls, Cai, s, Vm):
         ''' Evolution of submembrane Calcium concentration '''
-        return self._derCion(Cai, self.iCa(s, Vm), self.K_Ca, self.taur_Ca)  # M/s
+        return cls._derCion(Cai, cls.iCa(s, Vm), cls.K_Ca, cls.taur_Ca)  # M/s
 
-    def derANa(self, ANa, Nai):
+    @classmethod
+    def derANa(cls, ANa, Nai):
         ''' Evolution of Na+ dependent iPumpNa gate '''
-        return self._derAion(ANa, Nai, self.taua_PumpNa)
+        return cls._derAion(ANa, Nai, cls.taua_PumpNa)
 
-    def derACa(self, ACa, Cai):
+    @classmethod
+    def derACa(cls, ACa, Cai):
         ''' Evolution of Ca2+ dependent iKCa gate '''
-        return self._derAion(ACa, Cai, self.taua_KCa)
+        return cls._derAion(ACa, Cai, cls.taua_KCa)
 
-    def derStates(self):
+    @classmethod
+    def derStates(cls):
         return {
-            'm': lambda Vm, x: (self.minf(Vm) - x['m']) / self.taum,
-            'h': lambda Vm, x: (self.hinf(Vm) - x['h']) / self.tauh(Vm),
-            'n': lambda Vm, x: (self.ninf(Vm) - x['n']) / self.taun(Vm),
-            's': lambda Vm, x: (self.sinf(Vm) - x['s']) / self.taus,
-            'Nai': lambda Vm, x: self.derNai(x['Nai'], x['m'], x['h'], Vm),
-            'ANa': lambda Vm, x: self.derANa(x['ANa'], x['Nai']),
-            'Cai': lambda Vm, x: self.derCai(x['Cai'], x['s'], Vm),
-            'ACa': lambda Vm, x: self.derACa(x['ACa'], x['Cai'])
+            'm': lambda Vm, x: (cls.minf(Vm) - x['m']) / cls.taum,
+            'h': lambda Vm, x: (cls.hinf(Vm) - x['h']) / cls.tauh(Vm),
+            'n': lambda Vm, x: (cls.ninf(Vm) - x['n']) / cls.taun(Vm),
+            's': lambda Vm, x: (cls.sinf(Vm) - x['s']) / cls.taus,
+            'Nai': lambda Vm, x: cls.derNai(x['Nai'], x['m'], x['h'], Vm),
+            'ANa': lambda Vm, x: cls.derANa(x['ANa'], x['Nai']),
+            'Cai': lambda Vm, x: cls.derCai(x['Cai'], x['s'], Vm),
+            'ACa': lambda Vm, x: cls.derACa(x['ACa'], x['Cai'])
         }
 
     # ------------------------------ Steady states ------------------------------
 
-    def Naiinf(self, Vm):
+    @classmethod
+    def Naiinf(cls, Vm):
         ''' Steady.state Sodium intracellular concentration. '''
-        return -self.K_Na * self.iNa(self.minf(Vm), self.hinf(Vm), Vm)
+        return -cls.K_Na * cls.iNa(cls.minf(Vm), cls.hinf(Vm), Vm)
 
-    def Caiinf(self, Vm):
+    @classmethod
+    def Caiinf(cls, Vm):
         ''' Steady.state Calcium intracellular concentration. '''
-        return -self.K_Ca * self.iCa(self.sinf(Vm), Vm)
+        return -cls.K_Ca * cls.iCa(cls.sinf(Vm), Vm)
 
-    def steadyStates(self):
+    @classmethod
+    def steadyStates(cls):
         return {
-            'm': lambda Vm: self.minf(Vm),
-            'h': lambda Vm: self.hinf(Vm),
-            'n': lambda Vm: self.ninf(Vm),
-            's': lambda Vm: self.sinf(Vm),
-            'Nai': lambda Vm: self.Naiinf(Vm),
-            'ANa': lambda Vm: self.Naiinf(Vm),
-            'Cai': lambda Vm: self.Caiinf(Vm),
-            'ACa': lambda Vm: self.Caiinf(Vm)
+            'm': lambda Vm: cls.minf(Vm),
+            'h': lambda Vm: cls.hinf(Vm),
+            'n': lambda Vm: cls.ninf(Vm),
+            's': lambda Vm: cls.sinf(Vm),
+            'Nai': lambda Vm: cls.Naiinf(Vm),
+            'ANa': lambda Vm: cls.Naiinf(Vm),
+            'Cai': lambda Vm: cls.Caiinf(Vm),
+            'ACa': lambda Vm: cls.Caiinf(Vm)
         }
 
     # def quasiSteadyStates(self, lkp):
@@ -203,38 +215,45 @@ class LeechTouch(PointNeuron):
 
     # ------------------------------ Membrane currents ------------------------------
 
-    def iNa(self, m, h, Vm):
+    @classmethod
+    def iNa(cls, m, h, Vm):
         ''' Sodium current '''
-        return self.gNabar * m**3 * h * (Vm - self.ENa)  # mA/m2
+        return cls.gNabar * m**3 * h * (Vm - cls.ENa)  # mA/m2
 
-    def iKd(self, n, Vm):
+    @classmethod
+    def iKd(cls, n, Vm):
         ''' Delayed-rectifier Potassium current '''
-        return self.gKdbar * n**2 * (Vm - self.EK)  # mA/m2
+        return cls.gKdbar * n**2 * (Vm - cls.EK)  # mA/m2
 
-    def iCa(self, s, Vm):
+    @classmethod
+    def iCa(cls, s, Vm):
         ''' Calcium current '''
-        return self.gCabar * s * (Vm - self.ECa)  # mA/m2
+        return cls.gCabar * s * (Vm - cls.ECa)  # mA/m2
 
-    def iKCa(self, ACa, Vm):
+    @classmethod
+    def iKCa(cls, ACa, Vm):
         ''' Calcium-activated Potassium current '''
-        return self.gKCabar * ACa * (Vm - self.EK)  # mA/m2
+        return cls.gKCabar * ACa * (Vm - cls.EK)  # mA/m2
 
-    def iPumpNa(self, ANa, Vm):
+    @classmethod
+    def iPumpNa(cls, ANa, Vm):
         ''' NaK-ATPase pump current '''
-        return self.gPumpNa * ANa * (Vm - self.EPumpNa)  # mA/m2
+        return cls.gPumpNa * ANa * (Vm - cls.EPumpNa)  # mA/m2
 
-    def iLeak(self, Vm):
+    @classmethod
+    def iLeak(cls, Vm):
         ''' Non-specific leakage current '''
-        return self.gLeak * (Vm - self.ELeak)  # mA/m2
+        return cls.gLeak * (Vm - cls.ELeak)  # mA/m2
 
-    def currents(self):
+    @classmethod
+    def currents(cls):
         return {
-            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm),
-            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
-            'iCa': lambda Vm, x: self.iCa(x['s'], Vm),
-            'iPumpNa': lambda Vm, x: self.iPumpNa(x['ANa'], Vm),
-            'iKCa': lambda Vm, x: self.iKCa(x['ACa'], Vm),
-            'iLeak': lambda Vm, _: self.iLeak(Vm)
+            'iNa': lambda Vm, x: cls.iNa(x['m'], x['h'], Vm),
+            'iKd': lambda Vm, x: cls.iKd(x['n'], Vm),
+            'iCa': lambda Vm, x: cls.iCa(x['s'], Vm),
+            'iPumpNa': lambda Vm, x: cls.iPumpNa(x['ANa'], Vm),
+            'iKCa': lambda Vm, x: cls.iKCa(x['ACa'], Vm),
+            'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
 
 
@@ -255,92 +274,110 @@ class LeechMech(PointNeuron):
 
     # ------------------------------ Gating states kinetics ------------------------------
 
-    def alpham(self, Vm):
+    @staticmethod
+    def alpham(Vm):
         return -0.03 * (Vm + 28) / (np.exp(- (Vm + 28) / 15) - 1) * 1e3  # s-1
 
-    def betam(self, Vm):
+    @staticmethod
+    def betam(Vm):
         return 2.7 * np.exp(-(Vm + 53) / 18) * 1e3  # s-1
 
-    def alphah(self, Vm):
+    @staticmethod
+    def alphah(Vm):
         return 0.045 * np.exp(-(Vm + 58) / 18) * 1e3  # s-1
 
-    def betah(self, Vm):
+    @staticmethod
+    def betah(Vm):
         ''' .. warning:: the original paper contains an error (multiplication) in the
             expression of this rate constant, corrected in the mod file on ModelDB (division).
         '''
         return 0.72 / (np.exp(-(Vm + 23) / 14) + 1) * 1e3  # s-1
 
-    def alphan(self, Vm):
+    @staticmethod
+    def alphan(Vm):
         return -0.024 * (Vm - 17) / (np.exp(-(Vm - 17) / 8) - 1) * 1e3  # s-1
 
-    def betan(self, Vm):
+    @staticmethod
+    def betan(Vm):
         return 0.2 * np.exp(-(Vm + 48) / 35) * 1e3  # s-1
 
-    def alphas(self, Vm):
+    @staticmethod
+    def alphas(Vm):
         return -1.5 * (Vm - 20) / (np.exp(-(Vm - 20) / 5) - 1) * 1e3  # s-1
 
-    def betas(self, Vm):
+    @staticmethod
+    def betas(Vm):
         return 1.5 * np.exp(-(Vm + 25) / 10) * 1e3  # s-1
 
-    def alphaC(self, Cai):
-        return 0.1 * Cai / self.alphaC_sf * 1e3  # s-1
+    @classmethod
+    def alphaC(cls, Cai):
+        return 0.1 * Cai / cls.alphaC_sf * 1e3  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derC(self, c, Cai):
+    @classmethod
+    def derC(cls, c, Cai):
         ''' Evolution of the c-gate open-probability '''
-        return self.alphaC(Cai) * (1 - c) - self.betaC * c  # s-1
+        return cls.alphaC(Cai) * (1 - c) - cls.betaC * c  # s-1
 
-    def derStates(self):
+    @classmethod
+    def derStates(cls):
         return {
-            'm': lambda Vm, x: self.alpham(Vm) * (1 - x['m']) - self.betam(Vm) * x['m'],
-            'h': lambda Vm, x: self.alphah(Vm) * (1 - x['h']) - self.betah(Vm) * x['h'],
-            'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n'],
-            's': lambda Vm, x: self.alphas(Vm) * (1 - x['s']) - self.betas(Vm) * x['s'],
-            'c': lambda Vm, x: self.derC(x['c'], x['Cai'])
+            'm': lambda Vm, x: cls.alpham(Vm) * (1 - x['m']) - cls.betam(Vm) * x['m'],
+            'h': lambda Vm, x: cls.alphah(Vm) * (1 - x['h']) - cls.betah(Vm) * x['h'],
+            'n': lambda Vm, x: cls.alphan(Vm) * (1 - x['n']) - cls.betan(Vm) * x['n'],
+            's': lambda Vm, x: cls.alphas(Vm) * (1 - x['s']) - cls.betas(Vm) * x['s'],
+            'c': lambda Vm, x: cls.derC(x['c'], x['Cai'])
         }
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self):
+    @classmethod
+    def steadyStates(cls):
         return {
-            'm': lambda Vm: self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': lambda Vm: self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': lambda Vm: self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
-            's': lambda Vm: self.alphas(Vm) / (self.alphas(Vm) + self.betas(Vm)),
+            'm': lambda Vm: cls.alpham(Vm) / (cls.alpham(Vm) + cls.betam(Vm)),
+            'h': lambda Vm: cls.alphah(Vm) / (cls.alphah(Vm) + cls.betah(Vm)),
+            'n': lambda Vm: cls.alphan(Vm) / (cls.alphan(Vm) + cls.betan(Vm)),
+            's': lambda Vm: cls.alphas(Vm) / (cls.alphas(Vm) + cls.betas(Vm)),
         }
 
     # ------------------------------ Membrane currents ------------------------------
 
-    def iNa(self, m, h, Vm, Nai):
+    @classmethod
+    def iNa(cls, m, h, Vm, Nai):
         ''' Sodium current '''
-        ENa = self.nernst(Z_Na, Nai, self.Nao, self.T)  # mV
-        return self.gNabar * m**4 * h * (Vm - ENa)  # mA/m2
+        ENa = cls.nernst(Z_Na, Nai, cls.Nao, cls.T)  # mV
+        return cls.gNabar * m**4 * h * (Vm - ENa)  # mA/m2
 
-    def iKd(self, n, Vm):
+    @classmethod
+    def iKd(cls, n, Vm):
         ''' Delayed-rectifier Potassium current '''
-        return self.gKdbar * n**2 * (Vm - self.EK)  # mA/m2
+        return cls.gKdbar * n**2 * (Vm - cls.EK)  # mA/m2
 
-    def iCa(self, s, Vm, Cai):
+    @classmethod
+    def iCa(cls, s, Vm, Cai):
         ''' Calcium current '''
-        ECa = self.nernst(Z_Ca, Cai, self.Cao, self.T)  # mV
-        return self.gCabar * s * (Vm - ECa)  # mA/m2
+        ECa = cls.nernst(Z_Ca, Cai, cls.Cao, cls.T)  # mV
+        return cls.gCabar * s * (Vm - ECa)  # mA/m2
 
-    def iKCa(self, c, Vm):
+    @classmethod
+    def iKCa(cls, c, Vm):
         ''' Calcium-activated Potassium current '''
-        return self.gKCabar * c * (Vm - self.EK)  # mA/m2
+        return cls.gKCabar * c * (Vm - cls.EK)  # mA/m2
 
-    def iLeak(self, Vm):
+    @classmethod
+    def iLeak(cls, Vm):
         ''' Non-specific leakage current '''
-        return self.gLeak * (Vm - self.ELeak)  # mA/m2
+        return cls.gLeak * (Vm - cls.ELeak)  # mA/m2
 
-    def currents(self):
+    @classmethod
+    def currents(cls):
         return {
-            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm, x['Nai']),
-            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
-            'iCa': lambda Vm, x: self.iCa(x['s'], Vm, x['Cai']),
-            'iKCa': lambda Vm, x: self.iKCa(x['c'], Vm),
-            'iLeak': lambda Vm, _: self.iLeak(Vm)
+            'iNa': lambda Vm, x: cls.iNa(x['m'], x['h'], Vm, x['Nai']),
+            'iKd': lambda Vm, x: cls.iKd(x['n'], Vm),
+            'iCa': lambda Vm, x: cls.iCa(x['s'], Vm, x['Cai']),
+            'iKCa': lambda Vm, x: cls.iKCa(x['c'], Vm),
+            'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
 
 
@@ -399,38 +436,40 @@ class LeechPressure(LeechMech):
         'Cai': 'submembrane Ca2+ concentration (M)'
     }
 
-    def __init__(self):
-        ''' Constructor of the class. '''
-        super().__init__()
-
+    def __new__(cls):
         # Surface to volume ratio of the (spherical) cell soma (m-1)
-        SV_ratio = 6 / self.diam
+        SV_ratio = 6 / cls.diam
 
         # Conversion constants from membrane ionic currents into
         # change rate of intracellular ionic concentrations (M/s)
-        self.K_Na = SV_ratio / (Z_Na * FARADAY) * 1e-6  # Sodium
-        self.K_Ca = SV_ratio / (Z_Ca * FARADAY) * 1e-6  # Calcium
+        cls.K_Na = SV_ratio / (Z_Na * FARADAY) * 1e-6  # Sodium
+        cls.K_Ca = SV_ratio / (Z_Ca * FARADAY) * 1e-6  # Calcium
+
+        return super(LeechPressure, cls).__new__(cls)
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self):
+    @classmethod
+    def derStates(cls):
         return {**super().derStates(), **{
-            'Nai': lambda Vm, x: -(self.iNa(x['m'], x['h'], Vm, x['Nai']) +
-                                   self.iPumpNa(x['Nai'])) * self.K_Na,
-            'Cai': lambda Vm, x: -(self.iCa(x['s'], Vm, x['Cai']) +
-                                   self.iPumpCa(x['Cai'])) * self.K_Ca
+            'Nai': lambda Vm, x: -(cls.iNa(x['m'], x['h'], Vm, x['Nai']) +
+                                   cls.iPumpNa(x['Nai'])) * cls.K_Na,
+            'Cai': lambda Vm, x: -(cls.iCa(x['s'], Vm, x['Cai']) +
+                                   cls.iPumpCa(x['Cai'])) * cls.K_Ca
         }}
 
     # ------------------------------ Steady states ------------------------------
 
-    def cinf(self, Cai):
-        return self.alphaC(Cai) / (self.alphaC(Cai) + self.betaC)
+    @classmethod
+    def cinf(cls, Cai):
+        return cls.alphaC(Cai) / (cls.alphaC(Cai) + cls.betaC)
 
-    def steadyStates(self):
+    @classmethod
+    def steadyStates(cls):
         return {**super().steadyStates(), **{
-            'Nai': lambda _: self.Nai0,
-            'Cai': lambda _: self.Cai0,
-            'c': lambda _: self.cinf(self.Cai0)
+            'Nai': lambda _: cls.Nai0,
+            'Cai': lambda _: cls.Cai0,
+            'c': lambda _: cls.cinf(cls.Cai0)
         }}
 
     # def quasiSteadyStates(self, lkp):
@@ -444,18 +483,21 @@ class LeechPressure(LeechMech):
 
     # ------------------------------ Membrane currents ------------------------------
 
-    def iPumpNa(self, Nai):
+    @classmethod
+    def iPumpNa(cls, Nai):
         ''' NaK-ATPase pump current '''
-        return self.INaPmax / (1 + np.exp((self.khalf_Na - Nai) / self.ksteep_Na))  # mA/m2
+        return cls.INaPmax / (1 + np.exp((cls.khalf_Na - Nai) / cls.ksteep_Na))  # mA/m2
 
-    def iPumpCa(self, Cai):
+    @classmethod
+    def iPumpCa(cls, Cai):
         ''' Calcium pump current '''
-        return self.iCaS * (Cai - self.Cai0) / 1.5  # mA/m2
+        return cls.iCaS * (Cai - cls.Cai0) / 1.5  # mA/m2
 
-    def currents(self):
+    @classmethod
+    def currents(cls):
         return {**super().currents(), **{
-            'iPumpNa': lambda Vm, x: self.iPumpNa(x['Nai']) / 3.,
-            'iPumpCa': lambda Vm, x: self.iPumpCa(x['Cai'])
+            'iPumpNa': lambda Vm, x: cls.iPumpNa(x['Nai']) / 3.,
+            'iPumpCa': lambda Vm, x: cls.iPumpCa(x['Cai'])
         }}
 
 
@@ -516,39 +558,45 @@ class LeechRetzius(LeechMech):
 
     # ------------------------------ Gating states kinetics ------------------------------
 
-    def ainf(self, Vm):
+    @staticmethod
+    def ainf(Vm):
         Vth = -55.0  # mV
         return 0 if Vm <= Vth else min(1, 2 * (Vm - Vth)**3 / ((11 - Vth)**3 + (Vm - Vth)**3))
 
-    def taua(self, Vm):
-        x = -1.5 * (Vm - self.Vhalf) * 1e-3 * FARADAY / (Rg * self.T)  # [-]
+    @classmethod
+    def taua(cls, Vm):
+        x = -1.5 * (Vm - cls.Vhalf) * 1e-3 * FARADAY / (Rg * cls.T)  # [-]
         alpha = np.exp(x)  # ms-1
         beta = np.exp(0.7 * x)  # ms-1
         return max(0.5, beta / (0.3 * (1 + alpha))) * 1e-3  # s
 
-    def binf(self, Vm):
-        return 1. / (1 + np.exp((self.Vhalf - Vm) / -6.3))
+    @classmethod
+    def binf(cls, Vm):
+        return 1. / (1 + np.exp((cls.Vhalf - Vm) / -6.3))
 
-    def taub(self, Vm):
-        x = 2 * (Vm - self.Vhalf) * 1e-3 * FARADAY / (Rg * self.T)  # [-]
+    @classmethod
+    def taub(cls, Vm):
+        x = 2 * (Vm - cls.Vhalf) * 1e-3 * FARADAY / (Rg * cls.T)  # [-]
         alpha = np.exp(x)  # ms-1
         beta = np.exp(0.65 * x)  # ms-1
         return max(7.5, beta / (0.02 * (1 + alpha))) * 1e-3  # s
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self, Vm, states):
+    @classmethod
+    def derStates(cls, Vm, states):
         return {**super().derStates(Vm, states), **{
-            'a': lambda Vm, x: (self.ainf(Vm) - x['a']) / self.taua(Vm),
-            'b': lambda Vm, x: (self.binf(Vm) - x['b']) / self.taub(Vm)
+            'a': lambda Vm, x: (cls.ainf(Vm) - x['a']) / cls.taua(Vm),
+            'b': lambda Vm, x: (cls.binf(Vm) - x['b']) / cls.taub(Vm)
         }}
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self):
+    @classmethod
+    def steadyStates(cls):
         return {**super().steadyStates(), **{
-            'a': lambda Vm: self.ainf(Vm),
-            'b': lambda Vm: self.binf(Vm)
+            'a': lambda Vm: cls.ainf(Vm),
+            'b': lambda Vm: cls.binf(Vm)
         }}
 
     # def quasiSteadyStates(self, lkp):
@@ -558,11 +606,13 @@ class LeechRetzius(LeechMech):
 
     # ------------------------------ Membrane currents ------------------------------
 
-    def iA(self, a, b, Vm):
+    @classmethod
+    def iA(cls, a, b, Vm):
         ''' Transient Potassium current '''
-        return self.GAMax * a * b * (Vm - self.EK)  # mA/m2
+        return cls.GAMax * a * b * (Vm - cls.EK)  # mA/m2
 
-    def currents(self):
+    @classmethod
+    def currents(cls):
         return {**super().currents(), **{
-            'iA': lambda Vm, x: self.iA(x['a'], x['b'], Vm)
+            'iA': lambda Vm, x: cls.iA(x['a'], x['b'], Vm)
         }}

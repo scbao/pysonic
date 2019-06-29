@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-28 16:09:48
+# @Last Modified time: 2019-06-29 19:58:01
 
 from enum import Enum
 import os
@@ -187,7 +187,8 @@ class BilayerSonophore(Model):
             'Qm': '{:.1f}nCcm2'.format(Qm * 1e5)
         }
 
-    def getPltVars(self, wrapleft='df["', wrapright='"]'):
+    @staticmethod
+    def getPltVars(wrapleft='df["', wrapright='"]'):
         return {
             'Pac': {
                 'desc': 'acoustic pressure',
@@ -240,7 +241,8 @@ class BilayerSonophore(Model):
             }
         }
 
-    def getPltScheme(self):
+    @staticmethod
+    def getPltScheme():
         return {
             'P_{AC}': ['Pac'],
             'Z': ['Z'],
@@ -322,7 +324,8 @@ class BilayerSonophore(Model):
                    np.log((2 * Z + self.Delta) / self.Delta)) / (2 * Z**2)))
         return dCmdZ * U
 
-    def localDeflection(self, r, Z, R):
+    @staticmethod
+    def localDeflection(r, Z, R):
         ''' Local leaflet deflection at specific radial distance
             (signed)
 
@@ -336,7 +339,8 @@ class BilayerSonophore(Model):
         else:
             return np.sign(Z) * (np.sqrt(R**2 - r**2) - np.abs(R) + np.abs(Z))
 
-    def Pacoustic(self, t, Adrive, Fdrive, phi=np.pi):
+    @staticmethod
+    def Pacoustic(t, Adrive, Fdrive, phi=np.pi):
         ''' Time-varying acoustic pressure
 
             :param t: time (s)
@@ -487,23 +491,25 @@ class BilayerSonophore(Model):
         dC = self.C0 - P / self.kH
         return 2 * self.surface(Z) * self.Dgl * dC / self.xi
 
-    def gasmol2Pa(self, ng, V):
+    @classmethod
+    def gasmol2Pa(cls, ng, V):
         ''' Internal gas pressure for a given molar content
 
             :param ng: internal molar content (mol)
             :param V: sonophore inner volume (m^3)
             :return: internal gas pressure (Pa)
         '''
-        return ng * Rg * self.T / V
+        return ng * Rg * cls.T / V
 
-    def gasPa2mol(self, P, V):
+    @classmethod
+    def gasPa2mol(cls, P, V):
         ''' Internal gas molar content for a given pressure
 
             :param P: internal gas pressure (Pa)
             :param V: sonophore inner volume (m^3)
             :return: internal gas molar content (mol)
         '''
-        return P * V / (Rg * self.T)
+        return P * V / (Rg * cls.T)
 
     def PtotQS(self, Z, ng, Qm, Pac, Pm_comp_method):
         ''' Net quasi-steady pressure for a given acoustic pressure
@@ -570,34 +576,38 @@ class BilayerSonophore(Model):
         '''
         return - self.TEtot(Z) / R
 
-    def PVleaflet(self, U, R):
+    @classmethod
+    def PVleaflet(cls, U, R):
         ''' Viscous stress pressure in leaflet
 
             :param U: leaflet apex deflection velocity (m/s)
             :param R: leaflet curvature radius (m)
             :return: leaflet viscous stress pressure (Pa)
         '''
-        return - 12 * U * self.delta0 * self.muS / R**2
+        return - 12 * U * cls.delta0 * cls.muS / R**2
 
-    def PVfluid(self, U, R):
+    @classmethod
+    def PVfluid(cls, U, R):
         ''' Viscous stress pressure in surrounding medium
 
             :param U: leaflet apex deflection velocity (m/s)
             :param R: leaflet curvature radius (m)
             :return: fluid viscous stress pressure (Pa)
         '''
-        return - 4 * U * self.muL / np.abs(R)
+        return - 4 * U * cls.muL / np.abs(R)
 
-    def accP(self, Ptot, R):
+    @classmethod
+    def accP(cls, Ptot, R):
         ''' Leaflet transverse acceleration resulting from pressure imbalance
 
             :param Ptot: net pressure (Pa)
             :param R: leaflet curvature radius (m)
             :return: pressure-driven acceleration (m/s^2)
         '''
-        return Ptot / (self.rhoL * np.abs(R))
+        return Ptot / (cls.rhoL * np.abs(R))
 
-    def accNL(self, U, R):
+    @staticmethod
+    def accNL(U, R):
         ''' Leaflet transverse nonlinear acceleration
 
             :param U: leaflet apex deflection velocity (m/s)

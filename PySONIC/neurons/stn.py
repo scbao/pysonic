@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 19:40:37
+# @Last Modified time: 2019-06-29 19:46:33
 
 import numpy as np
 from scipy.optimize import brentq
@@ -166,17 +166,19 @@ class OtsukaSTN(PointNeuron):
         'Cai': 'submembrane Calcium concentration (M)'
     }
 
-    def __init__(self):
-        super().__init__()
-        self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
-        self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)  # Mmol.m-1.C-1
+    def __new__(cls):
+        cls.deff = cls.getEffectiveDepth(cls.Cai0, cls.Vm0)  # m
+        cls.iCa_to_Cai_rate = cls.currentToConcentrationRate(Z_Ca, cls.deff)
+        return super(OtsukaSTN, cls).__new__(cls)
 
-    def getPltScheme(self):
+    @classmethod
+    def getPltScheme(cls):
         pltscheme = super().getPltScheme()
         pltscheme['[Ca^{2+}]_i'] = ['Cai']
         return pltscheme
 
-    def getPltVars(self, wrapleft='df["', wrapright='"]'):
+    @classmethod
+    def getPltVars(cls, wrapleft='df["', wrapright='"]'):
         pltvars = super().getPltVars(wrapleft, wrapright)
         pltvars['Cai'] = {
             'desc': 'submembrane Ca2+ concentration',
@@ -186,22 +188,25 @@ class OtsukaSTN(PointNeuron):
         }
         return pltvars
 
-    def titrationFunc(self, *args, **kwargs):
-        return self.isSilenced(*args, **kwargs)
+    @classmethod
+    def titrationFunc(cls, *args, **kwargs):
+        return cls.isSilenced(*args, **kwargs)
 
-    def getEffectiveDepth(self, Cai, Vm):
+    @classmethod
+    def getEffectiveDepth(cls, Cai, Vm):
         ''' Compute effective depth that matches a given membrane potential
             and intracellular Calcium concentration.
 
             :return: effective depth (m)
         '''
-        iCaT = self.iCaT(self.pinf(Vm), self.qinf(Vm), Vm, Cai)  # mA/m2
-        iCaL = self.iCaL(self.cinf(Vm), self.d1inf(Vm), self.d2inf(Cai), Vm, Cai)  # mA/m2
-        return -(iCaT + iCaL) / (Z_Ca * FARADAY * Cai / self.taur_Cai) * 1e-6  # m
+        iCaT = cls.iCaT(cls.pinf(Vm), cls.qinf(Vm), Vm, Cai)  # mA/m2
+        iCaL = cls.iCaL(cls.cinf(Vm), cls.d1inf(Vm), cls.d2inf(Cai), Vm, Cai)  # mA/m2
+        return -(iCaT + iCaL) / (Z_Ca * FARADAY * Cai / cls.taur_Cai) * 1e-6  # m
 
     # ------------------------------ Gating states kinetics ------------------------------
 
-    def _xinf(self, var, theta, k):
+    @staticmethod
+    def _xinf(var, theta, k):
         ''' Generic function computing the steady-state opening of a
             particular channel gate at a given voltage or ion concentration.
 
@@ -212,40 +217,52 @@ class OtsukaSTN(PointNeuron):
         '''
         return 1 / (1 + np.exp((var - theta) / k))
 
-    def ainf(self, Vm):
-        return self._xinf(Vm, self.thetax_a, self.kx_a)
+    @classmethod
+    def ainf(cls, Vm):
+        return cls._xinf(Vm, cls.thetax_a, cls.kx_a)
 
-    def binf(self, Vm):
-        return self._xinf(Vm, self.thetax_b, self.kx_b)
+    @classmethod
+    def binf(cls, Vm):
+        return cls._xinf(Vm, cls.thetax_b, cls.kx_b)
 
-    def cinf(self, Vm):
-        return self._xinf(Vm, self.thetax_c, self.kx_c)
+    @classmethod
+    def cinf(cls, Vm):
+        return cls._xinf(Vm, cls.thetax_c, cls.kx_c)
 
-    def d1inf(self, Vm):
-        return self._xinf(Vm, self.thetax_d1, self.kx_d1)
+    @classmethod
+    def d1inf(cls, Vm):
+        return cls._xinf(Vm, cls.thetax_d1, cls.kx_d1)
 
-    def d2inf(self, Cai):
-        return self._xinf(Cai, self.thetax_d2, self.kx_d2)
+    @classmethod
+    def d2inf(cls, Cai):
+        return cls._xinf(Cai, cls.thetax_d2, cls.kx_d2)
 
-    def minf(self, Vm):
-        return self._xinf(Vm, self.thetax_m, self.kx_m)
+    @classmethod
+    def minf(cls, Vm):
+        return cls._xinf(Vm, cls.thetax_m, cls.kx_m)
 
-    def hinf(self, Vm):
-        return self._xinf(Vm, self.thetax_h, self.kx_h)
+    @classmethod
+    def hinf(cls, Vm):
+        return cls._xinf(Vm, cls.thetax_h, cls.kx_h)
 
-    def ninf(self, Vm):
-        return self._xinf(Vm, self.thetax_n, self.kx_n)
+    @classmethod
+    def ninf(cls, Vm):
+        return cls._xinf(Vm, cls.thetax_n, cls.kx_n)
 
-    def pinf(self, Vm):
-        return self._xinf(Vm, self.thetax_p, self.kx_p)
+    @classmethod
+    def pinf(cls, Vm):
+        return cls._xinf(Vm, cls.thetax_p, cls.kx_p)
 
-    def qinf(self, Vm):
-        return self._xinf(Vm, self.thetax_q, self.kx_q)
+    @classmethod
+    def qinf(cls, Vm):
+        return cls._xinf(Vm, cls.thetax_q, cls.kx_q)
 
-    def rinf(self, Cai):
-        return self._xinf(Cai, self.thetax_r, self.kx_r)
+    @classmethod
+    def rinf(cls, Cai):
+        return cls._xinf(Cai, cls.thetax_r, cls.kx_r)
 
-    def _taux1(self, Vm, theta, sigma, tau0, tau1):
+    @staticmethod
+    def _taux1(Vm, theta, sigma, tau0, tau1):
         ''' Generic function computing the voltage-dependent, activation/inactivation time constant
             of a particular ion channel at a given voltage (first variant).
 
@@ -258,13 +275,16 @@ class OtsukaSTN(PointNeuron):
         '''
         return tau0 + tau1 / (1 + np.exp(-(Vm - theta) / sigma))
 
-    def taua(self, Vm):
-        return self._taux1(Vm, self.thetaT_a, self.sigmaT_a, self.tau0_a, self.tau1_a)
+    @classmethod
+    def taua(cls, Vm):
+        return cls._taux1(Vm, cls.thetaT_a, cls.sigmaT_a, cls.tau0_a, cls.tau1_a)
 
-    def taum(self, Vm):
-        return self._taux1(Vm, self.thetaT_m, self.sigmaT_m, self.tau0_m, self.tau1_m)
+    @classmethod
+    def taum(cls, Vm):
+        return cls._taux1(Vm, cls.thetaT_m, cls.sigmaT_m, cls.tau0_m, cls.tau1_m)
 
-    def _taux2(self, Vm, theta1, theta2, sigma1, sigma2, tau0, tau1):
+    @staticmethod
+    def _taux2(Vm, theta1, theta2, sigma1, sigma2, tau0, tau1):
         ''' Generic function computing the voltage-dependent, activation/inactivation time constant
             of a particular ion channel at a given voltage (second variant).
 
@@ -277,86 +297,97 @@ class OtsukaSTN(PointNeuron):
         '''
         return tau0 + tau1 / (np.exp(-(Vm - theta1) / sigma1) + np.exp(-(Vm - theta2) / sigma2))
 
-    def taub(self, Vm):
-        return self._taux2(Vm, self.thetaT1_b, self.thetaT2_b, self.sigmaT1_b, self.sigmaT2_b,
-                           self.tau0_b, self.tau1_b)
+    @classmethod
+    def taub(cls, Vm):
+        return cls._taux2(Vm, cls.thetaT1_b, cls.thetaT2_b, cls.sigmaT1_b, cls.sigmaT2_b,
+                          cls.tau0_b, cls.tau1_b)
 
-    def tauc(self, Vm):
-        return self._taux2(Vm, self.thetaT1_c, self.thetaT2_c, self.sigmaT1_c, self.sigmaT2_c,
-                           self.tau0_c, self.tau1_c)
+    @classmethod
+    def tauc(cls, Vm):
+        return cls._taux2(Vm, cls.thetaT1_c, cls.thetaT2_c, cls.sigmaT1_c, cls.sigmaT2_c,
+                          cls.tau0_c, cls.tau1_c)
 
-    def taud1(self, Vm):
-        return self._taux2(Vm, self.thetaT1_d1, self.thetaT2_d1, self.sigmaT1_d1, self.sigmaT2_d1,
-                           self.tau0_d1, self.tau1_d1)
+    @classmethod
+    def taud1(cls, Vm):
+        return cls._taux2(Vm, cls.thetaT1_d1, cls.thetaT2_d1, cls.sigmaT1_d1, cls.sigmaT2_d1,
+                          cls.tau0_d1, cls.tau1_d1)
 
-    def tauh(self, Vm):
-        return self._taux2(Vm, self.thetaT1_h, self.thetaT2_h, self.sigmaT1_h, self.sigmaT2_h,
-                           self.tau0_h, self.tau1_h)
+    @classmethod
+    def tauh(cls, Vm):
+        return cls._taux2(Vm, cls.thetaT1_h, cls.thetaT2_h, cls.sigmaT1_h, cls.sigmaT2_h,
+                          cls.tau0_h, cls.tau1_h)
 
-    def taun(self, Vm):
-        return self._taux2(Vm, self.thetaT1_n, self.thetaT2_n, self.sigmaT1_n, self.sigmaT2_n,
-                           self.tau0_n, self.tau1_n)
+    @classmethod
+    def taun(cls, Vm):
+        return cls._taux2(Vm, cls.thetaT1_n, cls.thetaT2_n, cls.sigmaT1_n, cls.sigmaT2_n,
+                          cls.tau0_n, cls.tau1_n)
 
-    def taup(self, Vm):
-        return self._taux2(Vm, self.thetaT1_p, self.thetaT2_p, self.sigmaT1_p, self.sigmaT2_p,
-                           self.tau0_p, self.tau1_p)
+    @classmethod
+    def taup(cls, Vm):
+        return cls._taux2(Vm, cls.thetaT1_p, cls.thetaT2_p, cls.sigmaT1_p, cls.sigmaT2_p,
+                          cls.tau0_p, cls.tau1_p)
 
-    def tauq(self, Vm):
-        return self._taux2(Vm, self.thetaT1_q, self.thetaT2_q, self.sigmaT1_q, self.sigmaT2_q,
-                           self.tau0_q, self.tau1_q)
+    @classmethod
+    def tauq(cls, Vm):
+        return cls._taux2(Vm, cls.thetaT1_q, cls.thetaT2_q, cls.sigmaT1_q, cls.sigmaT2_q,
+                          cls.tau0_q, cls.tau1_q)
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derCai(self, p, q, c, d1, d2, Cai, Vm):
-        iCaT = self.iCaT(p, q, Vm, Cai)
-        iCaL = self.iCaL(c, d1, d2, Vm, Cai)
-        return - self.iCa_to_Cai_rate * (iCaT + iCaL) - Cai / self.taur_Cai  # M/s
+    @classmethod
+    def derCai(cls, p, q, c, d1, d2, Cai, Vm):
+        iCaT = cls.iCaT(p, q, Vm, Cai)
+        iCaL = cls.iCaL(c, d1, d2, Vm, Cai)
+        return - cls.iCa_to_Cai_rate * (iCaT + iCaL) - Cai / cls.taur_Cai  # M/s
 
-    def derStates(self):
+    @classmethod
+    def derStates(cls):
         return {
-            'a': lambda Vm, x: (self.ainf(Vm) - x['a']) / self.taua(Vm),
-            'b': lambda Vm, x: (self.binf(Vm) - x['b']) / self.taub(Vm),
-            'c': lambda Vm, x: (self.cinf(Vm) - x['c']) / self.tauc(Vm),
-            'd1': lambda Vm, x: (self.d1inf(Vm) - x['d1']) / self.taud1(Vm),
-            'd2': lambda Vm, x: (self.d2inf(x['Cai']) - x['d2']) / self.tau_d2,
-            'm': lambda Vm, x: (self.minf(Vm) - x['m']) / self.taum(Vm),
-            'h': lambda Vm, x: (self.hinf(Vm) - x['h']) / self.tauh(Vm),
-            'n': lambda Vm, x: (self.ninf(Vm) - x['n']) / self.taun(Vm),
-            'p': lambda Vm, x: (self.pinf(Vm) - x['p']) / self.taup(Vm),
-            'q': lambda Vm, x: (self.qinf(Vm) - x['q']) / self.tauq(Vm),
-            'r': lambda Vm, x: (self.rinf(x['Cai']) - x['r']) / self.tau_r,
-            'Cai': lambda Vm, x: self.derCai(x['p'], x['q'], x['c'], x['d1'], x['d2'], x['Cai'], Vm)
+            'a': lambda Vm, x: (cls.ainf(Vm) - x['a']) / cls.taua(Vm),
+            'b': lambda Vm, x: (cls.binf(Vm) - x['b']) / cls.taub(Vm),
+            'c': lambda Vm, x: (cls.cinf(Vm) - x['c']) / cls.tauc(Vm),
+            'd1': lambda Vm, x: (cls.d1inf(Vm) - x['d1']) / cls.taud1(Vm),
+            'd2': lambda Vm, x: (cls.d2inf(x['Cai']) - x['d2']) / cls.tau_d2,
+            'm': lambda Vm, x: (cls.minf(Vm) - x['m']) / cls.taum(Vm),
+            'h': lambda Vm, x: (cls.hinf(Vm) - x['h']) / cls.tauh(Vm),
+            'n': lambda Vm, x: (cls.ninf(Vm) - x['n']) / cls.taun(Vm),
+            'p': lambda Vm, x: (cls.pinf(Vm) - x['p']) / cls.taup(Vm),
+            'q': lambda Vm, x: (cls.qinf(Vm) - x['q']) / cls.tauq(Vm),
+            'r': lambda Vm, x: (cls.rinf(x['Cai']) - x['r']) / cls.tau_r,
+            'Cai': lambda Vm, x: cls.derCai(x['p'], x['q'], x['c'], x['d1'], x['d2'], x['Cai'], Vm)
         }
 
     # ------------------------------ Steady states ------------------------------
 
-    def Caiinf(self, p, q, c, d1, Vm):
+    @classmethod
+    def Caiinf(cls, p, q, c, d1, Vm):
         ''' Steady-state intracellular Calcium concentration '''
         if isinstance(Vm, np.ndarray):
-            return np.array([self.Caiinf(v) for v in Vm])
+            return np.array([cls.Caiinf(v) for v in Vm])
         else:
             return brentq(
-                lambda x: self.derCai(p, q, c, d1, self.d2inf(x), x, Vm),
-                self.Cai0 * 1e-4, self.Cai0 * 1e3,
+                lambda x: cls.derCai(p, q, c, d1, cls.d2inf(x), x, Vm),
+                cls.Cai0 * 1e-4, cls.Cai0 * 1e3,
                 xtol=1e-16
             )
 
-    def steadyStates(self):
+    @classmethod
+    def steadyStates(cls):
         sstates = {
-            'a': lambda Vm: self.ainf(Vm),
-            'b': lambda Vm: self.binf(Vm),
-            'c': lambda Vm: self.cinf(Vm),
-            'd1': lambda Vm: self.d1inf(Vm),
-            'm': lambda Vm: self.minf(Vm),
-            'h': lambda Vm: self.hinf(Vm),
-            'n': lambda Vm: self.ninf(Vm),
-            'p': lambda Vm: self.pinf(Vm),
-            'q': lambda Vm: self.qinf(Vm),
-            'Cai': lambda Vm: self.Caiinf(
-                self.pinf(Vm), self.qinf(Vm), self.cinf(Vm), self.d1inf(Vm), Vm)
+            'a': lambda Vm: cls.ainf(Vm),
+            'b': lambda Vm: cls.binf(Vm),
+            'c': lambda Vm: cls.cinf(Vm),
+            'd1': lambda Vm: cls.d1inf(Vm),
+            'm': lambda Vm: cls.minf(Vm),
+            'h': lambda Vm: cls.hinf(Vm),
+            'n': lambda Vm: cls.ninf(Vm),
+            'p': lambda Vm: cls.pinf(Vm),
+            'q': lambda Vm: cls.qinf(Vm),
+            'Cai': lambda Vm: cls.Caiinf(
+                cls.pinf(Vm), cls.qinf(Vm), cls.cinf(Vm), cls.d1inf(Vm), Vm)
         }
-        sstates['d2'] = lambda Vm: self.d2inf(sstates['Cai'](Vm))
-        sstates['r'] = lambda Vm: self.rinf(sstates['Cai'](Vm))
+        sstates['d2'] = lambda Vm: cls.d2inf(sstates['Cai'](Vm))
+        sstates['r'] = lambda Vm: cls.rinf(sstates['Cai'](Vm))
         return sstates
 
     # def quasiSteadyStates(self, lkp):
@@ -369,50 +400,58 @@ class OtsukaSTN(PointNeuron):
 
     # ------------------------------ Membrane currents ------------------------------
 
-    def iNa(self, m, h, Vm):
+    @classmethod
+    def iNa(cls, m, h, Vm):
         ''' Sodium current '''
-        return self.gNabar * m**3 * h * (Vm - self.ENa)  # mA/m2
+        return cls.gNabar * m**3 * h * (Vm - cls.ENa)  # mA/m2
 
-    def iKd(self, n, Vm):
+    @classmethod
+    def iKd(cls, n, Vm):
         ''' delayed-rectifier Potassium current '''
-        return self.gKdbar * n**4 * (Vm - self.EK)  # mA/m2
+        return cls.gKdbar * n**4 * (Vm - cls.EK)  # mA/m2
 
-    def iA(self, a, b, Vm):
+    @classmethod
+    def iA(cls, a, b, Vm):
         ''' A-type Potassium current '''
-        return self.gAbar * a**2 * b * (Vm - self.EK)  # mA/m2
+        return cls.gAbar * a**2 * b * (Vm - cls.EK)  # mA/m2
 
-    def iCaT(self, p, q, Vm, Cai):
+    @classmethod
+    def iCaT(cls, p, q, Vm, Cai):
         ''' low-threshold (T-type) Calcium current '''
-        return self.gCaTbar * p**2 * q * (Vm - self.nernst(Z_Ca, Cai, self.Cao, self.T))  # mA/m2
+        return cls.gCaTbar * p**2 * q * (Vm - cls.nernst(Z_Ca, Cai, cls.Cao, cls.T))  # mA/m2
 
-    def iCaL(self, c, d1, d2, Vm, Cai):
+    @classmethod
+    def iCaL(cls, c, d1, d2, Vm, Cai):
         ''' high-threshold (L-type) Calcium current '''
-        return self.gCaLbar * c**2 * d1 * d2 * (
-            Vm - self.nernst(Z_Ca, Cai, self.Cao, self.T))  # mA/m2
+        return cls.gCaLbar * c**2 * d1 * d2 * (Vm - cls.nernst(Z_Ca, Cai, cls.Cao, cls.T))  # mA/m2
 
-    def iKCa(self, r, Vm):
+    @classmethod
+    def iKCa(cls, r, Vm):
         ''' Calcium-activated Potassium current '''
-        return self.gKCabar * r**2 * (Vm - self.EK)  # mA/m2
+        return cls.gKCabar * r**2 * (Vm - cls.EK)  # mA/m2
 
-    def iLeak(self, Vm):
+    @classmethod
+    def iLeak(cls, Vm):
         ''' non-specific leakage current '''
-        return self.gLeak * (Vm - self.ELeak)  # mA/m2
+        return cls.gLeak * (Vm - cls.ELeak)  # mA/m2
 
-    def currents(self):
+    @classmethod
+    def currents(cls):
         return {
-            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm),
-            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
-            'iA': lambda Vm, x: self.iA(x['a'], x['b'], Vm),
-            'iCaT': lambda Vm, x: self.iCaT(x['p'], x['q'], Vm, x['Cai']),
-            'iCaL': lambda Vm, x: self.iCaL(
+            'iNa': lambda Vm, x: cls.iNa(x['m'], x['h'], Vm),
+            'iKd': lambda Vm, x: cls.iKd(x['n'], Vm),
+            'iA': lambda Vm, x: cls.iA(x['a'], x['b'], Vm),
+            'iCaT': lambda Vm, x: cls.iCaT(x['p'], x['q'], Vm, x['Cai']),
+            'iCaL': lambda Vm, x: cls.iCaL(
                 x['c'], x['d1'], x['d2'], Vm, x['Cai']),
-            'iKCa': lambda Vm, x: self.iKCa(x['r'], Vm),
-            'iLeak': lambda Vm, _: self.iLeak(Vm)
+            'iKCa': lambda Vm, x: cls.iKCa(x['r'], Vm),
+            'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
 
     # ------------------------------ Other methods ------------------------------
 
-    def getLowIntensities(self):
+    @staticmethod
+    def getLowIntensities():
         ''' Return an array of acoustic intensities (W/m2) used to study the STN neuron in
             Tarnaud, T., Joseph, W., Martens, L., and Tanghe, E. (2018). Computational Modeling
             of Ultrasonic Subthalamic Nucleus Stimulation. IEEE Trans Biomed Eng.

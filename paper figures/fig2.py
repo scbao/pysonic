@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-06-06 18:38:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 13:08:09
+# @Last Modified time: 2019-06-29 13:56:42
 
 ''' Sub-panels of the model optimization figure. '''
 
@@ -284,7 +284,7 @@ def main():
     tstim = 150e-3  # s
     toffset = 100e-3  # s
     Qm = -71.9e-5  # C/cm2
-    bls = BilayerSonophore(a, pneuron.Cm0, pneuron.Qm0)
+    bls = BilayerSonophore(a, pneuron.Cm0, pneuron.Qm0())
     nbls = NeuronalBilayerSonophore(a, pneuron)
 
     # Figures

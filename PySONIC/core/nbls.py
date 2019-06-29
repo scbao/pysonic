@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-28 16:10:25
+# @Last Modified time: 2019-06-29 19:11:54
 
 from copy import deepcopy
 import logging
@@ -19,7 +19,7 @@ from .batches import createQueue
 from ..utils import *
 from ..constants import *
 from ..postpro import getFixedPoints
-from .lookup import SmartLookup
+from .lookups import SmartLookup
 
 
 NEURONS_LOOKUP_DIR = os.path.abspath(os.path.split(__file__)[0] + "/../neurons/")
@@ -47,7 +47,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         self.pneuron = pneuron
 
         # Initialize BilayerSonophore parent object
-        BilayerSonophore.__init__(self, a, pneuron.Cm0, pneuron.Qm0, embedding_depth)
+        BilayerSonophore.__init__(self, a, pneuron.Cm0, pneuron.Qm0(), embedding_depth)
 
     def __repr__(self):
         s = '{}({:.1f} nm, {}'.format(self.__class__.__name__, self.a * 1e9, self.pneuron)
@@ -110,7 +110,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         codes['method'] = method
         return codes
 
-    def interpOnOffVariable(self, key, Qm, stim, lkp):
+    @staticmethod
+    def interpOnOffVariable(key, Qm, stim, lkp):
         ''' Interpolate Q-dependent effective variable along ON and OFF periods of a solution.
 
             :param key: lookup variable key
@@ -124,7 +125,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         x[stim == 1] = lkp['ON'].interpVar(Qm[stim == 1], 'Q', key)
         return x
 
-    def spatialAverage(self, fs, x, x0):
+    @staticmethod
+    def spatialAverage(fs, x, x0):
         ''' fs-modulated spatial averaging. '''
         return fs * x + (1 - x) * x0
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 19:48:59
+# @Last Modified time: 2019-06-29 20:18:52
 
 ''' Useful functions to generate plots. '''
 
@@ -110,7 +110,8 @@ class GenericPlot:
     def __call__(self, *args, **kwargs):
         return self.render(*args, **kwargs)
 
-    def getData(self, entry, frequency=1, trange=None):
+    @staticmethod
+    def getData(entry, frequency=1, trange=None):
         if isinstance(entry, str):
             data, meta = loadData(entry, frequency)
         else:
@@ -121,17 +122,19 @@ class GenericPlot:
             data = data.loc[(data['t'] >= tmin) & (data['t'] <= tmax)]
         return data, meta
 
-    def render(*args, **kwargs):
+    def render(self, *args, **kwargs):
         return NotImplementedError
 
-    def getSimType(self, fname):
+    @staticmethod
+    def getSimType(fname):
         ''' Get sim type from filename. '''
         mo = re.search('(^[A-Z]*)_(.*).pkl', fname)
         if not mo:
             raise ValueError('Could not find sim-key in filename: "{}"'.format(fname))
         return mo.group(1)
 
-    def getTimePltVar(self, tscale):
+    @staticmethod
+    def getTimePltVar(tscale):
         ''' Return time plot variable for a given temporal scale. '''
         return {
             'desc': 'time',
@@ -141,10 +144,12 @@ class GenericPlot:
             'onset': {'ms': 1e-3, 'us': 1e-6}[tscale]
         }
 
-    def createBackBone(self, *args, **kwargs):
+    @staticmethod
+    def createBackBone(*args, **kwargs):
         return NotImplementedError
 
-    def prettify(self, ax, xticks=None, yticks=None, xfmt='{:.0f}', yfmt='{:+.0f}'):
+    @staticmethod
+    def prettify(ax, xticks=None, yticks=None, xfmt='{:.0f}', yfmt='{:+.0f}'):
         try:
             ticks = ax.get_ticks()
             ticks = (min(ticks), max(ticks))
@@ -164,7 +169,8 @@ class GenericPlot:
             if yfmt is not None:
                 ax.set_yticklabels([yfmt.format(y) for y in yticks])
 
-    def addInset(self, fig, ax, inset):
+    @staticmethod
+    def addInset(fig, ax, inset):
         ''' Create inset axis. '''
         inset_ax = fig.add_axes(ax.get_position())
         inset_ax.set_zorder(1)
@@ -178,7 +184,8 @@ class GenericPlot:
                                      color='w'))
         return inset_ax
 
-    def materializeInset(self, ax, inset_ax, inset):
+    @staticmethod
+    def materializeInset(ax, inset_ax, inset):
         ''' Materialize inset with zoom boox. '''
         # Re-position inset axis
         axpos = ax.get_position()
@@ -217,29 +224,36 @@ class GenericPlot:
     def postProcess(self, *args, **kwargs):
         return NotImplementedError
 
-    def removeSpines(self, ax):
+    @staticmethod
+    def removeSpines(ax):
         for item in ['top', 'right']:
             ax.spines[item].set_visible(False)
 
-    def setXTicks(self, ax, xticks=None):
+    @staticmethod
+    def setXTicks(ax, xticks=None):
         if xticks is not None:
             ax.set_xticks(xticks)
 
-    def setYTicks(self, ax, yticks=None):
+    @staticmethod
+    def setYTicks(ax, yticks=None):
         if yticks is not None:
             ax.set_yticks(yticks)
 
-    def setTickLabelsFontSize(self, ax, fs):
+    @staticmethod
+    def setTickLabelsFontSize(ax, fs):
         for tick in ax.xaxis.get_major_ticks() + ax.yaxis.get_major_ticks():
             tick.label.set_fontsize(fs)
 
-    def setXLabel(self, ax, xplt, fs):
+    @staticmethod
+    def setXLabel(ax, xplt, fs):
         ax.set_xlabel('$\\rm {}\ ({})$'.format(xplt['label'], xplt['unit']), fontsize=fs)
 
-    def setYLabel(self, ax, yplt, fs):
+    @staticmethod
+    def setYLabel(ax, yplt, fs):
         ax.set_ylabel('$\\rm {}\ ({})$'.format(yplt['label'], yplt.get('unit', '')), fontsize=fs)
 
-    def addCmap(self, fig, cmap, handles, comp_values, comp_info, fs, prettify, zscale='lin'):
+    @classmethod
+    def addCmap(cls, fig, cmap, handles, comp_values, comp_info, fs, prettify, zscale='lin'):
         # Create colormap and normalizer
         mymap = plt.get_cmap(cmap)
         norm, sm = setNormalizer(mymap, (comp_values.min(), comp_values.max()), zscale)
@@ -259,11 +273,12 @@ class GenericPlot:
         cbarax.set_ylabel('$\\rm {}\ ({})$'.format(
             comp_info['desc'].replace(' ', '\ '), comp_info['unit']), fontsize=fs)
         if prettify:
-            self.prettify(cbar)
+            cls.prettify(cbar)
         for item in cbarax.get_yticklabels():
             item.set_fontsize(fs)
 
-    def getSpikes(self, data, key='Qm', mph=SPIKE_MIN_QAMP, mpp=SPIKE_MIN_QPROM, mpt=SPIKE_MIN_DT):
+    @staticmethod
+    def getSpikes(data, key='Qm', mph=SPIKE_MIN_QAMP, mpp=SPIKE_MIN_QPROM, mpt=SPIKE_MIN_DT):
         if key not in data:
             raise ValueError('charge profile not avilable in dataframe')
         t, y = [data[k].values for k in['t', key]]

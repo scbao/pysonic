@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-28 16:09:28
+# @Last Modified time: 2019-06-29 20:00:42
 
 import os
 from inspect import signature, getdoc
@@ -78,13 +78,13 @@ class Model(metaclass=abc.ABCMeta):
         codes = self.filecodes(*args).values()
         return '_'.join([x for x in codes if x is not None])
 
-    @property
+    @classmethod
     @abc.abstractmethod
     def getPltVars(self, *args, **kwargs):
         ''' Return a dictionary with information about all plot variables related to the model. '''
         raise NotImplementedError
 
-    @property
+    @classmethod
     @abc.abstractmethod
     def getPltScheme(self):
         ''' Return a dictionary model plot variables grouped by context. '''
@@ -118,7 +118,7 @@ class Model(metaclass=abc.ABCMeta):
             and return output data in a dataframe. '''
         raise NotImplementedError
 
-    @property
+    @classmethod
     @abc.abstractmethod
     def meta(self, *args):
         ''' Return an informative dictionary about model and simulation parameters. '''

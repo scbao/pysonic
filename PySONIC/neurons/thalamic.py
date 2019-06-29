@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 19:39:37
+# @Last Modified time: 2019-06-29 19:57:33
 
 import numpy as np
 from ..core import PointNeuron
@@ -31,86 +31,83 @@ class Thalamic(PointNeuron):
 
     # ------------------------------ Gating states kinetics ------------------------------
 
-    def alpham(self, Vm):
-        return 0.32 * self.vtrap(13 - (Vm - self.VT), 4) * 1e3  # s-1
+    @classmethod
+    def alpham(cls, Vm):
+        return 0.32 * cls.vtrap(13 - (Vm - cls.VT), 4) * 1e3  # s-1
 
-    def betam(self, Vm):
-        return 0.28 * self.vtrap((Vm - self.VT) - 40, 5) * 1e3  # s-1
+    @classmethod
+    def betam(cls, Vm):
+        return 0.28 * cls.vtrap((Vm - cls.VT) - 40, 5) * 1e3  # s-1
 
-    def alphah(self, Vm):
-        return 0.128 * np.exp(-((Vm - self.VT) - 17) / 18) * 1e3  # s-1
+    @classmethod
+    def alphah(cls, Vm):
+        return 0.128 * np.exp(-((Vm - cls.VT) - 17) / 18) * 1e3  # s-1
 
-    def betah(self, Vm):
-        return 4 / (1 + np.exp(-((Vm - self.VT) - 40) / 5)) * 1e3  # s-1
+    @classmethod
+    def betah(cls, Vm):
+        return 4 / (1 + np.exp(-((Vm - cls.VT) - 40) / 5)) * 1e3  # s-1
 
-    def alphan(self, Vm):
-        return 0.032 * self.vtrap(15 - (Vm - self.VT), 5) * 1e3  # s-1
+    @classmethod
+    def alphan(cls, Vm):
+        return 0.032 * cls.vtrap(15 - (Vm - cls.VT), 5) * 1e3  # s-1
 
-    def betan(self, Vm):
-        return 0.5 * np.exp(-((Vm - self.VT) - 10) / 40) * 1e3  # s-1
+    @classmethod
+    def betan(cls, Vm):
+        return 0.5 * np.exp(-((Vm - cls.VT) - 10) / 40) * 1e3  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self):
+    @classmethod
+    def derStates(cls):
         return {
-            'm': lambda Vm, x: self.alpham(Vm) * (1 - x['m']) - self.betam(Vm) * x['m'],
-            'h': lambda Vm, x: self.alphah(Vm) * (1 - x['h']) - self.betah(Vm) * x['h'],
-            'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n'],
-            's': lambda Vm, x: (self.sinf(Vm) - x['s']) / self.taus(Vm),
-            'u': lambda Vm, x: (self.uinf(Vm) - x['u']) / self.tauu(Vm)
+            'm': lambda Vm, x: cls.alpham(Vm) * (1 - x['m']) - cls.betam(Vm) * x['m'],
+            'h': lambda Vm, x: cls.alphah(Vm) * (1 - x['h']) - cls.betah(Vm) * x['h'],
+            'n': lambda Vm, x: cls.alphan(Vm) * (1 - x['n']) - cls.betan(Vm) * x['n'],
+            's': lambda Vm, x: (cls.sinf(Vm) - x['s']) / cls.taus(Vm),
+            'u': lambda Vm, x: (cls.uinf(Vm) - x['u']) / cls.tauu(Vm)
         }
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self):
+    @classmethod
+    def steadyStates(cls):
         return {
-            'm': lambda Vm: self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': lambda Vm: self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': lambda Vm: self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm)),
-            's': lambda Vm: self.sinf(Vm),
-            'u': lambda Vm: self.uinf(Vm)
+            'm': lambda Vm: cls.alpham(Vm) / (cls.alpham(Vm) + cls.betam(Vm)),
+            'h': lambda Vm: cls.alphah(Vm) / (cls.alphah(Vm) + cls.betah(Vm)),
+            'n': lambda Vm: cls.alphan(Vm) / (cls.alphan(Vm) + cls.betan(Vm)),
+            's': lambda Vm: cls.sinf(Vm),
+            'u': lambda Vm: cls.uinf(Vm)
         }
 
     # ------------------------------ Membrane currents ------------------------------
 
-    def iNa(self, m, h, Vm):
+    @classmethod
+    def iNa(cls, m, h, Vm):
         ''' Sodium current '''
-        return self.gNabar * m**3 * h * (Vm - self.ENa)  # mA/m2
+        return cls.gNabar * m**3 * h * (Vm - cls.ENa)  # mA/m2
 
-    def iKd(self, n, Vm):
+    @classmethod
+    def iKd(cls, n, Vm):
         ''' delayed-rectifier Potassium current '''
-        return self.gKdbar * n**4 * (Vm - self.EK)
+        return cls.gKdbar * n**4 * (Vm - cls.EK)
 
-    def iCaT(self, s, u, Vm):
+    @classmethod
+    def iCaT(cls, s, u, Vm):
         ''' low-threshold (Ts-type) Calcium current '''
-        return self.gCaTbar * s**2 * u * (Vm - self.ECa)  # mA/m2
+        return cls.gCaTbar * s**2 * u * (Vm - cls.ECa)  # mA/m2
 
-    def iLeak(self, Vm):
+    @classmethod
+    def iLeak(cls, Vm):
         ''' non-specific leakage current '''
-        return self.gLeak * (Vm - self.ELeak)  # mA/m2
+        return cls.gLeak * (Vm - cls.ELeak)  # mA/m2
 
-    def currents(self):
+    @classmethod
+    def currents(cls):
         return {
-            'iNa': lambda Vm, states: self.iNa(states['m'], states['h'], Vm),
-            'iKd': lambda Vm, states: self.iKd(states['n'], Vm),
-            'iCaT': lambda Vm, states: self.iCaT(states['s'], states['u'], Vm),
-            'iLeak': lambda Vm, _: self.iLeak(Vm)
-        }
-
-    # ------------------------------ Other methods ------------------------------
-
-    def computeEffRates(self, Vm):
-        return {
-            'alpham': np.mean(self.alpham(Vm)),
-            'betam': np.mean(self.betam(Vm)),
-            'alphah': np.mean(self.alphah(Vm)),
-            'betah': np.mean(self.betah(Vm)),
-            'alphan': np.mean(self.alphan(Vm)),
-            'betan': np.mean(self.betan(Vm)),
-            'alphas': np.mean(self.sinf(Vm) / self.taus(Vm)),
-            'betas': np.mean((1 - self.sinf(Vm)) / self.taus(Vm)),
-            'alphau': np.mean(self.uinf(Vm) / self.tauu(Vm)),
-            'betau': np.mean((1 - self.uinf(Vm)) / self.tauu(Vm))
+            'iNa': lambda Vm, states: cls.iNa(states['m'], states['h'], Vm),
+            'iKd': lambda Vm, states: cls.iKd(states['n'], Vm),
+            'iCaT': lambda Vm, states: cls.iCaT(states['s'], states['u'], Vm),
+            'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
 
 
@@ -159,16 +156,20 @@ class ThalamicRE(Thalamic):
 
     # ------------------------------ Gating states kinetics ------------------------------
 
-    def sinf(self, Vm):
+    @staticmethod
+    def sinf(Vm):
         return 1.0 / (1.0 + np.exp(-(Vm + 52.0) / 7.4))
 
-    def taus(self, Vm):
+    @staticmethod
+    def taus(Vm):
         return (1 + 0.33 / (np.exp((Vm + 27.0) / 10.0) + np.exp(-(Vm + 102.0) / 15.0))) * 1e-3  # s
 
-    def uinf(self, Vm):
+    @staticmethod
+    def uinf(Vm):
         return 1.0 / (1.0 + np.exp((Vm + 80.0) / 5.0))
 
-    def tauu(self, Vm):
+    @staticmethod
+    def tauu(Vm):
         return (28.3 + 0.33 / (
             np.exp((Vm + 48.0) / 4.0) + np.exp(-(Vm + 407.0) / 50.0))) * 1e-3  # s
 
@@ -236,21 +237,24 @@ class ThalamoCortical(Thalamic):
         'P0': 'proportion of unbound iH regulating factor',
     }
 
-    def __init__(self):
-        super().__init__()
-        self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
+    def __new__(cls):
+        cls.iCa_to_Cai_rate = cls.currentToConcentrationRate(Z_Ca, cls.deff)
+        return super(ThalamoCortical, cls).__new__(cls)
 
-    def OL(self, O, C):
+    @staticmethod
+    def OL(O, C):
         ''' O-gate locked-open probability '''
         return 1 - O - C
 
-    def getPltScheme(self):
+    @classmethod
+    def getPltScheme(cls):
         pltscheme = super().getPltScheme()
         pltscheme['i_{H}\\ kin.'] = ['O', 'OL', 'P0']
         pltscheme['[Ca^{2+}]_i'] = ['Cai']
         return pltscheme
 
-    def getPltVars(self, wrapleft='df["', wrapright='"]'):
+    @classmethod
+    def getPltVars(cls, wrapleft='df["', wrapright='"]'):
         return {**super().getPltVars(wrapleft, wrapright), **{
             'Cai': {
                 'desc': 'sumbmembrane Ca2+ concentration',
@@ -273,76 +277,86 @@ class ThalamoCortical(Thalamic):
 
     # ------------------------------ Gating states kinetics ------------------------------
 
-    def sinf(self, Vm):
-        return 1.0 / (1.0 + np.exp(-(Vm + self.Vx + 57.0) / 6.2))
+    @classmethod
+    def sinf(cls, Vm):
+        return 1.0 / (1.0 + np.exp(-(Vm + cls.Vx + 57.0) / 6.2))
 
-    def taus(self, Vm):
-        x = np.exp(-(Vm + self.Vx + 132.0) / 16.7) + np.exp((Vm + self.Vx + 16.8) / 18.2)
+    @classmethod
+    def taus(cls, Vm):
+        x = np.exp(-(Vm + cls.Vx + 132.0) / 16.7) + np.exp((Vm + cls.Vx + 16.8) / 18.2)
         return 1.0 / 3.7 * (0.612 + 1.0 / x) * 1e-3  # s
 
-    def uinf(self, Vm):
-        return 1.0 / (1.0 + np.exp((Vm + self.Vx + 81.0) / 4.0))
+    @classmethod
+    def uinf(cls, Vm):
+        return 1.0 / (1.0 + np.exp((Vm + cls.Vx + 81.0) / 4.0))
 
-    def tauu(self, Vm):
-        if Vm + self.Vx < -80.0:
-            return 1.0 / 3.7 * np.exp((Vm + self.Vx + 467.0) / 66.6) * 1e-3  # s
+    @classmethod
+    def tauu(cls, Vm):
+        if Vm + cls.Vx < -80.0:
+            return 1.0 / 3.7 * np.exp((Vm + cls.Vx + 467.0) / 66.6) * 1e-3  # s
         else:
-            return 1 / 3.7 * (np.exp(-(Vm + self.Vx + 22) / 10.5) + 28.0) * 1e-3  # s
+            return 1 / 3.7 * (np.exp(-(Vm + cls.Vx + 22) / 10.5) + 28.0) * 1e-3  # s
 
-    def oinf(self, Vm):
+    @staticmethod
+    def oinf(Vm):
         return 1.0 / (1.0 + np.exp((Vm + 75.0) / 5.5))
 
-    def tauo(self, Vm):
+    @staticmethod
+    def tauo(Vm):
         return 1 / (np.exp(-14.59 - 0.086 * Vm) + np.exp(-1.87 + 0.0701 * Vm)) * 1e-3  # s
 
-    def alphao(self, Vm):
-        return self.oinf(Vm) / self.tauo(Vm)  # s-1
+    @classmethod
+    def alphao(cls, Vm):
+        return cls.oinf(Vm) / cls.tauo(Vm)  # s-1
 
-    def betao(self, Vm):
-        return (1 - self.oinf(Vm)) / self.tauo(Vm)  # s-1
+    @classmethod
+    def betao(cls, Vm):
+        return (1 - cls.oinf(Vm)) / cls.tauo(Vm)  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derCai(self, Cai, s, u, Vm):
-        return (self.Cai_min - Cai) / self.taur_Cai -\
-            self.iCa_to_Cai_rate * self.iCaT(s, u, Vm)  # M/s
-
-    def derStates(self):
+    @classmethod
+    def derStates(cls):
         return {**super().derStates(), **{
-            'C': lambda Vm, x: self.betao(Vm) * x['O'] - self.alphao(Vm) * x['C'],
-            'O': lambda Vm, x: (self.alphao(Vm) * x['C'] - self.betao(Vm) * x['O'] -
-                                self.k3 * x['O'] * (1 - x['P0']) + self.k4 * (1 - x['O'] - x['C'])),
-            'P0': lambda _, x: self.k2 * (1 - x['P0']) - self.k1 * x['P0'] * x['Cai']**self.nCa,
-            'Cai': lambda Vm, x: ((self.Cai_min - x['Cai']) / self.taur_Cai -
-                                  self.iCa_to_Cai_rate * self.iCaT(x['s'], x['u'], Vm))  # M/s
+            'C': lambda Vm, x: cls.betao(Vm) * x['O'] - cls.alphao(Vm) * x['C'],
+            'O': lambda Vm, x: (cls.alphao(Vm) * x['C'] - cls.betao(Vm) * x['O'] -
+                                cls.k3 * x['O'] * (1 - x['P0']) + cls.k4 * (1 - x['O'] - x['C'])),
+            'P0': lambda _, x: cls.k2 * (1 - x['P0']) - cls.k1 * x['P0'] * x['Cai']**cls.nCa,
+            'Cai': lambda Vm, x: ((cls.Cai_min - x['Cai']) / cls.taur_Cai -
+                                  cls.iCa_to_Cai_rate * cls.iCaT(x['s'], x['u'], Vm))  # M/s
         }}
 
     # ------------------------------ Steady states ------------------------------
 
-    def Cinf(self, Cai, Vm):
+    @classmethod
+    def Cinf(cls, Cai, Vm):
         ''' Steady-state O-gate closed-probability '''
-        return self.betao(Vm) / self.alphao(Vm) * self.Oinf(Cai, Vm)
+        return cls.betao(Vm) / cls.alphao(Vm) * cls.Oinf(Cai, Vm)
 
-    def Oinf(self, Cai, Vm):
+    @classmethod
+    def Oinf(cls, Cai, Vm):
         ''' Steady-state O-gate open-probability '''
-        return self.k4 / (self.k3 * (1 - self.P0inf(Cai)) + self.k4 * (
-            1 + self.betao(Vm) / self.alphao(Vm)))
+        return cls.k4 / (cls.k3 * (1 - cls.P0inf(Cai)) + cls.k4 * (
+            1 + cls.betao(Vm) / cls.alphao(Vm)))
 
-    def P0inf(self, Cai):
+    @classmethod
+    def P0inf(cls, Cai):
         ''' Steady-state unbound probability of Ih regulating factor '''
-        return self.k2 / (self.k2 + self.k1 * Cai**self.nCa)
+        return cls.k2 / (cls.k2 + cls.k1 * Cai**cls.nCa)
 
-    def Caiinf(self, Vm):
+    @classmethod
+    def Caiinf(cls, Vm):
         ''' Steady-state intracellular Calcium concentration '''
-        return self.Cai_min - self.taur_Cai * self.iCa_to_Cai_rate * self.iCaT(
-            self.sinf(Vm), self.uinf(Vm), Vm)  # M
+        return cls.Cai_min - cls.taur_Cai * cls.iCa_to_Cai_rate * cls.iCaT(
+            cls.sinf(Vm), cls.uinf(Vm), Vm)  # M
 
-    def steadyStates(self):
+    @classmethod
+    def steadyStates(cls):
         sstates = super().steadyStates()
-        sstates['Cai'] = lambda Vm: self.Caiinf(Vm)
-        sstates['O'] = lambda Vm: self.Oinf(sstates['Cai'](Vm), Vm)
-        sstates['C'] = lambda Vm: self.Cinf(sstates['Cai'](Vm), Vm)
-        sstates['P0'] = lambda Vm: self.P0inf(sstates['Cai'](Vm))
+        sstates['Cai'] = lambda Vm: cls.Caiinf(Vm)
+        sstates['O'] = lambda Vm: cls.Oinf(sstates['Cai'](Vm), Vm)
+        sstates['C'] = lambda Vm: cls.Cinf(sstates['Cai'](Vm), Vm)
+        sstates['P0'] = lambda Vm: cls.P0inf(sstates['Cai'](Vm))
         return sstates
 
     # def quasiSteadyStates(self, lkp):
@@ -357,16 +371,19 @@ class ThalamoCortical(Thalamic):
 
     # ------------------------------ Membrane currents ------------------------------
 
-    def iKLeak(self, Vm):
+    @classmethod
+    def iKLeak(cls, Vm):
         ''' Potassium leakage current '''
-        return self.gKLeak * (Vm - self.EK)  # mA/m2
+        return cls.gKLeak * (Vm - cls.EK)  # mA/m2
 
-    def iH(self, O, C, Vm):
+    @classmethod
+    def iH(cls, O, C, Vm):
         ''' outward mixed cationic current '''
-        return self.gHbar * (O + 2 * self.OL(O, C)) * (Vm - self.EH)  # mA/m2
+        return cls.gHbar * (O + 2 * cls.OL(O, C)) * (Vm - cls.EH)  # mA/m2
 
-    def currents(self):
+    @classmethod
+    def currents(cls):
         return {**super().currents(), **{
-            'iKLeak': lambda Vm, states: self.iKLeak(Vm),
-            'iH': lambda Vm, states: self.iH(states['O'], states['C'], Vm)
+            'iKLeak': lambda Vm, states: cls.iKLeak(Vm),
+            'iH': lambda Vm, states: cls.iH(states['O'], states['C'], Vm)
         }}

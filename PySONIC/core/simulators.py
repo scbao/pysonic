@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-13 23:42:16
+# @Last Modified time: 2019-06-29 20:06:46
 
 import abc
 import numpy as np
@@ -17,7 +17,8 @@ from ..constants import *
 class Simulator(metaclass=abc.ABCMeta):
     ''' Generic interface to simulator object. '''
 
-    def initialize(self, y0):
+    @staticmethod
+    def initialize(y0):
         ''' Initialize global arrays.
 
             :param y0: vector of initial conditions
@@ -28,7 +29,8 @@ class Simulator(metaclass=abc.ABCMeta):
         stim = np.array([1])
         return t, y, stim
 
-    def appendSolution(self, t, y, stim, tnew, ynew, is_on):
+    @staticmethod
+    def appendSolution(t, y, stim, tnew, ynew, is_on):
         ''' Append to time vector, solution matrix and state vector.
 
             :param t: preceding time vector
@@ -44,7 +46,8 @@ class Simulator(metaclass=abc.ABCMeta):
         stim = np.concatenate((stim, np.ones(tnew.size - 1) * is_on))
         return t, y, stim
 
-    def integrate(self, t, y, stim, tnew, dfunc, is_on, use_adaptive_dt=False):
+    @classmethod
+    def integrate(cls, t, y, stim, tnew, dfunc, is_on, use_adaptive_dt=False):
         ''' Integrate system for a time interval and append to preceding solution arrays.
 
             :param t: preceding time vector
@@ -61,9 +64,10 @@ class Simulator(metaclass=abc.ABCMeta):
             ynew = solve_ivp(dfunc, [tnew[0], tnew[-1]], y[-1], t_eval=tnew, method='LSODA').y.T
         else:
             ynew = odeint(dfunc, y[-1], tnew, tfirst=True)
-        return self.appendSolution(t, y, stim, tnew, ynew, is_on)
+        return cls.appendSolution(t, y, stim, tnew, ynew, is_on)
 
-    def resample(self, t, y, stim, target_dt):
+    @staticmethod
+    def resample(t, y, stim, target_dt):
         ''' Resample a solution to a new target time step.
 
             :param t: time vector
@@ -115,7 +119,8 @@ class PeriodicSimulator(Simulator):
         else:
             self.stopfunc = self.isPeriodicallyStable
 
-    def getNPerCycle(self, dt, T):
+    @staticmethod
+    def getNPerCycle(dt, T):
         ''' Compute number of samples per cycle given a time step and a specific periodicity.
 
             :param dt: integration time step (s)
@@ -124,14 +129,15 @@ class PeriodicSimulator(Simulator):
         '''
         return int(np.round(T / dt)) + 1
 
-    def getTimeReference(self, dt, T):
+    @classmethod
+    def getTimeReference(cls, dt, T):
         ''' Compute reference integration time vector for a specific periodicity.
 
             :param dt: integration time step (s)
             :param T: periodicity (s)
             :return: time vector for 1 periodic cycle
         '''
-        return np.linspace(0, T, self.getNPerCycle(dt, T))
+        return np.linspace(0, T, cls.getNPerCycle(dt, T))
 
     def isPeriodicallyStable(self, t, y, T):
         ''' Assess the periodic stabilization of a solution, by evaluating the deviation
@@ -247,7 +253,8 @@ class PWSimulator(Simulator):
         self.dfunc_on = dfunc_on
         self.dfunc_off = dfunc_off
 
-    def getTimeReference(self, dt, tstim, toffset, PRF, DC):
+    @staticmethod
+    def getTimeReference(dt, tstim, toffset, PRF, DC):
         ''' Compute reference integration time vectors for a specific stimulus application pattern.
 
             :param dt: integration time step (s)
@@ -277,7 +284,8 @@ class PWSimulator(Simulator):
 
         return t_on, t_off, t_offset
 
-    def adjustPRF(self, tstim, PRF, DC, print_progress):
+    @staticmethod
+    def adjustPRF(tstim, PRF, DC, print_progress):
         ''' Adjust the PRF in case of continuous wave stimulus, in order to obtain the desired
             number of integration interval(s) during stimulus.
 
@@ -292,7 +300,8 @@ class PWSimulator(Simulator):
         else:  # if CW stimuli, then divide integration according to presence of progress bar
             return {True: 100., False: 1.}[print_progress] / tstim
 
-    def getNPulses(self, tstim, PRF):
+    @staticmethod
+    def getNPulses(tstim, PRF):
         ''' Calculate number of pulses from stimulus temporal pattern.
 
             :param tstim: duration of US stimulation (s)

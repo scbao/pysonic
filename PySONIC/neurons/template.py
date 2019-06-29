@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-25 17:38:45
+# @Last Modified time: 2019-06-29 18:46:33
 
 import numpy as np
 
@@ -44,61 +44,73 @@ class TemplateNeuron(PointNeuron):
 
     # ------------------------------ Gating states kinetics ------------------------------
 
-    def alpham(self, Vm):
-        return 0.32 * self.vtrap(13 - (Vm - self.VT), 4) * 1e3  # s-1
+    @classmethod
+    def alpham(cls, Vm):
+        return 0.32 * cls.vtrap(13 - (Vm - cls.VT), 4) * 1e3  # s-1
 
-    def betam(self, Vm):
-        return 0.28 * self.vtrap((Vm - self.VT) - 40, 5) * 1e3  # s-1
+    @classmethod
+    def betam(cls, Vm):
+        return 0.28 * cls.vtrap((Vm - cls.VT) - 40, 5) * 1e3  # s-1
 
-    def alphah(self, Vm):
-        return 0.128 * np.exp(-((Vm - self.VT) - 17) / 18) * 1e3  # s-1
+    @classmethod
+    def alphah(cls, Vm):
+        return 0.128 * np.exp(-((Vm - cls.VT) - 17) / 18) * 1e3  # s-1
 
-    def betah(self, Vm):
-        return 4 / (1 + np.exp(-((Vm - self.VT) - 40) / 5)) * 1e3  # s-1
+    @classmethod
+    def betah(cls, Vm):
+        return 4 / (1 + np.exp(-((Vm - cls.VT) - 40) / 5)) * 1e3  # s-1
 
-    def alphan(self, Vm):
-        return 0.032 * self.vtrap(15 - (Vm - self.VT), 5) * 1e3  # s-1
+    @classmethod
+    def alphan(cls, Vm):
+        return 0.032 * cls.vtrap(15 - (Vm - cls.VT), 5) * 1e3  # s-1
 
-    def betan(self, Vm):
-        return 0.5 * np.exp(-((Vm - self.VT) - 10) / 40) * 1e3  # s-1
+    @classmethod
+    def betan(cls, Vm):
+        return 0.5 * np.exp(-((Vm - cls.VT) - 10) / 40) * 1e3  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 
-    def derStates(self):
+    @classmethod
+    def derStates(cls):
         return {
-            'm': lambda Vm, x: self.alpham(Vm) * (1 - x['m']) - self.betam(Vm) * x['m'],
-            'h': lambda Vm, x: self.alphah(Vm) * (1 - x['h']) - self.betah(Vm) * x['h'],
-            'n': lambda Vm, x: self.alphan(Vm) * (1 - x['n']) - self.betan(Vm) * x['n']
+            'm': lambda Vm, x: cls.alpham(Vm) * (1 - x['m']) - cls.betam(Vm) * x['m'],
+            'h': lambda Vm, x: cls.alphah(Vm) * (1 - x['h']) - cls.betah(Vm) * x['h'],
+            'n': lambda Vm, x: cls.alphan(Vm) * (1 - x['n']) - cls.betan(Vm) * x['n']
         }
 
     # ------------------------------ Steady states ------------------------------
 
-    def steadyStates(self):
+    @classmethod
+    def steadyStates(cls):
         return {
-            'm': lambda Vm: self.alpham(Vm) / (self.alpham(Vm) + self.betam(Vm)),
-            'h': lambda Vm: self.alphah(Vm) / (self.alphah(Vm) + self.betah(Vm)),
-            'n': lambda Vm: self.alphan(Vm) / (self.alphan(Vm) + self.betan(Vm))
+            'm': lambda Vm: cls.alpham(Vm) / (cls.alpham(Vm) + cls.betam(Vm)),
+            'h': lambda Vm: cls.alphah(Vm) / (cls.alphah(Vm) + cls.betah(Vm)),
+            'n': lambda Vm: cls.alphan(Vm) / (cls.alphan(Vm) + cls.betan(Vm))
         }
 
     # ------------------------------ Membrane currents ------------------------------
 
-    def iNa(self, m, h, Vm):
+    @classmethod
+    def iNa(cls, m, h, Vm):
         ''' Sodium current '''
-        return self.gNabar * m**3 * h * (Vm - self.ENa)  # mA/m2
+        return cls.gNabar * m**3 * h * (Vm - cls.ENa)  # mA/m2
 
-    def iKd(self, n, Vm):
+    @classmethod
+    def iKd(cls, n, Vm):
         ''' delayed-rectifier Potassium current '''
-        return self.gKdbar * n**4 * (Vm - self.EK)  # mA/m2
+        return cls.gKdbar * n**4 * (Vm - cls.EK)  # mA/m2
 
-    def iLeak(self, Vm):
+    @classmethod
+    def iLeak(cls, Vm):
         ''' non-specific leakage current '''
-        return self.gLeak * (Vm - self.ELeak)  # mA/m2
+        return cls.gLeak * (Vm - cls.ELeak)  # mA/m2
 
-    def currents(self):
+    @classmethod
+    def currents(cls):
         return {
-            'iNa': lambda Vm, x: self.iNa(x['m'], x['h'], Vm),
-            'iKd': lambda Vm, x: self.iKd(x['n'], Vm),
-            'iLeak': lambda Vm, _: self.iLeak(Vm)
+            'iNa': lambda Vm, x: cls.iNa(x['m'], x['h'], Vm),
+            'iKd': lambda Vm, x: cls.iKd(x['n'], Vm),
+            'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
 
     # ------------------------------ Other methods ------------------------------
