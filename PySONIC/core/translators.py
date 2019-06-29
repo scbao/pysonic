@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 19:56:19
+# @Last Modified time: 2019-06-30 00:36:54
 
 from time import gmtime, strftime
 import re
@@ -19,6 +19,7 @@ class Translator:
 
     lambda_pattern = 'lambda ([a-z_A-Z,0-9\s]*): (.+)'
     func_pattern = '([a-z_A-Z]*).([a-z_A-Z][a-z_A-Z0-9]*)\(([^\)]*)\)'
+    class_attribute_pattern = '(cls).([a-z_A-Z_][a-z_A-Z0-9_]*)'
 
     def __init__(self, verbose=False):
         self.verbose = verbose
@@ -27,7 +28,12 @@ class Translator:
     def getLambdaSource(cls, dict_lambda):
         ''' Get the source code of a lambda function. '''
         # Get lambda source code
-        lambda_source = inspect.getsource(dict_lambda).split(':', 1)[-1]
+        lambda_source = inspect.getsource(dict_lambda)
+        if lambda_source.count(':') == 2:
+            sep_character = ':'
+        else:
+            sep_character = '='
+        lambda_source = lambda_source.split(sep_character, 1)[-1]
 
         # Clean up source from line break, extra spaces and final comma
         lambda_source = re.sub(' +', ' ', lambda_source.replace('\n', ' ')).strip()
@@ -42,6 +48,11 @@ class Translator:
         return m.groups()
 
     @classmethod
+    def getClassAttributeCalls(cls, s):
+        ''' Find attribute calls in expression. '''
+        return re.finditer(cls.class_attribute_pattern, s)
+
+    @classmethod
     def getFuncCalls(cls, s):
         ''' Find function calls in expression. '''
         return re.finditer(cls.func_pattern, s)
@@ -51,7 +62,8 @@ class Translator:
         ''' Define a lambda function that returns a constant. '''
         return lambda _: const
 
-    def getFuncArgs(self, m):
+    @staticmethod
+    def getFuncArgs(m):
         ''' Determine function arguments. '''
         fprefix, fname, fargs = m.groups()
         fcall = '{}({})'.format(fname, fargs)
@@ -60,9 +72,8 @@ class Translator:
         fargs = fargs.split(',')
         return fcall, fname, fargs
 
-    def parseLambdaDict(self, lambda_dict, func_call_replace):
+    def parseLambdaDict(self, lambda_dict, translate_func):
         ''' Parse pclassect function. '''
-
         translated_lambda_str_dict = {}
 
         # For each key and lambda function
@@ -70,18 +81,8 @@ class Translator:
             # Get lambda function source code
             dfunc_args, dfunc_exp = self.getLambdaSource(dfunc)
 
-            # For each internal function call in the lambda expression
-            matches = self.getFuncCalls(dfunc_exp)
-            for m in matches:
-                # Determine function arguments
-                fcall, fname, fargs = self.getFuncArgs(m)
-
-                # Translate function call and replace it in lambda expression
-                new_fcall = func_call_replace(fcall, fname, fargs)
-                dfunc_exp = dfunc_exp.replace(fcall, new_fcall)
-
             # Assign translated expression
-            translated_lambda_str_dict[k] = dfunc_exp
+            translated_lambda_str_dict[k] = translate_func(dfunc_exp)
 
         return translated_lambda_str_dict
 
@@ -89,18 +90,21 @@ class Translator:
 class PointNeuronTranslator(Translator):
 
     suffix_pattern = '[A-Za-z0-9_]+'
+    # Define patterns
+    xinf_pattern = re.compile('^({})inf$'.format(suffix_pattern))
+    taux_pattern = re.compile('^tau({})$'.format(suffix_pattern))
+    alphax_pattern = re.compile('^alpha({})$'.format(suffix_pattern))
+    betax_pattern = re.compile('^beta({})$'.format(suffix_pattern))
 
     def __init__(self, pclass, verbose=False):
         super().__init__(verbose=verbose)
         self.pclass = pclass
 
-        # Define patterns
-        self.xinf_pattern = re.compile('^({})inf$'.format(self.suffix_pattern))
-        self.taux_pattern = re.compile('^tau({})$'.format(self.suffix_pattern))
-        self.alphax_pattern = re.compile('^alpha({})$'.format(self.suffix_pattern))
-        self.betax_pattern = re.compile('^beta({})$'.format(self.suffix_pattern))
 
-        # Initialize effective rates dictionaries
+class SonicTranslator(PointNeuronTranslator):
+
+    def __init__(self, pclass, verbose=False):
+        super().__init__(pclass, verbose=verbose)
         self.eff_rates, self.eff_rates_str = {}, {}
 
     def addToEffRates(self, expr):
@@ -150,23 +154,32 @@ class PointNeuronTranslator(Translator):
         f = eval('lambda cls, lkp, x: {}'.format(expr))
         return lambda *args: f(self.pclass, *args)
 
-    def translateVmFunc(self, fcall, fname, fargs):
-        if len(fargs) == 1 and fargs[0] == 'Vm':
-            # If sole argument is Vm replace function call by lookup retrieval
-            self.addToEffRates(fname)
-            return "lkp['{}']".format(fname)
-        else:
-            # Otherwise, do not replace anything
-            return fcall
+    def translateExpr(self, expr):
+        # For each internal function call in the expression
+        matches = self.getFuncCalls(expr)
+        for m in matches:
+            # Determine function arguments
+            fcall, fname, fargs = self.getFuncArgs(m)
+
+            # Translate function call and replace it in the expression
+            if len(fargs) == 1 and fargs[0] == 'Vm':
+                # If sole argument is Vm replace function call by lookup retrieval
+                self.addToEffRates(fname)
+                new_fcall = "lkp['{}']".format(fname)
+            else:
+                # Otherwise, do not replace anything
+                new_fcall = fcall
+
+            expr = expr.replace(fcall, new_fcall)
+
+        return expr
 
     def parseDerStates(self):
         ''' Parse neuron's derStates method to construct adapted derEffStates and effRates
             methods used for SONIC simulations. '''
 
         # Get dictionary of translated lambda functions expressions for derivative states
-        func = self.pclass.derStates
-        d = func()
-        eff_dstates_str = self.parseLambdaDict(d, self.translateVmFunc)
+        eff_dstates_str = self.parseLambdaDict(self.pclass.derStates(), self.translateExpr)
         eff_dstates_str = {k: v.replace('Vm', "lkp['V']") for k, v in eff_dstates_str.items()}
         if self.verbose:
             print('---------- derEffStates ----------')
@@ -177,62 +190,3 @@ class PointNeuronTranslator(Translator):
 
         # Return dictionary of evaluated functions
         return {k: self.createDerEffStateLambda(v) for k, v in eff_dstates_str.items()}
-
-
-class NmodlTranslator(Translator):
-
-    tabreturn = '\n   '
-    NEURON_protected_vars = ['O', 'C']
-
-    def __init__(self, pclass):
-        self.pclass = pclass
-        super().__init__(verbose=True)
-
-    def parseCurrents(self):
-        ''' Parse neuron's currents method to construct adapted BREAKPOINT block
-            in MOD files. '''
-
-        currents_str = []
-
-        # For each current
-        for k, dfunc in self.pclass.currents().items():
-            # Get current function source code
-            cfunc_args, cfunc_exp = self.getLambdaSource(dfunc)
-
-            # For each internal function call in the derivative function expression
-            matches = self.getFuncCalls(dfunc_exp)
-            for m in matches:
-                # Determine function arguments
-                fcall, fname, fargs = self.getFuncArgs(m)
-
-                # If sole argument is Vm
-                if len(fargs) == 1 and fargs[0] == 'Vm':
-                    # Replace function call by lookup retrieval in expression
-                    dfunc_exp = dfunc_exp.replace(fcall, "lkp['{}']".format(fname))
-
-                    # Add the corresponding effective rate function(s) to the dictionnary
-                    d, dstr = self.createEffRates(fname)
-                    eff_rates.update(d)
-                    eff_rates_str.update(dstr)
-
-            # Replace Vm by lkp['V'] in expression
-            dfunc_exp = dfunc_exp.replace('Vm', "lkp['V']")
-
-            # Create the modified lambda expression and evaluate it
-            eff_dstates[k], eff_dstates_str[k] = self.createDerEffStateLambda(dfunc_exp)
-
-        if self.verbose:
-            print('---------- derEffStates ----------')
-            pprint.PrettyPrinter(indent=4).pprint(eff_dstates_str)
-            print('---------- effRates ----------')
-            pprint.PrettyPrinter(indent=4).pprint(eff_rates_str)
-
-        # Define methods that return dictionaries of effective states derivatives
-        # and effective rates functions
-        def derEffStates():
-            return eff_dstates
-
-        def effRates():
-            return eff_rates
-
-        return derEffStates, effRates

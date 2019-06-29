@@ -22,32 +22,15 @@
 				"__init__.py",
 				"*.c",
 				"*.sh",
-				"*.bat",
-				"Makefile",
 				"*.pkl"
 			],
 			"folder_exclude_patterns":
 			[
-				"docs",
-				"*.egg-info",
-				".ipynb_checkpoints",
-				"_build",
-				"_static",
-				"_templates",
-				"__pycache__"
+				"__pycache__",
+				"*.egg-info"
 			],
 			"path": "."
 		}
 	],
-	"settings":
-	{
-		"anaconda_linting": true,
-		"anaconda_linting_behaviour": "always",
-		"pep257": false,
-		"python_interpreter": "C:\\Users\\lemaire\\Anaconda3\\python.exe",
-		"test_command": "python -m unittest discover",
-		"use_pylint": false,
-		"validate_imports": true
-	},
 	"translate_tabs_to_spaces": true
 }

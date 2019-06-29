@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 19:45:34
+# @Last Modified time: 2019-06-29 23:53:43
 
 import numpy as np
 from ..core import PointNeuron
@@ -128,20 +128,17 @@ class FrankenhaeuserHuxley(PointNeuron):
     @classmethod
     def iNa(cls, m, h, Vm):
         ''' Sodium current '''
-        iNa_drive = cls.ghkDrive(Vm, Z_Na, cls.Nai, cls.Nao, cls.T)  # mC/m3
-        return cls.pNabar * m**2 * h * iNa_drive  # mA/m2
+        return cls.pNabar * m**2 * h * cls.ghkDrive(Vm, Z_Na, cls.Nai, cls.Nao, cls.T)  # mA/m2
 
     @classmethod
     def iKd(cls, n, Vm):
         ''' delayed-rectifier Potassium current '''
-        iKd_drive = cls.ghkDrive(Vm, Z_K, cls.Ki, cls.Ko, cls.T)  # mC/m3
-        return cls.pKbar * n**2 * iKd_drive  # mA/m2
+        return cls.pKbar * n**2 * cls.ghkDrive(Vm, Z_K, cls.Ki, cls.Ko, cls.T)  # mA/m2
 
     @classmethod
     def iP(cls, p, Vm):
         ''' non-specific delayed current '''
-        iP_drive = cls.ghkDrive(Vm, Z_Na, cls.Nai, cls.Nao, cls.T)  # mC/m3
-        return cls.pPbar * p**2 * iP_drive  # mA/m2
+        return cls.pPbar * p**2 * cls.ghkDrive(Vm, Z_Na, cls.Nai, cls.Nao, cls.T)  # mA/m2
 
     @classmethod
     def iLeak(cls, Vm):

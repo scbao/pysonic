@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 19:46:33
+# @Last Modified time: 2019-06-30 01:21:01
 
 import numpy as np
 from scipy.optimize import brentq
@@ -336,9 +336,8 @@ class OtsukaSTN(PointNeuron):
 
     @classmethod
     def derCai(cls, p, q, c, d1, d2, Cai, Vm):
-        iCaT = cls.iCaT(p, q, Vm, Cai)
-        iCaL = cls.iCaL(c, d1, d2, Vm, Cai)
-        return - cls.iCa_to_Cai_rate * (iCaT + iCaL) - Cai / cls.taur_Cai  # M/s
+        return - cls.iCa_to_Cai_rate * (
+            cls.iCaT(p, q, Vm, Cai) + cls.iCaL(c, d1, d2, Vm, Cai)) - Cai / cls.taur_Cai  # M/s
 
     @classmethod
     def derStates(cls):
@@ -373,7 +372,7 @@ class OtsukaSTN(PointNeuron):
 
     @classmethod
     def steadyStates(cls):
-        sstates = {
+        return {
             'a': lambda Vm: cls.ainf(Vm),
             'b': lambda Vm: cls.binf(Vm),
             'c': lambda Vm: cls.cinf(Vm),
@@ -383,12 +382,10 @@ class OtsukaSTN(PointNeuron):
             'n': lambda Vm: cls.ninf(Vm),
             'p': lambda Vm: cls.pinf(Vm),
             'q': lambda Vm: cls.qinf(Vm),
-            'Cai': lambda Vm: cls.Caiinf(
-                cls.pinf(Vm), cls.qinf(Vm), cls.cinf(Vm), cls.d1inf(Vm), Vm)
-        }
-        sstates['d2'] = lambda Vm: cls.d2inf(sstates['Cai'](Vm))
-        sstates['r'] = lambda Vm: cls.rinf(sstates['Cai'](Vm))
-        return sstates
+            'Cai': lambda Vm: cls.Cai0,
+            'd2': lambda Vm: cls.d2inf(cls.Cai0),
+            'r': lambda Vm: cls.rinf(cls.Cai0)
+    }
 
     # def quasiSteadyStates(self, lkp):
     #     qsstates = self.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])

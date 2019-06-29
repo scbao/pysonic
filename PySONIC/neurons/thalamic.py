@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 19:57:33
+# @Last Modified time: 2019-06-30 01:07:30
 
 import numpy as np
 from ..core import PointNeuron
@@ -345,15 +345,10 @@ class ThalamoCortical(Thalamic):
         return cls.k2 / (cls.k2 + cls.k1 * Cai**cls.nCa)
 
     @classmethod
-    def Caiinf(cls, Vm):
-        ''' Steady-state intracellular Calcium concentration '''
-        return cls.Cai_min - cls.taur_Cai * cls.iCa_to_Cai_rate * cls.iCaT(
-            cls.sinf(Vm), cls.uinf(Vm), Vm)  # M
-
-    @classmethod
     def steadyStates(cls):
         sstates = super().steadyStates()
-        sstates['Cai'] = lambda Vm: cls.Caiinf(Vm)
+        sstates['Cai'] = lambda Vm: cls.Cai_min - cls.taur_Cai * cls.iCa_to_Cai_rate * cls.iCaT(
+            cls.sinf(Vm), cls.uinf(Vm), Vm)  # M
         sstates['O'] = lambda Vm: cls.Oinf(sstates['Cai'](Vm), Vm)
         sstates['C'] = lambda Vm: cls.Cinf(sstates['Cai'](Vm), Vm)
         sstates['P0'] = lambda Vm: cls.P0inf(sstates['Cai'](Vm))
