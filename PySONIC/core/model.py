@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 16:43:26
+# @Last Modified time: 2019-07-01 17:39:58
 
 import os
 from functools import wraps
@@ -151,7 +151,7 @@ class Model(metaclass=abc.ABCMeta):
             try:
                 meta_params = [target_args[k] for k in inspect.signature(self.meta).parameters.keys()]
                 meta = self.meta(*meta_params)
-            except:
+            except KeyError:
                 meta = {}
 
             # Add computation time to it
@@ -175,24 +175,32 @@ class Model(metaclass=abc.ABCMeta):
         return wrapper
 
     @staticmethod
-    def checkAmplitude(simfunc):
+    def checkTitrate(argname):
         ''' If no (None) amplitude provided in the list of input parameters,
             perform a titration to find the threshold amplitude and add it to the list.
         '''
-        @wraps(simfunc)
-        def wrapper(self, *args, **kwargs):
-            if None in args:
-                iA = args.index(None)
-                new_args = [x for x in args if x is not None]
-                Athr = self.titrate(*new_args)
-                if np.isnan(Athr):
-                    logger.error('Could not find threshold excitation amplitude')
-                    return None
-                new_args.insert(iA, Athr)
-                args = new_args
-            return simfunc(self, *args, **kwargs)
 
-        return wrapper
+        def wrapper_with_args(simfunc):
+
+            @wraps(simfunc)
+            def wrapper(self, *args, **kwargs):
+                func_args = list(inspect.signature(simfunc).parameters.keys())[1:]
+                iarg = func_args.index(argname)
+                if args[iarg] is None:
+                    new_args = [x for x in args if x is not None]
+                    new_args = list(args[:])
+                    del new_args[iarg]
+                    Athr = self.titrate(*new_args)
+                    if np.isnan(Athr):
+                        logger.error('Could not find threshold excitation amplitude')
+                        return None
+                    new_args.insert(iarg, Athr)
+                    args = new_args
+                return simfunc(self, *args, **kwargs)
+
+            return wrapper
+
+        return wrapper_with_args
 
     def simAndSave(self, outdir, *args):
         ''' Simulate the model and save the results in a specific output directory. '''

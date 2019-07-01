@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 15:48:02
+# @Last Modified time: 2019-07-01 17:34:06
 
 import abc
 import inspect
@@ -459,7 +459,7 @@ class PointNeuron(Model):
         return [dQmdt, *cls.getDerStates(Vm, states_dict)]
 
     @Model.logNSpikes
-    @Model.checkAmplitude
+    @Model.checkTitrate('Astim')
     @Model.addMeta
     def simulate(self, Astim, tstim, toffset, PRF=100., DC=1.0):
         ''' Simulate a specific neuron model for a specific set of electrical parameters,
@@ -574,7 +574,6 @@ class PointNeuron(Model):
         '''
         return not np.isnan(cls.getStabilizationValue(data))
 
-    @debug
     def titrate(self, tstim, toffset, PRF, DC, xfunc=None, Arange=(0., 2 * AMP_UPPER_BOUND_ESTIM)):
         ''' Use a binary search to determine the threshold amplitude needed
             to obtain neural excitation for a given duration, PRF and duty cycle.

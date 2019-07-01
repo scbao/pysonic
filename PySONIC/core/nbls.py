@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 16:38:48
+# @Last Modified time: 2019-07-01 17:34:22
 
 from copy import deepcopy
 import logging
@@ -345,7 +345,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return cls.checkOutputDir(queue, outputdir)
 
     @Model.logNSpikes
-    @Model.checkAmplitude
+    @Model.checkTitrate('Adrive')
     @Model.addMeta
     def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=100., DC=1., fs=1., method='sonic'):
         ''' Simulate the electro-mechanical model for a specific set of US stimulation parameters,
