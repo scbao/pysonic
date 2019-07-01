@@ -101,19 +101,12 @@ pneuron = getPointNeuron('RS')
 nbls = NeuronalBilayerSonophore(a, pneuron)
 
 # Run simulation upon electrical stimulation, and plot results
-elec_args = (Astim, tstim, toffset, PRF, DC)
-data, tcomp = pneuron.simulate(*elec_args)
-logger.info('completed in %.0f ms', tcomp * 1e3)
-scheme_plot = GroupedTimeSeries([(data, pneuron.meta(*elec_args))])
-fig1 = scheme_plot.render()
+data, meta = pneuron.simulate(Astim, tstim, toffset, PRF, DC)
+fig1 = GroupedTimeSeries([(data, meta)]).render()
 
 # Run simulation upon ultrasonic stimulation, and plot results
-US_int_method = 'sonic'  # Integration method ('sonic', 'full' or 'hybrid')
-US_args = (Fdrive, Adrive, tstim, toffset, PRF, DC, US_int_method)
-data, tcomp = nbls.simulate(*US_args)
-logger.info('completed in %.0f ms', tcomp * 1e3)
-scheme_plot = GroupedTimeSeries([(data, nbls.meta(*US_args))])
-fig2 = scheme_plot.render()
+data, meta = nbls.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC)
+fig2 = GroupedTimeSeries([(data, meta)]).render()
 
 plt.show()
 ```

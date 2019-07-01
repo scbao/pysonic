@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:45:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-12 23:13:24
+# @Last Modified time: 2019-07-01 09:38:52
 
 import os
 import numpy as np
@@ -76,7 +76,7 @@ def getSims(outdir, neuron, a, queue):
         print(updated_queue)
         # pneuron = getPointNeuron(neuron)
         # nbls = NeuronalBilayerSonophore(a, pneuron)
-        # batch = Batch(nbls.runAndSave, updated_queue)
+        # batch = Batch(nbls.run, updated_queue)
         # batch.run(mpi=True)
     return fpaths
 

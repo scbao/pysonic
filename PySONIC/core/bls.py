@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 19:58:01
+# @Last Modified time: 2019-07-01 16:13:29
 
 from enum import Enum
 import os
@@ -15,7 +15,7 @@ from scipy.optimize import brentq, curve_fit
 
 from .model import Model
 from .simulators import PeriodicSimulator
-from ..utils import logger, si_format
+from ..utils import logger, si_format, debug
 from ..constants import *
 
 
@@ -684,6 +684,7 @@ class BilayerSonophore(Model):
         # Return derivatives vector
         return [dUdt, dZdt, dngdt]
 
+    @Model.addMeta
     def simulate(self, Fdrive, Adrive, Qm, phi=np.pi, Pm_comp_method=PmCompMethod.predict):
         ''' Simulate until periodic stabilization for a specific set of ultrasound parameters,
             and return output data in a dataframe.
@@ -715,24 +716,20 @@ class BilayerSonophore(Model):
         simulator = PeriodicSimulator(
             lambda t, y: self.derivatives(t, y, Fdrive, Adrive, Qm, phi, Pm_comp_method),
             ivars_to_check=[1, 2])
-        (t, y, stim), tcomp = simulator(y0, dt, 1. / Fdrive, monitor_time=True)
-        logger.debug('completed in %ss', si_format(tcomp, 1))
+        t, y, stim = simulator(y0, dt, 1. / Fdrive)
 
         # Set last stimulation state to zero
         stim[-1] = 0
 
-        # Store output in dataframe
-        data = pd.DataFrame({
+        # Store output in dataframe and return
+        return pd.DataFrame({
             't': t,
             'stimstate': stim,
             'Z': y[:, 1],
             'ng': y[:, 2]
         })
 
-        # Return dataframe and computation time
-        return data, tcomp
-
-    def meta(self, Fdrive, Adrive, Qm):
+    def meta(self, Fdrive, Adrive, Qm, Pm_comp_method):
         return {
             'simkey': self.simkey,
             'a': self.a,
@@ -741,7 +738,8 @@ class BilayerSonophore(Model):
             'Qm0': self.Qm0,
             'Fdrive': Fdrive,
             'Adrive': Adrive,
-            'Qm': Qm
+            'Qm': Qm,
+            'Pm_comp_method': Pm_comp_method
         }
 
     def getCycleProfiles(self, Fdrive, Adrive, Qm):

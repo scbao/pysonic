@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 20:06:46
+# @Last Modified time: 2019-07-01 13:20:37
 
 import abc
 import numpy as np
@@ -91,16 +91,8 @@ class Simulator(metaclass=abc.ABCMeta):
         return 'Should never reach here'
 
     def __call__(self, *args, **kwargs):
-        ''' Call and return compute method, with conditional time monitoring. '''
-        monitor_time = kwargs.pop('monitor_time')
-        if monitor_time:
-            start_time = time.perf_counter()
-        output = self.compute(*args, **kwargs)
-        if monitor_time:
-            end_time = time.perf_counter()
-            run_time = end_time - start_time
-            output = output, run_time
-        return output
+        ''' Call and return compute method '''
+        return self.compute(*args, **kwargs)
 
 
 class PeriodicSimulator(Simulator):

@@ -3,20 +3,20 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 19:44:43
+# @Last Modified time: 2019-07-01 15:48:02
 
 import abc
 import inspect
 import numpy as np
 import pandas as pd
 
-from .batches import createQueue
+from .batches import Batch
 from .model import Model
 from .lookups import SmartLookup
 from .simulators import PWSimulator
 from ..postpro import findPeaks, computeFRProfile
 from ..constants import *
-from ..utils import si_format, logger, plural, binarySearch
+from ..utils import *
 
 
 class PointNeuron(Model):
@@ -219,44 +219,51 @@ class PointNeuron(Model):
         ''' Return a list of names of all state variables of the model. '''
         return list(cls.states.keys())
 
+    @classmethod
     @abc.abstractmethod
-    def derStates(self):
+    def derStates(cls):
         ''' Dictionary of states derivatives functions '''
         raise NotImplementedError
 
-    def getDerStates(self, Vm, states):
+    @classmethod
+    def getDerStates(cls, Vm, states):
         ''' Compute states derivatives array given a membrane potential and states dictionary '''
-        return np.array([self.derStates()[k](Vm, states) for k in self.statesNames()])
+        return np.array([cls.derStates()[k](Vm, states) for k in cls.statesNames()])
 
+    @classmethod
     @abc.abstractmethod
-    def steadyStates(self):
+    def steadyStates(cls):
         ''' Return a dictionary of steady-states functions '''
         raise NotImplementedError
 
-    def getSteadyStates(self, Vm):
+    @classmethod
+    def getSteadyStates(cls, Vm):
         ''' Compute array of steady-states for a given membrane potential '''
-        return np.array([self.steadyStates()[k](Vm) for k in self.statesNames()])
+        return np.array([cls.steadyStates()[k](Vm) for k in cls.statesNames()])
 
-    def getDerEffStates(self, lkp, states):
+    @classmethod
+    def getDerEffStates(cls, lkp, states):
         ''' Compute effective states derivatives array given lookups and states dictionaries. '''
         return np.array([
-            self.derEffStates()[k](lkp, states) for k in self.statesNames()])
+            cls.derEffStates()[k](lkp, states) for k in cls.statesNames()])
 
-    def getEffRates(self, Vm):
+    @classmethod
+    def getEffRates(cls, Vm):
         ''' Compute array of effective rate constants for a given membrane potential vector. '''
-        return {k: np.mean(np.vectorize(v)(Vm)) for k, v in self.effRates().items()}
+        return {k: np.mean(np.vectorize(v)(Vm)) for k, v in cls.effRates().items()}
 
-    def getLookup(self):
+    @classmethod
+    def getLookup(cls):
         ''' Get lookup of membrane potential rate constants interpolated along the neuron's
             charge physiological range. '''
-        Qref = np.arange(*self.Qbounds(), 1e-5)  # C/m2
-        Vref = Qref / self.Cm0 * 1e3  # mV
-        tables = {k: np.vectorize(v)(Vref) for k, v in self.effRates().items()}
+        Qref = np.arange(*cls.Qbounds(), 1e-5)  # C/m2
+        Vref = Qref / cls.Cm0 * 1e3  # mV
+        tables = {k: np.vectorize(v)(Vref) for k, v in cls.effRates().items()}
         return SmartLookup({'Q': Qref}, {**{'V': Vref}, **tables})
 
     @classmethod
     @abc.abstractmethod
-    def currents(self):
+    def currents(cls):
         ''' Dictionary of ionic currents functions (returning current densities in mA/m2) '''
 
     @classmethod
@@ -345,9 +352,10 @@ class PointNeuron(Model):
         ''' Determine bounds of membrane charge physiological range for a given neuron. '''
         return np.array([np.round(cls.Vm0 - 25.0), 50.0]) * cls.Cm0 * 1e-3  # C/m2
 
-    def isVoltageGated(self, state):
+    @classmethod
+    def isVoltageGated(cls, state):
         ''' Determine whether a given state is purely voltage-gated or not.'''
-        return 'alpha{}'.format(state.lower()) in self.rates
+        return 'alpha{}'.format(state.lower()) in cls.rates
 
     @staticmethod
     def qsStates(lkp, states):
@@ -376,8 +384,8 @@ class PointNeuron(Model):
         return cls.qsStates(lkp, cls.statesNames())
         # return {k: func(lkp['Vm']) for k, func in self.steadyStates().items()}
 
-    @staticmethod
-    def simQueue(amps, durations, offsets, PRFs, DCs, outputdir=None):
+    @classmethod
+    def simQueue(cls, amps, durations, offsets, PRFs, DCs, outputdir=None):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
             parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 
@@ -393,16 +401,13 @@ class PointNeuron(Model):
         DCs = np.array(DCs)
         queue = []
         if 1.0 in DCs:
-            queue += createQueue(amps, durations, offsets, min(PRFs), 1.0)
+            queue += Batch.createQueue(amps, durations, offsets, min(PRFs), 1.0)
         if np.any(DCs != 1.0):
-            queue += createQueue(amps, durations, offsets, PRFs, DCs[DCs != 1.0])
+            queue += Batch.createQueue(amps, durations, offsets, PRFs, DCs[DCs != 1.0])
         for item in queue:
             if np.isnan(item[0]):
                 item[0] = None
-        if outputdir is not None:
-            for item in queue:
-                item.insert(0, outputdir)
-        return queue
+        return cls.checkOutputDir(queue, outputdir)
 
     @staticmethod
     def checkInputs(Astim, tstim, toffset, PRF, DC):
@@ -435,7 +440,8 @@ class PointNeuron(Model):
                 raise ValueError('Invalid PRF: {} Hz (PR interval exceeds stimulus duration)'
                                  .format(PRF))
 
-    def derivatives(self, t, y, Cm=None, Iinj=0.):
+    @classmethod
+    def derivatives(cls, t, y, Cm=None, Iinj=0.):
         ''' Compute system derivatives for a given mambrane capacitance and injected current.
 
             :param t: specific instant in time (s)
@@ -445,13 +451,16 @@ class PointNeuron(Model):
             :return: vector of system derivatives at time t
         '''
         if Cm is None:
-            Cm = self.Cm0
+            Cm = cls.Cm0
         Qm, *states = y
         Vm = Qm / Cm * 1e3  # mV
-        states_dict = dict(zip(self.statesNames(), states))
-        dQmdt = (Iinj - self.iNet(Vm, states_dict)) * 1e-3  # A/m2
-        return [dQmdt, *self.getDerStates(Vm, states_dict)]
+        states_dict = dict(zip(cls.statesNames(), states))
+        dQmdt = (Iinj - cls.iNet(Vm, states_dict)) * 1e-3  # A/m2
+        return [dQmdt, *cls.getDerStates(Vm, states_dict)]
 
+    @Model.logNSpikes
+    @Model.checkAmplitude
+    @Model.addMeta
     def simulate(self, Astim, tstim, toffset, PRF=100., DC=1.0):
         ''' Simulate a specific neuron model for a specific set of electrical parameters,
             and return output data in a dataframe.
@@ -480,11 +489,10 @@ class PointNeuron(Model):
         simulator = PWSimulator(
             lambda t, y: self.derivatives(t, y, Iinj=Astim),
             lambda t, y: self.derivatives(t, y, Iinj=0.))
-        (t, y, stim), tcomp = simulator(
-            y0, DT_EFFECTIVE, tstim, toffset, PRF, DC, monitor_time=True)
-        logger.debug('completed in %ss', si_format(tcomp, 1))
+        t, y, stim = simulator(
+            y0, DT_EFFECTIVE, tstim, toffset, PRF, DC)
 
-        # Store output in dataframe
+        # Store output in dataframe and return
         data = pd.DataFrame({
             't': t,
             'stimstate': stim,
@@ -493,13 +501,7 @@ class PointNeuron(Model):
         })
         for i in range(len(self.states)):
             data[self.statesNames()[i]] = y[:, i + 1]
-
-        # Log number of detected spikes
-        nspikes = self.getNSpikes(data)
-        logger.debug('{} spike{} detected'.format(nspikes, plural(nspikes)))
-
-        # Return dataframe and computation time
-        return data, tcomp
+        return data
 
     @classmethod
     def meta(cls, Astim, tstim, toffset, PRF, DC):
@@ -572,6 +574,7 @@ class PointNeuron(Model):
         '''
         return not np.isnan(cls.getStabilizationValue(data))
 
+    @debug
     def titrate(self, tstim, toffset, PRF, DC, xfunc=None, Arange=(0., 2 * AMP_UPPER_BOUND_ESTIM)):
         ''' Use a binary search to determine the threshold amplitude needed
             to obtain neural excitation for a given duration, PRF and duty cycle.

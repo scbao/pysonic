@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-30 01:21:01
+# @Last Modified time: 2019-07-01 12:11:05
 
 import numpy as np
 from scipy.optimize import brentq
@@ -170,6 +170,11 @@ class OtsukaSTN(PointNeuron):
         cls.deff = cls.getEffectiveDepth(cls.Cai0, cls.Vm0)  # m
         cls.iCa_to_Cai_rate = cls.currentToConcentrationRate(Z_Ca, cls.deff)
         return super(OtsukaSTN, cls).__new__(cls)
+
+    def reinit(self, Vm0):
+        self.Vm0 = Vm0
+        self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
+        self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
 
     @classmethod
     def getPltScheme(cls):

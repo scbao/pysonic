@@ -3,16 +3,18 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 13:55:58
+# @Last Modified time: 2019-07-01 15:37:02
 
 import os
 import logging
 import pprint
 import numpy as np
+import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from .utils import Intensity2Pressure, selectDirDialog, OpenFilesDialog, isIterable
 from .neurons import getPointNeuron, CorticalRS
+from .plt import GroupedTimeSeries, CompTimeSeries
 
 DEFAULT_OUTPUT_FOLDER = os.path.abspath(os.path.split(__file__)[0] + '../../../../dump')
 
@@ -271,6 +273,23 @@ class Parser(ArgumentParser):
             args[k] = parse_method(args)
         return args
 
+    @staticmethod
+    def parsePlot(args, output):
+        render_args = {}
+        if 'spikes' in args:
+            render_args['spikes'] = args['spikes']
+        if args['compare']:
+            if args['plot'] == ['all']:
+                logger.error('Specific variables must be specified for comparative plots')
+                return
+            for pltvar in args['plot']:
+                comp_plot = CompTimeSeries(output, pltvar)
+                comp_plot.render(**render_args)
+        else:
+            scheme_plot = GroupedTimeSeries(output, pltscheme=args['pltscheme'])
+            scheme_plot.render(**render_args)
+        plt.show()
+
 
 class TestParser(Parser):
     def __init__(self, valid_subsets):
@@ -323,7 +342,9 @@ class SimParser(Parser):
         super().__init__()
         self.outputdir = outputdir
         self.addMPI()
-        self.addOutputDir()
+        self.addOutputDir(dep_key='save')
+        self.addSave()
+        self.addCompare()
 
     def parse(self):
         args = super().parse()
@@ -442,6 +463,10 @@ class MechSimParser(SimParser):
             args[key] = self.parse2array(args, key, factor=self.factors[key])
         return args
 
+    @staticmethod
+    def parseSimInputs(args):
+        return [args[k] for k in ['freq', 'amp', 'charge']]
+
 
 class PWSimParser(SimParser):
     ''' Generic parser interface to run PW patterned simulations from the command line. '''
@@ -515,6 +540,10 @@ class PWSimParser(SimParser):
             args[key] = self.parse2array(args, key, factor=self.factors[key])
         return args
 
+    @staticmethod
+    def parseSimInputs(args):
+        return [args[k] for k in ['amp', 'tstim', 'toffset', 'PRF', 'DC']]
+
 
 class EStimParser(PWSimParser):
     ''' Parser to run E-STIM simulations from the command line. '''
@@ -581,3 +610,11 @@ class AStimParser(PWSimParser, MechSimParser):
         for k in ['Cm0', 'Qm0', 'embedding', 'charge']:
             del args[k]
         return args
+
+    @staticmethod
+    def parseSimInputs(args):
+        return [args['freq']] + PWSimParser.parseSimInputs(args) + [args[k] for k in ['fs', 'method']]
+
+
+
+

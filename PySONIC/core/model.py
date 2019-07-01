@@ -3,17 +3,18 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 20:00:42
+# @Last Modified time: 2019-07-01 16:43:26
 
 import os
+from functools import wraps
 from inspect import signature, getdoc
 import pickle
 import abc
 import inspect
 import numpy as np
 
-from .batches import createQueue
-from ..utils import logger, loadData
+from .batches import Batch
+from ..utils import logger, loadData, timer, si_format, plural
 
 
 class Model(metaclass=abc.ABCMeta):
@@ -91,13 +92,21 @@ class Model(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @staticmethod
-    def simQueue(*args, outputdir=None):
-        ''' Create a simulation queue from a combination of simulation parameters. '''
-        queue = createQueue(*args)
+    def checkOutputDir(queue, outputdir):
+        ''' Check if an outputdir is provided in input arguments, and if so, add it as
+            the first element of each item in the returned queue.
+        '''
         if outputdir is not None:
             for item in queue:
                 item.insert(0, outputdir)
+        else:
+            if len(queue) > 5:
+                logger.warning('Running more than 5 simulations without file saving')
         return queue
+
+    @classmethod
+    def simQueue(cls, *args, outputdir=None):
+        return cls.checkOutputDir(Batch.createQueue(*args), outputdir)
 
     @staticmethod
     @abc.abstractmethod
@@ -124,28 +133,70 @@ class Model(metaclass=abc.ABCMeta):
         ''' Return an informative dictionary about model and simulation parameters. '''
         raise NotImplementedError
 
-    def checkAmplitude(self, args):
+    @staticmethod
+    def addMeta(simfunc):
+        ''' Add an informative dictionary about model and simulation parameters to simulation output '''
+
+        @wraps(simfunc)
+        def wrapper(self, *args, **kwargs):
+            data, tcomp = timer(simfunc)(self, *args, **kwargs)
+            logger.debug('completed in %ss', si_format(tcomp, 1))
+
+            # Add keyword arguments from simfunc signature if not provided
+            bound_args = inspect.signature(simfunc).bind(self, *args, **kwargs)
+            bound_args.apply_defaults()
+            target_args = dict(bound_args.arguments)
+
+            # Try to retrieve meta information
+            try:
+                meta_params = [target_args[k] for k in inspect.signature(self.meta).parameters.keys()]
+                meta = self.meta(*meta_params)
+            except:
+                meta = {}
+
+            # Add computation time to it
+            meta['tcomp'] = tcomp
+
+            # Return data with meta dict
+            return data, meta
+
+        return wrapper
+
+    @staticmethod
+    def logNSpikes(simfunc):
+        ''' Log number of detected spikes on charge profile of simulation output. '''
+        @wraps(simfunc)
+        def wrapper(self, *args, **kwargs):
+            data, meta = simfunc(self, *args, **kwargs)
+            nspikes = self.getNSpikes(data)
+            logger.debug('{} spike{} detected'.format(nspikes, plural(nspikes)))
+            return data, meta
+
+        return wrapper
+
+    @staticmethod
+    def checkAmplitude(simfunc):
         ''' If no (None) amplitude provided in the list of input parameters,
             perform a titration to find the threshold amplitude and add it to the list.
         '''
-        if None in args:
-            iA = args.index(None)
-            new_args = [x for x in args if x is not None]
-            Athr = self.titrate(*new_args)
-            if np.isnan(Athr):
-                logger.error('Could not find threshold excitation amplitude')
-                return None
-            new_args.insert(iA, Athr)
-            args = new_args
-        return args
+        @wraps(simfunc)
+        def wrapper(self, *args, **kwargs):
+            if None in args:
+                iA = args.index(None)
+                new_args = [x for x in args if x is not None]
+                Athr = self.titrate(*new_args)
+                if np.isnan(Athr):
+                    logger.error('Could not find threshold excitation amplitude')
+                    return None
+                new_args.insert(iA, Athr)
+                args = new_args
+            return simfunc(self, *args, **kwargs)
 
-    def runAndSave(self, outdir, *args):
-        ''' Simulate the model for specific parameters and save the results
-            in a specific output directory. '''
-        args = self.checkAmplitude(args)
-        data, tcomp = self.simulate(*args)
-        meta = self.meta(*args)
-        meta['tcomp'] = tcomp
+        return wrapper
+
+    def simAndSave(self, outdir, *args):
+        ''' Simulate the model and save the results in a specific output directory. '''
+        data, meta = self.simulate(*args)
         fpath = '{}/{}.pkl'.format(outdir, self.filecode(*args))
         with open(fpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': data}, fh)
@@ -161,5 +212,5 @@ class Model(metaclass=abc.ABCMeta):
         '''
         fpath = '{}/{}.pkl'.format(outdir, self.filecode(*args))
         if not os.path.isfile(fpath):
-            self.runAndSave(outdir, *args)
+            self.simAndSave(outdir, *args)
         return loadData(fpath)

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-30 13:01:32
+# @Last Modified time: 2019-06-30 13:14:28
 
 from time import gmtime, strftime
 import re
@@ -70,6 +70,7 @@ class Translator:
         if fprefix:
             fcall = '{}.{}'.format(fprefix, fcall)
         fargs = fargs.split(',')
+        fargs = [x.strip() for x in fargs]
         return fcall, fname, fargs
 
     def parseLambdaDict(self, lambda_dict, translate_func):

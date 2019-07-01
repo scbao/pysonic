@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-26 13:51:06
+# @Last Modified time: 2019-07-01 10:10:45
 
 ''' Utility functions used in simulations '''
 
@@ -127,20 +127,20 @@ class Batch:
             outputs = [self.func(*params) for params in self.queue]
         return outputs
 
+    @staticmethod
+    def createQueue(*dims):
+        ''' Create a serialized 2D array of all parameter combinations for a series of individual
+            parameter sweeps.
 
-def createQueue(*dims):
-    ''' Create a serialized 2D array of all parameter combinations for a series of individual
-        parameter sweeps.
-
-        :param dims: list of lists (or 1D arrays) of input parameters
-        :return: list of parameters (list) for each simulation
-    '''
-    ndims = len(dims)
-    dims_in = [dims[1], dims[0]]
-    inds_out = [1, 0]
-    if ndims > 2:
-        dims_in += dims[2:]
-        inds_out += list(range(2, ndims))
-    queue = np.stack(np.meshgrid(*dims_in), -1).reshape(-1, ndims)
-    queue = queue[:, inds_out]
-    return queue.tolist()
+            :param dims: list of lists (or 1D arrays) of input parameters
+            :return: list of parameters (list) for each simulation
+        '''
+        ndims = len(dims)
+        dims_in = [dims[1], dims[0]]
+        inds_out = [1, 0]
+        if ndims > 2:
+            dims_in += dims[2:]
+            inds_out += list(range(2, ndims))
+        queue = np.stack(np.meshgrid(*dims_in), -1).reshape(-1, ndims)
+        queue = queue[:, inds_out]
+        return queue.tolist()

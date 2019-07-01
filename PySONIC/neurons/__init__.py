@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 21:15:23
+# @Last Modified time: 2019-07-01 11:06:23
 
 from types import MethodType
 import inspect
@@ -43,7 +43,7 @@ def create_derEffStates(eff_dstates):
 
 
 def create_effRates(eff_rates):
-    return lambda: eff_rates
+    return lambda self: eff_rates
 
 
 for pname, pclass in getNeuronsDict().items():
