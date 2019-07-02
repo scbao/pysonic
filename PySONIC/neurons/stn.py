@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 12:11:05
+# @Last Modified time: 2019-07-02 23:50:34
 
 import numpy as np
 from scipy.optimize import brentq
@@ -444,8 +444,7 @@ class OtsukaSTN(PointNeuron):
             'iKd': lambda Vm, x: cls.iKd(x['n'], Vm),
             'iA': lambda Vm, x: cls.iA(x['a'], x['b'], Vm),
             'iCaT': lambda Vm, x: cls.iCaT(x['p'], x['q'], Vm, x['Cai']),
-            'iCaL': lambda Vm, x: cls.iCaL(
-                x['c'], x['d1'], x['d2'], Vm, x['Cai']),
+            'iCaL': lambda Vm, x: cls.iCaL(x['c'], x['d1'], x['d2'], Vm, x['Cai']),
             'iKCa': lambda Vm, x: cls.iKCa(x['r'], Vm),
             'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }

@@ -8,6 +8,7 @@
 			"shell_cmd": "\"python\" -u \"$file\""
 		}
 	],
+	"conda_environment": "C:\\Users\\lemaire\\Anaconda3",
 	"folders":
 	[
 		{

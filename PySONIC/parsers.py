@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 15:37:02
+# @Last Modified time: 2019-07-02 18:55:02
 
 import os
 import logging
@@ -227,7 +227,7 @@ class Parser(ArgumentParser):
             return None
         try:
             if args[key] is not None:
-                return args[key]
+                return os.path.abspath(args[key])
             else:
                 return selectDirDialog(title=title)
         except ValueError:

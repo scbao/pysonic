@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-30 13:14:28
+# @Last Modified time: 2019-07-03 01:18:49
 
 from time import gmtime, strftime
 import re
@@ -36,7 +36,7 @@ class Translator:
         lambda_source = lambda_source.split(sep_character, 1)[-1]
 
         # Clean up source from line break, extra spaces and final comma
-        lambda_source = re.sub(' +', ' ', lambda_source.replace('\n', ' ')).strip()
+        lambda_source = re.sub(' +', ' ', lambda_source.replace('\n', '')).strip().replace('( ', '(')
         if lambda_source[-1] == ',':
             lambda_source = lambda_source[:-1]
 
@@ -55,7 +55,24 @@ class Translator:
     @classmethod
     def getFuncCalls(cls, s):
         ''' Find function calls in expression. '''
+        # TODO: improve function parsing to ensure matching parentheses
         return re.finditer(cls.func_pattern, s)
+
+    @staticmethod
+    def getClosure(s, push_char='(', pop_char=')'):
+        closure = ''
+        balance = 1
+        for c in s:
+            if c == push_char:
+                balance += 1
+            elif c == pop_char:
+                balance -= 1
+            if balance == 0:
+                break
+            closure += c
+        if balance > 0:
+            raise ValueError('closure not found')
+        return closure
 
     @staticmethod
     def defineConstLambda(const):
