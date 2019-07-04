@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 11:06:23
+# @Last Modified time: 2019-07-04 22:04:59
 
 from types import MethodType
 import inspect
@@ -47,8 +47,12 @@ def create_effRates(eff_rates):
 
 
 for pname, pclass in getNeuronsDict().items():
-    translator = SonicTranslator(pclass)
+    translator = SonicTranslator(pclass, verbose=False)
     eff_dstates = translator.parseDerStates()
     pclass.derEffStates = MethodType(create_derEffStates(eff_dstates), pclass)
     pclass.effRates = MethodType(create_effRates(translator.eff_rates), pclass)
     pclass.rates = list(translator.eff_rates.keys())
+    pclass.alphax_list = set(translator.alphax_list)
+    pclass.betax_list = set(translator.betax_list)
+    pclass.taux_list = set(translator.taux_list)
+    pclass.xinf_list = set(translator.xinf_list)
