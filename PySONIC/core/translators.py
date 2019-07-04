@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-03 01:18:49
+# @Last Modified time: 2019-07-04 17:36:23
 
 from time import gmtime, strftime
 import re
@@ -17,9 +17,8 @@ class Translator:
     ''' Translate PointNeuron standard methods into methods
     adapted for SONIC simulations'''
 
-    lambda_pattern = 'lambda ([a-z_A-Z,0-9\s]*): (.+)'
-    func_pattern = '([a-z_A-Z]*).([a-z_A-Z][a-z_A-Z0-9]*)\(([^\)]*)\)'
-    class_attribute_pattern = '(cls).([a-z_A-Z_][a-z_A-Z0-9_]*)'
+    lambda_pattern = r'lambda ([a-zA-Z0-9_,\s]*): (.+)'
+    func_pattern = r'([a-z_A-Z]*).([a-zA-Z_][a-z_A-Z0-9]*)\(([^\)]*)\)'
 
     def __init__(self, verbose=False):
         self.verbose = verbose
@@ -47,10 +46,15 @@ class Translator:
                 lambda_source))
         return m.groups()
 
-    @classmethod
-    def getClassAttributeCalls(cls, s):
-        ''' Find attribute calls in expression. '''
-        return re.finditer(cls.class_attribute_pattern, s)
+    @staticmethod
+    def getIndent(level):
+        ''' Return print indent corresponding to parsing level. '''
+        return ''.join(['   '] * level)
+
+    @staticmethod
+    def getDocstring(func):
+        ''' Get formatted function docstring. '''
+        return inspect.getdoc(func).replace('\n', ' ').strip()
 
     @classmethod
     def getFuncCalls(cls, s):
@@ -60,6 +64,8 @@ class Translator:
 
     @staticmethod
     def getClosure(s, push_char='(', pop_char=')'):
+        ''' Get the closure of a given opening character, i.e. all the substring between
+            the opening character and its matching closing character. '''
         closure = ''
         balance = 1
         for c in s:

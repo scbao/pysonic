@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-03 00:59:39
+# @Last Modified time: 2019-07-03 17:03:33
 
 import numpy as np
 from ..core import PointNeuron
@@ -379,6 +379,6 @@ class ThalamoCortical(Thalamic):
     @classmethod
     def currents(cls):
         return {**super().currents(), **{
-            'iKLeak': lambda Vm, states: cls.iKLeak(Vm),
-            'iH': lambda Vm, states: cls.iH(states['O'], states['C'], Vm)
+            'iKLeak': lambda Vm, x: cls.iKLeak(Vm),
+            'iH': lambda Vm, x: cls.iH(x['O'], x['C'], Vm)
         }}
