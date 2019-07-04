@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-03 17:03:33
+# @Last Modified time: 2019-07-04 23:11:10
 
 import numpy as np
 from ..core import PointNeuron
@@ -336,8 +336,7 @@ class ThalamoCortical(Thalamic):
     @classmethod
     def Oinf(cls, Cai, Vm):
         ''' Steady-state O-gate open-probability '''
-        return cls.k4 / (cls.k3 * (1 - cls.P0inf(Cai)) + cls.k4 * (
-            1 + cls.betao(Vm) / cls.alphao(Vm)))
+        return cls.k4 / (cls.k3 * (1 - cls.P0inf(Cai)) + cls.k4 * (1 + cls.betao(Vm) / cls.alphao(Vm)))
 
     @classmethod
     def P0inf(cls, Cai):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-02 23:50:34
+# @Last Modified time: 2019-07-04 23:12:43
 
 import numpy as np
 from scipy.optimize import brentq
@@ -341,8 +341,8 @@ class OtsukaSTN(PointNeuron):
 
     @classmethod
     def derCai(cls, p, q, c, d1, d2, Cai, Vm):
-        return - cls.iCa_to_Cai_rate * (
-            cls.iCaT(p, q, Vm, Cai) + cls.iCaL(c, d1, d2, Vm, Cai)) - Cai / cls.taur_Cai  # M/s
+        iCa_tot = cls.iCaT(p, q, Vm, Cai) + cls.iCaL(c, d1, d2, Vm, Cai)
+        return - cls.iCa_to_Cai_rate * iCa_tot - Cai / cls.taur_Cai  # M/s
 
     @classmethod
     def derStates(cls):

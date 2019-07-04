@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-04 22:05:17
+# @Last Modified time: 2019-07-04 22:49:54
 
 from time import gmtime, strftime
 import re
@@ -172,21 +172,6 @@ class Translator:
                     code_lines.append(stripped_line)
         return code_lines
 
-    @classmethod
-    def getFuncReturnExpr(cls, func):
-        ''' Get function return expression merged in one line and stripped from comments. '''
-
-        # Get function source code
-        code_lines = cls.getFuncSource(func)
-
-        # If code contains multiple statements, raise error
-        if len(code_lines) > 1 and not code_lines[0].startswith('return'):
-            raise ValueError('cannot parse multi-statement function {}'.format(fname))
-
-        # Join return statement lines and remove comments
-        fexpr = ''.join(code_lines).split('return ', 1)[1]
-        return cls.removeLineComments(fexpr)
-
     @staticmethod
     def defineConstLambda(const):
         ''' Define a lambda function that returns a constant. '''
@@ -229,6 +214,7 @@ class PointNeuronTranslator(Translator):
 
     # Neuron-specific regexp patterns
     conductance_pattern = re.compile('(g)([A-Za-z0-9_]*)(Leak|bar)')
+    permeability_pattern = re.compile('(p)([A-Za-z0-9_]*)(bar)')
     reversal_potential_pattern = re.compile('(E)([A-Za-z0-9_]+)')
     time_constant_pattern = re.compile('(tau)([A-Za-z0-9_]+)')
     rate_constant_pattern = re.compile('(k)([0-9_]+)')
