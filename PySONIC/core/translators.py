@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-04 22:49:54
+# @Last Modified time: 2019-07-05 04:39:49
 
 from time import gmtime, strftime
 import re
@@ -76,8 +76,9 @@ class Translator:
             sep_character = '='
         lambda_source = lambda_source.split(sep_character, 1)[-1]
 
-        # Clean up source from line break, extra spaces and final comma
+        # Clean up source from
         lambda_source = re.sub(' +', ' ', lambda_source.replace('\n', '')).strip().replace('( ', '(')
+        lambda_source = cls.removeLineComments(lambda_source)
         if lambda_source[-1] == ',':
             lambda_source = lambda_source[:-1]
 
@@ -198,6 +199,7 @@ class Translator:
             dfunc_args, dfunc_exp = self.getLambdaSource(dfunc)
 
             # Assign translated expression
+            self.current_key = k
             translated_lambda_str_dict[k] = translate_func(dfunc_exp)
 
         return translated_lambda_str_dict
@@ -219,6 +221,7 @@ class PointNeuronTranslator(Translator):
     time_constant_pattern = re.compile('(tau)([A-Za-z0-9_]+)')
     rate_constant_pattern = re.compile('(k)([0-9_]+)')
     ion_concentration_pattern = re.compile('(Cai|Nai)([A-Za-z0-9_]*)')
+    current_to_molar_rate_pattern = re.compile('(current_to_molar_rate)([A-Za-z0-9_]+)')
 
     def __init__(self, pclass, verbose=False):
         super().__init__(verbose=verbose)

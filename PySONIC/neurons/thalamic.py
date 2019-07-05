@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-04 23:11:10
+# @Last Modified time: 2019-07-05 03:59:23
 
 import numpy as np
 from ..core import PointNeuron
@@ -231,14 +231,14 @@ class ThalamoCortical(Thalamic):
         'n': 'iKd gate',
         's': 'iCaT activation gate',
         'u': 'iCaT inactivation gate',
-        'C': 'iH gate closed state',
-        'O': 'iH gate open state',
         'Cai': 'submembrane Ca2+ concentration (M)',
         'P0': 'proportion of unbound iH regulating factor',
+        'C': 'iH gate closed state',
+        'O': 'iH gate open state',
     }
 
     def __new__(cls):
-        cls.iCa_to_Cai_rate = cls.currentToConcentrationRate(Z_Ca, cls.deff)
+        cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
         return super(ThalamoCortical, cls).__new__(cls)
 
     @staticmethod
@@ -318,12 +318,12 @@ class ThalamoCortical(Thalamic):
     @classmethod
     def derStates(cls):
         return {**super().derStates(), **{
+            'Cai': lambda Vm, x: ((cls.Cai_min - x['Cai']) / cls.taur_Cai -
+                                  cls.current_to_molar_rate_Ca * cls.iCaT(x['s'], x['u'], Vm)),  # M/s
+            'P0': lambda _, x: cls.k2 * (1 - x['P0']) - cls.k1 * x['P0'] * x['Cai']**cls.nCa,
             'C': lambda Vm, x: cls.betao(Vm) * x['O'] - cls.alphao(Vm) * x['C'],
             'O': lambda Vm, x: (cls.alphao(Vm) * x['C'] - cls.betao(Vm) * x['O'] -
                                 cls.k3 * x['O'] * (1 - x['P0']) + cls.k4 * (1 - x['O'] - x['C'])),
-            'P0': lambda _, x: cls.k2 * (1 - x['P0']) - cls.k1 * x['P0'] * x['Cai']**cls.nCa,
-            'Cai': lambda Vm, x: ((cls.Cai_min - x['Cai']) / cls.taur_Cai -
-                                  cls.iCa_to_Cai_rate * cls.iCaT(x['s'], x['u'], Vm))  # M/s
         }}
 
     # ------------------------------ Steady states ------------------------------
@@ -346,11 +346,11 @@ class ThalamoCortical(Thalamic):
     @classmethod
     def steadyStates(cls):
         sstates = super().steadyStates()
-        sstates['Cai'] = lambda Vm: cls.Cai_min - cls.taur_Cai * cls.iCa_to_Cai_rate * cls.iCaT(
+        sstates['Cai'] = lambda Vm: cls.Cai_min - cls.taur_Cai * cls.current_to_molar_rate_Ca * cls.iCaT(
             cls.sinf(Vm), cls.uinf(Vm), Vm)  # M
-        sstates['O'] = lambda Vm: cls.Oinf(sstates['Cai'](Vm), Vm)
-        sstates['C'] = lambda Vm: cls.Cinf(sstates['Cai'](Vm), Vm)
         sstates['P0'] = lambda Vm: cls.P0inf(sstates['Cai'](Vm))
+        sstates['C'] = lambda Vm: cls.Cinf(sstates['Cai'](Vm), Vm)
+        sstates['O'] = lambda Vm: cls.Oinf(sstates['Cai'](Vm), Vm)
         return sstates
 
     # def quasiSteadyStates(self, lkp):

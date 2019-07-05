@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-04 23:12:43
+# @Last Modified time: 2019-07-05 03:49:04
 
 import numpy as np
 from scipy.optimize import brentq
@@ -168,13 +168,8 @@ class OtsukaSTN(PointNeuron):
 
     def __new__(cls):
         cls.deff = cls.getEffectiveDepth(cls.Cai0, cls.Vm0)  # m
-        cls.iCa_to_Cai_rate = cls.currentToConcentrationRate(Z_Ca, cls.deff)
+        cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
         return super(OtsukaSTN, cls).__new__(cls)
-
-    def reinit(self, Vm0):
-        self.Vm0 = Vm0
-        self.deff = self.getEffectiveDepth(self.Cai0, self.Vm0)  # m
-        self.iCa_to_Cai_rate = self.currentToConcentrationRate(Z_Ca, self.deff)
 
     @classmethod
     def getPltScheme(cls):
@@ -342,7 +337,7 @@ class OtsukaSTN(PointNeuron):
     @classmethod
     def derCai(cls, p, q, c, d1, d2, Cai, Vm):
         iCa_tot = cls.iCaT(p, q, Vm, Cai) + cls.iCaL(c, d1, d2, Vm, Cai)
-        return - cls.iCa_to_Cai_rate * iCa_tot - Cai / cls.taur_Cai  # M/s
+        return - cls.current_to_molar_rate_Ca * iCa_tot - Cai / cls.taur_Cai  # M/s
 
     @classmethod
     def derStates(cls):
