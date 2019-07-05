@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-05 04:39:49
+# @Last Modified time: 2019-07-05 13:38:51
 
 from time import gmtime, strftime
 import re
@@ -220,8 +220,9 @@ class PointNeuronTranslator(Translator):
     reversal_potential_pattern = re.compile('(E)([A-Za-z0-9_]+)')
     time_constant_pattern = re.compile('(tau)([A-Za-z0-9_]+)')
     rate_constant_pattern = re.compile('(k)([0-9_]+)')
-    ion_concentration_pattern = re.compile('(Cai|Nai)([A-Za-z0-9_]*)')
+    ion_concentration_pattern = re.compile('(Ca|Na|K)(i|o)([A-Za-z0-9_]*)')
     current_to_molar_rate_pattern = re.compile('(current_to_molar_rate)([A-Za-z0-9_]+)')
+    temperature_pattern = re.compile('^(T)$')
 
     def __init__(self, pclass, verbose=False):
         super().__init__(verbose=verbose)
