@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 20:34:54
+# @Last Modified time: 2019-07-15 21:17:51
 
 import inspect
 import logging
@@ -45,7 +45,7 @@ def plotVarQSSDynamics(pneuron, a, Fdrive, Adrive, charges, varname, varrange, f
 
     # Get dictionary of charge and amplitude dependent QSS variables
     nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
-    _, Qref, lookups, QSS = nbls.quasiSteadyStates(
+    _, Qref, lookups, QSS = nbls.getQuasiSteadyStates(
         Fdrive, amps=Adrive, charges=charges, squeeze_output=True)
     df = QSS
     df['Vm'] = lookups['V']
@@ -115,7 +115,7 @@ def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):
 
     # Compute neuron-specific charge and amplitude dependent QS states at this amplitude
     nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
-    lookups, QSS = nbls.quasiSteadyStates(Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
+    lookups, QSS = nbls.getQuasiSteadyStates(Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
     Qref = lookups.refs['Q']
     Vmeff = lookups['V']
 
@@ -220,7 +220,7 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
     nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
 
     # Get reference dictionaries for zero amplitude
-    lookups0, QSS0 = nbls.quasiSteadyStates(Fdrive, amps=0., squeeze_output=True)
+    lookups0, QSS0 = nbls.getQuasiSteadyStates(Fdrive, amps=0., squeeze_output=True)
     Vmeff0 = lookups0['V']
     Qref = lookups0.refs['Q']
     df0 = QSS0.tables
@@ -275,7 +275,7 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
     norm, sm = setNormalizer(mymap, (zref.min(), zref.max()), zscale)
 
     # Get amplitude-dependent QSS dictionary
-    lookups, QSS = nbls.quasiSteadyStates(
+    lookups, QSS = nbls.getQuasiSteadyStates(
         Fdrive, amps=amps, DCs=DC, squeeze_output=True)
     df = QSS.tables
     df['Vm'] = lookups['V']
@@ -316,7 +316,7 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
 def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=logging.INFO):
 
     # Compute 2D QSS charge variation array
-    lkp2d, QSS = nbls.quasiSteadyStates(
+    lkp2d, QSS = nbls.getQuasiSteadyStates(
         Fdrive, amps=amps, DCs=DC, squeeze_output=True)
     dQdt = -nbls.pneuron.iNet(lkp2d['V'], QSS.tables)  # mA/m2
 

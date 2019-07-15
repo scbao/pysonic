@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 21:09:16
+# @Last Modified time: 2019-07-15 21:38:23
 
 from copy import deepcopy
 import logging
@@ -433,7 +433,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             [Fdrive, tstim, toffset, PRF, DC, fs, method], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM
         )
 
-    def quasiSteadyStates(self, Fdrive, amps=None, charges=None, DCs=1.0, squeeze_output=False):
+    def getQuasiSteadyStates(self, Fdrive, amps=None, charges=None, DCs=1.0, squeeze_output=False):
         ''' Compute the quasi-steady state values of the neuron's gating variables
             for a combination of US amplitudes, charge densities and duty cycles,
             at a specific US frequency.
@@ -461,7 +461,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         QSS = {k: np.empty(lkp.dims()) for k in self.pneuron.statesNames()}
         for iA in range(nA):
             for iDC in range(nDC):
-                QSS_1D = self.pneuron.quasiSteadyStates({k: v[iA, iDC] for k, v in lkp.items()})
+                lkp1d = {k: v[iA, iDC] for k, v in lkp.items()}
+                QSS_1D = {k: v(lkp1d) for k, v in self.pneuron.quasiSteadyStates().items()}
                 for k in QSS.keys():
                     QSS[k][iA, iDC] = QSS_1D[k]
         QSS = SmartLookup(lkp.refs, QSS)
@@ -487,7 +488,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param DC: duty cycle (-)
             :return: net membrane current (mA/m2)
         '''
-        lkp, QSS = self.quasiSteadyStates(
+        lkp, QSS = self.getQuasiSteadyStates(
             Fdrive, amps=Adrive, charges=Qm, DCs=DC, squeeze_output=True)
         return self.pneuron.iNet(lkp['V'], QSS)  # mA/m2
 
@@ -517,8 +518,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         for i, Qm in enumerate(SFP_candidates):
 
             # Re-compute QSS
-            *_, QSS_FP = self.quasiSteadyStates(Fdrive, amps=Adrive, charges=Qm, DCs=DC,
-                                                squeeze_output=True)
+            *_, QSS_FP = self.getQuasiSteadyStates(Fdrive, amps=Adrive, charges=Qm, DCs=DC,
+                                                   squeeze_output=True)
 
             # Approximate the system's Jacobian matrix at the fixed-point and compute its eigenvalues
             J = jacobian([Qm, *QSS_FP.tables.values()], dfunc)
@@ -538,7 +539,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return SFPs, UFPs
 
     def isStableQSS(self, Fdrive, Adrive, DC):
-            lookups, QSS = self.quasiSteadyStates(
+            lookups, QSS = self.getQuasiSteadyStates(
                 Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
             dQdt = -self.pneuron.iNet(lookups['V'], QSS.tables)  # mA/m2
             SFPs, _ = self.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 17:34:06
+# @Last Modified time: 2019-07-15 21:38:13
 
 import abc
 import inspect
@@ -358,31 +358,24 @@ class PointNeuron(Model):
         return 'alpha{}'.format(state.lower()) in cls.rates
 
     @staticmethod
-    def qsStates(lkp, states):
-        ''' Compute a collection of quasi steady states using the standard
-            xinf = ax / (ax + Bx) equation.
+    def qsState(x):
+        ''' Create a function that returns a given quasi steady state given a lookup table,
+            using the standard xinf = ax / (ax + Bx) equation.
 
-            :param lkp: dictionary of 1D vectors of "effective" coefficients
-             over the charge domain, for specific frequency and amplitude values.
-            :return: dictionary of quasi-steady states
+            :param x: state name.
+            :return: quasi-steady state function
         '''
-        return {
-            x: lkp['alpha{}'.format(x)] / (lkp['alpha{}'.format(x)] + lkp['beta{}'.format(x)])
-            for x in states
-        }
+        return lambda lkp: lkp[f'alpha{x}'] / (lkp[f'alpha{x}'] + lkp[f'beta{x}'])
 
     @classmethod
-    def quasiSteadyStates(cls, lkp):
-        ''' Compute the quasi-steady states of a neuron for a range of membrane charge densities,
-            based on 1-dimensional lookups interpolated at a given sonophore diameter, US frequency,
-            US amplitude and duty cycle.
+    def quasiSteadyStates(cls):
+        ''' Create a dictionary of functions computing quasi-steady states of a neuron
+            for a range of membrane charge densities, based on 1-dimensional lookups
+            interpolated at a given sonophore diameter, US frequency, US amplitude and duty cycle.
 
-            :param lkp: dictionary of 1D vectors of "effective" coefficients
-             over the charge domain, for specific frequency and amplitude values.
-            :return: dictionary of quasi-steady states
+            :return: dictionary of quasi-steady state functions
         '''
-        return cls.qsStates(lkp, cls.statesNames())
-        # return {k: func(lkp['Vm']) for k, func in self.steadyStates().items()}
+        return {k: cls.qsState(k) for k in cls.statesNames()}
 
     @classmethod
     def simQueue(cls, amps, durations, offsets, PRFs, DCs, outputdir=None):
