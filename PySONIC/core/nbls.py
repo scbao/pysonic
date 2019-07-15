@@ -3,13 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 20:17:30
+# @Last Modified time: 2019-07-15 21:09:16
 
 from copy import deepcopy
 import logging
 import numpy as np
 import pandas as pd
-from scipy.integrate import solve_ivp
 
 from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator
 from .bls import BilayerSonophore
@@ -492,82 +491,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             Fdrive, amps=Adrive, charges=Qm, DCs=DC, squeeze_output=True)
         return self.pneuron.iNet(lkp['V'], QSS)  # mA/m2
 
-    def evaluateStability(self, Qm0, states0, lkp):
-        ''' Integrate the effective differential system from a given starting point,
-            until clear convergence or clear divergence is found.
-
-            :param Qm0: initial membrane charge density (C/m2)
-            :param states0: dictionary of initial states values
-            :param lkp: dictionary of 1D data points of "effective" coefficients
-             over the charge domain, for specific frequency and amplitude values.
-            :return: boolean indicating convergence state
-        '''
-
-        # Initialize y0 vector
-        t0 = 0.
-        y0 = np.array([Qm0] + list(states0.values()))
-
-        # Initialize simulator and compute solution
-        # simulator = PeriodicSimulator(
-        #     lambda t, y: self.effDerivatives(t, y, lkp),
-        #     ivars_to_check=[0])
-        # simulator.stopfunc = simulator.stopFuncTmp
-        # simulator.refs = [Qm0]
-        # simulator.conv_thr = [QSS_Q_CONV_THR]
-        # simulator.div_thr = [QSS_Q_DIV_THR]
-        # simulator.t_history = QSS_HISTORY_INTERVAL
-        # t, y, stim = simulator.compute(
-        #     y0,
-        #     QSS_INTEGRATION_INTERVAL,
-        #     QSS_INTEGRATION_INTERVAL,
-        #     nmax=int(QSS_MAX_INTEGRATION_DURATION // QSS_INTEGRATION_INTERVAL)
-        # )
-        # conv = simulator.isAsymptoticallyStable(t, y, QSS_INTEGRATION_INTERVAL) != -1
-        # tf = t[-1]
-        # dQ = [y[-1, 0]]
-
-        # Initializing empty list to record evolution of charge deviation
-        n = int(QSS_HISTORY_INTERVAL // QSS_INTEGRATION_INTERVAL)  # size of history
-        dQ = []
-
-        # As long as there is no clear charge convergence or divergence
-        conv, div = False, False
-        tf, yf = t0, y0
-        while not conv and not div:
-
-            # Integrate system for small interval and retrieve final charge deviation
-            t0, y0 = tf, yf
-            sol = solve_ivp(
-                lambda t, y: self.effDerivatives(t, y, lkp),
-                [t0, t0 + QSS_INTEGRATION_INTERVAL], y0,
-                method='LSODA'
-            )
-            tf, yf = sol.t[-1], sol.y[:, -1]
-            dQ.append(yf[0] - Qm0)
-
-            # logger.debug('{:.0f} ms: dQ = {:.5f} nC/cm2, avg dQ = {:.5f} nC/cm2'.format(
-            #     tf * 1e3, dQ[-1] * 1e5, np.mean(dQ[-n:]) * 1e5))
-
-            # If last charge deviation is too large -> divergence
-            if np.abs(dQ[-1]) > QSS_Q_DIV_THR:
-                div = True
-
-            # If last charge deviation or average deviation in recent history
-            # is small enough -> convergence
-            for x in [dQ[-1], np.mean(dQ[-n:])]:
-                if np.abs(x) < QSS_Q_CONV_THR:
-                    conv = True
-
-            # If max integration duration is been reached -> error
-            if tf > QSS_MAX_INTEGRATION_DURATION:
-                logger.warning('too many iterations (dQ = {:.5f} nC/cm2)'.format(dQ[-1] * 1e5))
-                conv = True
-
-        logger.debug('{}vergence after {:.0f} ms: dQ = {:.5f} nC/cm2'.format(
-            {True: 'con', False: 'di'}[conv], tf * 1e3, dQ[-1] * 1e5))
-
-        return conv
-
     def fixedPointsQSS(self, Fdrive, Adrive, DC, lkp, dQdt):
         ''' Compute QSS fixed points along the charge dimension for a given combination
             of US parameters, and determine their stability.
@@ -590,16 +513,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         SFPs, UFPs = [], []
         dfunc = lambda x: self.effDerivatives(_, x, lkp)
 
-        # SFP_candidates = getFixedPoints(
-        #     lkp.refs['Q'], dQdt, filter='stable', der_func=dfunc).tolist()
-        # UFPs = getFixedPoints(
-        #     lkp.refs['Q'], dQdt, filter='unstable', der_func=dfunc).tolist()
-        # SFPs = []
-        # lkp1d = self.getLookup().projectDCs(amps=Adrive, DCs=DC).projectN({'a': self.a, 'f': Fdrive})
-
         # For each fixed point
         for i, Qm in enumerate(SFP_candidates):
-            # logger.debug('fixed point @ Q = {:.2f} nC/cm2'.format(Qm * 1e5))
 
             # Re-compute QSS
             *_, QSS_FP = self.quasiSteadyStates(Fdrive, amps=Adrive, charges=Qm, DCs=DC,
@@ -608,6 +523,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             # Approximate the system's Jacobian matrix at the fixed-point and compute its eigenvalues
             J = jacobian([Qm, *QSS_FP.tables.values()], dfunc)
             lambdas, _ = np.linalg.eig(J)
+            print(lambdas.real)
 
             # Determine fixed point stability based on eigenvalues
             is_stable_FP = np.all(lambdas.real < 0)
@@ -618,51 +534,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             else:
                 UFPs.append(Qm)
                 logger.debug('unstable ' + s)
-
-            # # Simulate from unperturbed QSS and evaluate stability
-            # if not self.evaluateStability(Qm, QSS_FP, lkp):
-            #     logger.warning('diverging system at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
-            #         Adrive * 1e-3, Qm * 1e5))
-            #     UFPs.append(Qm)
-            # else:
-            #     # For each state
-            #     unstable_states = []
-            #     for x in self.pneuron.statesNames():
-            #         pltvar = pltvars[x]
-            #         unit_str = pltvar.get('unit', '')
-            #         factor = pltvar.get('factor', 1)
-            #         is_stable_direction = []
-            #         for sign in [-1, +1]:
-            #             # Perturb state with small offset
-            #             QSS_perturbed = deepcopy(QSS_FP)
-            #             QSS_perturbed[x] *= (1 + sign * QSS_REL_OFFSET)
-
-            #             # If gating state, bound within [0., 1.]
-            #             if self.pneuron.isVoltageGated(x):
-            #                 QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
-
-            #             logger.debug('{}: {:.5f} -> {:.5f} {}'.format(
-            #                 x, QSS_FP[x] * factor, QSS_perturbed[x] * factor, unit_str))
-
-            #             # Simulate from perturbed QSS and evaluate stability
-            #             is_stable_direction.append(
-            #                 self.evaluateStability(Qm, QSS_perturbed, lkp))
-
-            #         # Check if system shows stability upon x-state perturbation
-            #         # in both directions
-            #         if not np.all(is_stable_direction):
-            #             unstable_states.append(x)
-
-            #     # Classify fixed point as stable only if all states show stability
-            #     is_stable_FP = len(unstable_states) == 0
-
-            #     if is_stable_FP:
-            #         SFPs.append(Qm)
-            #     else:
-            #         UFPs.append(Qm)
-            #     logger.info('{}stable fixed-point at ({:.2f} kPa, {:.2f} nC/cm2){}'.format(
-            #         '' if is_stable_FP else 'un', Adrive * 1e-3, Qm * 1e5,
-            #         '' if is_stable_FP else ', caused by {} states'.format(unstable_states)))
 
         return SFPs, UFPs
 
