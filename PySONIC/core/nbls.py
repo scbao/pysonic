@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 17:34:22
+# @Last Modified time: 2019-07-15 20:17:30
 
 from copy import deepcopy
 import logging
@@ -579,71 +579,92 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param dQdt: charge derivative profile along charge dimension
             :return: 2-tuple with values of stable and unstable fixed points
         '''
-
+        pltvars = self.getPltVars()
         logger.debug('A = {:.2f} kPa, DC = {:.0f}%'.format(Adrive * 1e-3, DC * 1e2))
 
-        # Extract stable and unstable fixed points from QSS charge variation profile
+        # Extract fixed points from QSS charge variation profile
         def dfunc(Qm):
             return - self.iNetQSS(Qm, Fdrive, Adrive, DC)
         SFP_candidates = getFixedPoints(
-            lkp.refs['Q'], dQdt, filter='stable', der_func=dfunc).tolist()
-        UFPs = getFixedPoints(
-            lkp.refs['Q'], dQdt, filter='unstable', der_func=dfunc).tolist()
-        SFPs = []
+            lkp.refs['Q'], dQdt, filter='both', der_func=dfunc).tolist()
+        SFPs, UFPs = [], []
+        dfunc = lambda x: self.effDerivatives(_, x, lkp)
 
-        pltvars = self.getPltVars()
+        # SFP_candidates = getFixedPoints(
+        #     lkp.refs['Q'], dQdt, filter='stable', der_func=dfunc).tolist()
+        # UFPs = getFixedPoints(
+        #     lkp.refs['Q'], dQdt, filter='unstable', der_func=dfunc).tolist()
+        # SFPs = []
+        # lkp1d = self.getLookup().projectDCs(amps=Adrive, DCs=DC).projectN({'a': self.a, 'f': Fdrive})
 
-        # For each candidate SFP
+        # For each fixed point
         for i, Qm in enumerate(SFP_candidates):
-
-            logger.debug('Q-SFP = {:.2f} nC/cm2'.format(Qm * 1e5))
+            # logger.debug('fixed point @ Q = {:.2f} nC/cm2'.format(Qm * 1e5))
 
             # Re-compute QSS
             *_, QSS_FP = self.quasiSteadyStates(Fdrive, amps=Adrive, charges=Qm, DCs=DC,
                                                 squeeze_output=True)
 
-            # Simulate from unperturbed QSS and evaluate stability
-            if not self.evaluateStability(Qm, QSS_FP, lkp):
-                logger.warning('diverging system at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
-                    Adrive * 1e-3, Qm * 1e5))
-                UFPs.append(Qm)
+            # Approximate the system's Jacobian matrix at the fixed-point and compute its eigenvalues
+            J = jacobian([Qm, *QSS_FP.tables.values()], dfunc)
+            lambdas, _ = np.linalg.eig(J)
+
+            # Determine fixed point stability based on eigenvalues
+            is_stable_FP = np.all(lambdas.real < 0)
+            s = 'fixed point @ Q = {:.2f} nC/cm2'.format(Qm * 1e5)
+            if is_stable_FP:
+                SFPs.append(Qm)
+                logger.debug('stable ' + s)
             else:
-                # For each state
-                unstable_states = []
-                for x in self.pneuron.statesNames():
-                    pltvar = pltvars[x]
-                    unit_str = pltvar.get('unit', '')
-                    factor = pltvar.get('factor', 1)
-                    is_stable_direction = []
-                    for sign in [-1, +1]:
-                        # Perturb state with small offset
-                        QSS_perturbed = deepcopy(QSS_FP)
-                        QSS_perturbed[x] *= (1 + sign * QSS_REL_OFFSET)
+                UFPs.append(Qm)
+                logger.debug('unstable ' + s)
 
-                        # If gating state, bound within [0., 1.]
-                        if self.pneuron.isVoltageGated(x):
-                            QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
+            # # Simulate from unperturbed QSS and evaluate stability
+            # if not self.evaluateStability(Qm, QSS_FP, lkp):
+            #     logger.warning('diverging system at ({:.2f} kPa, {:.2f} nC/cm2)'.format(
+            #         Adrive * 1e-3, Qm * 1e5))
+            #     UFPs.append(Qm)
+            # else:
+            #     # For each state
+            #     unstable_states = []
+            #     for x in self.pneuron.statesNames():
+            #         pltvar = pltvars[x]
+            #         unit_str = pltvar.get('unit', '')
+            #         factor = pltvar.get('factor', 1)
+            #         is_stable_direction = []
+            #         for sign in [-1, +1]:
+            #             # Perturb state with small offset
+            #             QSS_perturbed = deepcopy(QSS_FP)
+            #             QSS_perturbed[x] *= (1 + sign * QSS_REL_OFFSET)
 
-                        logger.debug('{}: {:.5f} -> {:.5f} {}'.format(
-                            x, QSS_FP[x] * factor, QSS_perturbed[x] * factor, unit_str))
+            #             # If gating state, bound within [0., 1.]
+            #             if self.pneuron.isVoltageGated(x):
+            #                 QSS_perturbed[x] = np.clip(QSS_perturbed[x], 0., 1.)
 
-                        # Simulate from perturbed QSS and evaluate stability
-                        is_stable_direction.append(
-                            self.evaluateStability(Qm, QSS_perturbed, lkp))
+            #             logger.debug('{}: {:.5f} -> {:.5f} {}'.format(
+            #                 x, QSS_FP[x] * factor, QSS_perturbed[x] * factor, unit_str))
 
-                    # Check if system shows stability upon x-state perturbation
-                    # in both directions
-                    if not np.all(is_stable_direction):
-                        unstable_states.append(x)
+            #             # Simulate from perturbed QSS and evaluate stability
+            #             is_stable_direction.append(
+            #                 self.evaluateStability(Qm, QSS_perturbed, lkp))
 
-                # Classify fixed point as stable only if all states show stability
-                is_stable_FP = len(unstable_states) == 0
-                {True: SFPs, False: UFPs}[is_stable_FP].append(Qm)
-                logger.info('{}stable fixed-point at ({:.2f} kPa, {:.2f} nC/cm2){}'.format(
-                    '' if is_stable_FP else 'un', Adrive * 1e-3, Qm * 1e5,
-                    '' if is_stable_FP else ', caused by {} states'.format(unstable_states)))
+            #         # Check if system shows stability upon x-state perturbation
+            #         # in both directions
+            #         if not np.all(is_stable_direction):
+            #             unstable_states.append(x)
 
-            return SFPs, UFPs
+            #     # Classify fixed point as stable only if all states show stability
+            #     is_stable_FP = len(unstable_states) == 0
+
+            #     if is_stable_FP:
+            #         SFPs.append(Qm)
+            #     else:
+            #         UFPs.append(Qm)
+            #     logger.info('{}stable fixed-point at ({:.2f} kPa, {:.2f} nC/cm2){}'.format(
+            #         '' if is_stable_FP else 'un', Adrive * 1e-3, Qm * 1e5,
+            #         '' if is_stable_FP else ', caused by {} states'.format(unstable_states)))
+
+        return SFPs, UFPs
 
     def isStableQSS(self, Fdrive, Adrive, DC):
             lookups, QSS = self.quasiSteadyStates(

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-20 15:33:40
+# @Last Modified time: 2019-07-15 20:11:12
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -514,3 +514,36 @@ def binarySearch(bool_func, args, ix, xbounds, dx_thr, history=None):
         else:
             xbounds = (x, xbounds[1]) if history[-1] else (xbounds[0], x)
         return binarySearch(bool_func, args, ix, xbounds, dx_thr, history=history)
+
+
+def jacobian(x, dfunc, rel_eps=1e-8):
+    ''' Evaluate the Jacobian maatrix of a (time-invariant) system, given a states vector
+        and derivatives function.
+
+        :param x: n-states vector
+        :param dfunc: n-derivatives function
+        :return: n-by-n square Jacobian matrix
+    '''
+    # Determine vector size
+    x = np.asarray(x)
+    n = x.size
+
+    # Initialize Jacobian matrix
+    J = np.empty((n, n))
+
+    # Evaluate derivatives of states
+    fx = np.array(dfunc(x))
+
+    # Create relative epsilon array if needed
+    if not isIterable(rel_eps):
+        rel_eps = np.array([rel_eps] * n)
+
+    # Perturb each state by relative epsilon, re-evaluate derivatives and assemble Jacobian matrix
+    for i in range(n):
+        x_perturbed = x.copy()
+        x_perturbed[i] *= (1 + rel_eps[i])
+        delta = x_perturbed[i] - x[i]
+        fx_perturbed = np.array(dfunc(x_perturbed))
+        J[:, i] = (fx_perturbed  - fx) / delta
+
+    return J

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-27 14:22:05
+# @Last Modified time: 2019-07-15 19:43:29
 
 import re
 import numpy as np
@@ -212,7 +212,7 @@ class SmartDict():
         self.d = d
 
     def __repr__(self):
-        return 'SmartDict(' + ', '.join(self.d.keys())
+        return 'SmartDict(' + ', '.join(self.d.keys()) + ')'
 
     def items(self):
         return self.d.items()

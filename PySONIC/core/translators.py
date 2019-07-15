@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-05 13:38:51
+# @Last Modified time: 2019-07-08 14:45:50
 
 from time import gmtime, strftime
 import re
@@ -292,8 +292,8 @@ class SonicTranslator(PointNeuronTranslator):
                     except AttributeError:
                         raise ValueError(err_str)
 
-    def createDerEffStateLambda(self, expr):
-        ''' Create a lambda function that computes an effective state derivative '''
+    def createLookupLambda(self, expr):
+        ''' Create a lookup lambda function from an expression. '''
         f = eval('lambda cls, lkp, x: {}'.format(expr))
         return lambda *args: f(self.pclass, *args)
 
@@ -329,4 +329,18 @@ class SonicTranslator(PointNeuronTranslator):
             pprint.PrettyPrinter(indent=4).pprint(self.eff_rates_str)
 
         # Return dictionary of evaluated functions
-        return {k: self.createDerEffStateLambda(v) for k, v in eff_dstates_str.items()}
+        return {k: self.createLookupLambda(v) for k, v in eff_dstates_str.items()}
+
+    def parseSteadyStates(self):
+        ''' Parse neuron's steadyStates method to construct an adapted quasiSteadyStates
+            method used for SONIC QSS simulations. '''
+
+        # Get dictionary of translated lambda functions expressions steady states
+        qsstates_str = self.parseLambdaDict(self.pclass.steadyStates(), self.translateExpr)
+        qsstates_str = {k: v.replace('Vm', "lkp['V']") for k, v in qsstates_str.items()}
+        if self.verbose:
+            print('---------- quasiSteadyStates ----------')
+            for k, v in qsstates_str.items():
+                print("    {} : lambda lkp, x: {}".format(k, v))
+        # Return dictionary of evaluated functions
+        return {k: self.createLookupLambda(v) for k, v in qsstates_str.items()}
