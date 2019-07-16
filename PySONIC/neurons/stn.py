@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-05 03:49:04
+# @Last Modified time: 2019-07-16 14:41:46
 
 import numpy as np
 from scipy.optimize import brentq
@@ -387,13 +387,15 @@ class OtsukaSTN(PointNeuron):
             'r': lambda Vm: cls.rinf(cls.Cai0)
     }
 
-    # def quasiSteadyStates(self, lkp):
-    #     qsstates = self.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
-    #     qsstates['Cai'] = self.Caiinf(lkp['V'], qsstates['p'], qsstates['q'], qsstates['c'],
-    #                                   qsstates['d1'])
-    #     qsstates['d2'] = self.d2inf(qsstates['Cai'])
-    #     qsstates['r'] = self.rinf(qsstates['Cai'])
-    #     return qsstates
+    @classmethod
+    def quasiSteadyStates(cls, lkp):
+        qsstates = {k: cls.qsState(k) for k in ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q']}
+        # qsstates = cls.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
+        qsstates['Cai'] = lambda lkp: cls.Caiinf(
+            lkp['V'], qsstates['p'], qsstates['q'], qsstates['c'], qsstates['d1'])
+        qsstates['d2'] = cls.d2inf(qsstates['Cai'])
+        qsstates['r'] = cls.rinf(qsstates['Cai'])
+        return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 

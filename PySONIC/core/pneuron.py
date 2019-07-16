@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 21:38:13
+# @Last Modified time: 2019-07-16 17:21:15
 
 import abc
 import inspect
@@ -365,7 +365,7 @@ class PointNeuron(Model):
             :param x: state name.
             :return: quasi-steady state function
         '''
-        return lambda lkp: lkp[f'alpha{x}'] / (lkp[f'alpha{x}'] + lkp[f'beta{x}'])
+        return lambda lkp: lkp[f'{x}inf']
 
     @classmethod
     def quasiSteadyStates(cls):

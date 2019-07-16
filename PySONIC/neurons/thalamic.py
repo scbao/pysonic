@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-05 03:59:23
+# @Last Modified time: 2019-07-16 18:08:10
 
 import numpy as np
 from ..core import PointNeuron
@@ -329,39 +329,26 @@ class ThalamoCortical(Thalamic):
     # ------------------------------ Steady states ------------------------------
 
     @classmethod
-    def Cinf(cls, Cai, Vm):
-        ''' Steady-state O-gate closed-probability '''
-        return cls.betao(Vm) / cls.alphao(Vm) * cls.Oinf(Cai, Vm)
-
-    @classmethod
-    def Oinf(cls, Cai, Vm):
-        ''' Steady-state O-gate open-probability '''
-        return cls.k4 / (cls.k3 * (1 - cls.P0inf(Cai)) + cls.k4 * (1 + cls.betao(Vm) / cls.alphao(Vm)))
-
-    @classmethod
-    def P0inf(cls, Cai):
-        ''' Steady-state unbound probability of Ih regulating factor '''
-        return cls.k2 / (cls.k2 + cls.k1 * Cai**cls.nCa)
-
-    @classmethod
     def steadyStates(cls):
-        sstates = super().steadyStates()
-        sstates['Cai'] = lambda Vm: cls.Cai_min - cls.taur_Cai * cls.current_to_molar_rate_Ca * cls.iCaT(
-            cls.sinf(Vm), cls.uinf(Vm), Vm)  # M
-        sstates['P0'] = lambda Vm: cls.P0inf(sstates['Cai'](Vm))
-        sstates['C'] = lambda Vm: cls.Cinf(sstates['Cai'](Vm), Vm)
-        sstates['O'] = lambda Vm: cls.Oinf(sstates['Cai'](Vm), Vm)
-        return sstates
+        lambda_dict = super().steadyStates()
+        lambda_dict['Cai'] = lambda Vm: (cls.Cai_min - cls.taur_Cai * cls.current_to_molar_rate_Ca *
+                                         cls.iCaT(cls.sinf(Vm), cls.uinf(Vm), Vm))  # M
+        lambda_dict['P0'] = lambda Vm: cls.k2 / (cls.k2 + cls.k1 * lambda_dict['Cai'](Vm)**cls.nCa)
+        lambda_dict['O'] = lambda Vm: (cls.k4 / (cls.k3 * (1 - lambda_dict['P0'](Vm)) +
+                                       cls.k4 * (1 + cls.betao(Vm) / cls.alphao(Vm))))
+        lambda_dict['C'] = lambda Vm: cls.betao(Vm) / cls.alphao(Vm) * lambda_dict['O'](Vm)
+        return lambda_dict
 
-    # def quasiSteadyStates(self, lkp):
-    #     qsstates = super().quasiSteadyStates(lkp)
-    #     qsstates.update({
-    #         'O': self.Oinf(self.Caiinf(lkp['V']), lkp['V']),
-    #         'C': self.Cinf(lkp['V']),
-    #         'P0': self.P0inf(self.Caiinf(lkp['V'])),
-    #         'Cai': self.Caiinf(lkp['V'])
-    #     })
-    #     return qsstates
+    @classmethod
+    def quasiSteadyStates(cls):
+        lambda_dict = super().quasiSteadyStates()
+        lambda_dict['Cai'] = lambda lkp: (cls.Cai_min - cls.taur_Cai * cls.current_to_molar_rate_Ca *
+                                          cls.iCaT(lkp['sinf'], lkp['uinf'], lkp['V']))  # M
+        lambda_dict['P0'] = lambda lkp: cls.k2 / (cls.k2 + cls.k1 * lambda_dict['Cai'](lkp)**cls.nCa)
+        lambda_dict['O'] = lambda lkp: (cls.k4 / (cls.k3 * (1 - lambda_dict['P0'](lkp)) +
+                                       cls.k4 * (1 + lkp['betao'] / lkp['alphao'])))
+        lambda_dict['C'] = lambda lkp: lkp['betao'] / lkp['alphao'] * lambda_dict['O'](lkp)
+        return lambda_dict
 
     # ------------------------------ Membrane currents ------------------------------
 

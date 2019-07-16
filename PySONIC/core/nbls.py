@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 21:38:23
+# @Last Modified time: 2019-07-16 17:24:19
 
 from copy import deepcopy
 import logging
@@ -18,7 +18,7 @@ from .batches import Batch
 from ..utils import *
 from ..constants import *
 from ..postpro import getFixedPoints
-from .lookups import SmartLookup
+from .lookups import SmartLookup, SmartDict
 
 
 NEURONS_LOOKUP_DIR = os.path.abspath(os.path.split(__file__)[0] + "/../neurons/")
@@ -461,7 +461,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         QSS = {k: np.empty(lkp.dims()) for k in self.pneuron.statesNames()}
         for iA in range(nA):
             for iDC in range(nDC):
-                lkp1d = {k: v[iA, iDC] for k, v in lkp.items()}
+                lkp1d = SmartDict({k: v[iA, iDC] for k, v in lkp.items()})
                 QSS_1D = {k: v(lkp1d) for k, v in self.pneuron.quasiSteadyStates().items()}
                 for k in QSS.keys():
                     QSS[k][iA, iDC] = QSS_1D[k]

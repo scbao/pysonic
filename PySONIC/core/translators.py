@@ -3,12 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-08 14:45:50
+# @Last Modified time: 2019-07-16 18:55:02
 
 from time import gmtime, strftime
 import re
 import inspect
-import pprint
 
 from ..constants import *
 
@@ -159,6 +158,10 @@ class Translator:
                 except ValueError:
                     fargs[i:i + 2] = [', '.join(fargs[i:i + 2])]
 
+        fargs = list(filter(None, fargs))
+        if len(fargs) == 0:
+            raise ValueError(f'calling no-arguments function "{fname}"')
+
         return fcall, fname, fargs, fprefix
 
     @staticmethod
@@ -189,18 +192,33 @@ class Translator:
         fargs = [x.strip() for x in fargs]
         return fcall, fname, fargs
 
+    @classmethod
+    def removeEnclosingBrackets(cls, s):
+        ''' Remove unnecessary enclosing brackets in expression. '''
+        if s.startswith('(') and s.endswith(')'):
+            closure = cls.getClosure(s[1:])
+            if closure == s[1:-1]:
+                s = closure
+        return s
+
     def parseLambdaDict(self, lambda_dict, translate_func):
-        ''' Parse pclassect function. '''
+        ''' Parse lambda-dictionary function. '''
         translated_lambda_str_dict = {}
 
         # For each key and lambda function
-        for k, dfunc in lambda_dict.items():
+        for k, func in lambda_dict.items():
             # Get lambda function source code
-            dfunc_args, dfunc_exp = self.getLambdaSource(dfunc)
+            func_args, func_exp = self.getLambdaSource(func)
+
+            # Translate expression
+            self.current_key = k
+            translated_func_exp = translate_func(func_exp)
+
+            # Remove unnecessary enclosing brackets
+            translated_func_exp = self.removeEnclosingBrackets(translated_func_exp)
 
             # Assign translated expression
-            self.current_key = k
-            translated_lambda_str_dict[k] = translate_func(dfunc_exp)
+            translated_lambda_str_dict[k] = translated_func_exp
 
         return translated_lambda_str_dict
 
@@ -242,11 +260,31 @@ class PointNeuronTranslator(Translator):
 
 class SonicTranslator(PointNeuronTranslator):
     ''' Translate PointNeuron standard methods into methods adapted for SONIC simulations'''
+    lambda_dict_key = 'lambda_dict'
+    lambda_dict_accessor_pattern = r'({})\[(\'|")([A-Za-z0-9_]+)(\'|")\]'.format(lambda_dict_key)
+    lambda_dict_call_pattern = r'{}\(({})\)'.format(
+        lambda_dict_accessor_pattern, Translator.variable_pattern)
 
     def __init__(self, pclass, verbose=False):
         super().__init__(pclass, verbose=verbose)
         self.eff_rates, self.eff_rates_str = {}, {}
         self.alphax_list, self.betax_list, self.taux_list, self.xinf_list = [], [], [], []
+
+    def parseLambdaDict(self, lambda_dict, translate_func):
+        # Translate lambda dict
+        translated_dict = super().parseLambdaDict(lambda_dict, translate_func)
+
+        # Correct inter-dependencies and references to Vm
+        for k, v in translated_dict.items():
+            v = re.sub(self.lambda_dict_call_pattern, lambda x: self.translateLambdaDictcall(x), v)
+            v = v.replace('Vm', "lkp['V']")
+            translated_dict[k] = v
+        return translated_dict
+
+    @classmethod
+    def translateLambdaDictcall(cls, x):
+        return f'{x.group(1)}[\'{x.group(3)}\'](lkp)'
+
 
     def addToEffRates(self, expr):
         ''' add effective rate(s) corresponding to function expression '''
@@ -320,13 +358,15 @@ class SonicTranslator(PointNeuronTranslator):
 
         # Get dictionary of translated lambda functions expressions for derivative states
         eff_dstates_str = self.parseLambdaDict(self.pclass.derStates(), self.translateExpr)
-        eff_dstates_str = {k: v.replace('Vm', "lkp['V']") for k, v in eff_dstates_str.items()}
         if self.verbose:
             print('---------- derEffStates ----------')
-            pprint.PrettyPrinter(indent=4).pprint({
-                k: 'lambda lkp, x: {}'.format(v) for k, v in eff_dstates_str.items()})
+            for k, v in eff_dstates_str.items():
+                print("    {} : lambda lkp, x: {}".format(k, v))
+            print('')
             print('---------- effRates ----------')
-            pprint.PrettyPrinter(indent=4).pprint(self.eff_rates_str)
+            for k, v in self.eff_rates_str.items():
+                print("    {} : {}".format(k, v))
+            print('')
 
         # Return dictionary of evaluated functions
         return {k: self.createLookupLambda(v) for k, v in eff_dstates_str.items()}
@@ -337,10 +377,10 @@ class SonicTranslator(PointNeuronTranslator):
 
         # Get dictionary of translated lambda functions expressions steady states
         qsstates_str = self.parseLambdaDict(self.pclass.steadyStates(), self.translateExpr)
-        qsstates_str = {k: v.replace('Vm', "lkp['V']") for k, v in qsstates_str.items()}
         if self.verbose:
             print('---------- quasiSteadyStates ----------')
             for k, v in qsstates_str.items():
-                print("    {} : lambda lkp, x: {}".format(k, v))
+                print("    {} : lambda lkp: {}".format(k, v))
+            print('')
         # Return dictionary of evaluated functions
         return {k: self.createLookupLambda(v) for k, v in qsstates_str.items()}
