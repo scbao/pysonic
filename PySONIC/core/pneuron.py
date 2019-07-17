@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 15:50:02
+# @Last Modified time: 2019-07-17 20:04:42
 
 import abc
 import inspect
@@ -356,16 +356,6 @@ class PointNeuron(Model):
     def isVoltageGated(cls, state):
         ''' Determine whether a given state is purely voltage-gated or not.'''
         return 'alpha{}'.format(state.lower()) in cls.rates
-
-    @staticmethod
-    def qsState(x):
-        ''' Create a function that returns a given quasi steady state given a lookup table,
-            using the standard xinf = ax / (ax + Bx) equation.
-
-            :param x: state name.
-            :return: quasi-steady state function
-        '''
-        return lambda lkp: lkp[f'{x}inf']
 
     @classmethod
     def simQueue(cls, amps, durations, offsets, PRFs, DCs, outputdir=None):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 15:43:45
+# @Last Modified time: 2019-07-17 20:03:26
 
 import numpy as np
 from ..core import PointNeuron
@@ -338,17 +338,6 @@ class ThalamoCortical(Thalamic):
                                        cls.k4 * (1 + cls.betao(Vm) / cls.alphao(Vm))))
         lambda_dict['C'] = lambda Vm: cls.betao(Vm) / cls.alphao(Vm) * lambda_dict['O'](Vm)
         return lambda_dict
-
-    # @classmethod
-    # def quasiSteadyStates(cls):
-    #     lambda_dict = super().quasiSteadyStates()
-    #     lambda_dict['Cai'] = lambda lkp: (cls.Cai_min - cls.taur_Cai * cls.current_to_molar_rate_Ca *
-    #                                       cls.iCaT(lkp['sinf'], lkp['uinf'], lkp['V']))  # M
-    #     lambda_dict['P0'] = lambda lkp: cls.k2 / (cls.k2 + cls.k1 * lambda_dict['Cai'](lkp)**cls.nCa)
-    #     lambda_dict['O'] = lambda lkp: (cls.k4 / (cls.k3 * (1 - lambda_dict['P0'](lkp)) +
-    #                                    cls.k4 * (1 + lkp['betao'] / lkp['alphao'])))
-    #     lambda_dict['C'] = lambda lkp: lkp['betao'] / lkp['alphao'] * lambda_dict['O'](lkp)
-    #     return lambda_dict
 
     # ------------------------------ Membrane currents ------------------------------
 

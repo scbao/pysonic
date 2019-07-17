@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 17:03:44
+# @Last Modified time: 2019-07-17 20:03:16
 
 import numpy as np
 from ..core import PointNeuron
@@ -388,16 +388,6 @@ class OtsukaSTN(PointNeuron):
         lambda_dict['d2'] = lambda Vm: cls.d2inf(lambda_dict['Cai'](Vm))
         lambda_dict['r'] = lambda Vm: cls.rinf(lambda_dict['Cai'](Vm))
         return lambda_dict
-
-    # @classmethod
-    # def quasiSteadyStates(cls, lkp):
-    #     qsstates = {k: cls.qsState(k) for k in ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q']}
-    #     # qsstates = cls.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
-    #     qsstates['Cai'] = lambda lkp: cls.Caiinf(
-    #         lkp['V'], qsstates['p'], qsstates['q'], qsstates['c'], qsstates['d1'])
-    #     qsstates['d2'] = cls.d2inf(qsstates['Cai'])
-    #     qsstates['r'] = cls.rinf(qsstates['Cai'])
-    #     return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 
