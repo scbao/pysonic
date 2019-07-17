@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 21:17:51
+# @Last Modified time: 2019-07-17 22:14:49
 
 import inspect
 import logging
@@ -126,7 +126,7 @@ def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):
     dQdt = -iNet
 
     # Compute stable and unstable fixed points
-    Q_SFPs, Q_UFPs = nbls.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)
+    classified_FPs = nbls.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)
 
     # Extract dimensionless states
     norm_QSS = {}
@@ -172,14 +172,12 @@ def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):
     ax.plot(Qref * 1e5, -iNet * 1e-3, color='k', label='$\\rm -I_{Net}$')
     ax.axhline(0, color='k', linewidth=0.5)
 
-    if len(Q_SFPs) > 0:
-        ax.scatter(np.array(Q_SFPs) * 1e5, np.zeros(len(Q_SFPs)),
-                   marker='.', s=200, facecolors='g', edgecolors='none',
-                   label='QSS stable FPs', zorder=3)
-    if len(Q_UFPs) > 0:
-        ax.scatter(np.array(Q_UFPs) * 1e5, np.zeros(len(Q_UFPs)),
-                   marker='.', s=200, facecolors='r', edgecolors='none',
-                   label='QSS unstable FPs', zorder=3)
+    for key, fcolor in zip(['stable', 'unstable', 'saddle'], ['g', 'r', 'b']):
+        n_FPs = len(classified_FPs[key])
+        if n_FPs > 0:
+            ax.scatter(np.array(classified_FPs[key]) * 1e5, np.zeros(n_FPs),
+                       marker='.', s=200, facecolors=fcolor, edgecolors='none',
+                       label=f'{key} fixed points', zorder=3)
 
     fig.tight_layout()
     fig.subplots_adjust(right=0.8)
@@ -255,19 +253,16 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
     ax.plot(Qref * Qvar['factor'], var0, '--', c='k', zorder=1, label='A = 0')
 
     if varname == 'dQdt':
-        # Plot charge SFPs and UFPs for each acoustic amplitude
-        SFPs, UFPs = getQSSFixedPointsvsAdrive(
+        # Plot charge fixed points for each acoustic amplitude
+        classified_FPs = getQSSFixedPointsvsAdrive(
             nbls, Fdrive, amps, DC, mpi=mpi, loglevel=loglevel)
-        if len(SFPs) > 0:
-            _, Q_SFPs = np.array(SFPs).T
-            ax.scatter(np.array(Q_SFPs) * 1e5, np.zeros(len(Q_SFPs)),
-                       marker='.', s=100, facecolors='g', edgecolors='none',
-                       label='QSS stable fixed points')
-        if len(UFPs) > 0:
-            _, Q_UFPs = np.array(UFPs).T
-            ax.scatter(np.array(Q_UFPs) * 1e5, np.zeros(len(Q_UFPs)),
-                       marker='.', s=100, facecolors='r', edgecolors='none',
-                       label='QSS unstable fixed points')
+        for key, fcolor in zip(['stable', 'unstable', 'saddle'], ['g', 'r', 'b']):
+            n_FPs = len(classified_FPs[key])
+            if n_FPs > 0:
+                _, Q_FPs = np.array(classified_FPs[key]).T
+                ax.scatter(np.array(Q_FPs) * 1e5, np.zeros(n_FPs),
+                           marker='.', s=100, facecolors=fcolor, edgecolors='none',
+                           label=f'{key} fixed points')
 
     # Define color code
     mymap = plt.get_cmap(cmap)
@@ -331,11 +326,11 @@ def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=loggin
     output = batch(mpi=mpi, loglevel=loglevel)
 
     # Sort points by amplitude
-    SFPs, UFPs = [], []
+    classified_FPs = {k: [] for k in output[0].keys()}
     for i, Adrive in enumerate(amps):
-        SFPs += [(Adrive, Qm) for Qm in output[i][0]]
-        UFPs += [(Adrive, Qm) for Qm in output[i][1]]
-    return SFPs, UFPs
+        for key in classified_FPs.keys():
+            classified_FPs[key] += [(Adrive, Qm) for Qm in output[i][key]]
+    return classified_FPs
 
 
 def runAndGetStab(nbls, *args):
@@ -391,19 +386,17 @@ def plotEqChargeVsAmp(pneuron, a, Fdrive, amps=None, tstim=None, toffset=None, P
     nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
     Afactor = 1e-3
 
-    # Plot charge SFPs and UFPs for each acoustic amplitude
-    SFPs, UFPs = getQSSFixedPointsvsAdrive(
+    # Plot charge fixed points for each acoustic amplitude
+    classified_FPs = getQSSFixedPointsvsAdrive(
         nbls, Fdrive, amps, DC, mpi=mpi, loglevel=loglevel)
-    if len(SFPs) > 0:
-        A_SFPs, Q_SFPs = np.array(SFPs).T
-        ax.scatter(np.array(A_SFPs) * Afactor, np.array(Q_SFPs) * 1e5,
-                   marker='.', s=20, facecolors='g', edgecolors='none',
-                   label='QSS stable fixed points')
-    if len(UFPs) > 0:
-        A_UFPs, Q_UFPs = np.array(UFPs).T
-        ax.scatter(np.array(A_UFPs) * Afactor, np.array(Q_UFPs) * 1e5,
-                   marker='.', s=20, facecolors='r', edgecolors='none',
-                   label='QSS unstable fixed points')
+
+    for key, fcolor in zip(['stable', 'unstable', 'saddle'], ['g', 'r', 'b']):
+        n_FPs = len(classified_FPs[key])
+        if n_FPs > 0:
+            A_FPs, Q_FPs = np.array(classified_FPs[key]).T
+            ax.scatter(np.array(A_FPs) * Afactor, np.array(Q_FPs) * 1e5,
+                       marker='.', s=20, facecolors=fcolor, edgecolors='none',
+                       label=f'{key} fixed points')
 
     # Plot charge asymptotic stabilization points from simulations for each acoustic amplitude
     if compdir is not None:

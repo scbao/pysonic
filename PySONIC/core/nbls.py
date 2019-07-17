@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-16 17:24:19
+# @Last Modified time: 2019-07-17 21:09:15
 
 from copy import deepcopy
 import logging
@@ -509,41 +509,41 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Extract fixed points from QSS charge variation profile
         def dfunc(Qm):
             return - self.iNetQSS(Qm, Fdrive, Adrive, DC)
-        SFP_candidates = getFixedPoints(
+        fixed_points = getFixedPoints(
             lkp.refs['Q'], dQdt, filter='both', der_func=dfunc).tolist()
-        SFPs, UFPs = [], []
         dfunc = lambda x: self.effDerivatives(_, x, lkp)
+        classified_fixed_points = {'stable': [], 'unstable': [], 'saddle': []}
 
         # For each fixed point
-        for i, Qm in enumerate(SFP_candidates):
+        for i, Qm in enumerate(fixed_points):
 
-            # Re-compute QSS
-            *_, QSS_FP = self.getQuasiSteadyStates(Fdrive, amps=Adrive, charges=Qm, DCs=DC,
-                                                   squeeze_output=True)
+            # Re-compute QSS at fixed point
+            *_, QSS = self.getQuasiSteadyStates(Fdrive, amps=Adrive, charges=Qm, DCs=DC,
+                                                squeeze_output=True)
 
             # Approximate the system's Jacobian matrix at the fixed-point and compute its eigenvalues
-            J = jacobian([Qm, *QSS_FP.tables.values()], dfunc)
+            J = jacobian([Qm, *QSS.tables.values()], dfunc)
             lambdas, _ = np.linalg.eig(J)
-            print(lambdas.real)
 
             # Determine fixed point stability based on eigenvalues
-            is_stable_FP = np.all(lambdas.real < 0)
-            s = 'fixed point @ Q = {:.2f} nC/cm2'.format(Qm * 1e5)
-            if is_stable_FP:
-                SFPs.append(Qm)
-                logger.debug('stable ' + s)
+            neg_lambdas = lambdas.real < 0
+            if np.all(neg_lambdas):
+                key = 'stable'
+            elif np.any(neg_lambdas):
+                key = 'saddle'
             else:
-                UFPs.append(Qm)
-                logger.debug('unstable ' + s)
+                key = 'unstable'
+            classified_fixed_points[key].append(Qm)
+            logger.debug(f'{key} fixed point @ Q = {(Qm * 1e5):.2f} nC/cm2 (lambdas = {lambdas.real}')
 
-        return SFPs, UFPs
+        return classified_fixed_points
 
     def isStableQSS(self, Fdrive, Adrive, DC):
             lookups, QSS = self.getQuasiSteadyStates(
                 Fdrive, amps=Adrive, DCs=DC, squeeze_output=True)
             dQdt = -self.pneuron.iNet(lookups['V'], QSS.tables)  # mA/m2
-            SFPs, _ = self.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)
-            return len(SFPs) > 0
+            classified_fixed_points = self.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)
+            return len(classified_fixed_points['stable']) > 0
 
     def titrateQSS(self, Fdrive, DC=1., Arange=None):
 

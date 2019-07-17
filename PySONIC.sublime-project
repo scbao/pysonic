@@ -28,6 +28,7 @@
 			],
 			"folder_exclude_patterns":
 			[
+				"docs",
 				"__pycache__",
 				"*.egg-info"
 			],
