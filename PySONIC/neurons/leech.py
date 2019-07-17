@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 19:13:48
+# @Last Modified time: 2019-07-17 15:28:44
 
 from functools import partialmethod
 import numpy as np
@@ -183,35 +183,19 @@ class LeechTouch(PointNeuron):
     # ------------------------------ Steady states ------------------------------
 
     @classmethod
-    def Naiinf(cls, Vm):
-        ''' Steady.state Sodium intracellular concentration. '''
-        return -cls.K_Na * cls.iNa(cls.minf(Vm), cls.hinf(Vm), Vm)
-
-    @classmethod
-    def Caiinf(cls, Vm):
-        ''' Steady.state Calcium intracellular concentration. '''
-        return -cls.K_Ca * cls.iCa(cls.sinf(Vm), Vm)
-
-    @classmethod
     def steadyStates(cls):
-        return {
+        lambda_dict = {
             'm': lambda Vm: cls.minf(Vm),
             'h': lambda Vm: cls.hinf(Vm),
             'n': lambda Vm: cls.ninf(Vm),
-            's': lambda Vm: cls.sinf(Vm),
-            'Nai': lambda Vm: cls.Naiinf(Vm),
-            'ANa': lambda Vm: cls.Naiinf(Vm),
-            'Cai': lambda Vm: cls.Caiinf(Vm),
-            'ACa': lambda Vm: cls.Caiinf(Vm)
+            's': lambda Vm: cls.sinf(Vm)
         }
-
-    # def quasiSteadyStates(self, lkp):
-    #     qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
-    #     qsstates['Nai'] = - self.K_Na * self.iNa(qsstates['m'], qsstates['h'], lkp['V'])
-    #     qsstates['ANa'] = qsstates['Nai']
-    #     qsstates['Cai'] = - self.K_Ca * self.iCa(qsstates['s'], lkp['V'])
-    #     qsstates['ACa'] = qsstates['Cai']
-    #     return qsstates
+        lambda_dict['Nai'] = lambda Vm: -cls.K_Na * cls.iNa(
+            lambda_dict['m'](Vm), lambda_dict['h'](Vm), Vm)
+        lambda_dict['Cai'] = lambda Vm: -cls.K_Ca * cls.iCa(lambda_dict['s'](Vm), Vm)
+        lambda_dict['ANa'] = lambda Vm: lambda_dict['Nai'](Vm)
+        lambda_dict['ACa'] = lambda Vm: lambda_dict['Cai'](Vm)
+        return lambda_dict
 
     # ------------------------------ Membrane currents ------------------------------
 
@@ -466,20 +450,12 @@ class LeechPressure(LeechMech):
 
     @classmethod
     def steadyStates(cls):
-        return {**super().steadyStates(), **{
+        lambda_dict = {**super().steadyStates(), **{
             'Nai': lambda _: cls.Nai0,
             'Cai': lambda _: cls.Cai0,
-            'c': lambda _: cls.cinf(cls.Cai0)
         }}
-
-    # def quasiSteadyStates(self, lkp):
-    #     qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's'])
-    #     qsstates.update({
-    #         'Nai': self.Nai0,
-    #         'Cai': self.Cai0
-    #     })
-    #     qsstates['c'] = self.alphaC(qsstates['Cai']) / (self.alphaC(qsstates['Cai']) + self.betaC)
-    #     return qsstates
+        lambda_dict['c'] = lambda _: cls.cinf(lambda_dict['Cai'](_))
+        return lambda_dict
 
     # ------------------------------ Membrane currents ------------------------------
 
@@ -598,11 +574,6 @@ class LeechRetzius(LeechMech):
             'a': lambda Vm: cls.ainf(Vm),
             'b': lambda Vm: cls.binf(Vm)
         }}
-
-    # def quasiSteadyStates(self, lkp):
-    #     qsstates = self.qsStates(lkp, ['m', 'h', 'n', 's', 'a', 'b'])
-    #     qsstates['c'] = self.alphaC(self.Cai) / (self.alphaC(self.Cai) + self.betaC),
-    #     return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 

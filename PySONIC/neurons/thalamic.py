@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-16 18:08:10
+# @Last Modified time: 2019-07-17 15:43:45
 
 import numpy as np
 from ..core import PointNeuron
@@ -233,8 +233,8 @@ class ThalamoCortical(Thalamic):
         'u': 'iCaT inactivation gate',
         'Cai': 'submembrane Ca2+ concentration (M)',
         'P0': 'proportion of unbound iH regulating factor',
-        'C': 'iH gate closed state',
         'O': 'iH gate open state',
+        'C': 'iH gate closed state',
     }
 
     def __new__(cls):
@@ -321,9 +321,9 @@ class ThalamoCortical(Thalamic):
             'Cai': lambda Vm, x: ((cls.Cai_min - x['Cai']) / cls.taur_Cai -
                                   cls.current_to_molar_rate_Ca * cls.iCaT(x['s'], x['u'], Vm)),  # M/s
             'P0': lambda _, x: cls.k2 * (1 - x['P0']) - cls.k1 * x['P0'] * x['Cai']**cls.nCa,
-            'C': lambda Vm, x: cls.betao(Vm) * x['O'] - cls.alphao(Vm) * x['C'],
             'O': lambda Vm, x: (cls.alphao(Vm) * x['C'] - cls.betao(Vm) * x['O'] -
                                 cls.k3 * x['O'] * (1 - x['P0']) + cls.k4 * (1 - x['O'] - x['C'])),
+            'C': lambda Vm, x: cls.betao(Vm) * x['O'] - cls.alphao(Vm) * x['C'],
         }}
 
     # ------------------------------ Steady states ------------------------------
@@ -339,16 +339,16 @@ class ThalamoCortical(Thalamic):
         lambda_dict['C'] = lambda Vm: cls.betao(Vm) / cls.alphao(Vm) * lambda_dict['O'](Vm)
         return lambda_dict
 
-    @classmethod
-    def quasiSteadyStates(cls):
-        lambda_dict = super().quasiSteadyStates()
-        lambda_dict['Cai'] = lambda lkp: (cls.Cai_min - cls.taur_Cai * cls.current_to_molar_rate_Ca *
-                                          cls.iCaT(lkp['sinf'], lkp['uinf'], lkp['V']))  # M
-        lambda_dict['P0'] = lambda lkp: cls.k2 / (cls.k2 + cls.k1 * lambda_dict['Cai'](lkp)**cls.nCa)
-        lambda_dict['O'] = lambda lkp: (cls.k4 / (cls.k3 * (1 - lambda_dict['P0'](lkp)) +
-                                       cls.k4 * (1 + lkp['betao'] / lkp['alphao'])))
-        lambda_dict['C'] = lambda lkp: lkp['betao'] / lkp['alphao'] * lambda_dict['O'](lkp)
-        return lambda_dict
+    # @classmethod
+    # def quasiSteadyStates(cls):
+    #     lambda_dict = super().quasiSteadyStates()
+    #     lambda_dict['Cai'] = lambda lkp: (cls.Cai_min - cls.taur_Cai * cls.current_to_molar_rate_Ca *
+    #                                       cls.iCaT(lkp['sinf'], lkp['uinf'], lkp['V']))  # M
+    #     lambda_dict['P0'] = lambda lkp: cls.k2 / (cls.k2 + cls.k1 * lambda_dict['Cai'](lkp)**cls.nCa)
+    #     lambda_dict['O'] = lambda lkp: (cls.k4 / (cls.k3 * (1 - lambda_dict['P0'](lkp)) +
+    #                                    cls.k4 * (1 + lkp['betao'] / lkp['alphao'])))
+    #     lambda_dict['C'] = lambda lkp: lkp['betao'] / lkp['alphao'] * lambda_dict['O'](lkp)
+    #     return lambda_dict
 
     # ------------------------------ Membrane currents ------------------------------
 

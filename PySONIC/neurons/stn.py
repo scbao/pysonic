@@ -3,12 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-16 14:41:46
+# @Last Modified time: 2019-07-17 15:09:35
 
 import numpy as np
-from scipy.optimize import brentq
 from ..core import PointNeuron
 from ..constants import FARADAY, Z_Ca
+from ..utils import findModifiedEq
 
 
 class OtsukaSTN(PointNeuron):
@@ -361,18 +361,14 @@ class OtsukaSTN(PointNeuron):
     @classmethod
     def Caiinf(cls, p, q, c, d1, Vm):
         ''' Steady-state intracellular Calcium concentration '''
-        if isinstance(Vm, np.ndarray):
-            return np.array([cls.Caiinf(v) for v in Vm])
-        else:
-            return brentq(
-                lambda x: cls.derCai(p, q, c, d1, cls.d2inf(x), x, Vm),
-                cls.Cai0 * 1e-4, cls.Cai0 * 1e3,
-                xtol=1e-16
-            )
+        return findModifiedEq(
+            cls.Cai0,
+            lambda Cai, p, q, c, d1, Vm: cls.derCai(p, q, c, d1, cls.d2inf(Cai), Cai, Vm),
+            p, q, c, d1, Vm)
 
     @classmethod
     def steadyStates(cls):
-        return {
+        lambda_dict = {
             'a': lambda Vm: cls.ainf(Vm),
             'b': lambda Vm: cls.binf(Vm),
             'c': lambda Vm: cls.cinf(Vm),
@@ -382,20 +378,26 @@ class OtsukaSTN(PointNeuron):
             'n': lambda Vm: cls.ninf(Vm),
             'p': lambda Vm: cls.pinf(Vm),
             'q': lambda Vm: cls.qinf(Vm),
-            'Cai': lambda Vm: cls.Cai0,
-            'd2': lambda Vm: cls.d2inf(cls.Cai0),
-            'r': lambda Vm: cls.rinf(cls.Cai0)
-    }
+        }
+        lambda_dict['Cai'] = lambda Vm: cls.Caiinf(
+            lambda_dict['p'](Vm),
+            lambda_dict['q'](Vm),
+            lambda_dict['c'](Vm),
+            lambda_dict['d1'](Vm),
+            Vm)
+        lambda_dict['d2'] = lambda Vm: cls.d2inf(lambda_dict['Cai'](Vm))
+        lambda_dict['r'] = lambda Vm: cls.rinf(lambda_dict['Cai'](Vm))
+        return lambda_dict
 
-    @classmethod
-    def quasiSteadyStates(cls, lkp):
-        qsstates = {k: cls.qsState(k) for k in ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q']}
-        # qsstates = cls.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
-        qsstates['Cai'] = lambda lkp: cls.Caiinf(
-            lkp['V'], qsstates['p'], qsstates['q'], qsstates['c'], qsstates['d1'])
-        qsstates['d2'] = cls.d2inf(qsstates['Cai'])
-        qsstates['r'] = cls.rinf(qsstates['Cai'])
-        return qsstates
+    # @classmethod
+    # def quasiSteadyStates(cls, lkp):
+    #     qsstates = {k: cls.qsState(k) for k in ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q']}
+    #     # qsstates = cls.qsStates(lkp, ['a', 'b', 'c', 'd1', 'm', 'h', 'n', 'p', 'q'])
+    #     qsstates['Cai'] = lambda lkp: cls.Caiinf(
+    #         lkp['V'], qsstates['p'], qsstates['q'], qsstates['c'], qsstates['d1'])
+    #     qsstates['d2'] = cls.d2inf(qsstates['Cai'])
+    #     qsstates['r'] = cls.rinf(qsstates['Cai'])
+    #     return qsstates
 
     # ------------------------------ Membrane currents ------------------------------
 

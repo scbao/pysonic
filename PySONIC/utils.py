@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 20:11:12
+# @Last Modified time: 2019-07-17 14:33:32
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -21,6 +21,7 @@ import logging
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
+from scipy.optimize import brentq
 import colorlog
 
 
@@ -547,3 +548,15 @@ def jacobian(x, dfunc, rel_eps=1e-8):
         J[:, i] = (fx_perturbed  - fx) / delta
 
     return J
+
+
+def findModifiedEq(x0, dfunc, *args):
+    ''' Find an equilibrium variable in a modified system by searching for its
+        derivative root within an interval around its original equilibrium.
+
+        :param x0: equilibrium value in original system.
+        :param func: derivative function, taking the variable as first parameter.
+        :param *args: remaining arguments needed for the derivative function.
+        :return: variable equilibrium value in modified system.
+    '''
+    return brentq(lambda x: dfunc(x, *args), x0 * 1e-4, x0 * 1e3, xtol=1e-16)

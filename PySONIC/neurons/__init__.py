@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-07 21:52:30
+# @Last Modified time: 2019-07-17 15:29:10
 
 from types import MethodType
 import inspect
@@ -52,3 +52,5 @@ for pname, pclass in getNeuronsDict().items():
     pclass.betax_list = set(translator.betax_list)
     pclass.taux_list = set(translator.taux_list)
     pclass.xinf_list = set(translator.xinf_list)
+    qsstates = translator.parseSteadyStates()
+    pclass.quasiSteadyStates = MethodType(createClassMethod(qsstates), pclass)

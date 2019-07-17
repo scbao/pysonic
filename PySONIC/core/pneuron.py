@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-16 17:21:15
+# @Last Modified time: 2019-07-17 15:50:02
 
 import abc
 import inspect
@@ -366,16 +366,6 @@ class PointNeuron(Model):
             :return: quasi-steady state function
         '''
         return lambda lkp: lkp[f'{x}inf']
-
-    @classmethod
-    def quasiSteadyStates(cls):
-        ''' Create a dictionary of functions computing quasi-steady states of a neuron
-            for a range of membrane charge densities, based on 1-dimensional lookups
-            interpolated at a given sonophore diameter, US frequency, US amplitude and duty cycle.
-
-            :return: dictionary of quasi-steady state functions
-        '''
-        return {k: cls.qsState(k) for k in cls.statesNames()}
 
     @classmethod
     def simQueue(cls, amps, durations, offsets, PRFs, DCs, outputdir=None):
