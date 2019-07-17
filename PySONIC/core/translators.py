@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-16 18:55:02
+# @Last Modified time: 2019-07-17 16:06:26
 
 from time import gmtime, strftime
 import re
@@ -330,9 +330,9 @@ class SonicTranslator(PointNeuronTranslator):
                     except AttributeError:
                         raise ValueError(err_str)
 
-    def createLookupLambda(self, expr):
-        ''' Create a lookup lambda function from an expression. '''
-        f = eval('lambda cls, lkp, x: {}'.format(expr))
+    def createClassLambda(self, args_str, expr):
+        ''' Create a class lambda function from an expression. '''
+        f = eval('lambda cls, {}: {}'.format(', '.join(args_str), expr))
         return lambda *args: f(self.pclass, *args)
 
     def translateExpr(self, expr, level=0):
@@ -369,7 +369,7 @@ class SonicTranslator(PointNeuronTranslator):
             print('')
 
         # Return dictionary of evaluated functions
-        return {k: self.createLookupLambda(v) for k, v in eff_dstates_str.items()}
+        return {k: self.createClassLambda(['lkp', 'x'], v) for k, v in eff_dstates_str.items()}
 
     def parseSteadyStates(self):
         ''' Parse neuron's steadyStates method to construct an adapted quasiSteadyStates
@@ -383,4 +383,4 @@ class SonicTranslator(PointNeuronTranslator):
                 print("    {} : lambda lkp: {}".format(k, v))
             print('')
         # Return dictionary of evaluated functions
-        return {k: self.createLookupLambda(v) for k, v in qsstates_str.items()}
+        return {k: self.createClassLambda(['lkp'], v) for k, v in qsstates_str.items()}
