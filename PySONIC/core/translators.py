@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 16:06:26
+# @Last Modified time: 2019-07-17 16:55:04
 
 from time import gmtime, strftime
 import re
@@ -330,8 +330,12 @@ class SonicTranslator(PointNeuronTranslator):
                     except AttributeError:
                         raise ValueError(err_str)
 
-    def createClassLambda(self, args_str, expr):
+    def createClassLambda(self, args_str, expr, func_name=None):
         ''' Create a class lambda function from an expression. '''
+        if 'lambda_dict' in expr:
+            expr = re.sub(
+                self.lambda_dict_call_pattern,
+                lambda x: f'cls.{func_name}()[\'{x.group(3)}\']({x.group(5)})', expr)
         f = eval('lambda cls, {}: {}'.format(', '.join(args_str), expr))
         return lambda *args: f(self.pclass, *args)
 
@@ -382,5 +386,7 @@ class SonicTranslator(PointNeuronTranslator):
             for k, v in qsstates_str.items():
                 print("    {} : lambda lkp: {}".format(k, v))
             print('')
+
         # Return dictionary of evaluated functions
-        return {k: self.createClassLambda(['lkp'], v) for k, v in qsstates_str.items()}
+        return {k: self.createClassLambda(['lkp'], v, func_name='quasiSteadyStates')
+                for k, v in qsstates_str.items()}

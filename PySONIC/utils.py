@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 14:33:32
+# @Last Modified time: 2019-07-17 17:17:57
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -559,4 +559,18 @@ def findModifiedEq(x0, dfunc, *args):
         :param *args: remaining arguments needed for the derivative function.
         :return: variable equilibrium value in modified system.
     '''
-    return brentq(lambda x: dfunc(x, *args), x0 * 1e-4, x0 * 1e3, xtol=1e-16)
+    is_iterable = [isIterable(arg) for arg in args]
+    if any(is_iterable):
+        if not all(is_iterable):
+            raise ValueError('mix of iterables and non-iterables')
+        lengths = [len(arg) for arg in args]
+        if not all(n == lengths[0] for n in lengths):
+            raise ValueError(f'inputs are not of the same size: {lengths}')
+        n = lengths[0]
+        res = []
+        for i in range(n):
+            x = [arg[i] for arg in args]
+            res.append(findModifiedEq(x0, dfunc, *x))
+        return np.array(res)
+    else:
+        return brentq(lambda x: dfunc(x, *args), x0 * 1e-4, x0 * 1e3, xtol=1e-16)
