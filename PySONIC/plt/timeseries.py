@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-11 12:02:53
+# @Last Modified time: 2019-07-18 20:43:12
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -221,7 +221,10 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         for j, filepath in enumerate(self.filepaths):
 
             # Load data
-            data, meta = self.getData(filepath, frequency, trange)
+            try:
+                data, meta = self.getData(filepath, frequency, trange)
+            except ValueError as err:
+                continue
             meta.pop('tcomp')
             full_labels.append(figtitle(meta))
 
@@ -355,7 +358,10 @@ class GroupedTimeSeries(TimeSeriesPlot):
         for filepath in self.filepaths:
 
             # Load data and extract model
-            data, meta = self.getData(filepath, frequency, trange)
+            try:
+                data, meta = self.getData(filepath, frequency, trange)
+            except ValueError as err:
+                continue
             model = getModel(meta)
 
             # Extract time and stim pulses

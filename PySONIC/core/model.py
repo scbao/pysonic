@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 20:35:46
+# @Last Modified time: 2019-07-18 20:44:58
 
 import os
 from functools import wraps
@@ -167,7 +167,10 @@ class Model(metaclass=abc.ABCMeta):
         ''' Log number of detected spikes on charge profile of simulation output. '''
         @wraps(simfunc)
         def wrapper(self, *args, **kwargs):
-            data, meta = simfunc(self, *args, **kwargs)
+            out = simfunc(self, *args, **kwargs)
+            if out is None:
+                return None
+            data, meta = out
             nspikes = self.getNSpikes(data)
             logger.debug('{} spike{} detected'.format(nspikes, plural(nspikes)))
             return data, meta
@@ -176,26 +179,35 @@ class Model(metaclass=abc.ABCMeta):
 
     @staticmethod
     def checkTitrate(argname):
-        ''' If no (None) amplitude provided in the list of input parameters,
-            perform a titration to find the threshold amplitude and add it to the list.
+        ''' If no None provided in the list of input parameters,
+            perform a titration to find the threshold parameter and add it to the list.
         '''
 
         def wrapper_with_args(simfunc):
 
             @wraps(simfunc)
             def wrapper(self, *args, **kwargs):
+                # Get argument index from function signature
                 func_args = list(inspect.signature(simfunc).parameters.keys())[1:]
                 iarg = func_args.index(argname)
+
+                # If argument is None
                 if args[iarg] is None:
-                    new_args = [x for x in args if x is not None]
-                    new_args = list(args[:])
+                    # Generate new args list without argument
+                    args = list(args)
+                    new_args = args.copy()
                     del new_args[iarg]
-                    Athr = self.titrate(*new_args)
-                    if np.isnan(Athr):
-                        logger.error('Could not find threshold excitation amplitude')
+
+                    # Perform titration to find threshold argument value
+                    xthr = self.titrate(*new_args)
+                    if np.isnan(xthr):
+                        logger.error(f'Could not find threshold {argname}')
                         return None
-                    new_args.insert(iarg, Athr)
-                    args = new_args
+
+                    # Re-insert it into arguments list
+                    args[iarg] = xthr
+
+                 # Execute simulation function
                 return simfunc(self, *args, **kwargs)
 
             return wrapper
@@ -204,7 +216,14 @@ class Model(metaclass=abc.ABCMeta):
 
     def simAndSave(self, outdir, *args):
         ''' Simulate the model and save the results in a specific output directory. '''
-        data, meta = self.simulate(*args)
+        out = self.simulate(*args)
+        if out is None:
+            return None
+        data, meta = out
+        if None in args:
+            args = list(args)
+            iNone = next(i for i, arg in enumerate(args) if arg is None)
+            args[iNone] = meta['Adrive']
         fpath = '{}/{}.pkl'.format(outdir, self.filecode(*args))
         with open(fpath, 'wb') as fh:
             pickle.dump({'meta': meta, 'data': data}, fh)

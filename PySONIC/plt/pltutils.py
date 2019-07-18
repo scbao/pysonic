@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 20:18:52
+# @Last Modified time: 2019-07-18 20:40:13
 
 ''' Useful functions to generate plots. '''
 
@@ -112,6 +112,8 @@ class GenericPlot:
 
     @staticmethod
     def getData(entry, frequency=1, trange=None):
+        if entry is None:
+            raise ValueError('non-existing data')
         if isinstance(entry, str):
             data, meta = loadData(entry, frequency)
         else:
