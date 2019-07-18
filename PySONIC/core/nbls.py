@@ -3,13 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-18 12:00:04
+# @Last Modified time: 2019-07-18 19:39:39
 
 from copy import deepcopy
 import logging
 import numpy as np
 import numdifftools as nd
 import pandas as pd
+from scipy.optimize import approx_fprime
 from scipy.linalg import eigvals
 
 from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator
@@ -516,6 +517,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         dfunc = lambda x: np.array(self.effDerivatives(_, x, lkp))
         classified_fixed_points = {'stable': [], 'unstable': [], 'saddle': []}
 
+        np.set_printoptions(precision=2)
+
         # For each fixed point
         for i, Qm in enumerate(fixed_points):
 
@@ -525,12 +528,20 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
             # Approximate the system's Jacobian matrix at the fixed-point and compute its eigenvalues
             x = np.array([Qm, *QSS.tables.values()])
-            J = jacobian(x, dfunc)
-            # print(J)
-            # print(nd.Jacobian(dfunc)(x))
-            lambdas = eigvals(J)
+            # xmin = np.array([-120., 0., 0., 0., 0.])
+            # xmax = np.array([120., 1., 1., 1., 1.])
+            # np.clip(x, xmin, xmax, out=x)
+            print(f'x = {x}')
+            J = jacobian(dfunc, x, rel_eps=1e-1, method='forward')
+            # Jfunc = nd.Jacobian(dfunc, order=3)
+            # J = Jfunc(x)
+            print('------------------ Jacobian ------------------')
+            names = ['Q'] + self.pneuron.statesNames()
+            for name, Jline in zip(names, J):
+                print(f'd(d{name}dt) = {Jline}')
 
             # Determine fixed point stability based on eigenvalues
+            lambdas = eigvals(J)
             neg_lambdas = lambdas.real < 0
             if np.all(neg_lambdas):
                 key = 'stable'
@@ -539,8 +550,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             else:
                 key = 'unstable'
             classified_fixed_points[key].append(Qm)
-            s = [f'{x:.2e}' for x in lambdas.real]
-            logger.debug(f'{key} fixed point @ Q = {(Qm * 1e5):.2f} nC/cm2 (lambdas = {s})')
+            s = [f'{x:.1e}' for x in lambdas.real]
+            logger.debug(f'{key} fixed point @ Q = {(Qm * 1e5):.1f} nC/cm2 (lambdas = {s})')
 
         return classified_fixed_points
 

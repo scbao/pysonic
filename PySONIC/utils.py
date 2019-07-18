@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-18 12:10:15
+# @Last Modified time: 2019-07-18 19:46:39
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -517,14 +517,48 @@ def binarySearch(bool_func, args, ix, xbounds, dx_thr, history=None):
         return binarySearch(bool_func, args, ix, xbounds, dx_thr, history=history)
 
 
-def jacobian(x, dfunc, rel_eps=1e-8):
+def derivative(f, x, eps, method='central'):
+    ''' Compute the difference formula for f'(x) with perturbation size eps.
+
+        :param dfunc: derivatives function, taking an array of states and returning
+         an array of derivatives
+        :param x: states vector
+        :param method: difference formula: 'forward', 'backward' or 'central'
+        :param eps: perturbation vector (same size as states vector)
+        :return: numerical approximation of the derivative around the fixed point
+    '''
+    if isIterable(x):
+        if not isIterable(eps) or len(eps) != len(x):
+            raise ValueError('eps must be the same size as x')
+        elif np.sum(eps != 0.) != 1:
+            raise ValueError('eps must be zero-valued across all but one dimensions')
+        eps_val = np.sum(eps)
+    else:
+        eps_val = eps
+
+    if method == 'central':
+        df = (f(x + eps) - f(x - eps)) / 2
+    elif method == 'forward':
+        df = f(x + eps) - f(x)
+    elif method == 'backward':
+        df = f(x) - f(x - eps)
+    else:
+        raise ValueError("Method must be 'central', 'forward' or 'backward'.")
+    return df / eps_val
+
+
+def jacobian(dfunc, x, rel_eps=None, abs_eps=None, method='central'):
     ''' Evaluate the Jacobian maatrix of a (time-invariant) system, given a states vector
         and derivatives function.
 
+        :param dfunc: derivatives function, taking an array of n states and returning
+            an array of n derivatives
         :param x: n-states vector
-        :param dfunc: n-derivatives function
         :return: n-by-n square Jacobian matrix
     '''
+    if sum(e is not None for e in [abs_eps, rel_eps]) != 1:
+        raise ValueError('one (and only one) of "rel_eps" or "abs_eps" parameters must be provided')
+
     # Determine vector size
     x = np.asarray(x)
     n = x.size
@@ -532,20 +566,27 @@ def jacobian(x, dfunc, rel_eps=1e-8):
     # Initialize Jacobian matrix
     J = np.empty((n, n))
 
-    # Evaluate derivatives of states
-    fx = np.array(dfunc(x))
+    # Create epsilon vector
+    if rel_eps is not None:
+        mode = 'relative'
+        eps_vec = rel_eps
+    else:
+        mode = 'absolute'
+        eps_vec = abs_eps
+    if not isIterable(eps_vec):
+        eps_vec = np.array([eps_vec] * n)
+    if mode == 'relative':
+        eps = x * eps_vec
+    else:
+        eps = eps_vec
 
-    # Create relative epsilon array if needed
-    if not isIterable(rel_eps):
-        rel_eps = np.array([rel_eps] * n)
-
-    # Perturb each state by relative epsilon, re-evaluate derivatives and assemble Jacobian matrix
+    # Perturb each state by epsilon on both sides, re-evaluate derivatives
+    # and assemble Jacobian matrix
+    ei = np.zeros(n)
     for i in range(n):
-        x_perturbed = x.copy()
-        x_perturbed[i] *= (1 + rel_eps[i])
-        delta = x_perturbed[i] - x[i]
-        fx_perturbed = np.array(dfunc(x_perturbed))
-        J[:, i] = (fx_perturbed  - fx) / delta
+        ei[i] = 1
+        J[:, i] = derivative(dfunc, x, eps * ei, method=method)
+        ei[i] = 0
 
     return J
 
