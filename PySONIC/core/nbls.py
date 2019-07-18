@@ -3,12 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 21:09:15
+# @Last Modified time: 2019-07-18 12:00:04
 
 from copy import deepcopy
 import logging
 import numpy as np
+import numdifftools as nd
 import pandas as pd
+from scipy.linalg import eigvals
 
 from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator
 from .bls import BilayerSonophore
@@ -511,7 +513,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             return - self.iNetQSS(Qm, Fdrive, Adrive, DC)
         fixed_points = getFixedPoints(
             lkp.refs['Q'], dQdt, filter='both', der_func=dfunc).tolist()
-        dfunc = lambda x: self.effDerivatives(_, x, lkp)
+        dfunc = lambda x: np.array(self.effDerivatives(_, x, lkp))
         classified_fixed_points = {'stable': [], 'unstable': [], 'saddle': []}
 
         # For each fixed point
@@ -522,8 +524,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                                                 squeeze_output=True)
 
             # Approximate the system's Jacobian matrix at the fixed-point and compute its eigenvalues
-            J = jacobian([Qm, *QSS.tables.values()], dfunc)
-            lambdas, _ = np.linalg.eig(J)
+            x = np.array([Qm, *QSS.tables.values()])
+            J = jacobian(x, dfunc)
+            # print(J)
+            # print(nd.Jacobian(dfunc)(x))
+            lambdas = eigvals(J)
 
             # Determine fixed point stability based on eigenvalues
             neg_lambdas = lambdas.real < 0
@@ -534,7 +539,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             else:
                 key = 'unstable'
             classified_fixed_points[key].append(Qm)
-            logger.debug(f'{key} fixed point @ Q = {(Qm * 1e5):.2f} nC/cm2 (lambdas = {lambdas.real}')
+            s = [f'{x:.2e}' for x in lambdas.real]
+            logger.debug(f'{key} fixed point @ Q = {(Qm * 1e5):.2f} nC/cm2 (lambdas = {s})')
 
         return classified_fixed_points
 

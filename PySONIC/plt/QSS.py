@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 22:14:49
+# @Last Modified time: 2019-07-18 12:06:39
 
 import inspect
 import logging
@@ -17,6 +17,11 @@ from ..utils import logger, fileCache
 
 
 root = '../../../QSS analysis/data'
+FP_colors = {
+    'stable': 'tab:green',
+    'saddle': 'tab:orange',
+    'unstable': 'tab:red'
+}
 
 
 def plotVarQSSDynamics(pneuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):
@@ -172,12 +177,11 @@ def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):
     ax.plot(Qref * 1e5, -iNet * 1e-3, color='k', label='$\\rm -I_{Net}$')
     ax.axhline(0, color='k', linewidth=0.5)
 
-    for key, fcolor in zip(['stable', 'unstable', 'saddle'], ['g', 'r', 'b']):
-        n_FPs = len(classified_FPs[key])
-        if n_FPs > 0:
-            ax.scatter(np.array(classified_FPs[key]) * 1e5, np.zeros(n_FPs),
-                       marker='.', s=200, facecolors=fcolor, edgecolors='none',
-                       label=f'{key} fixed points', zorder=3)
+    for k, v in classified_FPs.items():
+        if len(v) > 0:
+            ax.scatter(np.array(v) * 1e5, np.zeros(len(v)), marker='.', s=200,
+                       facecolors=FP_colors[k], edgecolors='none',
+                       label=f'{k} fixed points', zorder=3)
 
     fig.tight_layout()
     fig.subplots_adjust(right=0.8)
@@ -256,13 +260,12 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
         # Plot charge fixed points for each acoustic amplitude
         classified_FPs = getQSSFixedPointsvsAdrive(
             nbls, Fdrive, amps, DC, mpi=mpi, loglevel=loglevel)
-        for key, fcolor in zip(['stable', 'unstable', 'saddle'], ['g', 'r', 'b']):
-            n_FPs = len(classified_FPs[key])
-            if n_FPs > 0:
-                _, Q_FPs = np.array(classified_FPs[key]).T
-                ax.scatter(np.array(Q_FPs) * 1e5, np.zeros(n_FPs),
-                           marker='.', s=100, facecolors=fcolor, edgecolors='none',
-                           label=f'{key} fixed points')
+        for k, v in classified_FPs.items():
+            if len(v) > 0:
+                _, Q_FPs = np.array(v).T
+                ax.scatter(np.array(Q_FPs) * 1e5, np.zeros(len(v)),
+                           marker='.', s=100, facecolors=FP_colors[k], edgecolors='none',
+                           label=f'{k} fixed points')
 
     # Define color code
     mymap = plt.get_cmap(cmap)
@@ -390,13 +393,12 @@ def plotEqChargeVsAmp(pneuron, a, Fdrive, amps=None, tstim=None, toffset=None, P
     classified_FPs = getQSSFixedPointsvsAdrive(
         nbls, Fdrive, amps, DC, mpi=mpi, loglevel=loglevel)
 
-    for key, fcolor in zip(['stable', 'unstable', 'saddle'], ['g', 'r', 'b']):
-        n_FPs = len(classified_FPs[key])
-        if n_FPs > 0:
-            A_FPs, Q_FPs = np.array(classified_FPs[key]).T
+    for k, v in classified_FPs.items():
+        if len(v) > 0:
+            A_FPs, Q_FPs = np.array(v).T
             ax.scatter(np.array(A_FPs) * Afactor, np.array(Q_FPs) * 1e5,
-                       marker='.', s=20, facecolors=fcolor, edgecolors='none',
-                       label=f'{key} fixed points')
+                       marker='.', s=20, facecolors=FP_colors[k], edgecolors='none',
+                       label=f'{k} fixed points')
 
     # Plot charge asymptotic stabilization points from simulations for each acoustic amplitude
     if compdir is not None:
