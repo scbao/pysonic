@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-18 12:43:23
+# @Last Modified time: 2019-07-18 21:12:46
 
 import inspect
 import logging
@@ -449,7 +449,7 @@ def getQSSThresholdAmps(nbls, Fdrive, DCs, mpi=False, loglevel=logging.INFO):
 )
 def getSimThresholdAmps(nbls, Fdrive, tstim, toffset, PRF, DCs, mpi=False, loglevel=logging.INFO):
     # Run batch to find threshold amplitude from titrations at each DC
-    queue = [[Fdrive, tstim, toffset, PRF, DC, 'sonic'] for DC in DCs]
+    queue = [[Fdrive, tstim, toffset, PRF, DC, 1. , 'sonic'] for DC in DCs]
     batch = Batch(nbls.titrate, queue)
     return batch(mpi=mpi, loglevel=loglevel)
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-18 20:44:58
+# @Last Modified time: 2019-07-18 21:12:30
 
 import os
 from functools import wraps
@@ -207,7 +207,7 @@ class Model(metaclass=abc.ABCMeta):
                     # Re-insert it into arguments list
                     args[iarg] = xthr
 
-                 # Execute simulation function
+                # Execute simulation function
                 return simfunc(self, *args, **kwargs)
 
             return wrapper
