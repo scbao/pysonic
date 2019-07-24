@@ -3,15 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-18 21:13:08
+# @Last Modified time: 2019-07-24 09:38:06
 
 from copy import deepcopy
 import logging
 import numpy as np
 import numdifftools as nd
 import pandas as pd
-from scipy.optimize import approx_fprime
-from scipy.linalg import eigvals
+from scipy import linalg
 
 from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator
 from .bls import BilayerSonophore
@@ -207,7 +206,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         dQmdt = - self.pneuron.iNet(lkp0d['V'], states_dict) * 1e-3
         return [dQmdt, *self.pneuron.getDerEffStates(lkp0d, states_dict)]
 
-    def _simFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, phi=np.pi):
+    def __simFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, phi=np.pi):
         # Determine time step
         dt = 1 / (NPC_DENSE * Fdrive)
 
@@ -243,7 +242,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             data[self.pneuron.statesNames()[i]] = y[:, i + 4]
         return data
 
-    def _simHybrid(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, phi=np.pi):
+    def __simHybrid(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, phi=np.pi):
         # Determine time steps
         dt_dense, dt_sparse = [1. / (n * Fdrive) for n in [NPC_DENSE, NPC_SPARSE]]
 
@@ -282,7 +281,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             data[self.pneuron.statesNames()[i]] = y[:, i + 4]
         return data
 
-    def _simSonic(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs):
+    def __simSonic(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs):
         # Load appropriate 2D lookups
         lkp2d = self.getLookup2D(Fdrive, fs)
 
@@ -379,9 +378,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Call appropriate simulation function and return
         try:
             simfunc = {
-                'full': self._simFull,
-                'hybrid': self._simHybrid,
-                'sonic': self._simSonic
+                'full': self.__simFull,
+                'hybrid': self.__simHybrid,
+                'sonic': self.__simSonic
             }[method]
         except KeyError:
             raise ValueError('Invalid integration method: "{}"'.format(method))
@@ -529,30 +528,31 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
             # Approximate the system's Jacobian matrix at the fixed-point and compute its eigenvalues
             x = np.array([Qm, *QSS.tables.values()])
-            # xmin = np.array([-120., 0., 0., 0., 0.])
-            # xmax = np.array([120., 1., 1., 1., 1.])
-            # np.clip(x, xmin, xmax, out=x)
-            print(f'x = {x}')
-            J = jacobian(dfunc, x, rel_eps=1e-1, method='forward')
+            print(f'x = {x}, dfunx(x) = {dfunc(x)}')
+            eps_machine = np.sqrt(np.finfo(float).eps)
+            J = jacobian(dfunc, x, rel_eps=eps_machine, method='forward')
             # Jfunc = nd.Jacobian(dfunc, order=3)
             # J = Jfunc(x)
-            print('------------------ Jacobian ------------------')
-            names = ['Q'] + self.pneuron.statesNames()
-            for name, Jline in zip(names, J):
-                print(f'd(d{name}dt) = {Jline}')
+            # print('------------------ Jacobian ------------------')
+            # names = ['Q'] + self.pneuron.statesNames()
+            # for name, Jline in zip(names, J):
+            #     print(f'd(d{name}dt) = {Jline}')
 
             # Determine fixed point stability based on eigenvalues
-            lambdas = eigvals(J)
-            neg_lambdas = lambdas.real < 0
-            if np.all(neg_lambdas):
+            eigvals, eigvecs = linalg.eig(J)
+            s = ['({0.real:.2e} + {0.imag:.2e}j)'.format(x) for x in eigvals]
+            print(f'eigenvalues = {s}')
+            is_real_eigvals = np.isreal(eigvals)
+            print(is_real_eigvals)
+            is_neg_eigvals = eigvals.real < 0
+            if np.all(is_neg_eigvals):
                 key = 'stable'
-            elif np.any(neg_lambdas):
+            elif np.any(is_neg_eigvals):
                 key = 'saddle'
             else:
                 key = 'unstable'
             classified_fixed_points[key].append(Qm)
-            s = [f'{x:.1e}' for x in lambdas.real]
-            logger.debug(f'{key} fixed point @ Q = {(Qm * 1e5):.1f} nC/cm2 (lambdas = {s})')
+            logger.debug(f'{key} fixed point @ Q = {(Qm * 1e5):.1f} nC/cm2')
 
         return classified_fixed_points
 
