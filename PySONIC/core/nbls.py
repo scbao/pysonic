@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-24 09:38:06
+# @Last Modified time: 2019-07-24 10:06:33
 
 from copy import deepcopy
 import logging
@@ -91,7 +91,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return inputvars
 
     def filecodes(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, method):
-        print(Fdrive, Adrive, tstim, toffset, PRF, DC, fs, method)
         # Get parent codes and supress irrelevant entries
         bls_codes = super().filecodes(Fdrive, Adrive, 0.0)
         pneuron_codes = self.pneuron.filecodes(0.0, tstim, toffset, PRF, DC)

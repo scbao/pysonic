@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 18:46:33
+# @Last Modified time: 2019-07-24 09:46:34
 
 import numpy as np
 
@@ -112,5 +112,3 @@ class TemplateNeuron(PointNeuron):
             'iKd': lambda Vm, x: cls.iKd(x['n'], Vm),
             'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
-
-    # ------------------------------ Other methods ------------------------------

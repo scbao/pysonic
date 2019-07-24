@@ -48,6 +48,7 @@ Several conductance-based point-neuron models are implemented that inherit from 
 # Requirements
 
 - Python 3.6+
+- Package dependencies (numpy, scipy, ...) are installed automatically upon installation of the package.
 
 # Installation
 
@@ -113,6 +114,8 @@ plt.show()
 
 ## From the command line
 
+### Running simulations and batches
+
 You can easily run simulations of all 3 model types using the dedicated command line scripts. To do so, open a terminal in the `scripts` directory.
 
 - Use `run_mech.py` for simulations of the **mechanical model** upon **ultrasonic stimulation**. For instance, for a 32 nm radius bilayer sonophore sonicated at 500 kHz and 100 kPa:
@@ -127,9 +130,19 @@ You can easily run simulations of all 3 model types using the dedicated command 
 
 ```$ python run_astim.py -n RS -a 32 -f 500 -A 100 --tstim 150 --method sonic -p Qm```
 
-The simulation results are saved in `.pkl` files. To view these results directly upon simulation completion, you can use the `-p [xxx]` option, where `[xxx]` can be `all` or a given variable name (e.g. `Z` for membrane deflection, `Vm` for membrane potential, `Qm` for membrane charge density).
+Additionally, you can run batches of simulations by specifying more than one value for any given stimulation parameter (e.g. `-A 100 200` for sonication with 100 and 200 kPa respectively). These batches can be parallelized using multiprocessing to optimize performance, with the extra argument `--mpi`.
 
-You can also easily run batches of simulations by specifying more than one value for any given stimulation parameter (e.g. `-A 100 200` for sonication with 100 and 200 kPa respectively). These batches can be parallelized using multiprocessing to optimize performance, with the extra argument `--mpi`.
+### Saving and visualizing results
+
+By default, simulation results are neither shown, nor saved.
+
+To view results directly upon simulation completion, you can use the `-p [xxx]` option, where `[xxx]` can be `all` (to plot all resulting variables) or a given variable name (e.g. `Z` for membrane deflection, `Vm` for membrane potential, `Qm` for membrane charge density).
+
+To save simulation results in binary `.pkl` files, you can use the `-s` option. You will be prompted to choose an output directory, unless you also specify it with the `-o <output_directory>` option. Output files are automatically named from model and simulation parameters to avoid ambiguity.
+
+When running simulation batches, it is highly advised to specify the `-s` option in order to save results of each simulation. You can then visualize results at a later stage.
+
+To visualize results, use the `plot_timeseries.py` script. You will be prompted to select the output files containing the simulation(s) results. By default, separate figures will be created for each simulation, showing the time profiles of all resulting variables. Here again, you can choose to show only a subset of variables using the `-p [xxx]` option. Moreover, if you select a subset of variables, you can visualize resulting profiles across simulations in comparative figures wih the `--compare` option.
 
 Several more options are available. To view them, type in:
 
@@ -147,13 +160,20 @@ To add a new point-neuron model, follow this procedure:
 1. Create a new file, and save it in the `neurons` sub-folder, with an explicit name (e.g. `my_neuron.py`).
 2. Copy-paste the content of the `template.py` file (also located in the `neurons` sub-folder) into your file.
 3. In your file, change the **class name** from `TemplateNeuron` to something more explicit (e.g. `MyNeuron`), and change the **neuron name** accordingly (e.g. `myneuron`). This name is a keyword used to refer to the model from outside the class.
-4. Modify/add **biophysical parameters** of your model (resting parameters, reversal potentials, channel conductances, ionic concentrations, temperatures, diffusion constants, etc...) as class attributes.
+4. Modify/add **biophysical parameters** of your model (resting parameters, reversal potentials, channel conductances, ionic concentrations, temperatures, diffusion constants, etc...) as class attributes. If some parameters are not fixed and must be computed, assign them to the class inside a  `__new__` method, taking the class (`cls`) as sole attribute.
 5. Specify a **dictionary of names:descriptions of your different differential states** (i.e. all the differential variables of your model, except for the membrane potential).
 6. Modify/add **gating states kinetics** (`alphax` and `betax` methods) that define the voltage-dependent activation and inactivation rates of the different ion channnels gates of your model. Those methods take the membrane potential `Vm` as input and return a rate in `s-1`. Alternatively, your can use steady-state open-probabilties (`xinf`) and adaptation time constants (`taux`) methods.
-7. Modify the `derStates` method defining a dictionary of lambda functions that take the membrane potential `Vm` and a states vector `x` as inputs, and return a dictionary of lambda function returning the derivatives of your different state variables (in `<state_unit>/s`). **This method is automatically parsed to generate the equivalent `derEffStates` method used in coarse-grained US simulations. Hence, make sure that all internal calls to functions that depend solely on `Vm` appear directly in these lambda expressions and are not hidden inside nested function calls.**
-8. Modify the `steadyStates` method defining a dictionary of lambda functions that take a membrane potential value `Vm` as input, and return the steady-state values of your different state variables (in `<state_unit>`).
+7. Modify the `derStates` method that defines the **derivatives of your different state variables**. These derivatives are defined inside a dictionary, where each state key is paired to a lambda function that takes the membrane potential `Vm` and a states vector `x` as inputs, and returns the associated state derivative (in `<state_unit>/s`).
+8. Modify the `steadyStates` method that defines the **steady-state values of your different state variables**. These steady-states are defined inside a dictionary, where each state key is paired to a lambda function that takes the membrane potential `Vm` as only input, and returns the associated steady-state value (in `<state_unit>`). If some steady-states depend on the values of other-steady states, you can proceed as follows:
+   - define all independent steady-states functions in a dictionary called `lambda_dict`
+   - add dependent steady-state functions to the dictionary, calling `lambda_dict[k](Vm)` for each state `k` whose value is required.
 9. Modify/add **membrane currents** (`iXX` methods) of your model. Those methods take relevant gating states and the membrane potential `Vm` as inputs, and must return a current density in `mA/m2`. **You also need to modify the docstring accordingly, as this information is used by the package**.
-10. Modify the `currents` method defining a dictionary of lambda functions that take a membrane potential value Vm and a states vector `x` as inputs, and return the different membrane currents of your model (in `mA/m2`).
+10. Modify the `currents` method that defines the **membrane currents of your model**. These currents are defined inside a dictionary, where each current key is paired to a lambda function that takes the membrane potential `Vm` and a states vector `x` as inputs, and returns the associated current (in `mA/m2`).
+
+**The `derStates`, `steadyStates` and `currents` methods are automatically parsed by the package to adapt neuron models to US stimulation. Hence, make sure to**:
+   - **keep them as class methods**
+   - **check that all calls to functions that depend solely on `Vm` appear directly in the methods' lambda expressions and are not hidden inside nested function calls.**
+
 11. Add the neuron class to the package, by importing it in the `__init__.py` file of the `neurons` sub-folder:
 
 ```from .my_neuron import MyNeuron```
