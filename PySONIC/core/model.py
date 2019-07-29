@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-18 21:12:30
+# @Last Modified time: 2019-07-29 17:23:32
 
 import os
 from functools import wraps
@@ -67,7 +67,6 @@ class Model(metaclass=abc.ABCMeta):
 
     def filecode(self, *args):
         ''' Generate file code given a specific combination of model input parameters. '''
-
         # If meta dictionary was passed, generate inputs list from it
         if len(args) == 1 and isinstance(args[0], dict):
             meta = args[0]

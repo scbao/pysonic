@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 16:13:29
+# @Last Modified time: 2019-07-29 17:23:06
 
 from enum import Enum
 import os
@@ -178,7 +178,7 @@ class BilayerSonophore(Model):
             }
         }
 
-    def filecodes(self, Fdrive, Adrive, Qm):
+    def filecodes(self, Fdrive, Adrive, Qm, PmCompMethod='predict'):
         return {
             'simkey': self.simkey,
             'a': '{:.0f}nm'.format(self.a * 1e9),

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-26 18:32:41
+# @Last Modified time: 2019-07-29 10:40:16
 
 from copy import deepcopy
 import logging
@@ -170,6 +170,47 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Return effective coefficients
         return [meta['tcomp'], effvars]
+
+    def getLookupFileName(self, a=None, Fdrive=None, Adrive=None, fs=False):
+        fname = '{}_lookups'.format(self.pneuron.name)
+        if a is not None:
+            fname += '_{:.0f}nm'.format(a * 1e9)
+        if Fdrive is not None:
+            fname += '_{:.0f}kHz'.format(Fdrive * 1e-3)
+        if Adrive is not None:
+            fname += '_{:.0f}kPa'.format(Adrive * 1e-3)
+        if fs is True:
+            fname += '_fs'
+        return '{}.pkl'.format(fname)
+
+    def getLookupFilePath(self, *args, **kwargs):
+        return os.path.join(NEURONS_LOOKUP_DIR, self.getLookupFileName(*args, **kwargs))
+
+    def getLookup(self, *args, **kwargs):
+        lookup_path = self.getLookupFilePath(*args, **kwargs)
+        if not os.path.isfile(lookup_path):
+            raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
+        with open(lookup_path, 'rb') as fh:
+            frame = pickle.load(fh)
+        if 'ng' in frame['lookup']:
+            del frame['lookup']['ng']
+        refs = frame['input']
+
+        # Move fs to last reference dimension
+        keys = list(refs.keys())
+        if 'fs' in keys and keys.index('fs') < len(keys) - 1:
+            del keys[keys.index('fs')]
+            keys.append('fs')
+            refs = {k: refs[k] for k in keys}
+
+        return SmartLookup(refs, frame['lookup'])
+
+    def getLookup2D(self, Fdrive, fs):
+        if fs < 1:
+            lkp2d = self.getLookup(a=self.a, Fdrive=Fdrive, fs=True).project('fs', fs)
+        else:
+            lkp2d = self.getLookup().projectN({'a': self.a, 'f': Fdrive})
+        return lkp2d
 
     def fullDerivatives(self, t, y, Fdrive, Adrive, phi, fs):
         ''' Compute the full system derivatives.
@@ -578,44 +619,3 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return binarySearch(
             xfunc,
             [Fdrive, DC], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM)
-
-    def getLookupFileName(self, a=None, Fdrive=None, Adrive=None, fs=False):
-        fname = '{}_lookups'.format(self.pneuron.name)
-        if a is not None:
-            fname += '_{:.0f}nm'.format(a * 1e9)
-        if Fdrive is not None:
-            fname += '_{:.0f}kHz'.format(Fdrive * 1e-3)
-        if Adrive is not None:
-            fname += '_{:.0f}kPa'.format(Adrive * 1e-3)
-        if fs is True:
-            fname += '_fs'
-        return '{}.pkl'.format(fname)
-
-    def getLookupFilePath(self, *args, **kwargs):
-        return os.path.join(NEURONS_LOOKUP_DIR, self.getLookupFileName(*args, **kwargs))
-
-    def getLookup(self, *args, **kwargs):
-        lookup_path = self.getLookupFilePath(*args, **kwargs)
-        if not os.path.isfile(lookup_path):
-            raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
-        with open(lookup_path, 'rb') as fh:
-            frame = pickle.load(fh)
-        if 'ng' in frame['lookup']:
-            del frame['lookup']['ng']
-        refs = frame['input']
-
-        # Move fs to last reference dimension
-        keys = list(refs.keys())
-        if 'fs' in keys and keys.index('fs') < len(keys) - 1:
-            del keys[keys.index('fs')]
-            keys.append('fs')
-            refs = {k: refs[k] for k in keys}
-
-        return SmartLookup(refs, frame['lookup'])
-
-    def getLookup2D(self, Fdrive, fs):
-        if fs < 1:
-            lkp2d = self.getLookup(a=self.a, Fdrive=Fdrive, fs=True).project('fs', fs)
-        else:
-            lkp2d = self.getLookup().projectN({'a': self.a, 'f': Fdrive})
-        return lkp2d
