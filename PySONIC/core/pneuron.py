@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 20:04:42
+# @Last Modified time: 2019-08-14 14:10:09
 
 import abc
 import inspect
@@ -392,8 +392,6 @@ class PointNeuron(Model):
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
         '''
-
-        # Check validity of stimulation parameters
         if not all(isinstance(param, float) for param in [Astim, tstim, toffset, DC]):
             raise TypeError('Invalid stimulation parameters (must be float typed)')
         if tstim <= 0:

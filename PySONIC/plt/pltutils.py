@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-18 20:40:13
+# @Last Modified time: 2019-08-14 14:58:22
 
 ''' Useful functions to generate plots. '''
 
@@ -31,19 +31,24 @@ def figtitle(meta):
         return '{:.0f}nm radius BLS structure: MECH-STIM {:.0f}kHz, {:.2f}kPa, {:.1f}nC/cm2'.format(
             meta['a'] * 1e9, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3, meta['Qm'] * 1e5)
     else:
-        if meta['DC'] < 1:
-            wavetype = 'PW'
-            suffix = ', {:.2f}Hz PRF, {:.0f}% DC'.format(meta['PRF'], meta['DC'] * 1e2)
+        if 'DC' in meta:
+            if meta['DC'] < 1:
+                wavetype = 'PW'
+                suffix = ', {:.2f}Hz PRF, {:.0f}% DC'.format(meta['PRF'], meta['DC'] * 1e2)
+            else:
+                wavetype = 'CW'
+                suffix = ''
+            if 'Astim' in meta:
+                return '{} neuron: {} E-STIM {:.2f}mA/m2, {:.0f}ms{}'.format(
+                    meta['neuron'], wavetype, meta['Astim'], meta['tstim'] * 1e3, suffix)
+            else:
+                return '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.2f}kPa, {:.0f}ms{} - {} model'.format(
+                    meta['neuron'], meta['a'] * 1e9, wavetype, meta['Fdrive'] * 1e-3,
+                    meta['Adrive'] * 1e-3, meta['tstim'] * 1e3, suffix, meta['method'])
         else:
-            wavetype = 'CW'
-            suffix = ''
-        if 'Astim' in meta:
-            return '{} neuron: {} E-STIM {:.2f}mA/m2, {:.0f}ms{}'.format(
-                meta['neuron'], wavetype, meta['Astim'], meta['tstim'] * 1e3, suffix)
-        else:
-            return '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.2f}kPa, {:.0f}ms{} - {} model'.format(
-                meta['neuron'], meta['a'] * 1e9, wavetype, meta['Fdrive'] * 1e-3,
-                meta['Adrive'] * 1e-3, meta['tstim'] * 1e3, suffix, meta['method'])
+            return '{} neuron: V-CLAMP {:.1f}-{:.1f}mV, {:.0f}ms'.format(
+                    meta['neuron'], meta['Vhold'], meta['Vstep'], meta['tstim'] * 1e3)
+
 
 
 def cm2inch(*tupl):

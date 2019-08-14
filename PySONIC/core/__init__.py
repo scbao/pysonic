@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 17:38:48
+# @Last Modified time: 2019-08-14 14:02:25
 
 import inspect
 import sys
@@ -15,6 +15,7 @@ from .pneuron import *
 from .bls import *
 from .translators import *
 from .nbls import *
+from .vclamp import *
 from .lookups import *
 
 from ..neurons import getPointNeuron
@@ -38,4 +39,6 @@ def getModel(meta):
         model = getPointNeuron(meta['neuron'])
         if meta['simkey'] == 'ASTIM':
             model = NeuronalBilayerSonophore(meta['a'], model, meta['Fdrive'])
+        elif meta['simkey'] == 'VCLAMP':
+            model = VoltageClamp(model)
     return model

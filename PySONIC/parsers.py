@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-02 18:55:02
+# @Last Modified time: 2019-08-14 14:52:00
 
 import os
 import logging
@@ -468,38 +468,22 @@ class MechSimParser(SimParser):
         return [args[k] for k in ['freq', 'amp', 'charge']]
 
 
-class PWSimParser(SimParser):
-    ''' Generic parser interface to run PW patterned simulations from the command line. '''
+class NeuronSimParser(SimParser):
 
     def __init__(self):
         super().__init__()
-
         self.defaults.update({
             'neuron': 'RS',
             'tstim': 100.0,  # ms
-            'toffset': 50.,  # ms
-            'PRF': 100.0,  # Hz
-            'DC': 100.0  # %
+            'toffset': 50.  # ms
         })
-
         self.factors.update({
             'tstim': 1e-3,
-            'toffset': 1e-3,
-            'PRF': 1.,
-            'DC': 1e-2
+            'toffset': 1e-3
         })
-
-        self.allowed.update({
-            'DC': range(101)
-        })
-
         self.addNeuron()
         self.addTstim()
         self.addToffset()
-        self.addPRF()
-        self.addDC()
-        self.addTitrate()
-        self.addSpikes()
 
     def addTstim(self):
         self.add_argument(
@@ -508,6 +492,63 @@ class PWSimParser(SimParser):
     def addToffset(self):
         self.add_argument(
             '--toffset', nargs='+', type=float, help='Offset duration (ms)')
+
+
+class VClampParser(NeuronSimParser):
+
+    def __init__(self):
+        super().__init__()
+        self.defaults.update({
+            'vhold': -70.0,  # mV
+            'vstep': 0.0  # mV
+        })
+        self.factors.update({
+            'vhold': 1.,
+            'vstep': 1.
+        })
+        self.addVhold()
+        self.addVstep()
+
+    def addVhold(self):
+        self.add_argument(
+            '--vhold', nargs='+', type=float, help='Held membrane potential (mV)')
+
+    def addVstep(self):
+        self.add_argument(
+            '--vstep', nargs='+', type=float, help='Step membrane potential (mV)')
+
+    def parse(self, args=None):
+        if args is None:
+            args = super().parse()
+        for key in ['vhold', 'vstep', 'tstim', 'toffset']:
+            args[key] = self.parse2array(args, key, factor=self.factors[key])
+        return args
+
+    @staticmethod
+    def parseSimInputs(args):
+        return [args[k] for k in ['vhold', 'vstep', 'tstim', 'toffset']]
+
+
+class PWSimParser(NeuronSimParser):
+    ''' Generic parser interface to run PW patterned simulations from the command line. '''
+
+    def __init__(self):
+        super().__init__()
+        self.defaults.update({
+            'PRF': 100.0,  # Hz
+            'DC': 100.0  # %
+        })
+        self.factors.update({
+            'PRF': 1.,
+            'DC': 1e-2
+        })
+        self.allowed.update({
+            'DC': range(101)
+        })
+        self.addPRF()
+        self.addDC()
+        self.addTitrate()
+        self.addSpikes()
 
     def addPRF(self):
         self.add_argument(
