@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 20:18:03
+# @Last Modified time: 2019-08-14 17:46:31
 
 import abc
 import numpy as np
@@ -46,6 +46,13 @@ class Simulator(metaclass=abc.ABCMeta):
         stim = np.concatenate((stim, np.ones(tnew.size - 1) * is_on))
         return t, y, stim
 
+    @staticmethod
+    def prependSolution(t, y, stim, y0=None):
+        ''' Prepend initial conditions (prior to stimulation) to solution vectors. '''
+        if y0 is None:
+            y0 = y[0, :]
+        return np.insert(t, 0, 0.), np.vstack((y0, y)), np.insert(stim, 0, 0)
+
     @classmethod
     def integrate(cls, t, y, stim, tnew, dfunc, is_on, use_adaptive_dt=False):
         ''' Integrate system for a time interval and append to preceding solution arrays.
@@ -76,7 +83,7 @@ class Simulator(metaclass=abc.ABCMeta):
             :target_dt: target time step after resampling
             :return: 3-tuple with the resampled time vector, solution matrix and state vector
         '''
-        dt = t[1] - t[0]
+        dt = t[2] - t[1]
         rf = int(np.round(target_dt / dt))
         assert rf >= 1, 'Hyper-sampling not supported'
         logger.debug(

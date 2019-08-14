@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 20:20:21
+# @Last Modified time: 2019-08-14 17:47:27
 
 import os
 import pickle
@@ -78,7 +78,7 @@ class ActivationMap(Map):
         Qm = df['Qm'].values
 
         # Detect spikes on charge profile during stimulus
-        dt = t[1] - t[0]
+        dt = t[2] - t[1]
         mpd = int(np.ceil(SPIKE_MIN_DT / dt))
         ispikes, *_ = findPeaks(
             Qm[t <= self.tstim],

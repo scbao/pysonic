@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 15:13:07
+# @Last Modified time: 2019-08-14 17:47:37
 
 ''' Useful functions to generate plots. '''
 
@@ -76,8 +76,8 @@ def extractPltVar(model, pltvar, df, meta=None, nsamples=0, name=''):
         var = var.values
     var = var.copy()
 
-    if var.size == nsamples - 2:
-        var = np.hstack((np.array([pltvar.get('y0', var[0])] * 2), var))
+    if var.size == nsamples - 1:
+        var = np.insert(var, 0, var[0])
     var *= pltvar.get('factor', 1)
 
     return var
@@ -289,7 +289,7 @@ class GenericPlot:
         if key not in data:
             raise ValueError('charge profile not avilable in dataframe')
         t, y = [data[k].values for k in['t', key]]
-        dt = t[1] - t[0]
+        dt = t[2] - t[1]
         ipeaks, proms, widths, ihalfmaxbounds, ibounds = findPeaks(
             data[key].values, mph=mph, mpd=int(np.ceil(mpt / dt)), mpp=mpp)
         if ipeaks is None:

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 15:54:24
+# @Last Modified time: 2019-08-14 17:34:35
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -47,7 +47,7 @@ class TimeSeriesPlot(GenericPlot):
         '''
         # Compute states derivatives and identify bounds indexes of pulses
         dstates = np.diff(states)
-        ipulse_on = np.insert(np.where(dstates > 0.0)[0] + 1, 0, 0)
+        ipulse_on = np.where(dstates > 0.0)[0] + 1
         ipulse_off = np.where(dstates < 0.0)[0] + 1
         if ipulse_off.size < ipulse_on.size:
             ioff = t.size - 1
@@ -92,8 +92,7 @@ class TimeSeriesPlot(GenericPlot):
     @staticmethod
     def prepareTime(t, tplt):
         if tplt['onset'] > 0.0:
-            tonset = np.array([-tplt['onset'], -t[0] - t[1]])
-            t = np.hstack((tonset, t))
+            t = np.insert(t, 0, -tplt['onset'])
         return t * tplt['factor']
 
     @staticmethod

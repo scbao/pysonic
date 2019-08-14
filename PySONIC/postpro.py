@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-16 22:37:02
+# @Last Modified time: 2019-08-14 17:46:09
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -191,7 +191,7 @@ def detectPeaksTime(t, y, mph, mtd, mpp=0):
 
     if isuniform:
         print('uniform time vector')
-        dt = t[1] - t[0]
+        dt = t[2] - t[1]
         mpd = int(np.ceil(mtd / dt))
         ipeaks = detectPeaks(y, mph, mpd=mpd, threshold=mpp)
     else:
@@ -429,7 +429,7 @@ def findPeaks(y, mph=None, mpd=None, mpp=None):
 
 def computeFRProfile(data, t, Qm):
     # Prominence-based spike detection
-    dt = t[1] - t[0]
+    dt = t[2] - t[1]
     mpd = int(np.ceil(SPIKE_MIN_DT / dt))
     ispikes, *_ = findPeaks(Qm, mph=SPIKE_MIN_QAMP, mpd=mpd, mpp=SPIKE_MIN_QPROM)
     if len(ispikes) <= 1:
@@ -477,7 +477,7 @@ def computeSpikingMetrics(filenames):
         tstim = meta['tstim']
         t = df['t'].values
         Qm = df['Qm'].values
-        dt = t[1] - t[0]
+        dt = t[2] - t[1]
 
         # Detect spikes on charge profile
         mpd = int(np.ceil(SPIKE_MIN_DT / dt))

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-29 17:23:06
+# @Last Modified time: 2019-08-14 17:40:22
 
 from enum import Enum
 import os
@@ -684,6 +684,13 @@ class BilayerSonophore(Model):
         # Return derivatives vector
         return [dUdt, dZdt, dngdt]
 
+    def computeInitialDeflection(self, Adrive, Fdrive, phi, Qm, dt, Pm_comp_method=PmCompMethod.predict):
+        ''' Compute non-zero deflection value for a small perturbation
+            (solving quasi-steady equation).
+        '''
+        Pac = self.Pacoustic(dt, Adrive, Fdrive, phi)
+        return self.balancedefQS(self.ng0, Qm, Pac, Pm_comp_method)
+
     @Model.addMeta
     def simulate(self, Fdrive, Adrive, Qm, phi=np.pi, Pm_comp_method=PmCompMethod.predict):
         ''' Simulate until periodic stabilization for a specific set of ultrasound parameters,
@@ -705,18 +712,21 @@ class BilayerSonophore(Model):
         # Determine time step
         dt = 1 / (NPC_DENSE * Fdrive)
 
-        # Compute non-zero deflection value for a small perturbation (solving quasi-steady equation)
-        Pac = self.Pacoustic(dt, Adrive, Fdrive, phi)
-        Z0 = self.balancedefQS(self.ng0, Qm, Pac, Pm_comp_method)
+        # Compute initial non-zero deflection
+        Z = self.computeInitialDeflection(Adrive, Fdrive, phi, Qm, dt, Pm_comp_method=Pm_comp_method)
 
         # Set initial conditions
-        y0 = np.array([0., Z0, self.ng0])
+        y0 = np.array([0., 0., self.ng0])
+        y1 = np.array([0., Z, self.ng0])
 
         # Initialize simulator and compute solution
         simulator = PeriodicSimulator(
             lambda t, y: self.derivatives(t, y, Fdrive, Adrive, Qm, phi, Pm_comp_method),
             ivars_to_check=[1, 2])
-        t, y, stim = simulator(y0, dt, 1. / Fdrive)
+        t, y, stim = simulator(y1, dt, 1. / Fdrive)
+
+        # Prepend initial conditions (prior to stimulation)
+        t, y, stim = simulator.prependSolution(t, y, stim, y0=y0)
 
         # Set last stimulation state to zero
         stim[-1] = 0

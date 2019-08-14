@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 14:10:09
+# @Last Modified time: 2019-08-14 17:41:14
 
 import abc
 import inspect
@@ -122,7 +122,6 @@ class PointNeuron(Model):
                 'desc': 'membrane potential',
                 'label': 'V_m',
                 'unit': 'mV',
-                'y0': cls.Vm0,
                 'bounds': (-150, 70)
             },
 
@@ -463,6 +462,9 @@ class PointNeuron(Model):
         t, y, stim = simulator(
             y0, DT_EFFECTIVE, tstim, toffset, PRF, DC)
 
+        # Prepend initial conditions (prior to stimulation)
+        t, y, stim = simulator.prependSolution(t, y, stim)
+
         # Store output in dataframe and return
         data = pd.DataFrame({
             't': t,
@@ -493,7 +495,7 @@ class PointNeuron(Model):
             :param data: dataframe containing output time series
             :return: number of detected spikes
         '''
-        dt = np.diff(data.ix[:1, 't'].values)[0]
+        dt = np.diff(data.ix[1:2, 't'].values)[0]
         ipeaks, *_ = findPeaks(
             data['Qm'].values,
             SPIKE_MIN_QAMP,

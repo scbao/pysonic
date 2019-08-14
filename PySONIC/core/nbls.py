@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-29 10:40:16
+# @Last Modified time: 2019-08-14 17:42:01
 
 from copy import deepcopy
 import logging
@@ -250,13 +250,13 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Determine time step
         dt = 1 / (NPC_DENSE * Fdrive)
 
-        # Compute non-zero deflection value for a small perturbation (solving quasi-steady equation)
-        Pac = self.Pacoustic(dt, Adrive, Fdrive, phi)
-        Z0 = self.balancedefQS(self.ng0, self.Qm0, Pac)
+        # Compute initial non-zero deflection
+        Z = self.computeInitialDeflection(Adrive, Fdrive, phi, self.Qm0, dt)
 
         # Set initial conditions
-        y0 = np.concatenate((
-            [0., Z0, self.ng0, self.Qm0], self.pneuron.getSteadyStates(self.pneuron.Vm0)))
+        ss0 = self.pneuron.getSteadyStates(self.pneuron.Vm0)
+        y0 = np.concatenate(([0., 0., self.ng0, self.Qm0], ss0))
+        y1 = np.concatenate(([0., Z, self.ng0, self.Qm0], ss0))
 
         # Initialize simulator and compute solution
         logger.debug('Computing detailed solution')
@@ -264,9 +264,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lambda t, y: self.fullDerivatives(t, y, Fdrive, Adrive, phi, fs),
             lambda t, y: self.fullDerivatives(t, y, 0., 0., 0., fs))
         t, y, stim = simulator(
-            y0, dt, tstim, toffset, PRF, DC,
+            y1, dt, tstim, toffset, PRF, DC,
             print_progress=logger.getEffectiveLevel() <= logging.INFO,
             target_dt=CLASSIC_TARGET_DT)
+
+        # Prepend initial conditions (prior to stimulation)
+        t, y, stim = simulator.prependSolution(t, y, stim, y0=y0)
 
         # Store output in dataframe and return
         data = pd.DataFrame({
@@ -286,16 +289,16 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Determine time steps
         dt_dense, dt_sparse = [1. / (n * Fdrive) for n in [NPC_DENSE, NPC_SPARSE]]
 
-        # Compute non-zero deflection value for a small perturbation (solving quasi-steady equation)
-        Pac = self.Pacoustic(dt_dense, Adrive, Fdrive, phi)
-        Z0 = self.balancedefQS(self.ng0, self.Qm0, Pac)
+        # Compute initial non-zero deflection
+        Z = self.computeInitialDeflection(Adrive, Fdrive, phi, self.Qm0, dt_dense)
 
         # Set initial conditions
-        y0 = np.concatenate((
-            [0., Z0, self.ng0, self.Qm0], self.pneuron.getSteadyStates(self.pneuron.Vm0)))
-        is_dense_var = np.array([True] * 3 + [False] * (len(self.pneuron.states) + 1))
+        ss0 = self.pneuron.getSteadyStates(self.pneuron.Vm0)
+        y0 = np.concatenate(([0., 0., self.ng0, self.Qm0], ss0))
+        y1 = np.concatenate(([0., Z, self.ng0, self.Qm0], ss0))
 
         # Initialize simulator and compute solution
+        is_dense_var = np.array([True] * 3 + [False] * (len(self.pneuron.states) + 1))
         logger.debug('Computing hybrid solution')
         simulator = HybridSimulator(
             lambda t, y: self.fullDerivatives(t, y, Fdrive, Adrive, phi, fs),
@@ -305,7 +308,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lambda yref: self.capacitance(yref[1]),
             is_dense_var,
             ivars_to_check=[1, 2])
-        t, y, stim = simulator(y0, dt_dense, dt_sparse, 1. / Fdrive, tstim, toffset, PRF, DC)
+        t, y, stim = simulator(y1, dt_dense, dt_sparse, 1. / Fdrive, tstim, toffset, PRF, DC)
+
+        # Prepend initial conditions (prior to stimulation)
+        t, y, stim = simulator.prependSolution(t, y, stim, y0=y0)
 
         # Store output in dataframe and return
         data = pd.DataFrame({
@@ -338,6 +344,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lambda t, y: self.effDerivatives(t, y, lkps1d['ON']),
             lambda t, y: self.effDerivatives(t, y, lkps1d['OFF']))
         t, y, stim = simulator(y0, DT_EFFECTIVE, tstim, toffset, PRF, DC)
+
+        # Prepend initial conditions (prior to stimulation)
+        t, y, stim = simulator.prependSolution(t, y, stim)
 
         # Store output in dataframe and return
         data = pd.DataFrame({

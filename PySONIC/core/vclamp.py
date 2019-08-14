@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 15:12:57
+# @Last Modified time: 2019-08-14 17:43:49
 
 import numpy as np
 import pandas as pd
@@ -121,6 +121,11 @@ class VoltageClamp(Model):
             lambda t, y: self.derivatives(t, y, Vm=Vhold))
         t, y, stim = simulator(
             y0, DT_EFFECTIVE, tstim, toffset, None, 1.)
+
+        # Prepend initial conditions (prior to stimulation)
+        t, y, stim = simulator.prependSolution(t, y, stim)
+
+        # Compute clamped membrane potential vector
         Vm = np.zeros(stim.size)
         Vm[stim == 0] = Vhold
         Vm[stim == 1] = Vstep
