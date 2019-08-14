@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-18 20:43:12
+# @Last Modified time: 2019-08-14 15:54:24
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -225,7 +225,8 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
                 data, meta = self.getData(filepath, frequency, trange)
             except ValueError as err:
                 continue
-            meta.pop('tcomp')
+            if 'tcomp' in meta:
+                meta.pop('tcomp')
             full_labels.append(figtitle(meta))
 
             # Extract model
