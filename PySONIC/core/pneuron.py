@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 17:41:14
+# @Last Modified time: 2019-08-14 19:31:06
 
 import abc
 import inspect
@@ -176,6 +176,14 @@ class PointNeuron(Model):
             'color': 'black'
         }
 
+        pltvars['iCap'] = {
+            'desc': inspect.getdoc(getattr(cls, 'iCap')).splitlines()[0],
+            'label': 'I_{cap}',
+            'unit': 'A/m^2',
+            'factor': 1e-3,
+            'func': 'iCap({0}t{1}, {0}Vm{1})'.format(wrapleft, wrapright)
+        }
+
         for rate in cls.rates:
             if 'alpha' in rate:
                 prefix, suffix = 'alpha', rate[5:]
@@ -197,6 +205,12 @@ class PointNeuron(Model):
         }
 
         return pltvars
+
+    @classmethod
+    def iCap(cls, t, Vm):
+        ''' Capacitive current. '''
+        dVdt = np.insert(np.diff(Vm) / np.diff(t), 0, 0.)
+        return cls.Cm0 * dVdt
 
     @classmethod
     def getPltScheme(cls):

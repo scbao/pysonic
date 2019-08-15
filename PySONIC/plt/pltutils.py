@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 17:47:37
+# @Last Modified time: 2019-08-15 11:50:16
 
 ''' Useful functions to generate plots. '''
 
@@ -15,7 +15,7 @@ from matplotlib.patches import Rectangle
 from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 
-from ..utils import logger, isIterable, loadData, rescale
+from ..utils import logger, isIterable, loadData, rescale, swapFirstLetterCase
 from ..postpro import findPeaks
 from ..constants import SPIKE_MIN_DT, SPIKE_MIN_QAMP, SPIKE_MIN_QPROM
 
@@ -262,7 +262,10 @@ class GenericPlot:
     @classmethod
     def addCmap(cls, fig, cmap, handles, comp_values, comp_info, fs, prettify, zscale='lin'):
         # Create colormap and normalizer
-        mymap = plt.get_cmap(cmap)
+        try:
+            mymap = plt.get_cmap(cmap)
+        except ValueError:
+            mymap = plt.get_cmap(swapFirstLetterCase(cmap))
         norm, sm = setNormalizer(mymap, (comp_values.min(), comp_values.max()), zscale)
 
         # Adjust line colors

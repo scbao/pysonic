@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-18 19:46:39
+# @Last Modified time: 2019-08-15 11:49:30
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -615,3 +615,10 @@ def findModifiedEq(x0, dfunc, *args):
         return np.array(res)
     else:
         return brentq(lambda x: dfunc(x, *args), x0 * 1e-4, x0 * 1e3, xtol=1e-16)
+
+
+def swapFirstLetterCase(s):
+    if s[0].islower():
+        return s.capitalize()
+    else:
+        return s[0].lower() + s[1:]

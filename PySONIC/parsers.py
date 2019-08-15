@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 14:52:00
+# @Last Modified time: 2019-08-15 14:35:04
 
 import os
 import logging
@@ -282,6 +282,9 @@ class Parser(ArgumentParser):
             if args['plot'] == ['all']:
                 logger.error('Specific variables must be specified for comparative plots')
                 return
+            for key in ['cmap', 'cscale']:
+                if key in args:
+                    render_args[key] = args[key]
             for pltvar in args['plot']:
                 comp_plot = CompTimeSeries(output, pltvar)
                 comp_plot.render(**render_args)
@@ -345,6 +348,8 @@ class SimParser(Parser):
         self.addOutputDir(dep_key='save')
         self.addSave()
         self.addCompare()
+        self.addCmap()
+        self.addCscale()
 
     def parse(self):
         args = super().parse()
