@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 17:37:41
+# @Last Modified time: 2019-08-16 19:14:50
 
 import os
 from functools import wraps
@@ -14,7 +14,7 @@ import inspect
 import numpy as np
 
 from .batches import Batch
-from ..utils import logger, loadData, timer, si_format, plural
+from ..utils import logger, loadData, timer, si_format, plural, debug
 
 
 class Model(metaclass=abc.ABCMeta):
@@ -142,13 +142,13 @@ class Model(metaclass=abc.ABCMeta):
             logger.debug('completed in %ss', si_format(tcomp, 1))
 
             # Add keyword arguments from simfunc signature if not provided
-            bound_args = inspect.signature(simfunc).bind(self, *args, **kwargs)
+            bound_args = signature(simfunc).bind(self, *args, **kwargs)
             bound_args.apply_defaults()
             target_args = dict(bound_args.arguments)
 
             # Try to retrieve meta information
             try:
-                meta_params = [target_args[k] for k in inspect.signature(self.meta).parameters.keys()]
+                meta_params = [target_args[k] for k in signature(self.meta).parameters.keys()]
                 meta = self.meta(*meta_params)
             except KeyError:
                 meta = {}
@@ -187,7 +187,7 @@ class Model(metaclass=abc.ABCMeta):
             @wraps(simfunc)
             def wrapper(self, *args, **kwargs):
                 # Get argument index from function signature
-                func_args = list(inspect.signature(simfunc).parameters.keys())[1:]
+                func_args = list(signature(simfunc).parameters.keys())[1:]
                 iarg = func_args.index(argname)
 
                 # If argument is None

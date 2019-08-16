@@ -3,12 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 17:34:35
+# @Last Modified time: 2019-08-16 20:09:11
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..core import getModel
 from ..utils import *
 from .pltutils import *
 
@@ -226,10 +225,10 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
                 continue
             if 'tcomp' in meta:
                 meta.pop('tcomp')
-            full_labels.append(figtitle(meta))
+            full_labels.append(self.figtitle(meta))
 
             # Extract model
-            model = getModel(meta)
+            model = self.getModel(meta)
 
             # Check consistency of sim types and check differing inputs
             comp_values = self.checkConsistency(meta, comp_values)
@@ -362,7 +361,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
                 data, meta = self.getData(filepath, frequency, trange)
             except ValueError as err:
                 continue
-            model = getModel(meta)
+            model = self.getModel(meta)
 
             # Extract time and stim pulses
             t = data['t'].values
@@ -430,7 +429,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
 
             # Post-process figure
             self.postProcess(axes, tplt, fs, meta, prettify)
-            axes[0].set_title(figtitle(meta), fontsize=fs)
+            axes[0].set_title(self.figtitle(meta), fontsize=fs)
             fig.tight_layout()
 
             fig.canvas.set_window_title(model.filecode(meta))

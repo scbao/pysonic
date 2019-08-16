@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-15 11:50:16
+# @Last Modified time: 2019-08-16 20:08:57
 
 ''' Useful functions to generate plots. '''
 
@@ -15,6 +15,7 @@ from matplotlib.patches import Rectangle
 from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 
+from ..core import getModel
 from ..utils import logger, isIterable, loadData, rescale, swapFirstLetterCase
 from ..postpro import findPeaks
 from ..constants import SPIKE_MIN_DT, SPIKE_MIN_QAMP, SPIKE_MIN_QPROM
@@ -139,6 +140,14 @@ class GenericPlot:
         if not mo:
             raise ValueError('Could not find sim-key in filename: "{}"'.format(fname))
         return mo.group(1)
+
+    @staticmethod
+    def getModel(*args, **kwargs):
+        return getModel(*args, **kwargs)
+
+    @staticmethod
+    def figtitle(*args, **kwargs):
+        return figtitle(*args, **kwargs)
 
     @staticmethod
     def getTimePltVar(tscale):
