@@ -35,6 +35,7 @@ Several conductance-based point-neuron models are implemented that inherit from 
 - `ThalamicRE`: thalamic reticular (`RE`) neuron
 - `ThalamoCortical`: thalamo-cortical (`TC`) neuron
 - `OstukaSTN`: subthalamic nucleus (`STN`) neuron
+- `FrankenhaeuserHuxley`: Xenopus myelinated fiber node (`FH`)
 
 ### Other modules
 

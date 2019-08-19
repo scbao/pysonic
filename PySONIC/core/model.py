@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-16 19:14:50
+# @Last Modified time: 2019-08-18 20:24:29
 
 import os
 from functools import wraps
@@ -150,7 +150,7 @@ class Model(metaclass=abc.ABCMeta):
             try:
                 meta_params = [target_args[k] for k in signature(self.meta).parameters.keys()]
                 meta = self.meta(*meta_params)
-            except KeyError:
+            except KeyError as err:
                 meta = {}
 
             # Add computation time to it
