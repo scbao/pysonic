@@ -3,13 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-18 21:00:41
+# @Last Modified time: 2019-08-22 15:09:34
 
 ''' Useful functions to generate plots. '''
 
 import re
 import numpy as np
 import pandas as pd
+from scipy.signal import peak_widths
 import matplotlib
 from matplotlib.patches import Rectangle
 from matplotlib import cm, colors
@@ -17,7 +18,6 @@ import matplotlib.pyplot as plt
 
 from ..core import getModel
 from ..utils import logger, isIterable, loadData, rescale, swapFirstLetterCase
-from ..postpro import findPeaks
 from ..constants import SPIKE_MIN_DT, SPIKE_MIN_QAMP, SPIKE_MIN_QPROM
 
 # Matplotlib parameters
@@ -295,26 +295,6 @@ class GenericPlot:
             cls.prettify(cbar)
         for item in cbarax.get_yticklabels():
             item.set_fontsize(fs)
-
-    @staticmethod
-    def getSpikes(data, key='Qm', mph=SPIKE_MIN_QAMP, mpp=SPIKE_MIN_QPROM, mpt=SPIKE_MIN_DT):
-        if key not in data:
-            raise ValueError('charge profile not avilable in dataframe')
-        t, y = [data[k].values for k in['t', key]]
-        dt = t[2] - t[1]
-        ipeaks, proms, widths, ihalfmaxbounds, ibounds = findPeaks(
-            data[key].values, mph=mph, mpd=int(np.ceil(mpt / dt)), mpp=mpp)
-        if ipeaks is None:
-            return [None] * 4
-        widths *= dt
-        indexes = np.arange(t.size)
-        thalfmaxbounds = np.array([
-            np.interp(ihalfmaxbounds[:, i], indexes, t, left=np.nan, right=np.nan) for i in range(2)
-        ]).T
-        tbounds = np.array([
-            np.interp(ibounds[:, i], indexes, t, left=np.nan, right=np.nan) for i in range(2)
-        ]).T
-        return np.array(t[ipeaks]), np.array(y[ipeaks]), np.array(proms), thalfmaxbounds, tbounds
 
 
 class ComparativePlot(GenericPlot):

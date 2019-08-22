@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 17:47:27
+# @Last Modified time: 2019-08-22 15:28:36
 
 import os
 import pickle
@@ -14,9 +14,9 @@ from matplotlib.ticker import FormatStrFormatter
 
 from ..core import NeuronalBilayerSonophore
 from ..utils import logger, si_format, loadData
-from ..postpro import findPeaks
 from ..constants import *
 from .pltutils import cm2inch, setNormalizer
+from ..postpro import detectSpikes
 
 
 class Map:
@@ -71,21 +71,11 @@ class ActivationMap(Map):
         else:
             raise ValueError('Unknown distribution type')
 
-    def classify(self, df):
+    def classify(self, data):
         ''' Classify based on charge temporal profile. '''
 
-        t = df['t'].values
-        Qm = df['Qm'].values
-
-        # Detect spikes on charge profile during stimulus
-        dt = t[2] - t[1]
-        mpd = int(np.ceil(SPIKE_MIN_DT / dt))
-        ispikes, *_ = findPeaks(
-            Qm[t <= self.tstim],
-            mph=SPIKE_MIN_QAMP,
-            mpd=mpd,
-            mpp=SPIKE_MIN_QPROM
-        )
+        # Detect spikes in data
+        ispikes, _ = detectSpikes(data)
 
         # Compute firing metrics
         if ispikes.size == 0:  # if no spike, assign -1
@@ -93,8 +83,9 @@ class ActivationMap(Map):
         elif ispikes.size == 1:  # if only 1 spike, assign 0
             return 0
         else:  # if more than 1 spike, assign firing rate
-            FRs = 1 / np.diff(t[ispikes])
-            return np.mean(FRs)
+            t = data['t'].values
+            sr = 1 / np.diff(t[ispikes])
+            return np.mean(sr)
 
     @staticmethod
     def correctAmp(A):
@@ -107,7 +98,7 @@ class ActivationMap(Map):
         for i, A in enumerate(self.amps):
             for j, DC in enumerate(self.DCs):
                 fname = '{}.pkl'.format(self.nbls.filecode(
-                    self.Fdrive, self.correctAmp(A), self.tstim, 0., self.PRF, DC, 'sonic'))
+                    self.Fdrive, self.correctAmp(A), self.tstim, 0., self.PRF, DC, 1., 'sonic'))
                 fpath = os.path.join(self.root, fname)
                 if not os.path.isfile(fpath):
                     print(fpath)
@@ -220,7 +211,7 @@ class ActivationMap(Map):
 
         # Define filepath
         fname = '{}.pkl'.format(self.nbls.filecode(
-            self.Fdrive, self.correctAmp(Adrive), self.tstim, 0., self.PRF, DC, 'sonic'))
+            self.Fdrive, self.correctAmp(Adrive), self.tstim, 0., self.PRF, DC, 1. , 'sonic'))
         fpath = os.path.join(self.root, fname)
 
         # Plot Q-trace

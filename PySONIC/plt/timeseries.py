@@ -3,11 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-18 21:09:37
+# @Last Modified time: 2019-08-22 15:08:01
 
 import numpy as np
 import matplotlib.pyplot as plt
 
+from ..postpro import detectSpikes, convertPeaksProperties
 from ..utils import *
 from .pltutils import *
 
@@ -72,20 +73,32 @@ class TimeSeriesPlot(GenericPlot):
 
     @classmethod
     def materializeSpikes(cls, ax, data, tplt, yplt, color, mode, add_to_legend=False):
-        tspikes, Qspikes, Qprominences, thalfmaxbounds, _ = cls.getSpikes(data)
-        if tspikes is not None:
-            ax.scatter(tspikes * tplt['factor'], Qspikes * yplt['factor'] + 10, color=color,
-                       label='spikes' if add_to_legend else None, marker='v')
+        t = data['t'].values
+        Qm = data['Qm'].values
+        ispikes, properties = detectSpikes(data)
+        ileft = properties['left_bases']
+        iright = properties['right_bases']
+        properties = convertPeaksProperties(t, properties)
+        if ispikes is not None:
+            yoffset = 5
+            ax.plot(t[ispikes] * tplt['factor'], Qm[ispikes] * yplt['factor'] + yoffset,
+                    'v', color=color, label='spikes' if add_to_legend else None)
             if mode == 'details':
-                Qbottoms = Qspikes - Qprominences
-                Qmiddles = Qspikes - 0.5 * Qprominences
-                for i in range(len(tspikes)):
-                    ax.plot(np.array([tspikes[i]] * 2) * tplt['factor'],
-                            np.array([Qspikes[i], Qbottoms[i]]) * yplt['factor'], '--', color=color,
-                            label='prominences' if i == 0 and add_to_legend else '')
-                    ax.plot(thalfmaxbounds[i] * tplt['factor'],
-                            np.array([Qmiddles[i]] * 2) * yplt['factor'], '-.', color=color,
-                            label='widths' if i == 0 and add_to_legend else '')
+                ax.plot(t[ileft] * tplt['factor'], Qm[ileft] * yplt['factor'] - 5,
+                        '<', color=color, label='left-bases' if add_to_legend else None)
+                ax.plot(t[iright] * tplt['factor'], Qm[iright] * yplt['factor'] - 10,
+                        '>', color=color, label='right-bases' if add_to_legend else None)
+                ax.vlines(
+                    x=t[ispikes] * tplt['factor'],
+                    ymin=(Qm[ispikes] - properties['prominences']) * yplt['factor'],
+                    ymax=Qm[ispikes] * yplt['factor'],
+                    color=color, linestyles='dashed',
+                    label='prominences' if add_to_legend else '')
+                ax.hlines(
+                    y=properties['width_heights'] * yplt['factor'],
+                    xmin=properties['left_ips'] * tplt['factor'],
+                    xmax=properties['right_ips'] * tplt['factor'],
+                    color=color, linestyles='dotted', label='half-widths' if add_to_legend else '')
         return add_to_legend
 
     @staticmethod

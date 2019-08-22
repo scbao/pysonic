@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 19:31:06
+# @Last Modified time: 2019-08-22 11:48:37
 
 import abc
 import inspect
@@ -14,7 +14,7 @@ from .batches import Batch
 from .model import Model
 from .lookups import SmartLookup
 from .simulators import PWSimulator
-from ..postpro import findPeaks, computeFRProfile
+from ..postpro import detectSpikes, computeFRProfile
 from ..constants import *
 from ..utils import *
 
@@ -115,7 +115,7 @@ class PointNeuron(Model):
                 'label': 'Q_m',
                 'unit': 'nC/cm^2',
                 'factor': 1e5,
-                'bounds': (-100, 50)
+                'bounds': (-100, 60)
             },
 
             'Vm': {
@@ -201,7 +201,7 @@ class PointNeuron(Model):
             'unit': 'Hz',
             'factor': 1e0,
             # 'bounds': (0, 1e3),
-            'func': 'firingRateProfile({0}t{1}.values, {0}Qm{1}.values)'.format(wrapleft, wrapright)
+            'func': f'firingRateProfile({wrapleft[:-2]})'
         }
 
         return pltvars
@@ -357,6 +357,7 @@ class PointNeuron(Model):
     def getCurrentsNames(cls):
         return list(cls.currents().keys())
 
+    @staticmethod
     def firingRateProfile(*args, **kwargs):
         return computeFRProfile(*args, **kwargs)
 
@@ -509,14 +510,7 @@ class PointNeuron(Model):
             :param data: dataframe containing output time series
             :return: number of detected spikes
         '''
-        dt = np.diff(data.ix[1:2, 't'].values)[0]
-        ipeaks, *_ = findPeaks(
-            data['Qm'].values,
-            SPIKE_MIN_QAMP,
-            int(np.ceil(SPIKE_MIN_DT / dt)),
-            SPIKE_MIN_QPROM
-        )
-        return ipeaks.size
+        return detectSpikes(data)[0].size
 
     @staticmethod
     def getStabilizationValue(data):

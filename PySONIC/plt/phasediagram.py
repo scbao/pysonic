@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 20:24:36
+# @Last Modified time: 2019-08-22 14:59:13
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,6 +12,7 @@ from ..core import getModel
 from ..utils import *
 from ..constants import *
 from .pltutils import *
+from ..postpro import detectSpikes, convertPeaksProperties
 
 
 class PhaseDiagram(ComparativePlot):
@@ -132,10 +133,14 @@ class PhaseDiagram(ComparativePlot):
             t = data['t'].values
             y = data[self.varname].values
 
-            # Prominence-based spike detection
-            tspikes, yspikes, _, _, tbounds = self.getSpikes(
+            # Detect spikes in signal
+            ispikes, properties = detectSpikes(
                 data, key=self.varname, mph=pltvar['thr_amp'], mpp=pltvar['thr_prom'])
-            nspikes = tspikes.size
+            nspikes = ispikes.size
+            tspikes = t[ispikes]
+            yspikes = y[ispikes]
+            properties = convertPeaksProperties(t, properties)
+            tbounds = np.array(list(zip(properties['left_bases'], properties['right_bases'])))
 
             if nspikes == 0:
                 logger.warning('No spikes detected')
