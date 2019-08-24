@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-22 15:08:01
+# @Last Modified time: 2019-08-24 21:57:31
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -222,6 +222,8 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         lines, labels, colors, patches, greypatch = self.checkInputs(
             lines, labels, colors, patches)
 
+        fcodes = []
+
         fig, ax = self.createBackBone(figsize)
         if inset is not None:
             inset_ax = self.addInset(fig, ax, inset)
@@ -242,6 +244,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
 
             # Extract model
             model = self.getModel(meta)
+            fcodes.append(model.filecode(meta))
 
             # Check consistency of sim types and check differing inputs
             comp_values = self.checkConsistency(meta, comp_values)
@@ -289,6 +292,11 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         comp_values, comp_labels = self.getCompLabels(comp_values)
         labels = self.chooseLabels(labels, comp_labels, full_labels)
 
+        # - split labels by space
+        merge_keys = ['neuron']
+        common_label = self.getCommonLabel(full_labels.copy(), sep=' ', merge_keys=merge_keys)
+        ax.set_title(common_label, fontsize=fs)
+
         # Post-process figure
         self.postProcess(ax, tplt, yplt, fs, meta, prettify)
         ax.set_xlim(tmin, tmax)
@@ -307,6 +315,10 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
                 fig, cmap, handles, comp_values, self.comp_info, fs, prettify, zscale=cscale)
         else:
             self.addLegend(ax, handles, labels, fs)
+
+        # Add window title based on common pattern
+        common_fcode = self.getCommonLabel(fcodes.copy(), sep='_')
+        fig.canvas.set_window_title(common_fcode)
 
         return fig
 

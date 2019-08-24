@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-22 15:09:34
+# @Last Modified time: 2019-08-24 21:56:02
 
 ''' Useful functions to generate plots. '''
 
@@ -387,3 +387,21 @@ class ComparativePlot(GenericPlot):
                 return comp_labels
             else:
                 return full_labels
+
+    @staticmethod
+    def getCommonLabel(lbls, sep=' ', merge_keys=None):
+        if merge_keys is not None:
+            for k in merge_keys:
+                lbls = [lbl.replace(f'{sep}{k}', f'-{k}') for lbl in lbls]
+        splt_lbls = [lbl.split(' ') for lbl in lbls]
+        ncomps = len(splt_lbls[0])
+        splt_lbls = np.array(splt_lbls).T
+        all_indentical = [np.all(x == x[0]) for x in splt_lbls]
+        if np.sum(all_indentical) < ncomps - 1:
+            logger.warning('More than one differing inputs')
+            return ''
+        common_lbl = sep.join(splt_lbls[all_indentical, 0])
+        if merge_keys is not None:
+            for k in merge_keys:
+                common_lbl = common_lbl.replace(f'-{k}', f'{sep}{k}')
+        return common_lbl
