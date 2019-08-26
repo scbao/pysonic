@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 17:42:01
+# @Last Modified time: 2019-08-26 14:54:58
 
 from copy import deepcopy
 import logging
@@ -343,7 +343,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         simulator = PWSimulator(
             lambda t, y: self.effDerivatives(t, y, lkps1d['ON']),
             lambda t, y: self.effDerivatives(t, y, lkps1d['OFF']))
-        t, y, stim = simulator(y0, DT_EFFECTIVE, tstim, toffset, PRF, DC)
+        t, y, stim = simulator(y0, self.pneuron.chooseTimeStep(), tstim, toffset, PRF, DC)
 
         # Prepend initial conditions (prior to stimulation)
         t, y, stim = simulator.prependSolution(t, y, stim)

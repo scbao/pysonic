@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-22 11:48:37
+# @Last Modified time: 2019-08-26 14:54:29
 
 import abc
 import inspect
@@ -425,6 +425,13 @@ class PointNeuron(Model):
                 raise ValueError('Invalid PRF: {} Hz (PR interval exceeds stimulus duration)'
                                  .format(PRF))
 
+    def chooseTimeStep(self):
+        ''' Determine integration time step based on intrinsic temporal properties. '''
+        dt = DT_EFFECTIVE
+        if self.name in ['FH', 'sweeney']:
+            dt /= 10
+        return dt
+
     @classmethod
     def derivatives(cls, t, y, Cm=None, Iinj=0.):
         ''' Compute system derivatives for a given mambrane capacitance and injected current.
@@ -475,7 +482,7 @@ class PointNeuron(Model):
             lambda t, y: self.derivatives(t, y, Iinj=Astim),
             lambda t, y: self.derivatives(t, y, Iinj=0.))
         t, y, stim = simulator(
-            y0, DT_EFFECTIVE, tstim, toffset, PRF, DC)
+            y0, self.chooseTimeStep(), tstim, toffset, PRF, DC)
 
         # Prepend initial conditions (prior to stimulation)
         t, y, stim = simulator.prependSolution(t, y, stim)
