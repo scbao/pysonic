@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-23 19:52:25
+# @Last Modified time: 2019-08-26 15:11:35
 
 import os
 from functools import wraps
@@ -152,7 +152,7 @@ class Model(metaclass=abc.ABCMeta):
                 meta_params = [target_args[k] for k in meta_params_names]
                 meta = self.meta(*meta_params)
             except KeyError as err:
-                logger.error(f'Could not find {err} parameter in simulate function')
+                logger.error(f'Could not find {err} parameter in "{simfunc.__name__}" function')
                 meta = {}
 
             # Add computation time to it

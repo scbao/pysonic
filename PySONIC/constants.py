@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-04 13:23:31
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-26 14:52:37
+# @Last Modified time: 2019-08-26 15:14:47
 
 ''' Numerical constants used in the package. '''
 
@@ -20,7 +20,7 @@ CELSIUS_2_KELVIN = 273.15  # Celsius to Kelvin conversion constant
 
 LJFIT_PM_MAX = 1e8        # Pm value at the deflection lower bound for LJ fitting (Pa)
 PNET_EQ_MAX = 1e-1        # Pnet error threshold at computed equilibrium position (Pa)
-PMAVG_STD_ERR_MAX = 3000  # error threshold in intermolecular pressure nonlinear fit (Pa)
+PMAVG_STD_ERR_MAX = 5e3   # error threshold in intermolecular pressure nonlinear fit (Pa)
 
 # -------------------------- Simulations --------------------------
 
@@ -28,7 +28,7 @@ MAX_RMSE_PTP_RATIO = 1e-4           # threshold RMSE / peak-to-peak ratio for pe
 Z_ERR_MAX = 1e-11                   # periodic convergence threshold for deflection (m)
 NG_ERR_MAX = 1e-24                  # periodic convergence threshold for gas content (mol)
 NCYCLES_MAX = 10                    # max number of cycles in periodic simulations
-CHARGE_RANGE = (-200e-5, 150e-5)    # physiological charge range constraining the membrane (C/m2)
+CHARGE_RANGE = (-300e-5, 150e-5)    # physiological charge range constraining the membrane (C/m2)
 SOLVER_NSTEPS = 1000                # max number of steps during one ODE solver call
 CLASSIC_TARGET_DT = 1e-8            # target time step in output arrays of detailed simulations
 NPC_DENSE = 1000                    # nb of samples per acoustic period in detailed simulations

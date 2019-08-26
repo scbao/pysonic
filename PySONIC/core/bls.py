@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 17:40:22
+# @Last Modified time: 2019-08-26 15:18:05
 
 from enum import Enum
 import os
@@ -413,7 +413,7 @@ class BilayerSonophore(Model):
         pguess = (x0_guess, C_guess, nrep_guess, nattr_guess)
         popt, _ = curve_fit(lambda x, x0, C, nrep, nattr:
                             LennardJones(x, self.Delta, x0, C, nrep, nattr),
-                            Z, Pmavg, p0=pguess, maxfev=10000)
+                            Z, Pmavg, p0=pguess, maxfev=100000)
         (x0_opt, C_opt, nrep_opt, nattr_opt) = popt
         Pmavg_fit = LennardJones(Z, self.Delta, x0_opt, C_opt, nrep_opt, nattr_opt)
 
