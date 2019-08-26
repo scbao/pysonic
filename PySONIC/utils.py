@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-23 18:00:11
+# @Last Modified time: 2019-08-26 10:04:41
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -466,13 +466,13 @@ def binarySearch(bool_func, args, ix, xbounds, dx_thr, history=None):
         # If condition not satisfied even for upper bound -> return nan
         sim_args.insert(ix, xbounds[1])
         if not bool_func(sim_args):
-            logger.warning('titration does not converge within this interval')
+            logger.warning('titration error: condition not satisfied for upper bound')
             return np.nan
 
         # If condition satisfied even for lower bound -> return nan
         sim_args[ix] = xbounds[0]
         if bool_func(sim_args):
-            logger.warning('titration does not converge within this interval')
+            logger.warning('titration error: condition satisfied even for lower bound')
             return np.nan
 
         # Assign empty history
@@ -515,6 +515,36 @@ def binarySearch(bool_func, args, ix, xbounds, dx_thr, history=None):
         else:
             xbounds = (x, xbounds[1]) if history[-1] else (xbounds[0], x)
         return binarySearch(bool_func, args, ix, xbounds, dx_thr, history=history)
+
+
+def pow2Search(bool_func, args, ix, x, xmax, icall=0):
+    ''' Use an incremental power of 2 search to determine the threshold satisfying a given condition
+        within a continuous search interval.
+
+        :param bool_func: boolean function returning whether condition is satisfied
+        :param args: list of function arguments other than refined value
+        :param x: value to be tested (updated at each recursion step)
+        :param xmax: upper bound of search interval for x
+        :return: first (i.e. minimal) x value for which the condition is satisfied
+    '''
+
+    # Compute function output
+    sim_args = args[:]
+    sim_args.insert(ix, x)
+    res = bool_func(sim_args)
+
+    # If condition is satisfied -> return
+    if res is True:
+        # If first call -> return nan
+        if icall == 0:
+            logger.warning('titration error: condition satisfied for initial x value')
+            return np.nan
+        else:
+            logger.debug(f'condition satisfied on call {icall} -> returning')
+            return x
+    # Otherwise, double x value and call function recursively
+    else:
+        return pow2Search(bool_func, args, ix, 2 * x, xmax, icall=icall + 1)
 
 
 def derivative(f, x, eps, method='central'):
