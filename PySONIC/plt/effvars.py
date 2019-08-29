@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-11 12:01:43
+# @Last Modified time: 2019-08-29 09:59:07
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -151,7 +151,6 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
             zref = lookups2D.refs[key]
     zvar = nbls.inputs()[{'a': 'a', 'f': 'Fdrive', 'A': 'Adrive'}[zkey]]
     zref *= zvar['factor']
-    prefix = {value: key for key, value in si_prefixes.items()}[1 / zvar['factor']]
 
     # Optional: interpolate along z dimension if nlevels specified
     if zscale == 'log':
@@ -234,8 +233,8 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
     fig.subplots_adjust(left=0.20, bottom=0.05, top=0.8, right=0.80, hspace=0.5)
     cbarax = fig.add_axes([0.10, 0.90, 0.80, 0.02])
     fig.colorbar(sm, cax=cbarax, orientation='horizontal')
-    cbarax.set_xlabel('{} ({}{})'.format(
-        zvar['label'], prefix, zvar['unit']), fontsize=fs)
+    cbarax.set_xlabel('{} ({})'.format(
+        zvar['label'], zvar['unit']), fontsize=fs)
     for item in cbarax.get_yticklabels():
         item.set_fontsize(fs)
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 19:43:29
+# @Last Modified time: 2019-08-29 09:49:52
 
 import re
 import numpy as np
@@ -92,8 +92,12 @@ class Lookup:
         # print('interpolating lookup along {} (axis {}) at {}'.format(key, axis, value))
 
         new_tables = {}
-        for k, v in self.items():
-            new_tables[k] = interp1d(self.refs[key], v, axis=axis)(value)
+        if self.refs[key].size == 1:
+            for k, v in self.items():
+                new_tables[k] = v.mean(axis=axis)
+        else:
+            for k, v in self.items():
+                new_tables[k] = interp1d(self.refs[key], v, axis=axis)(value)
         new_refs = self.refs.copy()
         if delete_input_dim:
             # print('removing {} input dimension'.format(key))
@@ -199,6 +203,14 @@ class SmartLookup(Lookup):
         lkp.move('DC', -1)
         lkp.move('A', A_axis)
         return lkp
+
+
+def fixLookup(lkp):
+    if 'fs' in lkp.inputs():
+        if lkp.refs['fs'].size == 1:
+            if lkp.refs['fs'][0] == 1.:
+                lkp = lkp.project('fs', 1.)
+    return lkp
 
 
 class SmartDict():

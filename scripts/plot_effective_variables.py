@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-15 15:59:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 21:12:43
+# @Last Modified time: 2019-08-28 09:49:42
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
@@ -23,8 +23,6 @@ def main():
 
     parser = MechSimParser()
     parser.addNeuron()
-    parser.addCscale()
-    parser.addCmap()
     parser.addNColumns()
     parser.addNLevels()
     parser.defaults['neuron'] = 'RS'

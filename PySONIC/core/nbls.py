@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-26 14:54:58
+# @Last Modified time: 2019-08-29 09:56:46
 
 from copy import deepcopy
 import logging
@@ -20,7 +20,7 @@ from .batches import Batch
 from ..utils import *
 from ..constants import *
 from ..postpro import getFixedPoints
-from .lookups import SmartLookup, SmartDict
+from .lookups import SmartLookup, SmartDict, fixLookup
 
 
 NEURONS_LOOKUP_DIR = os.path.abspath(os.path.split(__file__)[0] + "/../neurons/")
@@ -203,7 +203,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             keys.append('fs')
             refs = {k: refs[k] for k in keys}
 
-        return SmartLookup(refs, frame['lookup'])
+        lkp = SmartLookup(refs, frame['lookup'])
+        return fixLookup(lkp)
 
     def getLookup2D(self, Fdrive, fs):
         if fs < 1:
