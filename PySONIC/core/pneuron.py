@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-02 20:13:21
+# @Last Modified time: 2019-09-02 20:22:05
 
 import abc
 import inspect
@@ -115,7 +115,7 @@ class PointNeuron(Model):
                 'label': 'Q_m',
                 'unit': 'nC/cm^2',
                 'factor': 1e5,
-                'bounds': (-100, 60)
+                'bounds': ((cls.Vm0 - 20.0) * cls.Cm0 * 1e2, 60)
             },
 
             'Vm': {

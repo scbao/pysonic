@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-30 16:33:10
+# @Last Modified time: 2019-09-02 20:42:15
 
 from copy import deepcopy
 import logging
@@ -266,8 +266,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lambda t, y: self.fullDerivatives(t, y, 0., 0., 0., fs))
         t, y, stim = simulator(
             y1, dt, tstim, toffset, PRF, DC,
+            target_dt=CLASSIC_TARGET_DT,
             print_progress=logger.getEffectiveLevel() <= logging.INFO,
-            target_dt=CLASSIC_TARGET_DT)
+            monitor_func=None)
+            # monitor_func=lambda t, y: f't = {t * 1e3:.3f} ms, Qm = {y[3] * 1e5:.2f} nC/cm2')
 
         # Prepend initial conditions (prior to stimulation)
         t, y, stim = simulator.prependSolution(t, y, stim, y0=y0)

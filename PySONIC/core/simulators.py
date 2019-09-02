@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-02 20:14:27
+# @Last Modified time: 2019-09-02 20:41:14
 
 import abc
 import numpy as np
@@ -309,7 +309,8 @@ class PWSimulator(Simulator):
         '''
         return int(np.round(tstim * PRF))
 
-    def compute(self, y0, dt, tstim, toffset, PRF, DC, target_dt=None, print_progress=False):
+    def compute(self, y0, dt, tstim, toffset, PRF, DC, target_dt=None,
+                print_progress=False, monitor_func=None):
         ''' Simulate system for a specific stimulus application pattern.
 
             :param y0: 1D vector of initial conditions
@@ -319,7 +320,7 @@ class PWSimulator(Simulator):
             :param PRF: pulse repetition frequency (Hz)
             :param DC: pulse duty cycle (-)
             :param target_dt: target time step after resampling
-            :param print_progress: boolean specifying whether to show a progress bar
+            :param monitor: string specifying how to monitor integration to show a progress bar
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
 
@@ -333,30 +334,35 @@ class PWSimulator(Simulator):
         # Initialize global arrays
         t, y, stim = self.initialize(y0)
 
-        # Initialize progress bar
+        # Initialize progress bar if no monitoring function provided
+        ntot = int(npulses * (tstim + toffset) / tstim)
         if print_progress:
-            setHandler(logger, TqdmHandler(my_log_formatter))
-            ntot = int(npulses * (tstim + toffset) / tstim)
-            pbar = tqdm(total=ntot)
+            if monitor_func is None:
+                setHandler(logger, TqdmHandler(my_log_formatter))
+                pbar = tqdm(total=ntot)
 
         # Integrate ON and OFF intervals of each pulse
         for i in range(npulses):
             for j, (tref, func) in enumerate(zip([t_on, t_off], [self.dfunc_on, self.dfunc_off])):
                 t, y, stim = self.integrate(t, y, stim, tref + i / PRF, func, j == 0)
 
-            # Update progress bar
+            # Monitor progress
             if print_progress:
-                pbar.update(i)
-                # Q = y[-1, 3]
-                # print(f'slice {i + 1}/{ntot}: t = {t[-1] * 1e3:.3f} ms, Q = {Q * 1e5:.2f} nC/cm2')
+                if monitor_func is None:
+                    pbar.update()
+                else:
+                    logger.debug(f'slice {i + 1}/{ntot}: {monitor_func(t[-1], y[-1, :])}')
 
         # Integrate offset interval
         t, y, stim = self.integrate(t, y, stim, t_offset, self.dfunc_off, False)
 
         # Terminate progress bar
         if print_progress:
-            pbar.update(npulses)
-            pbar.close()
+            if monitor_func is None:
+                pbar.update()
+                pbar.close()
+            else:
+                logger.debug(f'slice {ntot}/{ntot}: {monitor_func(t[-1], y[-1, :])}')
 
         # Resample solution if specified
         if target_dt is not None:
