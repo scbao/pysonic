@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-29 09:56:46
+# @Last Modified time: 2019-08-30 16:33:10
 
 from copy import deepcopy
 import logging
@@ -129,7 +129,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     @staticmethod
     def spatialAverage(fs, x, x0):
         ''' fs-modulated spatial averaging. '''
-        return fs * x + (1 - x) * x0
+        return fs * x + (1 - fs) * x0
 
     def computeEffVars(self, Fdrive, Adrive, Qm, fs):
         ''' Compute "effective" coefficients of the HH system for a specific

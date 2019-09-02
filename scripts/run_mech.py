@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-21 10:46:56
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 15:49:33
+# @Last Modified time: 2019-08-30 17:00:09
 
 ''' Run simulations of the NICE mechanical model. '''
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 17:46:31
+# @Last Modified time: 2019-09-02 20:14:27
 
 import abc
 import numpy as np
@@ -347,6 +347,8 @@ class PWSimulator(Simulator):
             # Update progress bar
             if print_progress:
                 pbar.update(i)
+                # Q = y[-1, 3]
+                # print(f'slice {i + 1}/{ntot}: t = {t[-1] * 1e3:.3f} ms, Q = {Q * 1e5:.2f} nC/cm2')
 
         # Integrate offset interval
         t, y, stim = self.integrate(t, y, stim, t_offset, self.dfunc_off, False)

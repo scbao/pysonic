@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-15 14:35:04
+# @Last Modified time: 2019-08-30 16:59:54
 
 import os
 import logging
@@ -403,11 +403,11 @@ class MechSimParser(SimParser):
 
     def addCm0(self):
         self.add_argument(
-            '--Cm0', type=float, help='Resting membrane capacitance (uF/cm2)')
+            '--Cm0', type=float, nargs='+', help='Resting membrane capacitance (uF/cm2)')
 
     def addQm0(self):
         self.add_argument(
-            '--Qm0', type=float, help='Resting membrane charge density (nC/cm2)')
+            '--Qm0', type=float, nargs='+', help='Resting membrane charge density (nC/cm2)')
 
     def addFdrive(self):
         self.add_argument(
