@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-29 16:50:32
+# @Last Modified time: 2019-09-04 11:29:27
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -253,6 +253,14 @@ def rescale(x, lb=None, ub=None, lb_new=0, ub_new=1):
     xnorm = (x - lb) / (ub - lb)
     return xnorm * (ub_new - lb_new) + lb_new
 
+
+def expandRange(xmin, xmax, exp_factor=2):
+    if xmin > xmax:
+        raise ValueError('values must be provided in (min, max) order')
+    xptp = xmax - xmin
+    xmid = (xmin + xmax) / 2
+    xdev = xptp * exp_factor / 2
+    return (xmid - xdev, xmin + xdev)
 
 def isIterable(x):
     for t in [list, tuple, np.ndarray]:
