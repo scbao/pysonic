@@ -3,18 +3,19 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-22 15:29:40
+# @Last Modified time: 2019-09-06 12:27:29
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
 import pickle
 import numpy as np
 import pandas as pd
+from scipy.interpolate import interp1d
 from scipy.optimize import brentq
 from scipy.signal import find_peaks, peak_prominences
 
 from .constants import *
-from .utils import logger, debug, isIterable, loadData
+from .utils import logger, debug, isIterable, loadData, plural
 
 
 def detectCrossings(x, thr=0.0, edge='both'):
@@ -116,10 +117,26 @@ def computeTimeStep(t):
     # Raise error if time step vector is not uniform
     is_uniform_dt = np.allclose(np.diff(dt), np.zeros(dt.size - 1), atol=1e-5)
     if not is_uniform_dt:
-        raise ValueError(f'non-uniform time vector (variation range = {np.ptp(dt)}')
+        raise ValueError(f'non-uniform time step: from {dt.min():.2e} s (index {dt.argmin()}) to {dt.max():.2e} s (index {dt.argmax()})')
 
     # Return average dt value
     return np.mean(dt)  # s
+
+
+def resample(t, y, dt):
+    ''' Resample a dataframe at regular time step. '''
+    n = int(np.ptp(t) / dt) + 1
+    ts = np.linspace(t.min(), t.max(), n)
+    ys = np.interp(ts, t, y)
+    return ts, ys
+
+
+def resolveIndexes(indexes, y, choice='max'):
+    icomp = np.array([np.floor(indexes), np.ceil(indexes)]).astype(int).T
+    ycomp =  np.array([y[i] for i in icomp])
+    method = {'min': np.argmin, 'max': np.argmax}[choice]
+    ichoice = method(ycomp, axis=1)
+    return np.array([x[ichoice[i]] for i, x in enumerate(icomp)])
 
 
 def find_tpeaks(t, y, **kwargs):
@@ -131,12 +148,37 @@ def find_tpeaks(t, y, **kwargs):
         :param y: signal vector
         :return: 2-tuple with peaks timings and properties dictionary
     '''
+
+    # Remove initial samples from vectors if time values are redundant
+    ipad = 0
+    while t[ipad + 1] == t[ipad]:
+        ipad += 1
+    if ipad > 0:
+        ss = 'from vectors (redundant time values)'
+        if ipad == 1:
+            logger.debug(f'Removing index 0 {ss}')
+        else:
+            logger.debug(f'Removing indexes 0-{ipad - 1} {ss}')
+        t = t[ipad:]
+        y = y[ipad:]
+
+    # If time step is irregular, resample vectors at a uniform time step
+    try:
+        dt = computeTimeStep(t)  # s
+        t_raw, y_raw = None, None
+        indexes_raw = None
+    except ValueError as err:
+        new_dt = np.diff(t).min()
+        logger.debug(f'Resampling vector at regular time step (dt = {new_dt:.2e}s)')
+        t_raw, y_raw = t.copy(), y.copy()
+        indexes_raw = np.arange(t_raw.size)
+        t, y = resample(t, y, new_dt)
+        dt = computeTimeStep(t)  # s
+        ipad = 0
+
     # Compute index vector
     nsamples = t.size
     indexes = np.arange(nsamples)
-
-    # Compute time step
-    dt = computeTimeStep(t)  # s
 
     # Convert provided time-based input criteria into samples-based criteria
     time_based_inputs = ['distance', 'width', 'wlen', 'plateau_size']
@@ -146,8 +188,58 @@ def find_tpeaks(t, y, **kwargs):
     if 'width' not in kwargs:
         kwargs['width'] = 1
 
-    # Find peaks in the signal and return
-    return find_peaks(y, **kwargs)
+    # Find peaks in the regularly sampled signal
+    ipeaks, properties = find_peaks(y, **kwargs)
+    # print(t[ipeaks] * 1e3)
+
+    # Adjust peak prominences and bases with restricted analysis window length
+    # based on smallest peak width
+    if len(ipeaks) > 0:
+        wlen = 5 * min(properties['widths'])
+        properties['prominences'], properties['left_bases'], properties['right_bases'] = peak_prominences(
+            y, ipeaks, wlen=wlen)
+
+    # If needed, re-project index-based outputs onto original sampling
+    if t_raw is not None:
+        logger.debug(f're-projecting index-based outputs onto original sampling')
+
+        # Interpolate peak indexes and round to neighbor integer with max y value
+        ipeaks_raw = np.interp(t[ipeaks], t_raw, indexes_raw, left=np.nan, right=np.nan)
+        ipeaks = resolveIndexes(ipeaks_raw, y_raw, choice='max')
+        # print(t_raw[ipeaks] * 1e3)
+
+        # Interpolate peak base indexes and round to neighbor integer with min y value
+        for key in ['left_bases', 'right_bases']:
+            if key in properties:
+                # print(key)
+                # print(t[properties[key]] * 1e3)
+                ibase_raw = np.interp(t[properties[key]], t_raw, indexes_raw, left=np.nan, right=np.nan)
+                properties[key] = resolveIndexes(ibase_raw, y_raw, choice='min')
+                # print(t_raw[properties[key]] * 1e3)
+
+        # Interpolate peak half-width interpolated positions
+        for key in ['left_ips', 'right_ips']:
+            if key in properties:
+                # print(key)
+                # print(properties[key])
+                # print(dt * properties[key] * 1e3)
+                properties[key] = np.interp(dt * properties[key], t_raw, indexes_raw, left=np.nan, right=np.nan)
+                # print(properties[key])
+
+    # If original vectors were cropped, correct offset in index-based outputs
+    if ipad > 0:
+        logger.debug(f'offseting index-based outputs by {ipad} to compensate initial cropping')
+        ipeaks += ipad
+        for key in ['left_bases', 'right_bases', 'left_ips', 'right_ips']:
+            if key in properties:
+                properties[key] += ipad
+
+    # Convert index-based peak widths into time-based widths
+    if 'widths' in properties:
+        properties['widths'] = np.array(properties['widths']) * dt
+
+    # Return updated properties
+    return ipeaks, properties
 
 
 def convertPeaksProperties(t, properties):
@@ -157,24 +249,26 @@ def convertPeaksProperties(t, properties):
         :param properties: properties dictionary (with index-based information)
         :return: properties dictionary (with time-based information)
     '''
-    index_based_outputs = [
-        'left_bases', 'right_bases',
-        'left_ips', 'right_ips',
-        'left_edges', 'right_edges'
-    ]
-    index_distance_based_outputs = ['widths', 'plateau_sizes']
     indexes = np.arange(t.size)
-    dt = computeTimeStep(t[1:])
-    for key in index_based_outputs:
+    for key in ['left_bases', 'right_bases','left_ips', 'right_ips']:
         if key in properties:
             properties[key] = np.interp(properties[key], indexes, t, left=np.nan, right=np.nan)
-    for key in index_distance_based_outputs:
-        if key in properties:
-            properties[key] = np.array(properties[key]) * dt
     return properties
 
 
-def detectSpikes(data, key='Qm', mpt=SPIKE_MIN_DT, mph=SPIKE_MIN_QAMP, mpp=SPIKE_MIN_QPROM, ipad=0):
+def resampleDataframe(data, dt):
+    ''' Resample a dataframe at regular time step. '''
+    t = data['t'].values
+    n = int(np.ptp(t) / dt) + 1
+    tnew = np.linspace(t.min(), t.max(), n)
+    new_data = {}
+    for key in data:
+        kind = 'nearest' if key == 'stimstate' else 'linear'
+        new_data[key] = interp1d(t, data[key].values, kind=kind)(tnew)
+    return pd.DataFrame(new_data)
+
+
+def detectSpikes(data, key='Qm', mpt=SPIKE_MIN_DT, mph=SPIKE_MIN_QAMP, mpp=SPIKE_MIN_QPROM):
     ''' Detect spikes in simulation output data, by detecting peaks with specific height, prominence
         and distance properties on a given signal.
 
@@ -188,40 +282,14 @@ def detectSpikes(data, key='Qm', mpt=SPIKE_MIN_DT, mph=SPIKE_MIN_QAMP, mpp=SPIKE
     if key not in data:
         raise ValueError(f'{key} vector not available in dataframe')
 
-    # If first two time samples are equal, remove first row from dataset and call function recursively
-    if data['t'].values[1] == data['t'].values[0]:
-        logger.debug('Removing first row from dataframe (reccurent time values)')
-        data = data.iloc[1:]
-        return detectSpikes(data, key=key, mpt=mpt, mph=mph, mpp=mpp, ipad=ipad + 1)
-
     # Detect peaks
-    ipeaks, properties = find_tpeaks(
+    return find_tpeaks(
         data['t'].values,
         data[key].values,
         height=mph,
         distance=mpt,
         prominence=mpp
     )
-
-    # Adjust peak prominences and bases with restricted analysis window length
-    # based on smallest peak width
-    if len(ipeaks) > 0:
-        wlen = 5 * min(properties['widths'])
-        properties['prominences'], properties['left_bases'], properties['right_bases'] = peak_prominences(
-            data[key].values, ipeaks, wlen=wlen)
-
-    # Correct index of specific outputs
-    index_based_outputs = [
-        'left_bases', 'right_bases',
-        'left_ips', 'right_ips',
-        'left_edges', 'right_edges'
-    ]
-    ipeaks += ipad
-    for key in index_based_outputs:
-        if key in properties:
-            properties[key] += ipad
-
-    return ipeaks, properties
 
 
 def computeFRProfile(data):
@@ -274,11 +342,8 @@ def computeSpikingMetrics(filenames):
         tstim = meta['tstim']
         t = data['t'].values
 
-        # Detect spikes in data
+        # Detect spikes in data and extract features
         ispikes, properties = detectSpikes(data)
-
-        # Convert index-based outputs into time-based outputs
-        properties = convertPeaksProperties(t, properties)
         widths = properties['widths']
         prominences = properties['prominences']
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-24 22:02:58
+# @Last Modified time: 2019-09-06 11:20:34
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -73,17 +73,17 @@ class TimeSeriesPlot(GenericPlot):
 
     @classmethod
     def materializeSpikes(cls, ax, data, tplt, yplt, color, mode, add_to_legend=False):
+        ispikes, properties = detectSpikes(data)
         t = data['t'].values
         Qm = data['Qm'].values
-        ispikes, properties = detectSpikes(data)
-        ileft = properties['left_bases']
-        iright = properties['right_bases']
-        properties = convertPeaksProperties(t, properties)
         if ispikes is not None:
             yoffset = 5
             ax.plot(t[ispikes] * tplt['factor'], Qm[ispikes] * yplt['factor'] + yoffset,
                     'v', color=color, label='spikes' if add_to_legend else None)
             if mode == 'details':
+                ileft = properties['left_bases']
+                iright = properties['right_bases']
+                properties = convertPeaksProperties(t, properties)
                 ax.plot(t[ileft] * tplt['factor'], Qm[ileft] * yplt['factor'] - 5,
                         '<', color=color, label='left-bases' if add_to_legend else None)
                 ax.plot(t[iright] * tplt['factor'], Qm[iright] * yplt['factor'] - 10,
