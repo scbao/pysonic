@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-06 12:27:29
+# @Last Modified time: 2019-09-06 12:53:57
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -132,8 +132,10 @@ def resample(t, y, dt):
 
 
 def resolveIndexes(indexes, y, choice='max'):
+    if indexes.size == 0:
+        return indexes
     icomp = np.array([np.floor(indexes), np.ceil(indexes)]).astype(int).T
-    ycomp =  np.array([y[i] for i in icomp])
+    ycomp = np.array([y[i] for i in icomp])
     method = {'min': np.argmin, 'max': np.argmax}[choice]
     ichoice = method(ycomp, axis=1)
     return np.array([x[ichoice[i]] for i, x in enumerate(icomp)])
@@ -168,7 +170,7 @@ def find_tpeaks(t, y, **kwargs):
         t_raw, y_raw = None, None
         indexes_raw = None
     except ValueError as err:
-        new_dt = np.diff(t).min()
+        new_dt = max(np.diff(t).min(), 1e-7)
         logger.debug(f'Resampling vector at regular time step (dt = {new_dt:.2e}s)')
         t_raw, y_raw = t.copy(), y.copy()
         indexes_raw = np.arange(t_raw.size)
