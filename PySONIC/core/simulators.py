@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-02 20:41:14
+# @Last Modified time: 2019-09-06 14:30:30
 
 import abc
 import numpy as np
@@ -74,14 +74,14 @@ class Simulator(metaclass=abc.ABCMeta):
         return cls.appendSolution(t, y, stim, tnew, ynew, is_on)
 
     @staticmethod
-    def resample(t, y, stim, target_dt):
+    def downsample(t, y, stim, target_dt):
         ''' Resample a solution to a new target time step.
 
             :param t: time vector
             :param y: solution matrix
             :param stim: stimulation state vector
             :target_dt: target time step after resampling
-            :return: 3-tuple with the resampled time vector, solution matrix and state vector
+            :return: 3-tuple with the downsampled time vector, solution matrix and state vector
         '''
         dt = t[2] - t[1]
         rf = int(np.round(target_dt / dt))
@@ -366,7 +366,7 @@ class PWSimulator(Simulator):
 
         # Resample solution if specified
         if target_dt is not None:
-            t, y, stim = self.resample(t, y, stim, target_dt)
+            t, y, stim = self.downsample(t, y, stim, target_dt)
 
         # Return output variables
         return t, y, stim
@@ -401,7 +401,7 @@ class HybridSimulator(PWSimulator):
 
             - First, the full ODE system is integrated for a few cycles with a dense time
               granularity until a stopping criterion is met
-            - Second, the profiles of all variables over the last cycle are resampled to a
+            - Second, the profiles of all variables over the last cycle are downsampled to a
               far lower (i.e. sparse) sampling rate
             - Third, a subset of the ODE system is integrated with a sparse time granularity,
               for the remaining of the time interval, while the remaining variables are
@@ -434,7 +434,7 @@ class HybridSimulator(PWSimulator):
             t, y, stim = self.appendSolution(t, y, stim, tdense, ydense, is_on)
 
             # Resample signals over last cycle to match sparse time step
-            tlast, ylast, stimlast = self.resample(
+            tlast, ylast, stimlast = self.downsample(
                 tdense[-npc_dense:], ydense[-npc_dense:], stimdense[-npc_dense:],
                 self.dt_sparse)
             npc_sparse = tlast.size
