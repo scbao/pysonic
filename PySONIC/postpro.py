@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-06 12:53:57
+# @Last Modified time: 2019-09-06 14:37:30
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -141,6 +141,32 @@ def resolveIndexes(indexes, y, choice='max'):
     return np.array([x[ichoice[i]] for i, x in enumerate(icomp)])
 
 
+def resampleDataFrame(data, dt):
+    ''' Resample a dataframe at regular time step. '''
+    t = data['t'].values
+    n = int(np.ptp(t) / dt) + 1
+    tnew = np.linspace(t.min(), t.max(), n)
+    new_data = {}
+    for key in data:
+        kind = 'nearest' if key == 'stimstate' else 'linear'
+        new_data[key] = interp1d(t, data[key].values, kind=kind)(tnew)
+    return pd.DataFrame(new_data)
+
+
+def prependDataFrame(data):
+    ''' Resample dataframe at regular time step. '''
+    tnew = np.insert(data['t'].values, 0, 0)
+    new_data = {'t': tnew}
+    for key in data:
+        if key == 't':
+            x0 = 0.
+        elif key == 'stimstate':
+            x0 = 0
+        else:
+            x0 = data[key].values[0]
+        new_data[key] = np.insert(data[key].values, 0, x0)
+    return pd.DataFrame(new_data)
+
 def find_tpeaks(t, y, **kwargs):
     ''' Wrapper around the scipy.signal.find_peaks function that provides a time vector
         associated to the signal, and translates time-based selection criteria into
@@ -244,32 +270,6 @@ def find_tpeaks(t, y, **kwargs):
     return ipeaks, properties
 
 
-def convertPeaksProperties(t, properties):
-    ''' Convert index-based peaks properties into time-based properties.
-
-        :param t: time vector (s)
-        :param properties: properties dictionary (with index-based information)
-        :return: properties dictionary (with time-based information)
-    '''
-    indexes = np.arange(t.size)
-    for key in ['left_bases', 'right_bases','left_ips', 'right_ips']:
-        if key in properties:
-            properties[key] = np.interp(properties[key], indexes, t, left=np.nan, right=np.nan)
-    return properties
-
-
-def resampleDataframe(data, dt):
-    ''' Resample a dataframe at regular time step. '''
-    t = data['t'].values
-    n = int(np.ptp(t) / dt) + 1
-    tnew = np.linspace(t.min(), t.max(), n)
-    new_data = {}
-    for key in data:
-        kind = 'nearest' if key == 'stimstate' else 'linear'
-        new_data[key] = interp1d(t, data[key].values, kind=kind)(tnew)
-    return pd.DataFrame(new_data)
-
-
 def detectSpikes(data, key='Qm', mpt=SPIKE_MIN_DT, mph=SPIKE_MIN_QAMP, mpp=SPIKE_MIN_QPROM):
     ''' Detect spikes in simulation output data, by detecting peaks with specific height, prominence
         and distance properties on a given signal.
@@ -292,6 +292,20 @@ def detectSpikes(data, key='Qm', mpt=SPIKE_MIN_DT, mph=SPIKE_MIN_QAMP, mpp=SPIKE
         distance=mpt,
         prominence=mpp
     )
+
+
+def convertPeaksProperties(t, properties):
+    ''' Convert index-based peaks properties into time-based properties.
+
+        :param t: time vector (s)
+        :param properties: properties dictionary (with index-based information)
+        :return: properties dictionary (with time-based information)
+    '''
+    indexes = np.arange(t.size)
+    for key in ['left_bases', 'right_bases','left_ips', 'right_ips']:
+        if key in properties:
+            properties[key] = np.interp(properties[key], indexes, t, left=np.nan, right=np.nan)
+    return properties
 
 
 def computeFRProfile(data):
