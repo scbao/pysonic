@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-26 14:45:26
+# @Last Modified time: 2019-09-10 14:59:35
 
 import numpy as np
 
@@ -13,14 +13,18 @@ from ..core import PointNeuron
 class SweeneyNode(PointNeuron):
     ''' Mammalian myelinated motor fiber fiber node.
 
-        Reference:
+        References:
         *Sweeney, J.D., Mortimer, J.T., and Durand, D. (1987). Modeling of mammalian myelinated nerve
         for functional neuromuscular stimulation. IEEE 9th Annual Conference of the Engineering
         in Medicine and Biology Society 3, 1577–1578.*
+
+        Corrections of maximal conductances and alpham rate constant according to:
+        *Basser, P.J., and Roth, B.J. (1991). Stimulation of a myelinated nerve axon
+        by electromagnetic induction. Med Biol Eng Comput 29, 261–268.*
     '''
 
     # Neuron name
-    name = 'sweeney'
+    name = 'SW'
 
     # ------------------------------ Biophysical parameters ------------------------------
 
@@ -46,7 +50,7 @@ class SweeneyNode(PointNeuron):
 
     @classmethod
     def alpham(cls, Vm):
-        return (126 + 0.363 * Vm) / (1 + np.exp(-(Vm + 49) / 53)) * 1e3  # s-1
+        return (126 + 0.363 * Vm) / (1 + np.exp(-(Vm + 49) / 5.3)) * 1e3  # s-1
 
     @classmethod
     def betam(cls, Vm):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-04 11:43:36
+# @Last Modified time: 2019-09-10 14:45:22
 
 import abc
 import inspect
@@ -429,7 +429,7 @@ class PointNeuron(Model):
     def chooseTimeStep(self):
         ''' Determine integration time step based on intrinsic temporal properties. '''
         dt = DT_EFFECTIVE
-        if self.name in ['FH', 'sweeney']:
+        if self.name in ['FH', 'SW']:
             dt /= 10
         return dt
 
