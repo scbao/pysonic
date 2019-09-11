@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-10 14:59:35
+# @Last Modified time: 2019-09-11 15:29:06
 
 import numpy as np
 
@@ -11,7 +11,7 @@ from ..core import PointNeuron
 
 
 class SweeneyNode(PointNeuron):
-    ''' Mammalian myelinated motor fiber fiber node.
+    ''' Mammalian (rabbit) myelinated motor fiber fiber node.
 
         References:
         *Sweeney, J.D., Mortimer, J.T., and Durand, D. (1987). Modeling of mammalian myelinated nerve
@@ -100,3 +100,6 @@ class SweeneyNode(PointNeuron):
             'iNa': lambda Vm, x: cls.iNa(x['m'], x['h'], Vm),
             'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
+
+    def chooseTimeStep(self):
+        return super().chooseTimeStep() * 1e-2

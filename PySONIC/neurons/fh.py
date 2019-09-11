@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-29 23:53:43
+# @Last Modified time: 2019-09-11 15:29:15
 
 import numpy as np
 from ..core import PointNeuron
@@ -153,3 +153,6 @@ class FrankenhaeuserHuxley(PointNeuron):
             'iP': lambda Vm, x: cls.iP(x['p'], Vm),
             'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
+
+    def chooseTimeStep(self):
+        return super().chooseTimeStep() * 1e-1
