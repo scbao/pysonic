@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-06 11:20:34
+# @Last Modified time: 2019-09-12 16:49:11
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -104,7 +104,8 @@ class TimeSeriesPlot(GenericPlot):
     @staticmethod
     def prepareTime(t, tplt):
         if tplt['onset'] > 0.0:
-            t = np.insert(t, 0, -tplt['onset'])
+            tonset = t.min() - 0.05 * np.ptp(t)
+            t = np.insert(t, 0, tonset)
         return t * tplt['factor']
 
     @staticmethod

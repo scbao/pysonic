@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-06 16:07:23
+# @Last Modified time: 2019-09-12 16:24:53
 
 import os
 import logging
@@ -521,6 +521,18 @@ class VClampParser(NeuronSimParser):
     def addVstep(self):
         self.add_argument(
             '--vstep', nargs='+', type=float, help='Step membrane potential (mV)')
+        self.add_argument(
+            '--vsteprange', type=str, nargs='+',
+            help='Step membrane potential range {} (mV)'.format(self.dist_str))
+        self.to_parse['vstep'] = self.parseVstep
+
+    def parseVstep(self, args):
+        vstep_range, vstep = [args.pop(k) for k in ['vsteprange', 'vstep']]
+        if vstep_range is not None:
+            vsteps = self.getDistFromList(vstep_range)  # mV
+        else:
+            vsteps = np.array(vstep)  # mV
+        return vsteps
 
     def parse(self, args=None):
         if args is None:
