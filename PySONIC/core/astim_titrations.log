@@ -29,3 +29,14 @@ titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, 0.095, 0.05, 10
 titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, 0.065, 0.05, 100.0, 1.0, 1.0, 'sonic')	44567.87109374997
 titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, 0.061, 0.05, 100.0, 1.0, 1.0, 'sonic')	45904.54101562497
 titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, 0.101, 0.05, 100.0, 1.0, 1.0, 'sonic')	38708.49609374997
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 20000.0, 0.15, 0.1)	35430.908203124985
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 100000.0, 0.15, 0.1)	35559.082031249985
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, 0.15, 0.1)	36099.243164062485
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 1000000.0, 0.15, 0.1)	37023.925781249985
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 2000000.0, 0.15, 0.1)	39166.25976562497
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 3000000.0, 0.15, 0.1)	41491.69921874997
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 4000000.0, 0.15, 0.1)	44201.66015624997
+titrate(NeuronalBilayerSonophore(16.0 nm, CorticalRS), 500000.0, 0.15, 0.1)	75988.76953124994
+titrate(NeuronalBilayerSonophore(22.6 nm, CorticalRS), 500000.0, 0.15, 0.1)	45254.51660156247
+titrate(NeuronalBilayerSonophore(45.3 nm, CorticalRS), 500000.0, 0.15, 0.1)	34826.660156249985
+titrate(NeuronalBilayerSonophore(64.0 nm, CorticalRS), 500000.0, 0.15, 0.1)	33755.493164062485
