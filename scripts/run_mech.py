@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-21 10:46:56
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 15:32:27
+# @Last Modified time: 2019-09-17 17:05:24
 
 ''' Run simulations of the NICE mechanical model. '''
 
@@ -20,7 +20,8 @@ def main():
 
     # Run MECH batch
     logger.info("Starting mechanical simulation batch")
-    queue = BilayerSonophore.simQueue(*parser.parseSimInputs(args), outputdir=args['outputdir'])
+    queue = BilayerSonophore.simQueue(
+        *parser.parseSimInputs(args), outputdir=args['outputdir'], overwrite=args['overwrite'])
     output = []
     for a in args['radius']:
         for d in args['embedding']:

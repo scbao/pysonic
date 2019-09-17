@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 15:01:56
+# @Last Modified time: 2019-09-17 17:03:33
 
 import os
 import logging
@@ -79,6 +79,12 @@ class Parser(ArgumentParser):
     def addSave(self):
         self.add_argument(
             '-s', '--save', default=False, action='store_true', help='Save output(s)')
+
+    def addCheckForOutput(self):
+        self.add_argument(
+            '--checkout', default=False, action='store_true',
+            help='Run only simulations for which there is no output file in the output directory')
+        self.to_parse['overwrite'] = self.parseOverwrite
 
     def addFigureExtension(self):
         self.add_argument(
@@ -256,6 +262,10 @@ class Parser(ArgumentParser):
         else:
             return {x: [x] for x in args['plot']}
 
+    def parseOverwrite(self, args):
+        check_for_output = args.pop('checkout')
+        return not check_for_output
+
     def restrict(self, args, keys):
         if sum([args[x] is not None for x in keys]) > 1:
             raise ValueError(
@@ -347,6 +357,7 @@ class SimParser(Parser):
         self.addMPI()
         self.addOutputDir(dep_key='save')
         self.addSave()
+        self.addCheckForOutput()
         self.addCompare()
         self.addCmap()
         self.addCscale()
