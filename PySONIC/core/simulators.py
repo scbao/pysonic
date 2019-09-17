@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 13:33:55
+# @Last Modified time: 2019-09-17 18:17:29
 
 import abc
 import numpy as np
@@ -335,12 +335,25 @@ class PWSimulator(Simulator):
         # Initialize global arrays
         t, y, stim = self.initialize(y0)
 
-        # Initialize progress bar if no monitoring function provided
-        ntot = int(npulses * (tstim + toffset) / tstim)
+        # Divide offset interval if print progress is True
         if print_progress:
+            nslices_offset = int(np.round(toffset * npulses / tstim))
+        else:
+            nslices_offset = 1
+
+        # Compute reference time vector for offset slices
+        tslice = toffset / nslices_offset
+        nperslice = int(np.round(tslice / dt))
+        tref_offset = np.linspace(0, tslice, nperslice) + tstim
+
+        # Initialize progress bar if no monitoring function provided
+        if print_progress:
+            ntot = npulses + nslices_offset
             if monitor_func is None:
                 setHandler(logger, TqdmHandler(my_log_formatter))
                 pbar = tqdm(total=ntot)
+            else:
+                logger.debug('integrating stimulus')
 
         # Integrate ON and OFF intervals of each pulse
         for i in range(npulses):
@@ -355,15 +368,24 @@ class PWSimulator(Simulator):
                     logger.debug(f'slice {i + 1}/{ntot}: {monitor_func(t[-1], y[-1, :])}')
 
         # Integrate offset interval
-        t, y, stim = self.integrate(t, y, stim, t_offset, self.dfunc_off, False)
+        if print_progress and monitor_func is not None:
+            logger.debug('integrating offset')
+        for i in range(nslices_offset):
+            t, y, stim = self.integrate(t, y, stim, tref_offset + i * tslice, self.dfunc_off, False)
 
-        # Terminate progress bar
+            # Monitor progress
+            if print_progress:
+                if monitor_func is None:
+                    pbar.update()
+                else:
+                    logger.debug(f'slice {npulses + i + 1}/{ntot}: {monitor_func(t[-1], y[-1, :])}')
+
+        # Terminate progress bar if any
         if print_progress:
             if monitor_func is None:
-                pbar.update()
                 pbar.close()
             else:
-                logger.debug(f'slice {ntot}/{ntot}: {monitor_func(t[-1], y[-1, :])}')
+                logger.debug('integration completed')
 
         # Resample solution if specified
         if target_dt is not None:
