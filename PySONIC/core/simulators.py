@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-06 14:30:30
+# @Last Modified time: 2019-09-17 13:33:55
 
 import abc
 import numpy as np
@@ -84,11 +84,12 @@ class Simulator(metaclass=abc.ABCMeta):
             :return: 3-tuple with the downsampled time vector, solution matrix and state vector
         '''
         dt = t[2] - t[1]
+        if dt >= target_dt:
+            logger.warning(f'Hyper-sampling not supported -> keeping Fs = {si_format(1 / dt, 2)}Hz')
+            return t, y, stim
+
         rf = int(np.round(target_dt / dt))
-        assert rf >= 1, 'Hyper-sampling not supported'
-        logger.debug(
-            'Downsampling output arrays by factor %u (Fs = %sHz)',
-            rf, si_format(1 / (dt * rf), 2))
+        logger.debug(f'Downsampling output arrays by factor {rf} (Fs = {si_format(1 / (dt * rf), 2)}Hz)')
         return t[::rf], y[::rf, :], stim[::rf]
 
     @property
