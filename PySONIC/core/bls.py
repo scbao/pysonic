@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 14:54:30
+# @Last Modified time: 2019-09-17 16:03:03
 
 from enum import Enum
 import os
@@ -694,7 +694,7 @@ class BilayerSonophore(Model):
 
     @classmethod
     @Model.checkOutputDir
-    def simQueue(cls, *args, outputdir=None):
+    def simQueue(cls, *args, **kwargs):
         return Batch.createQueue(*args)
 
     @Model.addMeta

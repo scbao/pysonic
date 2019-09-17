@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 14:59:13
+# @Last Modified time: 2019-09-17 16:10:59
 
 import abc
 import inspect
@@ -374,7 +374,7 @@ class PointNeuron(Model):
 
     @classmethod
     @Model.checkOutputDir
-    def simQueue(cls, amps, durations, offsets, PRFs, DCs, outputdir=None):
+    def simQueue(cls, amps, durations, offsets, PRFs, DCs, **kwargs):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
             parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 

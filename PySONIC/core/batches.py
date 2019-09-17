@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 10:10:45
+# @Last Modified time: 2019-09-17 16:03:19
 
 ''' Utility functions used in simulations '''
 
@@ -41,23 +41,25 @@ class Consumer(mp.Process):
 class Worker:
     ''' Generic worker class calling a specific function with a given set of parameters. '''
 
-    def __init__(self, wid, func, params, loglevel):
+    def __init__(self, wid, func, args, kwargs, loglevel):
         ''' Worker constructor.
 
             :param wid: worker ID
             :param func: function object
-            :param params: list of method parameters
+            :param args: list of method arguments
+            :param kwargs: dictionary of optional method arguments
             :param loglevel: logging level
         '''
         self.id = wid
         self.func = func
-        self.params = params
+        self.args = args
+        self.kwargs = kwargs
         self.loglevel = loglevel
 
     def __call__(self):
         ''' Caller to the function with specific parameters. '''
         logger.setLevel(self.loglevel)
-        return self.id, self.func(*self.params)
+        return self.id, self.func(*self.args, **self.kwargs)
 
 
 class Batch:
@@ -89,10 +91,20 @@ class Batch:
         for c in self.consumers:
             c.start()
 
+    @staticmethod
+    def resolve(params):
+        if isinstance(params, list):
+            args = params
+            kwargs = {}
+        elif isinstance(params, tuple):
+            args, kwargs = params
+        return args, kwargs
+
     def assign(self, loglevel):
         ''' Assign tasks to workers. '''
         for i, params in enumerate(self.queue):
-            worker = Worker(i, self.func, params, loglevel)
+            args, kwargs = self.resolve(params)
+            worker = Worker(i, self.func, args, kwargs, loglevel)
             self.tasks.put(worker, block=False)
 
     def join(self):
@@ -124,7 +136,10 @@ class Batch:
             outputs = self.get()
             self.stop()
         else:
-            outputs = [self.func(*params) for params in self.queue]
+            outputs = []
+            for params in self.queue:
+                args, kwargs = self.resolve(params)
+                outputs.append(self.func(*args, **kwargs))
         return outputs
 
     @staticmethod

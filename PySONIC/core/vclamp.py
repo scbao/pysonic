@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 14:58:40
+# @Last Modified time: 2019-09-17 16:12:22
 
 import numpy as np
 import pandas as pd
@@ -81,7 +81,7 @@ class VoltageClamp(Model):
 
     @classmethod
     @Model.checkOutputDir
-    def simQueue(cls, *args, outputdir=None):
+    def simQueue(cls, *args, **kwargs):
         return Batch.createQueue(*args)
 
     @staticmethod
