@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-26 15:11:35
+# @Last Modified time: 2019-09-17 14:56:49
 
 import os
 from functools import wraps
@@ -91,21 +91,36 @@ class Model(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @staticmethod
-    def checkOutputDir(queue, outputdir):
+    def checkOutputDir(queuefunc):
         ''' Check if an outputdir is provided in input arguments, and if so, add it as
             the first element of each item in the returned queue.
         '''
-        if outputdir is not None:
-            for item in queue:
-                item.insert(0, outputdir)
-        else:
-            if len(queue) > 5:
-                logger.warning('Running more than 5 simulations without file saving')
+        @wraps(queuefunc)
+        def wrapper(self, *args, **kwargs):
+            outputdir = kwargs.pop('outputdir')
+            queue = queuefunc(self, *args, **kwargs)
+            if outputdir is not None:
+                for item in queue:
+                    item.insert(0, outputdir)
+            else:
+                if len(queue) > 5:
+                    logger.warning('Running more than 5 simulations without file saving')
+            return queue
+        return wrapper
+
+    @staticmethod
+    def checkOverwrite(queue, overwrite):
+        ''' Check if an outputdir is provided in input arguments, and if so, add it as
+            the first element of each item in the returned queue.
+        '''
+        for item in queue:
+            item.append(overwrite)
         return queue
 
     @classmethod
+    @abc.abstractmethod
     def simQueue(cls, *args, outputdir=None):
-        return cls.checkOutputDir(Batch.createQueue(*args), outputdir)
+        return NotImplementedError
 
     @staticmethod
     @abc.abstractmethod
@@ -215,20 +230,42 @@ class Model(metaclass=abc.ABCMeta):
 
         return wrapper_with_args
 
-    def simAndSave(self, outdir, *args):
-        ''' Simulate the model and save the results in a specific output directory. '''
-        out = self.simulate(*args)
-        if out is None:
-            return None
-        data, meta = out
+    def simAndSave(self, outdir, *args, overwrite=True):
+        ''' Simulate the model and save the results in a specific output directory.
+
+            :param outdir: ouput directory
+            :param *args: list of arguments provided to the simulation function
+            :param overwrite: boolean stating whether or not to overwrite a corresponding
+             output file if it is found in the directory. That check is performed prior
+             to running the simulation, such that it is not run if the file is present and
+             overwrite is set ot false.
+            :return: output filepath
+        '''
+        data, meta = None, None
         if None in args:
             args = list(args)
             iNone = next(i for i, arg in enumerate(args) if arg is None)
+            out = self.simulate(*args)
+            if out is None:
+                logger.warning('returning None')
+                return None
+            data, meta = out
             args[iNone] = meta['Adrive']
-        fpath = '{}/{}.pkl'.format(outdir, self.filecode(*args))
-        with open(fpath, 'wb') as fh:
-            pickle.dump({'meta': meta, 'data': data}, fh)
-        logger.debug('simulation data exported to "%s"', fpath)
+
+        fname = f'{self.filecode(*args)}.pkl'
+        fpath = os.path.join(outdir, fname)
+        existing_file_msg = f'File "{fname}" already present in directory "{outdir}"'
+        existing_file = os.path.isfile(fpath)
+        if existing_file and not overwrite:
+            logger.warning(f'{existing_file_msg} -> preserving')
+        else:
+            if data is None:
+                data, meta = self.simulate(*args)
+            if existing_file:
+                logger.warning(f'{existing_file_msg} -> overwriting')
+            with open(fpath, 'wb') as fh:
+                pickle.dump({'meta': meta, 'data': data}, fh)
+            logger.debug('simulation data exported to "%s"', fpath)
         return fpath
 
     def getOutput(self, outdir, *args):

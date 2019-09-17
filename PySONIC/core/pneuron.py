@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-11 14:16:36
+# @Last Modified time: 2019-09-17 14:59:13
 
 import abc
 import inspect
@@ -373,6 +373,7 @@ class PointNeuron(Model):
         return 'alpha{}'.format(state.lower()) in cls.rates
 
     @classmethod
+    @Model.checkOutputDir
     def simQueue(cls, amps, durations, offsets, PRFs, DCs, outputdir=None):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
             parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
@@ -395,7 +396,7 @@ class PointNeuron(Model):
         for item in queue:
             if np.isnan(item[0]):
                 item[0] = None
-        return cls.checkOutputDir(queue, outputdir)
+        return queue
 
     @staticmethod
     def checkInputs(Astim, tstim, toffset, PRF, DC):

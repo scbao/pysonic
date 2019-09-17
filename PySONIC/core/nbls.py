@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-02 20:42:15
+# @Last Modified time: 2019-09-17 14:58:06
 
 from copy import deepcopy
 import logging
@@ -365,6 +365,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return data
 
     @classmethod
+    @Model.checkOutputDir
     def simQueue(cls, freqs, amps, durations, offsets, PRFs, DCs, fs, methods, outputdir=None):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
             parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
@@ -396,7 +397,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             if np.isnan(item[1]):
                 item[1] = None
             item[-1] = methods[int(item[-1])]
-        return cls.checkOutputDir(queue, outputdir)
+        return queue
 
     @Model.logNSpikes
     @Model.checkTitrate('Adrive')

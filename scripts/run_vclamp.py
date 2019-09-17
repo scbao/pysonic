@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 11:56:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 14:49:55
+# @Last Modified time: 2019-09-17 14:44:13
 
 from PySONIC.core import Batch, VoltageClamp
 from PySONIC.utils import logger

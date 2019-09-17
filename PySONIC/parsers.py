@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-12 16:24:53
+# @Last Modified time: 2019-09-17 15:01:56
 
 import os
 import logging
@@ -78,7 +78,7 @@ class Parser(ArgumentParser):
 
     def addSave(self):
         self.add_argument(
-            '-s', '--save', default=False, action='store_true', help='Save output figure(s)')
+            '-s', '--save', default=False, action='store_true', help='Save output(s)')
 
     def addFigureExtension(self):
         self.add_argument(

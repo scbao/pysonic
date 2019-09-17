@@ -40,3 +40,4 @@ titrate(NeuronalBilayerSonophore(16.0 nm, CorticalRS), 500000.0, 0.15, 0.1)	7598
 titrate(NeuronalBilayerSonophore(22.6 nm, CorticalRS), 500000.0, 0.15, 0.1)	45254.51660156247
 titrate(NeuronalBilayerSonophore(45.3 nm, CorticalRS), 500000.0, 0.15, 0.1)	34826.660156249985
 titrate(NeuronalBilayerSonophore(64.0 nm, CorticalRS), 500000.0, 0.15, 0.1)	33755.493164062485
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, 0.1, 0.05, 100.0, 0.02, 1.0, 'sonic')	nan

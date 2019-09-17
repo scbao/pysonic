@@ -3,11 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 17:43:49
+# @Last Modified time: 2019-09-17 14:58:40
 
 import numpy as np
 import pandas as pd
 
+from .batches import Batch
 from .model import Model
 from .pneuron import PointNeuron
 from .simulators import PWSimulator
@@ -77,6 +78,11 @@ class VoltageClamp(Model):
             'tstim': '{:.0f}ms'.format(tstim * 1e3),
             'toffset': None
         }
+
+    @classmethod
+    @Model.checkOutputDir
+    def simQueue(cls, *args, outputdir=None):
+        return Batch.createQueue(*args)
 
     @staticmethod
     def checkInputs(Vhold, Vstep, tstim, toffset):

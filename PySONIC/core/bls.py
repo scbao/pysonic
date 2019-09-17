@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-02 20:12:28
+# @Last Modified time: 2019-09-17 14:54:30
 
 from enum import Enum
 import os
@@ -13,6 +13,7 @@ import pandas as pd
 import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
 
+from .batches import Batch
 from .model import Model
 from .simulators import PeriodicSimulator
 from ..utils import logger, si_format, debug
@@ -690,6 +691,11 @@ class BilayerSonophore(Model):
         '''
         Pac = self.Pacoustic(dt, Adrive, Fdrive, phi)
         return self.balancedefQS(self.ng0, Qm, Pac, Pm_comp_method)
+
+    @classmethod
+    @Model.checkOutputDir
+    def simQueue(cls, *args, outputdir=None):
+        return Batch.createQueue(*args)
 
     @Model.addMeta
     def simulate(self, Fdrive, Adrive, Qm, phi=np.pi, Pm_comp_method=PmCompMethod.predict):
