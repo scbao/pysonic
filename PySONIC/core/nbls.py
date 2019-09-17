@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 16:10:37
+# @Last Modified time: 2019-09-17 17:24:47
 
 from copy import deepcopy
 import logging
@@ -381,7 +381,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: list of parameters (list) for each simulation
         '''
         method_ids = list(range(len(methods)))
-        if ('full' in methods or 'hybrid' in methods) and outputdir is None:
+        if ('full' in methods or 'hybrid' in methods) and kwargs['outputdir'] is None:
             logger.warning('Running cumbersome simulation(s) without file saving')
         if amps is None:
             amps = [np.nan]

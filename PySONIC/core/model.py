@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 16:02:45
+# @Last Modified time: 2019-09-17 17:27:09
 
 import os
 from functools import wraps
@@ -92,21 +92,20 @@ class Model(metaclass=abc.ABCMeta):
 
     @staticmethod
     def checkOutputDir(queuefunc):
-        ''' Check if an outputdir is provided in input arguments, and if so, add it as
-            the first element of each item in the returned queue (along with an "overwrite"
-            boolean as keyword argument to each item in the queue.
+        ''' Check if an output directory is provided in input arguments, and if so, add it
+            to each item of the returned queue (along with an "overwrite" boolean).
         '''
         @wraps(queuefunc)
         def wrapper(self, *args, **kwargs):
-            outputdir = kwargs.pop('outputdir')
+            outputdir = kwargs.get('outputdir')
             queue = queuefunc(self, *args, **kwargs)
             if outputdir is not None:
-                overwrite = kwargs.pop('overwrite', True)
+                overwrite = kwargs.get('overwrite', True)
                 queue = queuefunc(self, *args, **kwargs)
                 for i, params in enumerate(queue):
                     position_args, keyword_args = Batch.resolve(params)
-                    position_args.insert(0, outputdir)
                     keyword_args['overwrite'] = overwrite
+                    keyword_args['outputdir'] = outputdir
                     queue[i] = (position_args, keyword_args)
             else:
                 if len(queue) > 5:
@@ -227,17 +226,15 @@ class Model(metaclass=abc.ABCMeta):
 
         return wrapper_with_args
 
-    def simAndSave(self, outdir, *args, **kwargs):
+    def simAndSave(self, *args, **kwargs):
         ''' Simulate the model and save the results in a specific output directory.
 
-            :param outdir: ouput directory
             :param *args: list of arguments provided to the simulation function
             :param **kwargs: optional arguments dictionary
             :return: output filepath
         '''
-
-        # boolean stating whether or not to overwrite a corresponding output file if it is found
-        # in the directory.
+        # Extract output directory and overwrite boolean from keyword arguments.
+        outputdir = kwargs.pop('outputdir')
         overwrite = kwargs.pop('overwrite')
 
         # Set data and meta to None
@@ -258,8 +255,8 @@ class Model(metaclass=abc.ABCMeta):
         # That check is performed prior to running the simulation, such that
         # it is not run if the file is present and overwrite is set ot false.
         fname = f'{self.filecode(*args)}.pkl'
-        fpath = os.path.join(outdir, fname)
-        existing_file_msg = f'File "{fname}" already present in directory "{outdir}"'
+        fpath = os.path.join(outputdir, fname)
+        existing_file_msg = f'File "{fname}" already present in directory "{outputdir}"'
         existing_file = os.path.isfile(fpath)
 
         # If file exists and overwrite is set ot false -> return
@@ -281,14 +278,14 @@ class Model(metaclass=abc.ABCMeta):
         logger.debug('simulation data exported to "%s"', fpath)
         return fpath
 
-    def getOutput(self, outdir, *args):
+    def getOutput(self, outputdir, *args):
         ''' Get simulation output data for a specific parameters combination, by looking
             for an output file into a specific directory.
 
             If a corresponding output file is not found in the specified directory, the model
             is first run and results are saved in the output file.
         '''
-        fpath = '{}/{}.pkl'.format(outdir, self.filecode(*args))
+        fpath = '{}/{}.pkl'.format(outputdir, self.filecode(*args))
         if not os.path.isfile(fpath):
-            self.simAndSave(outdir, *args)
+            self.simAndSave(outputdir, *args, outputdir=outputdir)
         return loadData(fpath)
