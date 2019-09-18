@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-18 17:46:28
+# @Last Modified time: 2019-09-18 18:12:40
 
 from copy import deepcopy
 import logging
@@ -417,8 +417,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: 2-tuple with the output dataframe and computation time.
         '''
         logger.info(
-            '%s: simulation @ f = %sHz, A = %sPa, t = %ss (%ss offset)%s%s',
-            self, si_format(Fdrive, 0, space=' '), si_format(Adrive, 2, space=' '),
+            '%s: %s simulation @ f = %sHz, A = %sPa, t = %ss (%ss offset)%s%s',
+            self, method, si_format(Fdrive, 0, space=' '), si_format(Adrive, 2, space=' '),
             *si_format([tstim, toffset], 1, space=' '),
             (', PRF = {}Hz, DC = {:.2f}%'.format(
                 si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''),
