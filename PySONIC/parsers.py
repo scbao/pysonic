@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 17:03:33
+# @Last Modified time: 2019-09-19 11:36:20
 
 import os
 import logging
@@ -85,6 +85,11 @@ class Parser(ArgumentParser):
             '--checkout', default=False, action='store_true',
             help='Run only simulations for which there is no output file in the output directory')
         self.to_parse['overwrite'] = self.parseOverwrite
+
+    def addOverwrite(self):
+        self.add_argument(
+            '--overwrite', default=False, action='store_true',
+            help='Overwrite pre-existing simulation files with new output')
 
     def addFigureExtension(self):
         self.add_argument(

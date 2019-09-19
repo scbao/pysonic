@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-04 11:29:27
+# @Last Modified time: 2019-09-19 11:17:50
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -12,6 +12,7 @@ from functools import wraps
 import operator
 import time
 import os
+from shutil import get_terminal_size
 import lockfile
 import math
 import pickle
@@ -67,6 +68,28 @@ class TqdmHandler(logging.StreamHandler):
 
 
 logger = setLogger('PySONIC', my_log_formatter)
+
+
+def fillLine(text, char='-', totlength=None):
+    ''' Surround a text with repetitions of a specific character in order to
+        fill a line to a given total length.
+
+        :param text: text to be surrounded
+        :param char: surrounding character
+        :param totlength: target number of characters in filled text line
+        :return: filled text line
+    '''
+    if totlength is None:
+        totlength = get_terminal_size().columns - 1
+    ndashes = totlength - len(text) - 2
+    if ndashes < 2:
+        return text
+    else:
+        nside = ndashes // 2
+        nleft, nright = nside, nside
+        if ndashes % 2 == 1:
+            nright += 1
+        return f'{char * nleft} {text} {char * nright}'
 
 
 # SI units prefixes
