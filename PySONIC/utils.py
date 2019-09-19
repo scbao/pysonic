@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-19 11:17:50
+# @Last Modified time: 2019-09-19 11:47:09
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -408,7 +408,7 @@ def logCache(fpath, delimiter='\t', out_type=float):
                     reader = csv.reader(f, delimiter=delimiter)
                     for row in reader:
                         if row[0] == signature:
-                            logger.info('entry found in "{}"'.format(os.path.basename(fpath)))
+                            logger.debug('entry found in "{}"'.format(os.path.basename(fpath)))
                             return out_type(row[1])
 
             # Otherwise, compute output and log it into file before returning
