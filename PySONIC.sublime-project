@@ -8,32 +8,10 @@
 			"shell_cmd": "\"python\" -u \"$file\""
 		}
 	],
-	"conda_environment": "C:\\Users\\lemaire\\Anaconda3",
 	"folders":
 	[
 		{
-			"file_exclude_patterns":
-			[
-				"*.sublime-workspace",
-				"MANIFEST.in",
-				"LICENSE",
-				"conf.py",
-				"index.rst",
-				"*.gitignore",
-				"__init__.py",
-				"*.c",
-				"*.sh",
-				"*.pkl",
-				"*.tmp"
-			],
-			"folder_exclude_patterns":
-			[
-				"docs",
-				"__pycache__",
-				"*.egg-info"
-			],
-			"path": "."
+			"path": "C:\\Users\\lemaire\\Desktop\\comps"
 		}
-	],
-	"translate_tabs_to_spaces": true
+	]
 }

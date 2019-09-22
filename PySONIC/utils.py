@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-20 11:19:49
+# @Last Modified time: 2019-09-20 23:03:39
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -693,3 +693,32 @@ def getPow10(x, direction='up'):
     ''' Get the power of 10 that is closest to a number, in either direction("down" or "up"). '''
     round_method = {'up': np.ceil, 'down': np.floor}[direction]
     return np.power(10, round_method(np.log10(x)))
+
+
+def rotAroundPoint2D(x, theta, p):
+    ''' Rotate a 2D vector around a center point by a given angle.
+
+        :param x: 2D coordinates vector
+        :param theta: rotation angle (in rad)
+        :param p: 2D center point coordinates
+        :return: 2D rotated coordinates vector
+    '''
+
+    n1, n2 = x.shape
+    if n1 != 2:
+        if n2 == 2:
+            x = x.T
+        else:
+            raise ValueError('x should be a 2-by-n vector')
+
+    # Rotation matrix
+    R = np.array([
+        [np.cos(theta), -np.sin(theta)],
+        [np.sin(theta), np.cos(theta)],
+    ])
+
+    # Broadcast center point to input vector
+    ptile = np.tile(p, (x.shape[1], 1)).T
+
+    # Subtract, rotate and add
+    return R.dot(x - ptile) + ptile
