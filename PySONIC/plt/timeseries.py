@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-12 16:49:11
+# @Last Modified time: 2019-09-27 13:32:58
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -61,8 +61,7 @@ class TimeSeriesPlot(GenericPlot):
         tpulse_off = t[ipulse_off]
         return tpulse_on, tpulse_off
 
-    @staticmethod
-    def addLegend(ax, handles, labels, fs, color=None, ls=None):
+    def addLegend(self, fig, ax, handles, labels, fs, color=None, ls=None):
         lh = ax.legend(handles, labels, loc=1, fontsize=fs, frameon=False)
         if color is not None:
             for l in lh.get_lines():
@@ -315,7 +314,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             self.addCmap(
                 fig, cmap, handles, comp_values, self.comp_info, fs, prettify, zscale=cscale)
         else:
-            self.addLegend(ax, handles, labels, fs)
+            self.addLegend(fig, ax, handles, labels, fs)
 
         # Add window title based on common pattern
         common_fcode = self.getCommonLabel(fcodes.copy(), sep='_')
