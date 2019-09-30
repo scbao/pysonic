@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-30 19:19:23
+# @Last Modified time: 2019-10-01 00:03:26
 
 import os
 import pickle
@@ -133,12 +133,12 @@ class ActivationMap(Map):
         cmap.set_under('k')
         return actmap, cmap
 
-    def addThresholdCurve(self, ax):
+    def addThresholdCurve(self, ax, fs):
         Athrs = np.array([
-            self.nbls.titrate(self.Fdrive, self.tstim, 0., self.PRF, DC) for DC in self.DCs])
-        ax.plot(DCs * 1e2, Athrs, '-', color='#F26522', linewidth=2,
+            self.nbls.titrate(self.Fdrive, self.tstim, 0., self.PRF, DC, 1.0, 'sonic') for DC in self.DCs])
+        ax.plot(self.DCs * 1e2, Athrs * 1e-3, '-', color='#F26522', linewidth=3,
                 label='threshold amplitudes')
-        ax.legend(loc='lower center', frameon=False, fontsize=8)
+        ax.legend(loc='lower center', frameon=False, fontsize=fs)
 
     def render(self, Ascale='log', FRscale='log', FRbounds=None, fs=8, cmap='viridis',
                interactive=False, Vbounds=None, trange=None, thresholds=False,
@@ -168,7 +168,7 @@ class ActivationMap(Map):
             ax.set_yscale('log')
         ax.pcolormesh(xedges * 1e2, yedges * 1e-3, actmap, cmap=mymap, norm=norm)
         if thresholds:
-            self.addThresholdCurve(ax)
+            self.addThresholdCurve(ax, fs)
 
         # Plot firing rate colorbar
         pos1 = ax.get_position()  # get the map axis position
