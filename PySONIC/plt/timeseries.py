@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-27 13:32:58
+# @Last Modified time: 2019-09-28 12:46:19
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -114,15 +114,14 @@ class TimeSeriesPlot(GenericPlot):
                        edgecolor='none', facecolor=color, alpha=0.2)
 
     @staticmethod
-    def plotInset(inset_ax, t, y, tplt, yplt, line, color, lw):
-        inset_window = np.logical_and(t > (inset['xlims'][0] / tplt['factor']),
-                                      t < (inset['xlims'][1] / tplt['factor']))
-        inset_ax.plot(t[inset_window] * tplt['factor'], y[inset_window] * yplt['factor'],
-                      linewidth=lw, linestyle=line, color=color)
+    def plotInset(inset_ax, inset, t, y, tplt, yplt, line, color, lw):
+        inset_ax.plot(t, y, linewidth=lw, linestyle=line, color=color)
         return inset_ax
 
     @staticmethod
     def addInsetPatches(ax, inset_ax, inset, tpatch_on, tpatch_off, tplt, color):
+        return
+        tfactor = tplt['factor']
         ybottom, ytop = ax.get_ylim()
         cond_on = np.logical_and(tpatch_on > (inset['xlims'][0] / tfactor),
                                  tpatch_on < (inset['xlims'][1] / tfactor))
@@ -274,7 +273,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
 
             # Plot optional inset
             if inset is not None:
-                inset_ax = self.plotInset(inset_ax, t, y, tplt, yplt, lines[j], colors[j], lw)
+                inset_ax = self.plotInset(inset_ax, inset, t, y, tplt, yplt, lines[j], colors[j], lw)
 
             # Add optional STIM-ON patches
             if patches[j]:

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-22 15:44:09
+# @Last Modified time: 2019-09-30 19:19:23
 
 import os
 import pickle
@@ -87,10 +87,6 @@ class ActivationMap(Map):
             sr = 1 / np.diff(t[ispikes])
             return np.mean(sr)
 
-    @staticmethod
-    def correctAmp(A):
-        return np.round(A * 1e-3, 1) * 1e3
-
     def compute(self):
         logger.info('Generating activation map for %s neuron', self.pneuron.name)
         actmap = np.empty((self.amps.size, self.DCs.size))
@@ -98,7 +94,7 @@ class ActivationMap(Map):
         for i, A in enumerate(self.amps):
             for j, DC in enumerate(self.DCs):
                 fname = '{}.pkl'.format(self.nbls.filecode(
-                    self.Fdrive, self.correctAmp(A), self.tstim, 0., self.PRF, DC, 1., 'sonic'))
+                    self.Fdrive, A, self.tstim, 0., self.PRF, DC, 1., 'sonic'))
                 fpath = os.path.join(self.root, fname)
                 if not os.path.isfile(fpath):
                     print(fpath)
@@ -138,25 +134,15 @@ class ActivationMap(Map):
         return actmap, cmap
 
     def addThresholdCurve(self, ax):
-        Athrs_fname = 'Athrs_{}_{:.0f}nm_{}Hz_PRF{}Hz_{}s.xlsx'.format(
-            self.pneuron.name, self.a * 1e9,
-            *si_format([self.Fdrive, self.PRF, self.tstim], 0, space=''))
-        fpath = os.path.join(self.root, Athrs_fname)
-        if os.path.isfile(fpath):
-            df = pd.read_excel(fpath, sheet_name='Data')
-            DCs = df['Duty factor'].values
-            Athrs = df['Adrive (kPa)'].values
-            iDCs = np.argsort(DCs)
-            DCs = DCs[iDCs]
-            Athrs = Athrs[iDCs]
-            ax.plot(DCs * 1e2, Athrs, '-', color='#F26522', linewidth=2,
-                    label='threshold amplitudes')
-            ax.legend(loc='lower center', frameon=False, fontsize=8)
-        else:
-            logger.warning('%s file not found -> cannot draw threshold curve', fpath)
+        Athrs = np.array([
+            self.nbls.titrate(self.Fdrive, self.tstim, 0., self.PRF, DC) for DC in self.DCs])
+        ax.plot(DCs * 1e2, Athrs, '-', color='#F26522', linewidth=2,
+                label='threshold amplitudes')
+        ax.legend(loc='lower center', frameon=False, fontsize=8)
 
     def render(self, Ascale='log', FRscale='log', FRbounds=None, fs=8, cmap='viridis',
-               interactive=False, Vbounds=None, trange=None, thresholds=False):
+               interactive=False, Vbounds=None, trange=None, thresholds=False,
+               figsize=cm2inch(8, 5.8)):
 
         # Compute FR normalizer
         mymap = plt.get_cmap(cmap)
@@ -167,7 +153,7 @@ class ActivationMap(Map):
         yedges = self.computeMeshEdges(self.amps, self.Ascale)
 
         # Create figure
-        fig, ax = plt.subplots(figsize=cm2inch(8, 5.8))
+        fig, ax = plt.subplots(figsize=figsize)
         fig.subplots_adjust(left=0.15, bottom=0.15, right=0.8, top=0.92)
         ax.set_title(self.title, fontsize=fs)
         ax.set_xlabel('Duty cycle (%)', fontsize=fs, labelpad=-0.5)
@@ -211,7 +197,7 @@ class ActivationMap(Map):
 
         # Define filepath
         fname = '{}.pkl'.format(self.nbls.filecode(
-            self.Fdrive, self.correctAmp(Adrive), self.tstim, 0., self.PRF, DC, 1. , 'sonic'))
+            self.Fdrive, Adrive, self.tstim, 0., self.PRF, DC, 1. , 'sonic'))
         fpath = os.path.join(self.root, fname)
 
         # Plot Q-trace
@@ -221,7 +207,8 @@ class ActivationMap(Map):
         except FileNotFoundError as err:
             logger.error(err)
 
-    def plotQVeff(self, filepath, tonset=10e-3, trange=None, ybounds=None, fs=8, lw=1):
+    def plotQVeff(self, filepath, tonset=10e-3, trange=None, ybounds=None,
+                  fs=8, lw=1, figsize=cm2inch(7, 3)):
         ''' Plot superimposed profiles of membrane charge density and
             effective membrane potential.
 
@@ -258,7 +245,7 @@ class ActivationMap(Map):
             ybounds = (min(Vm.min(), Qm.min()), max(Vm.max(), Qm.max()))
 
         # Create figure
-        fig, ax = plt.subplots(figsize=cm2inch(7, 3))
+        fig, ax = plt.subplots(figsize=figsize)
         fig.canvas.set_window_title(fname)
         plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.95)
         for key in ['top', 'right']:

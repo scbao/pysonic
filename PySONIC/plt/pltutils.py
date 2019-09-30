@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-24 22:02:53
+# @Last Modified time: 2019-09-27 19:25:34
 
 ''' Useful functions to generate plots. '''
 
@@ -351,7 +351,7 @@ class ComparativePlot(GenericPlot):
             comp_values.append(meta[self.comp_ref_key])
         else:
             if zkey != self.comp_ref_key:
-                logger.warning('inconsitent differing inputs')
+                logger.warning('inconsistent differing inputs')
                 self.comp_ref_key = None
                 return []
             else:

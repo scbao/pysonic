@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-06 14:37:30
+# @Last Modified time: 2019-09-30 18:01:49
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -321,6 +321,8 @@ def computeFRProfile(data):
     t = data['t'].values
     tspikes = t[ispikes][:-1]
     sr = 1 / np.diff(t[ispikes])
+    if len(sr) == 0:
+        return np.ones(t.size) * np.nan
 
     # Interpolate firing rate vector along time vector
     return np.interp(t, tspikes, sr, left=np.nan, right=np.nan)
