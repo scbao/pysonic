@@ -3,12 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-18 18:12:40
+# @Last Modified time: 2019-10-02 08:45:45
 
 from copy import deepcopy
 import logging
 import numpy as np
-import numdifftools as nd
 import pandas as pd
 from scipy import linalg
 
@@ -584,6 +583,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             print(f'x = {x}, dfunx(x) = {dfunc(x)}')
             eps_machine = np.sqrt(np.finfo(float).eps)
             J = jacobian(dfunc, x, rel_eps=eps_machine, method='forward')
+            # import numdifftools as nd
             # Jfunc = nd.Jacobian(dfunc, order=3)
             # J = Jfunc(x)
             # print('------------------ Jacobian ------------------')

@@ -57,19 +57,19 @@ Several conductance-based point-neuron models are implemented that inherit from 
 
 - Activate a Python3 environment if needed, e.g. on the tnesrv5 machine:
 
-```$ source /opt/apps/anaconda3/bin activate```
+```source /opt/apps/anaconda3/bin activate```
 
 - Check that the appropriate version of pip is activated:
 
-```$ pip --version```
+```pip --version```
 
-- Go to the package directory (where the setup.py file is located):
+- Clone the repository and install the python package:
 
-```$ cd <path_to_directory>```
+```git clone https://c4science.ch/diffusion/4670/pysonic.git```
 
-- Insall the package and all its dependencies:
+```cd pysonic```
 
-```$ pip install -e .```
+```pip install -e .```
 
 # Usage
 
@@ -121,15 +121,15 @@ You can easily run simulations of all 3 model types using the dedicated command 
 
 - Use `run_mech.py` for simulations of the **mechanical model** upon **ultrasonic stimulation**. For instance, for a 32 nm radius bilayer sonophore sonicated at 500 kHz and 100 kPa:
 
-```$ python run_mech.py -a 32 -f 500 -A 100 -p Z```
+```python run_mech.py -a 32 -f 500 -A 100 -p Z```
 
 - Use `run_estim.py` for simulations of **point-neuron models** upon **intracellular electrical stimulation**. For instance, a regular-spiking (RS) neuron injected with 10 mA/m2 intracellular current for 30 ms:
 
-```$ python run_estim.py -n RS -A 10 --tstim 30 -p Vm```
+```python run_estim.py -n RS -A 10 --tstim 30 -p Vm```
 
 - Use `run_astim.py` for simulations of **point-neuron models** upon **ultrasonic stimulation**. For instance, for a coarse-grained simulation of a 32 nm radius bilayer sonophore within a regular-spiking (RS) neuron membrane, sonicated at 500 kHz and 100 kPa for 150 ms:
 
-```$ python run_astim.py -n RS -a 32 -f 500 -A 100 --tstim 150 --method sonic -p Qm```
+```python run_astim.py -n RS -a 32 -f 500 -A 100 --tstim 150 --method sonic -p Qm```
 
 Additionally, you can run batches of simulations by specifying more than one value for any given stimulation parameter (e.g. `-A 100 200` for sonication with 100 and 200 kPa respectively). These batches can be parallelized using multiprocessing to optimize performance, with the extra argument `--mpi`.
 
@@ -147,7 +147,7 @@ To visualize results, use the `plot_timeseries.py` script. You will be prompted 
 
 Several more options are available. To view them, type in:
 
-```$ python <script_name> -h```
+```python <script_name> -h```
 
 
 # Extend the package
@@ -177,12 +177,14 @@ To add a new point-neuron model, follow this procedure:
 
 11. Add the neuron class to the package, by importing it in the `__init__.py` file of the `neurons` sub-folder:
 
-```from .my_neuron import MyNeuron```
+```python
+from .my_neuron import MyNeuron
+```
 
 12. Verify your point-neuron model by running simulations under various electrical stimuli and comparing the output to the neurons's expected behavior. Implemented required corrections if any.
 13. Pre-compute lookup tables required to run coarse-grained  simulations of the neuron model upon ultrasonic stimulation. To do so, go to the `scripts` directory and run the `run_lookups.py` script with the neuron's name as command line argument, e.g.:
 
-```$ python run_lookups.py -n myneuron --mpi```
+```python run_lookups.py -n myneuron --mpi```
 
 If possible, use the `--mpi` argument to enable multiprocessing, as lookups pre-computation greatly benefits from parallelization.
 
