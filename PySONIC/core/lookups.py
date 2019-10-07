@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-29 09:49:52
+# @Last Modified time: 2019-10-07 17:55:42
 
 import re
 import numpy as np
@@ -66,6 +66,42 @@ class Lookup:
 
     def outputs(self):
         return list(self.keys())
+
+    def checkAgainst(self, other):
+        if self.inputs() != other.inputs():
+            raise ValueError(f'Differing lookups (references names do not match)')
+        if self.dims() != other.dims():
+            raise ValueError(f'Differing lookup dimensions ({self.dims()} - {other.dims()})')
+        for k, v in self.refitems():
+            if (other.refs[k] != v).any():
+                raise ValueError(f'Differing {k} lookup reference')
+        if self.outputs() != other.outputs():
+            raise ValueError(f'Differing lookups (table names do not match)')
+
+    def operate(self, other, op):
+        ''' Generic arithmetic operator. '''
+        if isinstance(other, int):
+            other = float(other)
+        if isinstance(other, self.__class__):
+            self.checkAgainst(other)
+            tables = {k: getattr(v, op)(other[k]) for k, v in self.items()}
+        elif isinstance(other, float):
+            tables = {k: getattr(v, op)(other) for k, v in self.items()}
+        else:
+            raise ValueError(f'Cannot {op} {self.__class__} object with {type(other)} variable')
+        return self.__class__(self.refs, tables)
+
+    def __add__(self, other):
+        return self.operate(other, '__add__')
+
+    def __sub__(self, other):
+        return self.operate(other, '__sub__')
+
+    def __mul__(self, other):
+        return self.operate(other, '__mul__')
+
+    def __div__(self, other):
+        return self.operate(other, '__div__')
 
     def squeeze(self):
         new_tables = {k: v.squeeze() for k, v in self.items()}
@@ -139,6 +175,7 @@ class SmartLookup(Lookup):
         return 'Smart' + super().__repr__()
 
     def projectOff(self):
+        ''' Project for OFF periods (zero amplitude). '''
         # Interpolate at zero amplitude
         lkp0 = self.project('A', 0.)
 

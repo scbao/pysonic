@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-15 18:07:10
+# @Last Modified time: 2019-10-03 20:49:47
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -20,7 +20,7 @@ def main():
 
     # Parse command line arguments
     parser = AStimParser()
-    parser.addCmap(default='viridis')
+    # parser.addCmap(default='viridis')
     parser.addAscale()
     parser.outputdir_dep_key = 'save'
     parser.addInputDir(dep_key='compare')

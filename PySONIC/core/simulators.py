@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 18:17:29
+# @Last Modified time: 2019-10-07 18:56:01
 
 import abc
 import numpy as np
@@ -237,6 +237,59 @@ class PeriodicSimulator(Simulator):
             logger.warning('%s: criterion not met -> stopping after %u cycles', t_str, icycle)
         else:
             logger.debug('%s: stopping criterion met after %u cycles', t_str, icycle)
+
+        # Return output variables
+        return t, y, stim
+
+
+class OnOffSimulator(Simulator):
+
+    def __init__(self, dfunc_on, dfunc_off):
+        ''' Initialize simulator with specific derivative functions
+
+            :param dfunc_on: derivative function for ON periods
+            :param dfunc_off: derivative function for OFF periods
+        '''
+        self.dfunc_on = dfunc_on
+        self.dfunc_off = dfunc_off
+
+    @staticmethod
+    def getTimeReference(dt, tstim, toffset):
+        ''' Compute reference integration time vectors for a specific stimulus application pattern.
+
+            :param dt: integration time step (s)
+            :param tstim: duration of US stimulation (s)
+            :param toffset: duration of the offset (s)
+            :return: 2-tuple with time vectors for ON and OFF periods
+        '''
+        t_on = np.linspace(0, tstim, int(np.round(tstim / dt)) + 1)
+        t_off = np.linspace(tstim, tstim + toffset, int(np.round(toffset / dt)))
+        return t_on, t_off
+
+    def compute(self, y0, dt, tstim, toffset, target_dt=None):
+        ''' Simulate system for a specific stimulus application pattern.
+
+            :param y0: 1D vector of initial conditions
+            :param dt: integration time step (s)
+            :param tstim: duration of US stimulation (s)
+            :param toffset: duration of the offset (s)
+            :param target_dt: target time step after resampling
+            :return: 3-tuple with the time profile, the effective solution matrix and a state vector
+        '''
+
+        # Get reference time vectors
+        t_on, t_off = self.getTimeReference(dt, tstim, toffset)
+
+        # Initialize global arrays
+        t, y, stim = self.initialize(y0)
+
+        # Integrate ON and OFF periods
+        t, y, stim = self.integrate(t, y, stim, t_on, self.dfunc_on, True)
+        t, y, stim = self.integrate(t, y, stim, t_off, self.dfunc_off, False)
+
+        # Resample solution if specified
+        if target_dt is not None:
+            t, y, stim = self.downsample(t, y, stim, target_dt)
 
         # Return output variables
         return t, y, stim

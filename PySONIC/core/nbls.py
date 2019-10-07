@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-02 08:45:45
+# @Last Modified time: 2019-10-07 19:30:20
 
 from copy import deepcopy
 import logging
@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from scipy import linalg
 
-from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator
+from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator, OnOffSimulator
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .model import Model
@@ -432,7 +432,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             simfunc = {
                 'full': self.__simFull,
                 'hybrid': self.__simHybrid,
-                'sonic': self.__simSonic
+                'sonic': self.__simSonic,
+                'qss': self.__simQSS
             }[method]
         except KeyError:
             raise ValueError('Invalid integration method: "{}"'.format(method))
@@ -533,6 +534,66 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         return lkp, QSS
 
+    def QSSderivatives(self, t, y, lkp1d):
+        ''' Compute the derivatives of the 1D, charge-casted quasi-steady state system. '''
+        Qm = y[0]
+        lkp0d = lkp1d.interpolate1D('Q', Qm)
+        QSS0d = {k: v(lkp0d) for k, v in self.pneuron.quasiSteadyStates().items()}
+        dQmdt = - self.pneuron.iNet(lkp0d['V'], QSS0d) * 1e-3
+        return [dQmdt]
+
+    def __simQSS(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs):
+        # Load appropriate 2D lookups
+        lkp2d = self.getLookup2D(Fdrive, fs)
+
+        # Interpolate 2D lookups at zero and US amplitude
+        logger.debug('Interpolating lookups at A = %.2f kPa and A = 0', Adrive * 1e-3)
+        lkps1d = {'ON': lkp2d.project('A', Adrive), 'OFF': lkp2d.project('A', 0.)}
+
+        # Compute DC-averaged lookups for stimulus duration
+        lkps1d['ON'] = lkps1d['ON'] * DC + lkps1d['OFF'] * (1 - DC)
+
+        # Create 1D QSS lookup with reference charge vector
+        QSS_1D_lkp = {
+            key: SmartLookup(
+                lkps1d['ON'].refs,
+                {k: v(val) for k, v in self.pneuron.quasiSteadyStates().items()})
+            for key, val in lkps1d.items()}
+
+        # Set initial conditions
+        y0 = np.array([self.Qm0])
+
+        # Adapt tstim and toffset to pulsing protocol to correctly capture ON-OFF transition
+        tstim_new = (int(tstim * PRF) - 1 + DC) / PRF
+        toffset_new = tstim + toffset - tstim_new
+
+        # Initialize simulator and compute solution
+        logger.debug('Computing QSS solution')
+        simulator = OnOffSimulator(
+            lambda t, y: self.QSSderivatives(t, y, lkps1d['ON']),
+            lambda t, y: self.QSSderivatives(t, y, lkps1d['OFF']))
+        t, y, stim = simulator(y0, self.pneuron.chooseTimeStep(), tstim_new, toffset_new)
+
+        # Prepend initial conditions (prior to stimulation)
+        t, y, stim = simulator.prependSolution(t, y, stim)
+        Qm = y[:, 0]
+
+        # Store output in dataframe and return
+        data = pd.DataFrame({
+            't': t,
+            'stimstate': stim,
+            'Qm': Qm
+        })
+        data['Vm'] = self.interpOnOffVariable('V', data['Qm'].values, stim, lkps1d)
+        for key in ['Z', 'ng']:
+            data[key] = np.full(t.size, np.nan)
+
+        # Interpolate QSS lookup for other variables
+        for k, v in self.pneuron.quasiSteadyStates().items():
+            data[k] = self.interpOnOffVariable(k, data['Qm'].values, stim, QSS_1D_lkp)
+
+        return data
+
     def iNetQSS(self, Qm, Fdrive, Adrive, DC):
         ''' Compute quasi-steady state net membrane current for a given combination
             of US parameters and a given membrane charge density.
@@ -546,6 +607,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         lkp, QSS = self.getQuasiSteadyStates(
             Fdrive, amps=Adrive, charges=Qm, DCs=DC, squeeze_output=True)
         return self.pneuron.iNet(lkp['V'], QSS)  # mA/m2
+
 
     def fixedPointsQSS(self, Fdrive, Adrive, DC, lkp, dQdt):
         ''' Compute QSS fixed points along the charge dimension for a given combination
