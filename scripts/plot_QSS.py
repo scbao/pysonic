@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-03 20:49:47
+# @Last Modified time: 2019-10-09 15:18:55
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -43,11 +43,11 @@ def main():
                 figs.append(plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC))
             else:
                 # Plot evolution of QSS vars vs Q for different amplitudes
-                for pvar in args['plot']:
-                    figs.append(plotQSSVarVsQm(
-                        pneuron, a, Fdrive, pvar, amps=args['amp'], DC=DC,
-                        cmap=args['cmap'], zscale=args['Ascale'], mpi=args['mpi'],
-                        loglevel=args['loglevel']))
+                # for pvar in args['plot']:
+                #     figs.append(plotQSSVarVsQm(
+                #         pneuron, a, Fdrive, pvar, amps=args['amp'], DC=DC,
+                #         cmap=args['cmap'], zscale=args['Ascale'], mpi=args['mpi'],
+                #         loglevel=args['loglevel']))
 
                 # Plot equilibrium charge as a function of amplitude
                 if 'dQdt' in args['plot']:

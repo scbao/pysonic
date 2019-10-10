@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-18 21:12:46
+# @Last Modified time: 2019-10-10 16:29:34
 
 import inspect
 import logging
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 from ..core import NeuronalBilayerSonophore, Batch
 from .pltutils import *
-from ..utils import logger, fileCache
+from ..utils import logger, fileCache, alert
 
 
 root = '../../../QSS analysis/data'
@@ -305,34 +305,53 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
     return fig
 
 
-@fileCache(
-    root,
-    lambda nbls, Fdrive, amps, DC:
-        '{}_QSS_FPs_{:.0f}kHz_{:.2f}-{:.2f}kPa_DC{:.0f}%'.format(
-            nbls.pneuron.name, Fdrive * 1e-3, amps.min() * 1e-3, amps.max() * 1e-3, DC * 1e2)
-)
+# @fileCache(
+#     root,
+#     lambda nbls, Fdrive, amps, DC:
+#         '{}_QSS_FPs_{:.0f}kHz_{:.2f}-{:.2f}kPa_DC{:.0f}%'.format(
+#             nbls.pneuron.name, Fdrive * 1e-3, amps.min() * 1e-3, amps.max() * 1e-3, DC * 1e2)
+# )
+# @alert
 def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=logging.INFO):
 
     # Compute 2D QSS charge variation array
     lkp2d, QSS = nbls.getQuasiSteadyStates(
-        Fdrive, amps=amps, DCs=DC, squeeze_output=True)
+        Fdrive, amps=amps, DC=DC, squeeze_output=True)
     dQdt = -nbls.pneuron.iNet(lkp2d['V'], QSS.tables)  # mA/m2
 
     # Generate batch queue
     queue = []
     for iA, Adrive in enumerate(amps):
-        lkp1d = lkp2d.project('A', Adrive)
-        queue.append([Fdrive, Adrive, DC, lkp1d, dQdt[iA, :]])
+        queue.append([Fdrive, Adrive, DC, lkp2d.project('A', Adrive), dQdt[iA, :]])
 
     # Run batch to find stable and unstable fixed points at each amplitude
     batch = Batch(nbls.fixedPointsQSS, queue)
     output = batch(mpi=mpi, loglevel=loglevel)
 
-    # Sort points by amplitude
-    classified_FPs = {k: [] for k in output[0].keys()}
-    for i, Adrive in enumerate(amps):
-        for key in classified_FPs.keys():
-            classified_FPs[key] += [(Adrive, Qm) for Qm in output[i][key]]
+    classified_FPs = {}
+    eigenvalues = []
+    for A, out in zip(amps, output):
+        for item in out:
+            x, eigvals, prop = item
+            Qm = x[0]
+            if prop not in classified_FPs:
+                classified_FPs[prop] = []
+            classified_FPs[prop] += [(A, Qm)]
+            eigenvalues.append(eigvals)
+    eigenvalues = np.array(eigenvalues).T
+
+    # Plot root locus diagram
+    fig, ax = plt.subplots()
+    ax.set_xlabel('$Re(\lambda)$')
+    ax.set_ylabel('$Im(\lambda)$')
+    ax.axhline(0, color='k')
+    ax.axvline(0, color='k')
+    ax.set_title('root locus diagram')
+    states = ['Qm'] + nbls.pneuron.statesNames()
+    for state, eigvals in zip(states, eigenvalues):
+        ax.scatter(eigvals.real, eigvals.imag, label=f'$\lambda ({state})$')
+    ax.legend()
+
     return classified_FPs
 
 

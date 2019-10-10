@@ -1,6 +1,9 @@
 # Test lookup files
 *_test.pkl
 
+# key files
+*.key
+
 # Sphinx tools and doc
 _build/
 _static/

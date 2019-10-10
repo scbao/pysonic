@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-07 17:55:42
+# @Last Modified time: 2019-10-10 10:34:55
 
 import re
 import numpy as np
@@ -168,6 +168,13 @@ class Lookup:
     def interpolate1D(self, key, value):
         return SmartDict({k: self.interpVar(value, key, k) for k in self.outputs()})
 
+    def tile(self, ref_name, ref_values):
+        ''' Tile the lookups along a new dimension. '''
+        itiles = range(ref_values.size)
+        tables = {k: np.array([v for i in itiles]) for k, v in self.items()}
+        refs = {**{ref_name: ref_values}, **self.refs}
+        return self.__class__(refs, tables)
+
 
 class SmartLookup(Lookup):
 
@@ -194,51 +201,31 @@ class SmartLookup(Lookup):
 
         return lkp0
 
-    def projectDCs(self, amps=None, DCs=1.):
+    def projectDC(self, amps=None, DC=1.):
+        ''' Project lookups at a given duty cycle.'''
+        # Assign default values
         if amps is None:
             amps = self.refs['A']
         elif not isIterable(amps):
             amps = np.array([amps])
 
-        if not isIterable(DCs):
-            DCs = np.array([DCs])
-
         # project lookups at zero and defined amps
-        if amps is None:
-            amps = self.refs['A']
         lkp0 = self.project('A', 0.)
-        lkps = self.project('A', amps)
+        lkps_ON = self.project('A', amps)
 
         # Retrieve amplitude axis index, and move amplitude to first axis
-        A_axis = lkps.getAxisIndex('A')
-        lkps.move('A', 0)
+        A_axis = lkps_ON.getAxisIndex('A')
+        lkps_ON.move('A', 0)
 
-        # Define empty tables dictionary
-        tables_DCavg = {}
+        # Tile the zero-amplitude lookup to match the lkps_ON dimensions
+        lkps_OFF = lkp0.tile('A', lkps_ON.refs['A'])
 
-        # For each variable
-        for var_key in lkp0.outputs():
+        # Compute a DC averaged lookup
+        lkp = lkps_ON * DC + lkps_OFF * (1 - DC)
 
-            # Get OFF and ON (for all amps) variable values
-            x_on, x_off = lkps.tables[var_key], lkp0.tables[var_key]
-
-            # Initialize empty table to gather DC-averaged variable (DC size + ON table shape)
-            x_avg = np.empty((DCs.size, *x_on.shape))
-
-            # Compute the DC-averaged variable for each amplitude-DC combination
-            for iA, Adrive in enumerate(amps):
-                for iDC, DC in enumerate(DCs):
-                    x_avg[iDC, iA] = x_on[iA] * DC + x_off * (1 - DC)
-
-            # Assign table in dictionary
-            tables_DCavg[var_key] = x_avg
-
-        refs_DCavg = {**{'DC': DCs}, **lkps.refs}
-        lkp = self.__class__(refs_DCavg, tables_DCavg)
-
-        # Move DC ot last axis and amplitude back to its original axis
-        lkp.move('DC', -1)
+        # Move amplitude back to its original axis
         lkp.move('A', A_axis)
+
         return lkp
 
 

@@ -3,13 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-07 19:30:20
+# @Last Modified time: 2019-10-10 16:05:58
 
 from copy import deepcopy
 import logging
 import numpy as np
 import pandas as pd
-from scipy import linalg
 
 from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator, OnOffSimulator
 from .bls import BilayerSonophore
@@ -246,6 +245,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         dQmdt = - self.pneuron.iNet(lkp0d['V'], states_dict) * 1e-3
         return [dQmdt, *self.pneuron.getDerEffStates(lkp0d, states_dict)]
 
+    def QSSderivatives(self, t, y, lkp1d):
+        ''' Compute the derivatives of the 1D, charge-casted quasi-steady state system. '''
+        Qm = y[0]
+        lkp0d = lkp1d.interpolate1D('Q', Qm)
+        QSS0d = {k: v(lkp0d) for k, v in self.pneuron.quasiSteadyStates().items()}
+        dQmdt = - self.pneuron.iNet(lkp0d['V'], QSS0d) * 1e-3
+        return [dQmdt]
+
     def __simFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, phi=np.pi):
         # Determine time step
         dt = 1 / (NPC_DENSE * Fdrive)
@@ -361,6 +368,58 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             data[key] = np.full(t.size, np.nan)
         for i in range(len(self.pneuron.states)):
             data[self.pneuron.statesNames()[i]] = y[:, i + 1]
+        return data
+
+    def __simQSS(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs):
+        # Load appropriate 2D lookups
+        lkp2d = self.getLookup2D(Fdrive, fs)
+
+        # Interpolate 2D lookups at zero and US amplitude
+        logger.debug('Interpolating lookups at A = %.2f kPa and A = 0', Adrive * 1e-3)
+        lkps1d = {'ON': lkp2d.project('A', Adrive), 'OFF': lkp2d.project('A', 0.)}
+
+        # Compute DC-averaged lookups for stimulus duration
+        lkps1d['ON'] = lkps1d['ON'] * DC + lkps1d['OFF'] * (1 - DC)
+
+        # Create 1D QSS lookup with reference charge vector
+        QSS_1D_lkp = {
+            key: SmartLookup(
+                lkps1d['ON'].refs,
+                {k: v(val) for k, v in self.pneuron.quasiSteadyStates().items()})
+            for key, val in lkps1d.items()}
+
+        # Set initial conditions
+        y0 = np.array([self.Qm0])
+
+        # Adapt tstim and toffset to pulsing protocol to correctly capture ON-OFF transition
+        tstim_new = (int(tstim * PRF) - 1 + DC) / PRF
+        toffset_new = tstim + toffset - tstim_new
+
+        # Initialize simulator and compute solution
+        logger.debug('Computing QSS solution')
+        simulator = OnOffSimulator(
+            lambda t, y: self.QSSderivatives(t, y, lkps1d['ON']),
+            lambda t, y: self.QSSderivatives(t, y, lkps1d['OFF']))
+        t, y, stim = simulator(y0, self.pneuron.chooseTimeStep(), tstim_new, toffset_new)
+
+        # Prepend initial conditions (prior to stimulation)
+        t, y, stim = simulator.prependSolution(t, y, stim)
+        Qm = y[:, 0]
+
+        # Store output in dataframe and return
+        data = pd.DataFrame({
+            't': t,
+            'stimstate': stim,
+            'Qm': Qm
+        })
+        data['Vm'] = self.interpOnOffVariable('V', data['Qm'].values, stim, lkps1d)
+        for key in ['Z', 'ng']:
+            data[key] = np.full(t.size, np.nan)
+
+        # Interpolate QSS lookup for other variables
+        for k, v in self.pneuron.quasiSteadyStates().items():
+            data[k] = self.interpOnOffVariable(k, data['Qm'].values, stim, QSS_1D_lkp)
+
         return data
 
     @classmethod
@@ -489,43 +548,32 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             [Fdrive, tstim, toffset, PRF, DC, fs, method], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM
         )
 
-    def getQuasiSteadyStates(self, Fdrive, amps=None, charges=None, DCs=1.0, squeeze_output=False):
+    def getQuasiSteadyStates(self, Fdrive, amps=None, charges=None, DC=1.0, squeeze_output=False):
         ''' Compute the quasi-steady state values of the neuron's gating variables
-            for a combination of US amplitudes, charge densities and duty cycles,
-            at a specific US frequency.
+            for a combination of US amplitudes, charge densities,
+            at a specific US frequency and duty cycle.
 
             :param Fdrive: US frequency (Hz)
             :param amps: US amplitudes (Pa)
             :param charges: membrane charge densities (C/m2)
-            :param DCs: duty cycle value(s)
+            :param DC: duty cycle
             :return: 4-tuple with reference values of US amplitude and charge density,
                 as well as interpolated Vmeff and QSS gating variables
         '''
-
         # Get DC-averaged lookups interpolated at the appropriate amplitudes and charges
-        lkp = self.getLookup().projectDCs(amps=amps, DCs=DCs).projectN({'a': self.a, 'f': Fdrive})
+        lkp = self.getLookup().projectDC(amps=amps, DC=DC).projectN({'a': self.a, 'f': Fdrive})
         if charges is not None:
             lkp = lkp.project('Q', charges)
 
-        # Specify dimensions with A and DC as the first two axes
+        # Specify dimensions with A as the first axis
         A_axis = lkp.getAxisIndex('A')
         lkp.move('A', 0)
-        lkp.move('DC', 1)
-        nA, nDC = lkp.dims()[:2]
+        nA = lkp.dims()[0]
 
         # Compute QSS states using these lookups
-        QSS = {k: np.empty(lkp.dims()) for k in self.pneuron.statesNames()}
-        for iA in range(nA):
-            for iDC in range(nDC):
-                lkp1d = SmartDict({k: v[iA, iDC] for k, v in lkp.items()})
-                QSS_1D = {k: v(lkp1d) for k, v in self.pneuron.quasiSteadyStates().items()}
-                for k in QSS.keys():
-                    QSS[k][iA, iDC] = QSS_1D[k]
-        QSS = SmartLookup(lkp.refs, QSS)
-
-        for item in [lkp, QSS]:
-            item.move('A', A_axis)
-            item.move('DC', -1)
+        QSS = SmartLookup(
+            lkp.refs,
+            {k: v(lkp) for k, v in self.pneuron.quasiSteadyStates().items()})
 
         # Compress outputs if needed
         if squeeze_output:
@@ -533,66 +581,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lkp = lkp.squeeze()
 
         return lkp, QSS
-
-    def QSSderivatives(self, t, y, lkp1d):
-        ''' Compute the derivatives of the 1D, charge-casted quasi-steady state system. '''
-        Qm = y[0]
-        lkp0d = lkp1d.interpolate1D('Q', Qm)
-        QSS0d = {k: v(lkp0d) for k, v in self.pneuron.quasiSteadyStates().items()}
-        dQmdt = - self.pneuron.iNet(lkp0d['V'], QSS0d) * 1e-3
-        return [dQmdt]
-
-    def __simQSS(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs):
-        # Load appropriate 2D lookups
-        lkp2d = self.getLookup2D(Fdrive, fs)
-
-        # Interpolate 2D lookups at zero and US amplitude
-        logger.debug('Interpolating lookups at A = %.2f kPa and A = 0', Adrive * 1e-3)
-        lkps1d = {'ON': lkp2d.project('A', Adrive), 'OFF': lkp2d.project('A', 0.)}
-
-        # Compute DC-averaged lookups for stimulus duration
-        lkps1d['ON'] = lkps1d['ON'] * DC + lkps1d['OFF'] * (1 - DC)
-
-        # Create 1D QSS lookup with reference charge vector
-        QSS_1D_lkp = {
-            key: SmartLookup(
-                lkps1d['ON'].refs,
-                {k: v(val) for k, v in self.pneuron.quasiSteadyStates().items()})
-            for key, val in lkps1d.items()}
-
-        # Set initial conditions
-        y0 = np.array([self.Qm0])
-
-        # Adapt tstim and toffset to pulsing protocol to correctly capture ON-OFF transition
-        tstim_new = (int(tstim * PRF) - 1 + DC) / PRF
-        toffset_new = tstim + toffset - tstim_new
-
-        # Initialize simulator and compute solution
-        logger.debug('Computing QSS solution')
-        simulator = OnOffSimulator(
-            lambda t, y: self.QSSderivatives(t, y, lkps1d['ON']),
-            lambda t, y: self.QSSderivatives(t, y, lkps1d['OFF']))
-        t, y, stim = simulator(y0, self.pneuron.chooseTimeStep(), tstim_new, toffset_new)
-
-        # Prepend initial conditions (prior to stimulation)
-        t, y, stim = simulator.prependSolution(t, y, stim)
-        Qm = y[:, 0]
-
-        # Store output in dataframe and return
-        data = pd.DataFrame({
-            't': t,
-            'stimstate': stim,
-            'Qm': Qm
-        })
-        data['Vm'] = self.interpOnOffVariable('V', data['Qm'].values, stim, lkps1d)
-        for key in ['Z', 'ng']:
-            data[key] = np.full(t.size, np.nan)
-
-        # Interpolate QSS lookup for other variables
-        for k, v in self.pneuron.quasiSteadyStates().items():
-            data[k] = self.interpOnOffVariable(k, data['Qm'].values, stim, QSS_1D_lkp)
-
-        return data
 
     def iNetQSS(self, Qm, Fdrive, Adrive, DC):
         ''' Compute quasi-steady state net membrane current for a given combination
@@ -605,7 +593,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: net membrane current (mA/m2)
         '''
         lkp, QSS = self.getQuasiSteadyStates(
-            Fdrive, amps=Adrive, charges=Qm, DCs=DC, squeeze_output=True)
+            Fdrive, amps=Adrive, charges=Qm, DC=DC, squeeze_output=True)
         return self.pneuron.iNet(lkp['V'], QSS)  # mA/m2
 
 
@@ -629,7 +617,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         fixed_points = getFixedPoints(
             lkp.refs['Q'], dQdt, filter='both', der_func=dfunc).tolist()
         dfunc = lambda x: np.array(self.effDerivatives(_, x, lkp))
-        classified_fixed_points = {'stable': [], 'unstable': [], 'saddle': []}
+
+        # classified_fixed_points = {'stable': [], 'unstable': [], 'saddle': []}
+        classified_fixed_points = []
 
         np.set_printoptions(precision=2)
 
@@ -637,37 +627,21 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         for i, Qm in enumerate(fixed_points):
 
             # Re-compute QSS at fixed point
-            *_, QSS = self.getQuasiSteadyStates(Fdrive, amps=Adrive, charges=Qm, DCs=DC,
+            *_, QSS = self.getQuasiSteadyStates(Fdrive, amps=Adrive, charges=Qm, DC=DC,
                                                 squeeze_output=True)
 
-            # Approximate the system's Jacobian matrix at the fixed-point and compute its eigenvalues
+            # Classify fixed point stability by numerically evaluating its Jacobian and
+            # computing its eigenvalues
             x = np.array([Qm, *QSS.tables.values()])
-            print(f'x = {x}, dfunx(x) = {dfunc(x)}')
-            eps_machine = np.sqrt(np.finfo(float).eps)
-            J = jacobian(dfunc, x, rel_eps=eps_machine, method='forward')
-            # import numdifftools as nd
-            # Jfunc = nd.Jacobian(dfunc, order=3)
-            # J = Jfunc(x)
-            # print('------------------ Jacobian ------------------')
-            # names = ['Q'] + self.pneuron.statesNames()
-            # for name, Jline in zip(names, J):
-            #     print(f'd(d{name}dt) = {Jline}')
+            eigvals, key = classifyFixedPoint(x, dfunc)
+            # classified_fixed_points[key].append(Qm)
 
-            # Determine fixed point stability based on eigenvalues
-            eigvals, eigvecs = linalg.eig(J)
-            s = ['({0.real:.2e} + {0.imag:.2e}j)'.format(x) for x in eigvals]
-            print(f'eigenvalues = {s}')
-            is_real_eigvals = np.isreal(eigvals)
-            print(is_real_eigvals)
-            is_neg_eigvals = eigvals.real < 0
-            if np.all(is_neg_eigvals):
-                key = 'stable'
-            elif np.any(is_neg_eigvals):
-                key = 'saddle'
-            else:
-                key = 'unstable'
-            classified_fixed_points[key].append(Qm)
-            logger.debug(f'{key} fixed point @ Q = {(Qm * 1e5):.1f} nC/cm2')
+            classified_fixed_points.append((x, eigvals, key))
+            # eigenvalues.append(eigvals)
+            logger.debug(f'{key} point @ Q = {(Qm * 1e5):.1f} nC/cm2')
+
+        # eigenvalues = np.array(eigenvalues).T
+        # print(eigenvalues.shape)
 
         return classified_fixed_points
 

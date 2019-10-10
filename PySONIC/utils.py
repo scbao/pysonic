@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-20 23:03:39
+# @Last Modified time: 2019-10-10 15:36:34
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -21,9 +21,13 @@ from tqdm import tqdm
 import logging
 import tkinter as tk
 from tkinter import filedialog
+import base64
+import datetime
 import numpy as np
 from scipy.optimize import brentq
+from scipy import linalg
 import colorlog
+from pushbullet import Pushbullet
 
 
 # Package logger
@@ -453,7 +457,11 @@ def fileCache(root, fcode_func, ext='json'):
             mode = 'b' if ext == 'pkl' else ''
 
             # Get file path from root and function arguments, using fcode function
-            fpath = os.path.join(os.path.abspath(root), '{}.{}'.format(fcode_func(*args), ext))
+            if callable(fcode_func):
+                fcode = fcode_func(*args)
+            else:
+                fcode = fcode_func
+            fpath = os.path.join(os.path.abspath(root), '{}.{}'.format(fcode, ext))
 
             # If file exists, load output from it
             if os.path.isfile(fpath):
@@ -656,6 +664,35 @@ def jacobian(dfunc, x, rel_eps=None, abs_eps=None, method='central'):
     return J
 
 
+def classifyFixedPoint(x, dfunc):
+    ''' Characterize the stability of a fixed point by numerically evaluating its Jacobian
+        matrix and evaluating the sign of the real part of its associated eigenvalues.
+
+        :param x: n-states vector
+        :param dfunc: derivatives function, taking an array of n states and returning
+            an array of n derivatives
+    '''
+    # Compute Jacobian numerically
+    # print(f'x = {x}, dfunx(x) = {dfunc(x)}')
+    eps_machine = np.sqrt(np.finfo(float).eps)
+    J = jacobian(dfunc, x, rel_eps=eps_machine, method='forward')
+
+    # Compute eigenvalues and eigenvectors
+    eigvals, eigvecs = linalg.eig(J)
+    logger.debug(f"eigenvalues = {['({0.real:.2e} + {0.imag:.2e}j)'.format(x) for x in eigvals]}")
+
+    # Determine fixed point stability based on eigenvalues
+    is_neg_eigvals = eigvals.real < 0
+    if is_neg_eigvals.all():    # all real parts negative -> stable
+        key = 'stable'
+    elif is_neg_eigvals.any():  # both posivie and negative real parts -> saddle
+        key = 'saddle'
+    else:                       # all real parts positive -> unstable
+        key = 'unstable'
+
+    return eigvals, key
+
+
 def findModifiedEq(x0, dfunc, *args):
     ''' Find an equilibrium variable in a modified system by searching for its
         derivative root within an interval around its original equilibrium.
@@ -722,3 +759,40 @@ def rotAroundPoint2D(x, theta, p):
 
     # Subtract, rotate and add
     return R.dot(x - ptile) + ptile
+
+
+def getKey(keyfile='pushbullet.key'):
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    fpath = os.path.join(dir_path, keyfile)
+    if not os.path.isfile(fpath):
+        raise FileNotFoundError('pushbullet API key file not found')
+    with open(fpath) as f:
+        encoded_key = f.readlines()[0]
+    return base64.b64decode(str.encode(encoded_key)).decode()
+
+
+def sendPushNotification(msg):
+    try:
+        key = getKey()
+        pb = Pushbullet(key)
+        dt = datetime.datetime.now()
+        s = dt.strftime('%Y-%m-%d %H:%M:%S')
+        push = pb.push_note('Code Messenger', f'{s}\n{msg}')
+    except FileNotFoundError as e:
+        logger.error(f'Could not send push notification: "{msg}"')
+
+
+def alert(func):
+    ''' Run a function, and send a push notification upon completion,
+        or if an error is raised during its execution.
+    '''
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            out = func(*args, **kwargs)
+            sendPushNotification(f'completed "{func.__name__}" execution successfully')
+            return out
+        except BaseException as e:
+            sendPushNotification(f'error during "{func.__name__}" execution: {e}')
+            raise e
+    return wrapper
