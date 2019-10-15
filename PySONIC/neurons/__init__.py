@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-26 14:25:39
+# @Last Modified time: 2019-10-15 12:17:23
 
 from types import MethodType
 import inspect
@@ -17,6 +17,7 @@ from .leech import *
 from .stn import *
 from .fh import *
 from .sweeney import *
+from .sundt import *
 
 
 def getNeuronsDict():

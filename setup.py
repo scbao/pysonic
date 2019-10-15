@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-13 09:40:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-10 11:58:14
+# @Last Modified time: 2019-10-15 17:32:32
 
 import os
 from setuptools import setup
@@ -44,7 +44,7 @@ setup(
         'tqdm>=4.3',
         'lockfile>=0.1.2',
         'multiprocess>=0.70',
-        'pushbullet>=0.11.0'
+        'pushbullet.py>=0.11.0'
     ],
     zip_safe=False
 )
