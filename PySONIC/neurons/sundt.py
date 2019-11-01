@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-01 17:37:54
+# @Last Modified time: 2019-11-01 17:44:56
 
 import numpy as np
 from ..core import PointNeuron
@@ -256,3 +256,6 @@ class Sundt(PointNeuron):
             'iKCa': lambda Vm, x: cls.iKCa(x['q'], Vm),
             'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
+
+    def chooseTimeStep(self):
+        return super().chooseTimeStep() * 1e-2
