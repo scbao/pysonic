@@ -194,6 +194,7 @@ That's it! You can now run simulations of your point-neuron model upon ultrasoni
 
 Here is a list of future developments:
 
+- [ ] Add quasi-steady state analysis module
 - [x] Integration within the [NEURON simulation environment](https://www.neuron.yale.edu/neuron/)
 - [x] Spatial expansion into nanoscale multicompartmental model
 - [ ] Spatial expansion into morphological realistic fiber models
