@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-10 15:28:25
+# @Last Modified time: 2019-11-01 14:53:29
 
 import numpy as np
 
@@ -11,16 +11,16 @@ from ..core import PointNeuron
 
 
 class Sundt(PointNeuron):
-    ''' Sundt neuron only sodium and delayed-rectifier potassium currents 
-    
+    ''' Sundt neuron only sodium and delayed-rectifier potassium currents
+
         Reference:
-        *Sundt D., Gamper N., Jaffe D. B., Spike propagation through the dorsal 
+        *Sundt D., Gamper N., Jaffe D. B., Spike propagation through the dorsal
         root ganglia in an unmyelinated sensory neuron: a modeling study.
-        Journal of Neurophysiology (2015)* 
+        Journal of Neurophysiology (2015)*
     '''
 
     # Neuron name
-    name = 'Sundt'
+    name = 'sundt'
 
     # ------------------------------ Biophysical parameters ------------------------------
 
@@ -38,10 +38,10 @@ class Sundt(PointNeuron):
     gKm_bar = 4.0      # KCNQ Potassium
     GCa_bar = 30       # Calcium ????
     gKCa_bar = 2.0     # Calcium dependent Potassium ????
-    gLeak = 1.0        # Non-specific leakage 
+    gLeak = 1.0        # Non-specific leakage
 
     # Additional parameters
-    cCa0 = 7e-8     # Calcium concentration at rest (M) (Aradi 1999) 
+    Cai0 = 7e-8     # Calcium concentration at rest (M) (Aradi 1999)
     R = 8.314468    # gas constant (J / K mol)
     F = 96485.332   # Faraday constant (C / mol)
 
@@ -54,9 +54,9 @@ class Sundt(PointNeuron):
         'mkm': 'iKm gate',
         'mca': 'iCa gate',
         'q': 'iK calcium dependent gate',
-        'cCa': 'calcium intracellular concentration'
+        'Cai': 'calcium intracellular concentration'
     }
-    
+
     # ------------------------------ Gating states kinetics ------------------------------
 
     @classmethod
@@ -90,7 +90,7 @@ class Sundt(PointNeuron):
     @classmethod
     def betal(cls, Vm):
         return np.exp((-2e-3 * (Vm + 32) * 9.648e4) / 2562.35) * 1e3  # s-1
-    
+
     @staticmethod
     def mkminf(Vm):
         return 1.0 / (1 + np.exp(-(Vm + 35) / 10))
@@ -98,23 +98,23 @@ class Sundt(PointNeuron):
     @classmethod
     def taumkm(cls, Vm):
         return 1.0 / (3.3 * (np.exp((Vm + 35) / 20) + np.exp(-(Vm + 35) / 20)) /3.54)  # s
-    
+
     @classmethod
     def alphamca(cls, Vm):
         return 15.69 * cls.vtrap((81.5 - Vm), 5) * 1e3  # s-1
-    
+
     @classmethod
     def betamca(cls, Vm):
         return 0.29 * np.exp(-Vm /10.86)  # s-1
-    
+
     @classmethod
-    def alphaq(cls, Vm):
-        return 0.00246 / np.exp((12 * np.log10 (np.power(cCa,3)) + 28.48)/ -4)  # s-1
-    
+    def alphaq(cls, Cai):
+        return 0.00246 / np.exp((12 * np.log10(np.power(Cai,3)) + 28.48)/ -4)  # s-1
+
     @classmethod
-    def betaq(cls, Vm):
-        return 0.006 / np.exp((12 * np.log10 (np.power(cCa,3)) + 60.4) / 35)  # s-1
-    
+    def betaq(cls, Cai):
+        return 0.006 / np.exp((12 * np.log10(np.power(Cai,3)) + 60.4) / 35)  # s-1
+
 
     # ------------------------------ States derivatives ------------------------------
 
@@ -127,8 +127,8 @@ class Sundt(PointNeuron):
             'l': lambda Vm, x: cls.alphal(Vm) * (1 - x['l']) - cls.betal(Vm) * x['l'],
             'mkm': lambda Vm, x: (cls.mkminf(Vm) - x['mkm']) / cls.taumkm(Vm),
             'mca': lambda Vm, x: cls.alphamca(Vm) * (1 - x['mca']) - cls.betamca(Vm) * x['mca'],
-            'q': lambda Vm, x: cls.alphaq(Vm) * (1 - x['q']) - cls.betaq(Vm) * x['q'],
-            'cCa': lambda ICa, x: -0.026*ICa - (x['cCa']-cCa0)/20
+            'q': lambda Vm, x: cls.alphaq(x['Cai']) * (1 - x['q']) - cls.betaq(x['Cai']) * x['q'],
+            'Cai': lambda Vm, x: -0.026 * cls.iCa(x['mca'], Vm) - (x['Cai'] - Cai0) / 20.
         }
 
     # ------------------------------ Steady states ------------------------------
@@ -142,8 +142,8 @@ class Sundt(PointNeuron):
             'l': lambda Vm: cls.alphal(Vm) / (cls.alphal(Vm) + cls.betal(Vm)),
             'mkm': lambda Vm: cls.mkminf(Vm),
             'mca': lambda Vm: cls.alphamca(Vm) / (cls.alphamca(Vm) + cls.betamca(Vm)),
-            'q': lambda Vm: cls.alphaq(Vm) / (cls.alphaq(Vm) + cls.betaq(Vm)),
-            'cCa': lambda Vm: cCa0
+            'q': lambda Vm: cls.alphaq(Vm, x['Cai']) / (cls.alphaq(Vm, x['Cai']) + cls.betaq(Vm, x['Cai'])),
+            'Cai': lambda Vm: Cai0
         }
 
     # ------------------------------ Membrane currents ------------------------------
@@ -164,15 +164,15 @@ class Sundt(PointNeuron):
         return cls.gKm_bar * mkm * (Vm - cls.EK)  # mA/m2
 
     @classmethod
-    def ECa(cls, cCa):
+    def ECa(cls, Cai):
         ''' Calcium reversal potential '''
-        return np.log (2 / cCa) * 3.08 * 1e5 * R / (2 * F)  # mV 
+        return np.log (2 / Cai) * 3.08 * 1e5 * R / (2 * F)  # mV
 
     @classmethod
     def iCa(cls, mca, Vm):
         ''' Calcium current '''
         return cls.gCa_bar * mca**2 * (Vm - cls.ECa)  # mA/m2
-    
+
     @classmethod
     def iKCa(cls, q, Vm):
         ''' Calcium-dependent Potassium current '''
