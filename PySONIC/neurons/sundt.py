@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-01 17:36:11
+# @Last Modified time: 2019-11-01 17:37:54
 
 import numpy as np
 from ..core import PointNeuron
@@ -172,7 +172,7 @@ class Sundt(PointNeuron):
 
     @classmethod
     def derCai(cls, c, Cai, Vm):
-        return - cls.current_to_molar_rate_Ca * cls.iCaL(c, Vm) - (Cai - cls.Ca0) / cls.taur_Cai  # M/s
+        return - cls.current_to_molar_rate_Ca * cls.iCaL(c, Cai, Vm) - (Cai - cls.Cai0) / cls.taur_Cai  # M/s
 
     @classmethod
     def ECa(cls, Cai):
