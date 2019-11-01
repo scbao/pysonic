@@ -3,11 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-01 14:53:29
+# @Last Modified time: 2019-11-01 17:07:40
 
 import numpy as np
-
 from ..core import PointNeuron
+from ..constants import CELSIUS_2_KELVIN, Z_Na, Z_K
 
 
 class Sundt(PointNeuron):
@@ -33,17 +33,26 @@ class Sundt(PointNeuron):
     EK = -90.0     # Potassium
 
     # Maximal channel conductances (S/m2)
-    gNa_bar = 400.0    # Sodium
-    gKd_bar = 400.0   # Delayed-rectifier Potassium
-    gKm_bar = 4.0      # KCNQ Potassium
-    GCa_bar = 30       # Calcium ????
-    gKCa_bar = 2.0     # Calcium dependent Potassium ????
+    gNabar = 400.0    # Sodium
+    gKdbar = 400.0   # Delayed-rectifier Potassium
+    gKmbar = 4.0      # KCNQ Potassium
+    gCaLbar = 30       # Calcium ????
+    gKCabar = 2.0     # Calcium dependent Potassium ????
     gLeak = 1.0        # Non-specific leakage
 
     # Additional parameters
-    Cai0 = 7e-8     # Calcium concentration at rest (M) (Aradi 1999)
-    R = 8.314468    # gas constant (J / K mol)
-    F = 96485.332   # Faraday constant (C / mol)
+    Cao = 2e-3             # Extracellular Calcium concentration (M)
+    Cai0 = 70e-9           # Intracellular Calcium concentration at rest (M) (Aradi 1999)
+    celsius = 35.0         # Temperature (Celsius)
+    celsius_Traub = 30.0   # Temperature in Traub 1991 (Celsius)
+    celsius_Yamada = 23.5  # Temperature in Yamada 1989 (Celsius)
+
+    # Na+ current parameters
+    deltaVm = 6.0    # Voltage offset to shift the rate constants  (6 mV in Sundt 2015)
+
+    # Ca2+ parameters
+    deff = 200e-9     # effective depth beneath membrane for intracellular [Ca2+] calculation (m)
+    taur_Cai = 20e-3  # decay time constant for intracellular Ca2+ dissolution (s)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
@@ -52,44 +61,68 @@ class Sundt(PointNeuron):
         'n': 'iKdr gate',
         'l': 'iKdr Borg-Graham formalism gate',
         'mkm': 'iKm gate',
-        'mca': 'iCa gate',
+        'c': 'iCa gate',
         'q': 'iK calcium dependent gate',
         'Cai': 'calcium intracellular concentration'
     }
 
+    def __new__(cls):
+        cls.q10_Traub = 3**((cls.celsius - cls.celsius_Traub) / 10)
+        cls.q10_Yamada = 3**((cls.celsius - cls.celsius_Yamada) / 10)
+        cls.T = cls.celsius + CELSIUS_2_KELVIN
+        cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
+        return super(Sundt, cls).__new__(cls)
+
     # ------------------------------ Gating states kinetics ------------------------------
+
+    # Sodium kinetics: adapted from Traub 1991, with a q10 = sqrt(3) to account for temperature
+    # adaptation from 30 to 35 degrees, and a voltage offset of DV = +6 mV shifting the activation
+    # and inactivation rates profiles.
 
     @classmethod
     def alpham(cls, Vm):
-        return 0.55 * (7.1 - Vm) / np.exp((7.1-Vm) / 4) * 1e3 # s-1
+        Vm += cls.deltaVm
+        return cls.q10_Traub - 0.32 * cls.vtrap((13.1 - Vm), 4) * 1e3  # s-1
 
     @classmethod
     def betam(cls, Vm):
-        return 0.48 * cls.vtrap((Vm - 46.1), 5) * 1e3  # s-1
+        Vm += cls.deltaVm
+        return cls.q10_Traub * 0.28 * cls.vtrap((Vm - 40.1), 5) * 1e3  # s-1
 
     @classmethod
     def alphah(cls, Vm):
-        return 0.22 * np.exp((23 - Vm) / 18) * 1e3  # s-1
+        Vm += cls.deltaVm
+        return cls.q10_Traub * 0.128 * np.exp((17.0 - Vm) / 18) * 1e3  # s-1
 
     @classmethod
     def betah(cls, Vm):
-        return 6.92 / (1 + np.exp((46 - Vm) / 5)) * 1e3 # s-1
+        Vm += cls.deltaVm
+        return cls.q10_Traub * 4 / (1 + np.exp((40.0 - Vm) / 5)) * 1e3 # s-1
+
+    # Potassium kinetics: discrepancies with the cited ref. and with the ModelDB code:
+    # - absence of global multiplying factor for the rate constants
+    # - sign inconsistencies between Sundt paper and ModelDB code
+    # - differences in voltage parameters with Borg-Graham 1987 ref.
+    # - definition of ninf, taun, linf and taul in the ModelDB code makes no sense
 
     @classmethod
     def alphan(cls, Vm):
-        return np.exp((-5e-3 * (Vm + 32) * 9.648e4) / 2562.35) * 1e3  # s-1
+        return np.exp((-5e-3 * (Vm + 32) * FARADAY) / (Rg * T)) * 1e3  # s-1
 
     @classmethod
     def betan(cls, Vm):
-        return np.exp((-2e-3 * (Vm + 32) * 9.648e4) / 2562.35) * 1e3  # s-1
+        return np.exp((-2e-3 * (Vm + 32) * FARADAY) / (Rg * T)) * 1e3  # s-1
 
     @classmethod
     def alphal(cls, Vm):
-        return np.exp((2e-3 * (Vm + 61) * 9.648e4) / 2562.35) * 1e3  # s-1
+        return np.exp((2e-3 * (Vm + 61) * FARADAY) / (Rg * T)) * 1e3  # s-1
 
     @classmethod
     def betal(cls, Vm):
-        return np.exp((-2e-3 * (Vm + 32) * 9.648e4) / 2562.35) * 1e3  # s-1
+        return np.exp((-2e-3 * (Vm + 32) * FARADAY) / (Rg * T)) * 1e3  # s-1
+
+    # KCNQ Potassium kinetics: taken from Yamada 1989 (cannot find source...), with
+    # Q10 adaptation from 23.5 to 35 degrees.
 
     @staticmethod
     def mkminf(Vm):
@@ -97,26 +130,38 @@ class Sundt(PointNeuron):
 
     @classmethod
     def taumkm(cls, Vm):
-        return 1.0 / (3.3 * (np.exp((Vm + 35) / 20) + np.exp(-(Vm + 35) / 20)) /3.54)  # s
+        return 1e-3 / (3.3 * (np.exp((Vm + 35) / 20) + np.exp(-(Vm + 35) / 20)) / cls.q10_Yamada)  # s
+
+    # L-type Calcium kinetics: from Migliore 1995 that itself refers to Jaffe 1994.
 
     @classmethod
-    def alphamca(cls, Vm):
-        return 15.69 * cls.vtrap((81.5 - Vm), 5) * 1e3  # s-1
+    def alphac(cls, Vm):
+        return 15.69 * cls.vtrap((81.5 - Vm), 10.) * 1e3  # s-1
 
     @classmethod
-    def betamca(cls, Vm):
-        return 0.29 * np.exp(-Vm /10.86)  # s-1
+    def betac(cls, Vm):
+        return 0.29 * np.exp(-Vm / 10.86) * 1e3  # s-1
+
+    # Calcium-dependent Potassium kinetics: from Aradi 1999, correcting error in alphaq denominator
+    # (4.5 vs 4).
+    # - 3 (vs. 1) in Cai exponent
 
     @classmethod
     def alphaq(cls, Cai):
-        return 0.00246 / np.exp((12 * np.log10(np.power(Cai,3)) + 28.48)/ -4)  # s-1
+        return 0.00246 / np.exp((12 * np.log10(np.power(Cai, 3)) + 28.48) / -4.5) * 1e3  # s-1
 
     @classmethod
     def betaq(cls, Cai):
-        return 0.006 / np.exp((12 * np.log10(np.power(Cai,3)) + 60.4) / 35)  # s-1
+        return 0.006 / np.exp((12 * np.log10(np.power(Cai, 3)) + 60.4) / 35) * 1e3  # s-1
 
 
     # ------------------------------ States derivatives ------------------------------
+
+    # Ca2+ dynamics: discrepancy in dissolution rate between Sundt (20 ms) and Aradi ref. (9 ms)
+
+    @classmethod
+    def derCai(cls, c, Cai, Vm):
+        return - cls.current_to_molar_rate_Ca * cls.iCaL(c, Vm) - (Cai - cls.Ca0) / cls.taur_Cai  # M/s
 
     @classmethod
     def derStates(cls):
@@ -126,9 +171,9 @@ class Sundt(PointNeuron):
             'n': lambda Vm, x: cls.alphan(Vm) * (1 - x['n']) - cls.betan(Vm) * x['n'],
             'l': lambda Vm, x: cls.alphal(Vm) * (1 - x['l']) - cls.betal(Vm) * x['l'],
             'mkm': lambda Vm, x: (cls.mkminf(Vm) - x['mkm']) / cls.taumkm(Vm),
-            'mca': lambda Vm, x: cls.alphamca(Vm) * (1 - x['mca']) - cls.betamca(Vm) * x['mca'],
+            'c': lambda Vm, x: cls.alphac(Vm) * (1 - x['c']) - cls.betac(Vm) * x['c'],
             'q': lambda Vm, x: cls.alphaq(x['Cai']) * (1 - x['q']) - cls.betaq(x['Cai']) * x['q'],
-            'Cai': lambda Vm, x: -0.026 * cls.iCa(x['mca'], Vm) - (x['Cai'] - Cai0) / 20.
+            'Cai': lambda Vm, x: cls.derCai(x['c'], x['Cai'], Vm)
         }
 
     # ------------------------------ Steady states ------------------------------
@@ -141,42 +186,44 @@ class Sundt(PointNeuron):
             'n': lambda Vm: cls.alphan(Vm) / (cls.alphan(Vm) + cls.betan(Vm)),
             'l': lambda Vm: cls.alphal(Vm) / (cls.alphal(Vm) + cls.betal(Vm)),
             'mkm': lambda Vm: cls.mkminf(Vm),
-            'mca': lambda Vm: cls.alphamca(Vm) / (cls.alphamca(Vm) + cls.betamca(Vm)),
+            'c': lambda Vm: cls.alphac(Vm) / (cls.alphac(Vm) + cls.betac(Vm)),
             'q': lambda Vm: cls.alphaq(Vm, x['Cai']) / (cls.alphaq(Vm, x['Cai']) + cls.betaq(Vm, x['Cai'])),
             'Cai': lambda Vm: Cai0
         }
 
     # ------------------------------ Membrane currents ------------------------------
 
+    # Sodium current: inconsistency with 1991 ref: m2h vs. m3h
+
     @classmethod
     def iNa(cls, m, h, Vm):
         ''' Sodium current '''
-        return cls.gNa_bar * m**3 * h * (Vm - cls.ENa)  # mA/m2
+        return cls.gNabar * m**3 * h * (Vm - cls.ENa)  # mA/m2
 
     @classmethod
     def iKd(cls, n, l, Vm):
         ''' delayed-rectifier Potassium current '''
-        return cls.gKd_bar * n**3 * l * (Vm - cls.EK)  # mA/m2
+        return cls.gKdbar * n**3 * l * (Vm - cls.EK)  # mA/m2
 
     @classmethod
     def iKm(cls, mkm, Vm):
         ''' slowly activating Potassium current '''
-        return cls.gKm_bar * mkm * (Vm - cls.EK)  # mA/m2
+        return cls.gKmbar * mkm * (Vm - cls.EK)  # mA/m2
 
     @classmethod
     def ECa(cls, Cai):
         ''' Calcium reversal potential '''
-        return np.log (2 / Cai) * 3.08 * 1e5 * R / (2 * F)  # mV
+        return 1e3 * np.log(cls.Cao / Cai) * cls.T * Rg / (Z_Ca * FARADAY)  # mV
 
     @classmethod
-    def iCa(cls, mca, Vm):
+    def iCaL(cls, c, Vm):
         ''' Calcium current '''
-        return cls.gCa_bar * mca**2 * (Vm - cls.ECa)  # mA/m2
+        return cls.gCaLbar * c**2 * (Vm - cls.ECa)  # mA/m2
 
     @classmethod
     def iKCa(cls, q, Vm):
         ''' Calcium-dependent Potassium current '''
-        return cls.gKCa_bar * q**2 * (Vm - cls.EK)  # mA/m2
+        return cls.gKCabar * q**2 * (Vm - cls.EK)  # mA/m2
 
     @classmethod
     def iLeak(cls, Vm):
@@ -189,7 +236,7 @@ class Sundt(PointNeuron):
             'iNa': lambda Vm, x: cls.iNa(x['m'], x['h'], Vm),
             'iKd': lambda Vm, x: cls.iKd(x['n'], x['l'], Vm),
             'iKm': lambda Vm, x: cls.iKm(x['mkm'], Vm),
-            'iCa': lambda Vm, x: cls.iCa(x['mca'], Vm),
+            'iCaL': lambda Vm, x: cls.iCaL(x['c'], Vm),
             'iKCa': lambda Vm, x: cls.iKCa(x['q'], Vm),
             'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
