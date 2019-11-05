@@ -3,11 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-05 17:13:16
+# @Last Modified time: 2019-11-05 18:12:25
 
 import numpy as np
 from ..core import PointNeuron
 from ..constants import CELSIUS_2_KELVIN, FARADAY, Rg, Z_Ca
+from ..utils import findModifiedEq
 
 
 class Sundt(PointNeuron):
@@ -228,9 +229,13 @@ class Sundt(PointNeuron):
     def qinf(cls, Cai):
         return cls.alphaq(Cai) / (cls.alphaq(Cai) + cls.betaq(Cai))
 
-    # @classmethod
-    # def Caiinf(cls, Vm):
-    #     return cls.Cai0
+    @classmethod
+    def Caiinf(cls, c, Vm):
+        return findModifiedEq(
+            cls.Cai0,
+            lambda Cai, c, Vm: cls.derCai(c, Cai, Vm),
+            c, Vm
+        )
 
     @classmethod
     def steadyStates(cls):
@@ -241,8 +246,8 @@ class Sundt(PointNeuron):
             'l': lambda Vm: cls.alphal(Vm) / (cls.alphal(Vm) + cls.betal(Vm)),
             'mkm': lambda Vm: cls.mkminf(Vm),
             'c': lambda Vm: cls.alphac(Vm) / (cls.alphac(Vm) + cls.betac(Vm)),
-            'Cai': lambda Vm: cls.Cai0
         }
+        lambda_dict['Cai'] = lambda Vm: cls.Caiinf(lambda_dict['c'](Vm), Vm)
         lambda_dict['q'] = lambda Vm: cls.qinf(lambda_dict['Cai'](Vm))
         return lambda_dict
 
