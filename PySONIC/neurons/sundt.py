@@ -131,19 +131,19 @@ class Sundt(PointNeuron):
 
     @classmethod
     def alphan(cls, Vm):
-        return cls.alphan0 * np.exp((cls.zn * cls.gamman * (Vm + cls.Vhalfn) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.alphan0 * np.exp((cls.zn * cls.gamman * (Vm - cls.Vhalfn) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
 
     @classmethod
     def betan(cls, Vm):
-        return cls.betan0 * np.exp((cls.zn * (1 - cls.gamman) * (Vm + cls.Vhalfn) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.betan0 * np.exp((cls.zn * (1 - cls.gamman) * (Vm - cls.Vhalfn) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
 
     @classmethod
     def alphal(cls, Vm):
-        return cls.alphal0 * np.exp((cls.zl * cls.gammal * (Vm + cls.Vhalfl) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.alphal0 * np.exp((cls.zl * cls.gammal * (Vm - cls.Vhalfl) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
 
     @classmethod
     def betal(cls, Vm):
-        return cls.betal0 * np.exp((cls.zl * (1 - cls.gammal) * (Vm + cls.Vhalfl) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.betal0 * np.exp((cls.zl * (1 - cls.gammal) * (Vm - cls.Vhalfl) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
 
     # KCNQ Potassium kinetics: taken from Yamada 1989 (cannot find source...), with
     # Q10 adaptation from 23.5 to 35 degrees.
