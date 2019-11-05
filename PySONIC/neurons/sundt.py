@@ -34,11 +34,11 @@ class Sundt(PointNeuron):
 
     # Maximal channel conductances (S/m2)
     gNabar = 400.0    # Sodium
-    gKdbar = 400.0   # Delayed-rectifier Potassium
+    gKdbar = 400.0    # Delayed-rectifier Potassium
     gKmbar = 4.0      # KCNQ Potassium
-    gCaLbar = 30       # Calcium ????
+    gCaLbar = 30      # Calcium ????
     gKCabar = 2.0     # Calcium dependent Potassium ????
-    gLeak = 1.0        # Non-specific leakage
+    gLeak = 1.0       # Non-specific leakage
 
     # Additional parameters
     Cao = 2e-3             # Extracellular Calcium concentration (M)
@@ -49,6 +49,19 @@ class Sundt(PointNeuron):
 
     # Na+ current parameters
     deltaVm = 6.0    # Voltage offset to shift the rate constants  (6 mV in Sundt 2015)
+    
+    # K+ current parameters (Borg Graham 1987 for the form, Migliore 1995 for the values)
+    alphan0 = 0.03     
+    alphal0 = 0.001
+    betan0 = alphan0
+    betal0 = alphal0
+    Vhalfn = -32      # Membrane voltage at which alphan=alphan0 (mV) 
+    Vhalfl = -61      # (mV) 
+    zn = -5           # Effective valence of the gating particle  
+    zl = 2
+    gamman = 0.4      # Position of the transition state within the membrane, normalized to the membrane thickness
+    gammal = 1
+    
 
     # Ca2+ parameters
     Ca_power = 3
@@ -110,7 +123,7 @@ class Sundt(PointNeuron):
         Vm += cls.deltaVm
         return cls.q10_Traub * 4 / (1 + np.exp((40.0 - Vm) / 5)) * 1e3 # s-1
 
-    # Potassium kinetics: discrepancies with the cited ref. and with the ModelDB code:
+    # Potassium kinetics: from Migliore 1995, discrepancies with the cited ref. and with the ModelDB code:
     # - absence of global multiplying factor for the rate constants
     # - sign inconsistencies between Sundt paper and ModelDB code
     # - differences in voltage parameters with Borg-Graham 1987 ref.
@@ -118,19 +131,19 @@ class Sundt(PointNeuron):
 
     @classmethod
     def alphan(cls, Vm):
-        return np.exp((-5e-3 * (Vm + 32) * FARADAY) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.alphan0 * np.exp((cls.zn * cls.gamman * (Vm + cls.Vhalfn) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
 
     @classmethod
     def betan(cls, Vm):
-        return np.exp((-2e-3 * (Vm + 32) * FARADAY) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.betan0 * np.exp((cls.zn * (1 - cls.gamman) * (Vm + cls.Vhalfn) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
 
     @classmethod
     def alphal(cls, Vm):
-        return np.exp((2e-3 * (Vm + 61) * FARADAY) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.alphal0 * np.exp((cls.zl * cls.gammal * (Vm + cls.Vhalfl) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
 
     @classmethod
     def betal(cls, Vm):
-        return np.exp((-2e-3 * (Vm + 32) * FARADAY) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.betal0 * np.exp((cls.zl * (1 - cls.gammal) * (Vm + cls.Vhalfl) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
 
     # KCNQ Potassium kinetics: taken from Yamada 1989 (cannot find source...), with
     # Q10 adaptation from 23.5 to 35 degrees.
