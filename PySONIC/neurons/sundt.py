@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-01 17:44:56
+# @Last Modified time: 2019-11-05 16:10:17
 
 import numpy as np
 from ..core import PointNeuron
@@ -38,7 +38,7 @@ class Sundt(PointNeuron):
     gKmbar = 4.0      # KCNQ Potassium
     gCaLbar = 30      # Calcium ????
     gKCabar = 2.0     # Calcium dependent Potassium ????
-    gLeak = 1.0       # Non-specific leakage
+    gLeak = 1e0       # Non-specific leakage
 
     # Additional parameters
     Cao = 2e-3             # Extracellular Calcium concentration (M)
@@ -49,19 +49,18 @@ class Sundt(PointNeuron):
 
     # Na+ current parameters
     deltaVm = 6.0    # Voltage offset to shift the rate constants  (6 mV in Sundt 2015)
-    
-    # K+ current parameters (Borg Graham 1987 for the form, Migliore 1995 for the values)
-    alphan0 = 0.03     
-    alphal0 = 0.001
-    betan0 = alphan0
-    betal0 = alphal0
-    Vhalfn = -32      # Membrane voltage at which alphan=alphan0 (mV) 
-    Vhalfl = -61      # (mV) 
-    zn = 5           # Effective valence of the gating particle  
-    zl = -2
-    gamman = 0.4      # Position of the transition state within the membrane, normalized to the membrane thickness
-    gammal = 1
-    
+
+    # K+ current parameters (Borg Graham 1987 for the formalism, Migliore 1995 for the values)
+    alphan0 = 0.03    # ms-1
+    alphal0 = 0.001   # ms-1
+    betan0 = alphan0  # ms-1
+    betal0 = alphal0  # ms-1
+    Vhalfn = -32      # Membrane voltage at which alphan = alphan0 and betan = betan0 (mV)
+    Vhalfl = -61      # Membrane voltage at which alphal = alphal0 and betal = betal0 (mV)
+    zn = 5            # Effective valence of the n-gating particle
+    zl = -2           # Effective valence of the l-gating particle
+    gamman = 0.4      # Normalized position of the n-transition state within the membrane
+    gammal = 1        # Normalized position of the l-transition state within the membrane
 
     # Ca2+ parameters
     Ca_power = 3
@@ -85,15 +84,18 @@ class Sundt(PointNeuron):
         cls.q10_Yamada = 3**((cls.celsius - cls.celsius_Yamada) / 10)
         cls.T = cls.celsius + CELSIUS_2_KELVIN
         cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
+        cls.Vref = Rg * cls.T / FARADAY * 1e3  # reference voltagte for iKd rate constants (mV)
 
         # Compute total current at resting potential, without iLeak
         sstates = {k: cls.steadyStates()[k](cls.Vm0) for k in cls.statesNames()}
         i_dict = cls.currents()
         del i_dict['iLeak']
         iNet = sum([cfunc(cls.Vm0, sstates) for cfunc in i_dict.values()])  # mA/m2
+        print(f'iNet = {iNet:.2f} mA/m2')
 
         # Compute Eleak such that iLeak cancels out the net current at resting potential
         cls.ELeak = cls.Vm0 + iNet / cls.gLeak  # mV
+        print(f'Eleak = {cls.ELeak:.2f} mV')
 
         return super(Sundt, cls).__new__(cls)
 
@@ -123,27 +125,23 @@ class Sundt(PointNeuron):
         Vm += cls.deltaVm
         return cls.q10_Traub * 4 / (1 + np.exp((40.0 - Vm) / 5)) * 1e3 # s-1
 
-    # Potassium kinetics: from Migliore 1995, discrepancies with the cited ref. and with the ModelDB code:
-    # - absence of global multiplying factor for the rate constants
-    # - sign inconsistencies between Sundt paper and ModelDB code
-    # - differences in voltage parameters with Borg-Graham 1987 ref.
-    # - definition of ninf, taun, linf and taul in the ModelDB code makes no sense
+    # Potassium kinetics: using Migliore 1995 values, with Borg-Graham 1991 formalism
 
     @classmethod
     def alphan(cls, Vm):
-        return cls.alphan0 * np.exp((cls.zn * cls.gamman * (Vm - cls.Vhalfn) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.alphan0 * np.exp(cls.zn * cls.gamman * (Vm - cls.Vhalfn) / cls.Vref) * 1e3  # s-1
 
     @classmethod
     def betan(cls, Vm):
-        return cls.betan0 * np.exp((cls.zn * (1 - cls.gamman) * (Vm - cls.Vhalfn) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.betan0 * np.exp(-cls.zn * (1 - cls.gamman) * (Vm - cls.Vhalfn) / cls.Vref) * 1e3  # s-1
 
     @classmethod
     def alphal(cls, Vm):
-        return cls.alphal0 * np.exp((cls.zl * cls.gammal * (Vm - cls.Vhalfl) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.alphal0 * np.exp(cls.zl * cls.gammal * (Vm - cls.Vhalfl) / cls.Vref) * 1e3  # s-1
 
     @classmethod
     def betal(cls, Vm):
-        return cls.betal0 * np.exp((cls.zl * (1 - cls.gammal) * (Vm - cls.Vhalfl) * FARADAY * 1e-3) / (Rg * cls.T)) * 1e3  # s-1
+        return cls.betal0 * np.exp(-cls.zl * (1 - cls.gammal) * (Vm - cls.Vhalfl) / cls.Vref) * 1e3  # s-1
 
     # KCNQ Potassium kinetics: taken from Yamada 1989 (cannot find source...), with
     # Q10 adaptation from 23.5 to 35 degrees.
@@ -211,6 +209,10 @@ class Sundt(PointNeuron):
     def qinf(cls, Cai):
         return cls.alphaq(Cai) / (cls.alphaq(Cai) + cls.betaq(Cai))
 
+    # @classmethod
+    # def Caiinf(cls, Vm):
+    #     return cls.Cai0
+
     @classmethod
     def steadyStates(cls):
         lambda_dict = {
@@ -220,7 +222,7 @@ class Sundt(PointNeuron):
             'l': lambda Vm: cls.alphal(Vm) / (cls.alphal(Vm) + cls.betal(Vm)),
             'mkm': lambda Vm: cls.mkminf(Vm),
             'c': lambda Vm: cls.alphac(Vm) / (cls.alphac(Vm) + cls.betac(Vm)),
-            'Cai': lambda Vm: cls.Cai0,
+            'Cai': lambda Vm: cls.Cai0
         }
         lambda_dict['q'] = lambda Vm: cls.qinf(lambda_dict['Cai'](Vm))
         return lambda_dict
