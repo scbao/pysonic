@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-05 16:10:17
+# @Last Modified time: 2019-11-05 17:13:16
 
 import numpy as np
 from ..core import PointNeuron
@@ -63,7 +63,8 @@ class Sundt(PointNeuron):
     gammal = 1        # Normalized position of the l-transition state within the membrane
 
     # Ca2+ parameters
-    Ca_power = 3
+    Ca_factor = 1e6   # conversion factor for q-gate Calcium sensitivity (expressed in uM)
+    Ca_power = 3      # power exponent for q-gate Calcium sensitivity (-)
     deff = 200e-9     # effective depth beneath membrane for intracellular [Ca2+] calculation (m)
     taur_Cai = 20e-3  # decay time constant for intracellular Ca2+ dissolution (s)
 
@@ -75,8 +76,8 @@ class Sundt(PointNeuron):
         'l': 'iKdr Borg-Graham formalism gate',
         'mkm': 'iKm gate',
         'c': 'iCa gate',
-        'q': 'iK calcium dependent gate',
-        'Cai': 'calcium intracellular concentration'
+        'q': 'iK Calcium dependent gate',
+        'Cai': 'Calcium intracellular concentration (M)'
     }
 
     def __new__(cls):
@@ -91,13 +92,31 @@ class Sundt(PointNeuron):
         i_dict = cls.currents()
         del i_dict['iLeak']
         iNet = sum([cfunc(cls.Vm0, sstates) for cfunc in i_dict.values()])  # mA/m2
-        print(f'iNet = {iNet:.2f} mA/m2')
+        # print(f'iNet = {iNet:.2f} mA/m2')
 
         # Compute Eleak such that iLeak cancels out the net current at resting potential
         cls.ELeak = cls.Vm0 + iNet / cls.gLeak  # mV
-        print(f'Eleak = {cls.ELeak:.2f} mV')
+        # print(f'Eleak = {cls.ELeak:.2f} mV')
 
         return super(Sundt, cls).__new__(cls)
+
+
+    @classmethod
+    def getPltScheme(cls):
+        pltscheme = super().getPltScheme()
+        pltscheme['[Ca^{2+}]_i'] = ['Cai']
+        return pltscheme
+
+    @classmethod
+    def getPltVars(cls, wrapleft='df["', wrapright='"]'):
+        return {**super().getPltVars(wrapleft, wrapright), **{
+            'Cai': {
+                'desc': 'sumbmembrane Ca2+ concentration',
+                'label': '[Ca^{2+}]_i',
+                'unit': 'uM',
+                'factor': 1e6
+            }
+        }}
 
     # ------------------------------ Gating states kinetics ------------------------------
 
@@ -170,11 +189,11 @@ class Sundt(PointNeuron):
 
     @classmethod
     def alphaq(cls, Cai):
-        return 0.00246 / np.exp((12 * np.log10(np.power(Cai, cls.Ca_power)) + 28.48) / -4.5) * 1e3  # s-1
+        return 0.00246 / np.exp((12 * np.log10(np.power(Cai * cls.Ca_factor, cls.Ca_power)) + 28.48) / -4.5) * 1e3  # s-1
 
     @classmethod
     def betaq(cls, Cai):
-        return 0.006 / np.exp((12 * np.log10(np.power(Cai, cls.Ca_power)) + 60.4) / 35) * 1e3  # s-1
+        return 0.006 / np.exp((12 * np.log10(np.power(Cai * cls.Ca_factor, cls.Ca_power)) + 60.4) / 35) * 1e3  # s-1
 
 
     # ------------------------------ States derivatives ------------------------------

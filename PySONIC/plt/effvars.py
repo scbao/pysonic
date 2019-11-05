@@ -3,14 +3,19 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-29 09:59:07
+# @Last Modified time: 2019-11-05 16:42:05
 
+from inspect import signature
 import numpy as np
 import matplotlib.pyplot as plt
 
 from ..utils import logger, si_prefixes, isWithin
 from ..core import NeuronalBilayerSonophore
 from .pltutils import setGrid, setNormalizer
+
+
+def isVoltageDependent(func):
+    return 'Vm' in list(signature(func).parameters.keys())
 
 
 def plotGatingKinetics(pneuron, fs=15):
@@ -54,13 +59,16 @@ def plotGatingKinetics(pneuron, fs=15):
         elif hasattr(pneuron, alphax_func_str) and hasattr(pneuron, betax_func_str):
             alphax_func = getattr(pneuron, alphax_func_str)
             betax_func = getattr(pneuron, betax_func_str)
-            alphax = np.array([alphax_func(v) for v in Vm])
-            if isinstance(betax_func, float):
-                betax = betax_func * np.ones(len(Vm))
+            if not isVoltageDependent(alphax_func):
+                Vm_state = False
             else:
-                betax = np.array([betax_func(v) for v in Vm])
-            taux = 1.0 / (alphax + betax)
-            xinf = taux * alphax
+                alphax = np.array([alphax_func(v) for v in Vm])
+                if isinstance(betax_func, float):
+                    betax = betax_func * np.ones(len(Vm))
+                else:
+                    betax = np.array([betax_func(v) for v in Vm])
+                taux = 1.0 / (alphax + betax)
+                xinf = taux * alphax
 
         # # 3rd choice: use derX choice
         # elif hasattr(pneuron, derx_func_str):
@@ -68,8 +76,9 @@ def plotGatingKinetics(pneuron, fs=15):
         #     xinf = brentq(lambda x: derx_func(pneuron.Vm, x), 0, 1)
         else:
             Vm_state = False
+
         if not Vm_state:
-            logger.error('no function to compute %s-state gating kinetics', xname)
+            logger.error('%s-state gating kinetics is not Vm-dependent', xname)
         else:
             xinf_dict[xname] = xinf
             taux_dict[xname] = taux
