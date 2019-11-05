@@ -57,8 +57,8 @@ class Sundt(PointNeuron):
     betal0 = alphal0
     Vhalfn = -32      # Membrane voltage at which alphan=alphan0 (mV) 
     Vhalfl = -61      # (mV) 
-    zn = -5           # Effective valence of the gating particle  
-    zl = 2
+    zn = 5           # Effective valence of the gating particle  
+    zl = -2
     gamman = 0.4      # Position of the transition state within the membrane, normalized to the membrane thickness
     gammal = 1
     
