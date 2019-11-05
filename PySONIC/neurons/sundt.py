@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-05 18:12:25
+# @Last Modified time: 2019-11-05 21:51:31
 
 import numpy as np
 from ..core import PointNeuron
@@ -26,32 +26,25 @@ class Sundt(PointNeuron):
     # ------------------------------ Biophysical parameters ------------------------------
 
     # Resting parameters
-    Cm0 = 1e-2   # Membrane capacitance (F/m2)
-    Vm0 = -60.   # Membrane potential (mV)
+    Cm0 = 1e-2  # Membrane capacitance (F/m2)
+    Vm0 = -60.  # Membrane potential (mV)
 
     # Reversal potentials (mV)
-    ENa = 55.0     # Sodium
-    EK = -90.0     # Potassium
+    ENa = 55.0  # Sodium
+    EK = -90.0  # Potassium
 
     # Maximal channel conductances (S/m2)
-    gNabar = 400.0    # Sodium
-    gKdbar = 400.0    # Delayed-rectifier Potassium
-    gKmbar = 4.0      # KCNQ Potassium
-    gCaLbar = 30      # Calcium ????
-    gKCabar = 2.0     # Calcium dependent Potassium ????
-    gLeak = 1e0       # Non-specific leakage
-
-    # Additional parameters
-    Cao = 2e-3             # Extracellular Calcium concentration (M)
-    Cai0 = 70e-9           # Intracellular Calcium concentration at rest (M) (Aradi 1999)
-    celsius = 35.0         # Temperature (Celsius)
-    celsius_Traub = 30.0   # Temperature in Traub 1991 (Celsius)
-    celsius_Yamada = 23.5  # Temperature in Yamada 1989 (Celsius)
+    gNabar = 400.0  # Sodium
+    gKdbar = 400.0  # Delayed-rectifier Potassium
+    gMbar = 4.0     # Slow non-inactivating Potassium
+    gCaLbar = 30    # High-threshold Calcium (???)
+    gKCabar = 2.0   # Calcium dependent Potassium (???)
+    gLeak = 1e0     # Non-specific leakage
 
     # Na+ current parameters
-    deltaVm = 6.0    # Voltage offset to shift the rate constants  (6 mV in Sundt 2015)
+    deltaVm = 6.0  # Voltage offset to shift the rate constants  (6 mV in Sundt 2015)
 
-    # K+ current parameters (Borg Graham 1987 for the formalism, Migliore 1995 for the values)
+    # Kd current parameters (Borg Graham 1987 for the formalism, Migliore 1995 for the values)
     alphan0 = 0.03    # ms-1
     alphal0 = 0.001   # ms-1
     betan0 = alphan0  # ms-1
@@ -63,21 +56,33 @@ class Sundt(PointNeuron):
     gamman = 0.4      # Normalized position of the n-transition state within the membrane
     gammal = 1        # Normalized position of the l-transition state within the membrane
 
+    # iM parameters
+    taupMax = 1.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
+
     # Ca2+ parameters
-    Ca_factor = 1e6   # conversion factor for q-gate Calcium sensitivity (expressed in uM)
-    Ca_power = 3      # power exponent for q-gate Calcium sensitivity (-)
+    Cao = 2e-3        # Extracellular Calcium concentration (M)
+    Cai0 = 70e-9      # Intracellular Calcium concentration at rest (M) (Aradi 1999)
     deff = 200e-9     # effective depth beneath membrane for intracellular [Ca2+] calculation (m)
     taur_Cai = 20e-3  # decay time constant for intracellular Ca2+ dissolution (s)
+
+    # iKCa parameters
+    Ca_factor = 1e6  # conversion factor for q-gate Calcium sensitivity (expressed in uM)
+    Ca_power = 3     # power exponent for q-gate Calcium sensitivity (-)
+
+    # Additional parameters
+    celsius = 35.0         # Temperature (Celsius)
+    celsius_Traub = 30.0   # Temperature in Traub 1991 (Celsius)
+    celsius_Yamada = 23.5  # Temperature in Yamada 1989 (Celsius)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
         'm': 'iNa activation gate',
         'h': 'iNa inactivation gate',
-        'n': 'iKdr gate',
-        'l': 'iKdr Borg-Graham formalism gate',
-        'mkm': 'iKm gate',
-        'c': 'iCa gate',
-        'q': 'iK Calcium dependent gate',
+        'n': 'iKd activation gate',
+        'l': 'iKd inactivation gate',
+        'p': 'iM gate',
+        'c': 'iCaL gate',
+        'q': 'iKCa Calcium dependent gate',
         'Cai': 'Calcium intracellular concentration (M)'
     }
 
@@ -167,12 +172,13 @@ class Sundt(PointNeuron):
     # Q10 adaptation from 23.5 to 35 degrees.
 
     @staticmethod
-    def mkminf(Vm):
+    def pinf(Vm):
         return 1.0 / (1 + np.exp(-(Vm + 35) / 10))
 
     @classmethod
-    def taumkm(cls, Vm):
-        return 1e-3 / (3.3 * (np.exp((Vm + 35) / 20) + np.exp(-(Vm + 35) / 20)) / cls.q10_Yamada)  # s
+    def taup(cls, Vm):
+        tau = cls.taupMax / (3.3 * (np.exp((Vm + 35) / 20) + np.exp(-(Vm + 35) / 20)))  # s
+        return tau * cls.q10_Yamada
 
     # L-type Calcium kinetics: from Migliore 1995 that itself refers to Jaffe 1994.
 
@@ -184,17 +190,15 @@ class Sundt(PointNeuron):
     def betac(cls, Vm):
         return 0.29 * np.exp(-Vm / 10.86) * 1e3  # s-1
 
-    # Calcium-dependent Potassium kinetics: from Aradi 1999, correcting error in alphaq denominator
-    # (4.5 vs 4).
-    # - 3 (vs. 1) in Cai exponent
+    # Calcium-dependent Potassium kinetics: from Aradi 1999, correcting error in alphaq denominator (4.5 vs 4)
 
     @classmethod
     def alphaq(cls, Cai):
-        return 0.00246 / np.exp((12 * np.log10(np.power(Cai * cls.Ca_factor, cls.Ca_power)) + 28.48) / -4.5) * 1e3  # s-1
+        return 0.00246 / np.exp((12 * np.log10((Cai * cls.Ca_factor)**cls.Ca_power) + 28.48) / -4.5) * 1e3  # s-1
 
     @classmethod
     def betaq(cls, Cai):
-        return 0.006 / np.exp((12 * np.log10(np.power(Cai * cls.Ca_factor, cls.Ca_power)) + 60.4) / 35) * 1e3  # s-1
+        return 0.006 / np.exp((12 * np.log10((Cai * cls.Ca_factor)**cls.Ca_power) + 60.4) / 35) * 1e3  # s-1
 
 
     # ------------------------------ States derivatives ------------------------------
@@ -217,7 +221,7 @@ class Sundt(PointNeuron):
             'h': lambda Vm, x: cls.alphah(Vm) * (1 - x['h']) - cls.betah(Vm) * x['h'],
             'n': lambda Vm, x: cls.alphan(Vm) * (1 - x['n']) - cls.betan(Vm) * x['n'],
             'l': lambda Vm, x: cls.alphal(Vm) * (1 - x['l']) - cls.betal(Vm) * x['l'],
-            'mkm': lambda Vm, x: (cls.mkminf(Vm) - x['mkm']) / cls.taumkm(Vm),
+            'p': lambda Vm, x: (cls.pinf(Vm) - x['p']) / cls.taup(Vm),
             'c': lambda Vm, x: cls.alphac(Vm) * (1 - x['c']) - cls.betac(Vm) * x['c'],
             'q': lambda Vm, x: cls.alphaq(x['Cai']) * (1 - x['q']) - cls.betaq(x['Cai']) * x['q'],
             'Cai': lambda Vm, x: cls.derCai(x['c'], x['Cai'], Vm)
@@ -244,7 +248,7 @@ class Sundt(PointNeuron):
             'h': lambda Vm: cls.alphah(Vm) / (cls.alphah(Vm) + cls.betah(Vm)),
             'n': lambda Vm: cls.alphan(Vm) / (cls.alphan(Vm) + cls.betan(Vm)),
             'l': lambda Vm: cls.alphal(Vm) / (cls.alphal(Vm) + cls.betal(Vm)),
-            'mkm': lambda Vm: cls.mkminf(Vm),
+            'p': lambda Vm: cls.pinf(Vm),
             'c': lambda Vm: cls.alphac(Vm) / (cls.alphac(Vm) + cls.betac(Vm)),
         }
         lambda_dict['Cai'] = lambda Vm: cls.Caiinf(lambda_dict['c'](Vm), Vm)
@@ -266,9 +270,9 @@ class Sundt(PointNeuron):
         return cls.gKdbar * n**3 * l * (Vm - cls.EK)  # mA/m2
 
     @classmethod
-    def iKm(cls, mkm, Vm):
-        ''' slowly activating Potassium current '''
-        return cls.gKmbar * mkm * (Vm - cls.EK)  # mA/m2
+    def iM(cls, p, Vm):
+        ''' slow non-inactivating Potassium current '''
+        return cls.gMbar * p * (Vm - cls.EK)  # mA/m2
 
     @classmethod
     def iCaL(cls, c, Cai, Vm):
@@ -290,7 +294,7 @@ class Sundt(PointNeuron):
         return {
             'iNa': lambda Vm, x: cls.iNa(x['m'], x['h'], Vm),
             'iKd': lambda Vm, x: cls.iKd(x['n'], x['l'], Vm),
-            'iKm': lambda Vm, x: cls.iKm(x['mkm'], Vm),
+            'iM': lambda Vm, x: cls.iM(x['p'], Vm),
             'iCaL': lambda Vm, x: cls.iCaL(x['c'], x['Cai'], Vm),
             'iKCa': lambda Vm, x: cls.iKCa(x['q'], Vm),
             'iLeak': lambda Vm, _: cls.iLeak(Vm)
