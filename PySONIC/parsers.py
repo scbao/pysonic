@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-06 15:11:14
+# @Last Modified time: 2019-11-06 15:59:45
 
 import os
 import logging
@@ -67,6 +67,10 @@ class Parser(ArgumentParser):
         self.add_argument(
             '-p', '--plot', type=str, nargs='+', help='Variables to plot')
         self.to_parse['pltscheme'] = self.parsePltScheme
+
+    def addPhase(self):
+        self.add_argument(
+            '--phase', default=False, action='store_true', help='Phase plot')
 
     def addMPI(self):
         self.add_argument(
@@ -306,6 +310,17 @@ class Parser(ArgumentParser):
         else:
             scheme_plot = GroupedTimeSeries(output, pltscheme=args['pltscheme'])
             scheme_plot.render(**render_args)
+
+        # phase_plot = PhaseDiagram(output, args['plot'][0])
+        # phase_plot.render(
+        #     # trange=args['trange'],
+        #     # rel_tbounds=args['rel_tbounds'],
+        #     labels=args['labels'],
+        #     prettify=args['pretty'],
+        #     cmap=args['cmap'],
+        #     cscale=args['cscale']
+        # )
+
         plt.show()
 
 

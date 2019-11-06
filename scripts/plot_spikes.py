@@ -3,14 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 12:41:26
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-06-17 19:59:21
+# @Last Modified time: 2019-11-06 16:03:16
 
-''' Plot phase plane diagram of specific simulation output variables. '''
+''' Plot spikes diagrams of specific simulation output variables. '''
 
 import matplotlib.pyplot as plt
 
 from PySONIC.utils import logger
-from PySONIC.plt import PhaseDiagram
+from PySONIC.plt import SpikesDiagram
 from PySONIC.parsers import PlotParser
 
 
@@ -20,8 +20,8 @@ def main():
     args = parser.parse()
     logger.setLevel(args['loglevel'])
 
-    # Plot phase-plane diagram
-    phase_diag = PhaseDiagram(args['inputfiles'], args['plot'][0])
+    # Plot spikes diagram
+    phase_diag = SpikesDiagram(args['inputfiles'], args['plot'][0])
     phase_diag.render(
         trange=args['trange'],
         rel_tbounds=args['rel_tbounds'],

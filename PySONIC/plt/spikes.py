@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-22 14:59:13
+# @Last Modified time: 2019-11-06 16:01:32
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,7 +15,7 @@ from .pltutils import *
 from ..postpro import detectSpikes, convertPeaksProperties
 
 
-class PhaseDiagram(ComparativePlot):
+class SpikesDiagram(ComparativePlot):
 
     phaseplotvars = {
         'Vm': {

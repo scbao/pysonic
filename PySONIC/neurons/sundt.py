@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-06 10:22:31
+# @Last Modified time: 2019-11-06 19:27:27
 
 import numpy as np
 from ..core import PointNeuron
@@ -36,10 +36,10 @@ class Sundt(PointNeuron):
     # Maximal channel conductances (S/m2)
     gNabar = 400.0  # Sodium
     gKdbar = 400.0  # Delayed-rectifier Potassium
-    gMbar = 4.0     # Slow non-inactivating Potassium
-    gCaLbar = 30    # High-threshold Calcium (???)
-    gKCabar = 2.0   # Calcium dependent Potassium (???)
+    gMbar = 3.1     # Slow non-inactivating Potassium (from MOD file, paper studies 2-8 S/m2 range)
     gLeak = 1e0     # Non-specific leakage
+    # gCaLbar = 30    # High-threshold Calcium (from MOD file, but only in soma !!!)
+    # gKCabar = 2.0   # Calcium dependent Potassium (only in soma !!!)
 
     # Na+ current parameters
     deltaVm = 6.0  # Voltage offset to shift the rate constants  (6 mV in Sundt 2015)
@@ -60,14 +60,14 @@ class Sundt(PointNeuron):
     taupMax = 1.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
     # Ca2+ parameters
-    Cao = 2e-3        # Extracellular Calcium concentration (M)
-    Cai0 = 70e-9      # Intracellular Calcium concentration at rest (M) (Aradi 1999)
-    deff = 200e-9     # effective depth beneath membrane for intracellular [Ca2+] calculation (m)
-    taur_Cai = 20e-3  # decay time constant for intracellular Ca2+ dissolution (s)
+    # Cao = 2e-3        # Extracellular Calcium concentration (M)
+    # Cai0 = 70e-9      # Intracellular Calcium concentration at rest (M) (Aradi 1999)
+    # deff = 200e-9     # effective depth beneath membrane for intracellular [Ca2+] calculation (m)
+    # taur_Cai = 20e-3  # decay time constant for intracellular Ca2+ dissolution (s)
 
     # iKCa parameters
-    Ca_factor = 1e6  # conversion factor for q-gate Calcium sensitivity (expressed in uM)
-    Ca_power = 3     # power exponent for q-gate Calcium sensitivity (-)
+    # Ca_factor = 1e6  # conversion factor for q-gate Calcium sensitivity (expressed in uM)
+    # Ca_power = 3     # power exponent for q-gate Calcium sensitivity (-)
 
     # Additional parameters
     celsius = 35.0         # Temperature (Celsius)
@@ -81,47 +81,45 @@ class Sundt(PointNeuron):
         'n': 'iKd activation gate',
         'l': 'iKd inactivation gate',
         'p': 'iM gate',
-        'c': 'iCaL gate',
-        'q': 'iKCa Calcium dependent gate',
-        'Cai': 'Calcium intracellular concentration (M)'
+        # 'c': 'iCaL gate',
+        # 'q': 'iKCa Calcium dependent gate',
+        # 'Cai': 'Calcium intracellular concentration (M)'
     }
 
     def __new__(cls):
         cls.q10_Traub = 3**((cls.celsius - cls.celsius_Traub) / 10)
         cls.q10_Yamada = 3**((cls.celsius - cls.celsius_Yamada) / 10)
         cls.T = cls.celsius + CELSIUS_2_KELVIN
-        cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
+        # cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
         cls.Vref = Rg * cls.T / FARADAY * 1e3  # reference voltagte for iKd rate constants (mV)
 
-        # Compute total current at resting potential, without iLeak
+        # Compute Eleak such that iLeak cancels out the net current at resting potential
         sstates = {k: cls.steadyStates()[k](cls.Vm0) for k in cls.statesNames()}
         i_dict = cls.currents()
         del i_dict['iLeak']
         iNet = sum([cfunc(cls.Vm0, sstates) for cfunc in i_dict.values()])  # mA/m2
-
-        # Compute Eleak such that iLeak cancels out the net current at resting potential
         cls.ELeak = cls.Vm0 + iNet / cls.gLeak  # mV
         # print(f'Eleak = {cls.ELeak:.2f} mV')
 
         return super(Sundt, cls).__new__(cls)
 
 
-    @classmethod
-    def getPltScheme(cls):
-        pltscheme = super().getPltScheme()
-        pltscheme['[Ca^{2+}]_i'] = ['Cai']
-        return pltscheme
+    # @classmethod
+    # def getPltScheme(cls):
+    #     pltscheme = super().getPltScheme()
+    #     pltscheme['[Ca^{2+}]_i'] = ['Cai']
+    #     return pltscheme
 
-    @classmethod
-    def getPltVars(cls, wrapleft='df["', wrapright='"]'):
-        return {**super().getPltVars(wrapleft, wrapright), **{
-            'Cai': {
-                'desc': 'sumbmembrane Ca2+ concentration',
-                'label': '[Ca^{2+}]_i',
-                'unit': 'uM',
-                'factor': 1e6
-            }
-        }}
+    # @classmethod
+    # def getPltVars(cls, wrapleft='df["', wrapright='"]'):
+    #     return {**super().getPltVars(wrapleft, wrapright), **{
+    #         'Cai': {
+    #             'desc': 'sumbmembrane Ca2+ concentration',
+    #             'label': '[Ca^{2+}]_i',
+    #             'unit': 'uM',
+    #             'factor': 1e6
+    #         }
+    #     }}
 
     # ------------------------------ Gating states kinetics ------------------------------
 
@@ -191,31 +189,31 @@ class Sundt(PointNeuron):
     def betac(cls, Vm):
         return 0.29 * np.exp(-Vm / 10.86) * 1e3  # s-1
 
-    # iKCa kinetics: from Aradi 1999, which uses equations from Yuen 1991 with a few modifications:
-    # - 12 mV (???) shift in activation curve
-    # - log10 instead of log for Ca2+ sensitivity
-    # - global dampening factor of 1.67 applied on both rates
-    # Sundt 2015 applies an extra modification:
-    # - higher Calcium sensitivity (third power of Ca concentration)
-    # Also, there is an error in the alphaq denominator in the paper: using -4 instead of -4.5
+    # # iKCa kinetics: from Aradi 1999, which uses equations from Yuen 1991 with a few modifications:
+    # # - 12 mV (???) shift in activation curve
+    # # - log10 instead of log for Ca2+ sensitivity
+    # # - global dampening factor of 1.67 applied on both rates
+    # # Sundt 2015 applies an extra modification:
+    # # - higher Calcium sensitivity (third power of Ca concentration)
+    # # Also, there is an error in the alphaq denominator in the paper: using -4 instead of -4.5
 
-    @classmethod
-    def alphaq(cls, Cai):
-        return 0.00246 / np.exp((12 * np.log10((Cai * cls.Ca_factor)**cls.Ca_power) + 28.48) / -4.5) * 1e3  # s-1
+    # @classmethod
+    # def alphaq(cls, Cai):
+    #     return 0.00246 / np.exp((12 * np.log10((Cai * cls.Ca_factor)**cls.Ca_power) + 28.48) / -4.5) * 1e3  # s-1
 
-    @classmethod
-    def betaq(cls, Cai):
-        return 0.006 / np.exp((12 * np.log10((Cai * cls.Ca_factor)**cls.Ca_power) + 60.4) / 35) * 1e3  # s-1
+    # @classmethod
+    # def betaq(cls, Cai):
+    #     return 0.006 / np.exp((12 * np.log10((Cai * cls.Ca_factor)**cls.Ca_power) + 60.4) / 35) * 1e3  # s-1
 
 
     # ------------------------------ States derivatives ------------------------------
 
-    # Ca2+ dynamics: using accumulation-dissolution formalism as in Aradi, with
-    # a longer Ca2+ intracellular dissolution time constant (20 ms vs. 9 ms)
-
-    @classmethod
-    def derCai(cls, c, Cai, Vm):
-        return -cls.current_to_molar_rate_Ca * cls.iCaL(c, Cai, Vm) - (Cai - cls.Cai0) / cls.taur_Cai  # M/s
+    # @classmethod
+    # def derCai(cls, c, Cai, Vm):
+    #     ''' Using accumulation-dissolution formalism as in Aradi, with
+    #         a longer Ca2+ intracellular dissolution time constant (20 ms vs. 9 ms).
+    #     '''
+    #     return -cls.current_to_molar_rate_Ca * cls.iCaL(c, Cai, Vm) - (Cai - cls.Cai0) / cls.taur_Cai  # M/s
 
     @classmethod
     def derStates(cls):
@@ -225,24 +223,24 @@ class Sundt(PointNeuron):
             'n': lambda Vm, x: cls.alphan(Vm) * (1 - x['n']) - cls.betan(Vm) * x['n'],
             'l': lambda Vm, x: cls.alphal(Vm) * (1 - x['l']) - cls.betal(Vm) * x['l'],
             'p': lambda Vm, x: (cls.pinf(Vm) - x['p']) / cls.taup(Vm),
-            'c': lambda Vm, x: cls.alphac(Vm) * (1 - x['c']) - cls.betac(Vm) * x['c'],
-            'q': lambda Vm, x: cls.alphaq(x['Cai']) * (1 - x['q']) - cls.betaq(x['Cai']) * x['q'],
-            'Cai': lambda Vm, x: cls.derCai(x['c'], x['Cai'], Vm)
+            # 'c': lambda Vm, x: cls.alphac(Vm) * (1 - x['c']) - cls.betac(Vm) * x['c'],
+            # 'q': lambda Vm, x: cls.alphaq(x['Cai']) * (1 - x['q']) - cls.betaq(x['Cai']) * x['q'],
+            # 'Cai': lambda Vm, x: cls.derCai(x['c'], x['Cai'], Vm)
         }
 
     # ------------------------------ Steady states ------------------------------
 
-    @classmethod
-    def qinf(cls, Cai):
-        return cls.alphaq(Cai) / (cls.alphaq(Cai) + cls.betaq(Cai))
+    # @classmethod
+    # def qinf(cls, Cai):
+    #     return cls.alphaq(Cai) / (cls.alphaq(Cai) + cls.betaq(Cai))
 
-    @classmethod
-    def Caiinf(cls, c, Vm):
-        return findModifiedEq(
-            cls.Cai0,
-            lambda Cai, c, Vm: cls.derCai(c, Cai, Vm),
-            c, Vm
-        )
+    # @classmethod
+    # def Caiinf(cls, c, Vm):
+    #     return findModifiedEq(
+    #         cls.Cai0,
+    #         lambda Cai, c, Vm: cls.derCai(c, Cai, Vm),
+    #         c, Vm
+    #     )
 
     @classmethod
     def steadyStates(cls):
@@ -252,10 +250,10 @@ class Sundt(PointNeuron):
             'n': lambda Vm: cls.alphan(Vm) / (cls.alphan(Vm) + cls.betan(Vm)),
             'l': lambda Vm: cls.alphal(Vm) / (cls.alphal(Vm) + cls.betal(Vm)),
             'p': lambda Vm: cls.pinf(Vm),
-            'c': lambda Vm: cls.alphac(Vm) / (cls.alphac(Vm) + cls.betac(Vm)),
+            # 'c': lambda Vm: cls.alphac(Vm) / (cls.alphac(Vm) + cls.betac(Vm)),
         }
-        lambda_dict['Cai'] = lambda Vm: cls.Caiinf(lambda_dict['c'](Vm), Vm)
-        lambda_dict['q'] = lambda Vm: cls.qinf(lambda_dict['Cai'](Vm))
+        # lambda_dict['Cai'] = lambda Vm: cls.Caiinf(lambda_dict['c'](Vm), Vm)
+        # lambda_dict['q'] = lambda Vm: cls.qinf(lambda_dict['Cai'](Vm))
         return lambda_dict
 
     # ------------------------------ Membrane currents ------------------------------
@@ -281,16 +279,16 @@ class Sundt(PointNeuron):
         ''' slow non-inactivating Potassium current '''
         return cls.gMbar * p * (Vm - cls.EK)  # mA/m2
 
-    @classmethod
-    def iCaL(cls, c, Cai, Vm):
-        ''' Calcium current '''
-        ECa = cls.nernst(Z_Ca, Cai, cls.Cao, cls.T)  # mV
-        return cls.gCaLbar * c**2 * (Vm - ECa)  # mA/m2
+    # @classmethod
+    # def iCaL(cls, c, Cai, Vm):
+    #     ''' Calcium current '''
+    #     ECa = cls.nernst(Z_Ca, Cai, cls.Cao, cls.T)  # mV
+    #     return cls.gCaLbar * c**2 * (Vm - ECa)  # mA/m2
 
-    @classmethod
-    def iKCa(cls, q, Vm):
-        ''' Calcium-dependent Potassium current '''
-        return cls.gKCabar * q**2 * (Vm - cls.EK)  # mA/m2
+    # @classmethod
+    # def iKCa(cls, q, Vm):
+    #     ''' Calcium-dependent Potassium current '''
+    #     return cls.gKCabar * q**2 * (Vm - cls.EK)  # mA/m2
 
     @classmethod
     def iLeak(cls, Vm):
@@ -303,8 +301,8 @@ class Sundt(PointNeuron):
             'iNa': lambda Vm, x: cls.iNa(x['m'], x['h'], Vm),
             'iKd': lambda Vm, x: cls.iKd(x['n'], x['l'], Vm),
             'iM': lambda Vm, x: cls.iM(x['p'], Vm),
-            'iCaL': lambda Vm, x: cls.iCaL(x['c'], x['Cai'], Vm),
-            'iKCa': lambda Vm, x: cls.iKCa(x['q'], Vm),
+            # 'iCaL': lambda Vm, x: cls.iCaL(x['c'], x['Cai'], Vm),
+            # 'iKCa': lambda Vm, x: cls.iKCa(x['q'], Vm),
             'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
 
