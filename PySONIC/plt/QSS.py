@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-10 16:29:34
+# @Last Modified time: 2019-11-06 11:54:04
 
 import inspect
 import logging
@@ -351,6 +351,21 @@ def getQSSFixedPointsvsAdrive(nbls, Fdrive, amps, DC, mpi=False, loglevel=loggin
     for state, eigvals in zip(states, eigenvalues):
         ax.scatter(eigvals.real, eigvals.imag, label=f'$\lambda ({state})$')
     ax.legend()
+
+    figs = []
+    for i, state in enumerate(states):
+        tmp, ax = plt.subplots()
+        ax.set_title(f'$\lambda ({state})$')
+        ax.set_xlabel('Amplitude (kPa)')
+        ax.set_ylabel('lambda amplitude')
+        ax.set_xscale('log')
+        for A, out in zip(amps, output):
+            for item in out:
+                x, eigvals, _ = item
+                Lambda = eigvals[i]
+                ax.scatter(A, Lambda.real, c='C0')
+                ax.scatter(A, Lambda.imag, c='C1')
+        figs.append(tmp)
 
     return classified_FPs
 

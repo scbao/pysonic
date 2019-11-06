@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-27 19:25:34
+# @Last Modified time: 2019-11-06 15:27:07
 
 ''' Useful functions to generate plots. '''
 
@@ -43,9 +43,12 @@ def figtitle(meta):
                 return '{} neuron: {} E-STIM {:.2f}mA/m2, {:.0f}ms{}'.format(
                     meta['neuron'], wavetype, meta['Astim'], meta['tstim'] * 1e3, suffix)
             else:
-                return '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.2f}kPa, {:.0f}ms{} - {} model'.format(
+                title = '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.2f}kPa, {:.0f}ms{} - {} model'.format(
                     meta['neuron'], meta['a'] * 1e9, wavetype, meta['Fdrive'] * 1e-3,
                     meta['Adrive'] * 1e-3, meta['tstim'] * 1e3, suffix, meta['method'])
+                if 'qss' in meta:
+                    title += f" - QSS ({','.join(meta['qss'])})"
+                return title
         else:
             return '{} neuron: V-CLAMP {:.1f}-{:.1f}mV, {:.0f}ms'.format(
                     meta['neuron'], meta['Vhold'], meta['Vstep'], meta['tstim'] * 1e3)

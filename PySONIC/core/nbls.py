@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-10 16:05:58
+# @Last Modified time: 2019-11-06 15:43:02
 
 from copy import deepcopy
 import logging
@@ -245,13 +245,31 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         dQmdt = - self.pneuron.iNet(lkp0d['V'], states_dict) * 1e-3
         return [dQmdt, *self.pneuron.getDerEffStates(lkp0d, states_dict)]
 
-    def QSSderivatives(self, t, y, lkp1d):
+    def QSSderivatives(self, t, y, lkp1d, qss_vars):
         ''' Compute the derivatives of the 1D, charge-casted quasi-steady state system. '''
-        Qm = y[0]
+        Qm, *states = y
         lkp0d = lkp1d.interpolate1D('Q', Qm)
-        QSS0d = {k: v(lkp0d) for k, v in self.pneuron.quasiSteadyStates().items()}
-        dQmdt = - self.pneuron.iNet(lkp0d['V'], QSS0d) * 1e-3
-        return [dQmdt]
+
+        # Compute states dictionary from differential and QSS variables
+        states_dict = {}
+        i = 0
+        for k in self.pneuron.statesNames():
+            if k in qss_vars:
+                states_dict[k] = self.pneuron.quasiSteadyStates()[k](lkp0d)
+            else:
+                states_dict[k] = states[i]
+                i += 1
+
+        # Compute charge density derivative
+        dQmdt = - self.pneuron.iNet(lkp0d['V'], states_dict) * 1e-3
+
+        # Compute states derivative vector only for differential variable
+        dstates = []
+        for k in self.pneuron.statesNames():
+            if k not in qss_vars:
+                dstates.append(self.pneuron.derEffStates()[k](lkp0d, states_dict))
+
+        return [dQmdt, *dstates]
 
     def __simFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, phi=np.pi):
         # Determine time step
@@ -370,7 +388,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             data[self.pneuron.statesNames()[i]] = y[:, i + 1]
         return data
 
-    def __simQSS(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs):
+    def __simQSS(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, qss_vars=None):
         # Load appropriate 2D lookups
         lkp2d = self.getLookup2D(Fdrive, fs)
 
@@ -381,15 +399,21 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Compute DC-averaged lookups for stimulus duration
         lkps1d['ON'] = lkps1d['ON'] * DC + lkps1d['OFF'] * (1 - DC)
 
-        # Create 1D QSS lookup with reference charge vector
+        # Determine QSS and differential variables
+        if qss_vars is None:
+            qss_vars = self.pneuron.statesNames()
+        diff_vars = [item for item in self.pneuron.statesNames() if item not in qss_vars]
+
+        # Create 1D lookup of QSS variables with reference charge vector
         QSS_1D_lkp = {
             key: SmartLookup(
                 lkps1d['ON'].refs,
-                {k: v(val) for k, v in self.pneuron.quasiSteadyStates().items()})
+                {k: self.pneuron.quasiSteadyStates()[k](val) for k in qss_vars})
             for key, val in lkps1d.items()}
 
         # Set initial conditions
-        y0 = np.array([self.Qm0])
+        sstates = [self.pneuron.steadyStates()[k](self.pneuron.Vm0) for k in diff_vars]
+        y0 = np.array([self.Qm0, *sstates])
 
         # Adapt tstim and toffset to pulsing protocol to correctly capture ON-OFF transition
         tstim_new = (int(tstim * PRF) - 1 + DC) / PRF
@@ -398,26 +422,27 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Initialize simulator and compute solution
         logger.debug('Computing QSS solution')
         simulator = OnOffSimulator(
-            lambda t, y: self.QSSderivatives(t, y, lkps1d['ON']),
-            lambda t, y: self.QSSderivatives(t, y, lkps1d['OFF']))
+            lambda t, y: self.QSSderivatives(t, y, lkps1d['ON'], qss_vars),
+            lambda t, y: self.QSSderivatives(t, y, lkps1d['OFF'], qss_vars))
         t, y, stim = simulator(y0, self.pneuron.chooseTimeStep(), tstim_new, toffset_new)
 
         # Prepend initial conditions (prior to stimulation)
         t, y, stim = simulator.prependSolution(t, y, stim)
-        Qm = y[:, 0]
 
         # Store output in dataframe and return
         data = pd.DataFrame({
             't': t,
             'stimstate': stim,
-            'Qm': Qm
+            'Qm': y[:, 0]
         })
         data['Vm'] = self.interpOnOffVariable('V', data['Qm'].values, stim, lkps1d)
         for key in ['Z', 'ng']:
             data[key] = np.full(t.size, np.nan)
+        for i, k in enumerate(diff_vars):
+            data[k] = y[:, i + 1]
 
         # Interpolate QSS lookup for other variables
-        for k, v in self.pneuron.quasiSteadyStates().items():
+        for k in qss_vars:
             data[k] = self.interpOnOffVariable(k, data['Qm'].values, stim, QSS_1D_lkp)
 
         return data
@@ -460,7 +485,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     @Model.logNSpikes
     @Model.checkTitrate('Adrive')
     @Model.addMeta
-    def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=100., DC=1., fs=1., method='sonic'):
+    def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=100., DC=1., fs=1., method='sonic', qss_vars=None):
         ''' Simulate the electro-mechanical model for a specific set of US stimulation parameters,
             and return output data in a dataframe.
 
@@ -496,7 +521,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             }[method]
         except KeyError:
             raise ValueError('Invalid integration method: "{}"'.format(method))
-        return simfunc(Fdrive, Adrive, tstim, toffset, PRF, DC, fs)
+        simargs = [Fdrive, Adrive, tstim, toffset, PRF, DC, fs]
+        if method == 'qss':
+            simargs.append(qss_vars)
+        return simfunc(*simargs)
 
     def meta(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, method):
         return {

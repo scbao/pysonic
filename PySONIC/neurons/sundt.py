@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-05 21:51:31
+# @Last Modified time: 2019-11-06 10:22:31
 
 import numpy as np
 from ..core import PointNeuron
@@ -12,7 +12,7 @@ from ..utils import findModifiedEq
 
 
 class Sundt(PointNeuron):
-    ''' Sundt neuron only sodium and delayed-rectifier potassium currents
+    ''' Unmyelinated C-fiber model.
 
         Reference:
         *Sundt D., Gamper N., Jaffe D. B., Spike propagation through the dorsal
@@ -98,7 +98,6 @@ class Sundt(PointNeuron):
         i_dict = cls.currents()
         del i_dict['iLeak']
         iNet = sum([cfunc(cls.Vm0, sstates) for cfunc in i_dict.values()])  # mA/m2
-        # print(f'iNet = {iNet:.2f} mA/m2')
 
         # Compute Eleak such that iLeak cancels out the net current at resting potential
         cls.ELeak = cls.Vm0 + iNet / cls.gLeak  # mV
@@ -126,9 +125,10 @@ class Sundt(PointNeuron):
 
     # ------------------------------ Gating states kinetics ------------------------------
 
-    # Sodium kinetics: adapted from Traub 1991, with a q10 = sqrt(3) to account for temperature
-    # adaptation from 30 to 35 degrees, and a voltage offset of DV = +6 mV shifting the activation
-    # and inactivation rates profiles.
+    # iNa kinetics: adapted from Traub 1991, with 2 notable changes:
+    # - Q10 correction to account for temperature adaptation from 30 to 35 degrees
+    # - 6 mV voltage offset in the activation and inactivation rates to shift iNa voltage dependence
+    #   approximately midway between values reported for Nav1.7 and Nav1.8 currents.
 
     @classmethod
     def alpham(cls, Vm):
@@ -150,7 +150,7 @@ class Sundt(PointNeuron):
         Vm += cls.deltaVm
         return cls.q10_Traub * 4 / (1 + np.exp((40.0 - Vm) / 5)) * 1e3 # s-1
 
-    # Potassium kinetics: using Migliore 1995 values, with Borg-Graham 1991 formalism
+    # iKd kinetics: using Migliore 1995 values, with Borg-Graham 1991 formalism
 
     @classmethod
     def alphan(cls, Vm):
@@ -168,8 +168,9 @@ class Sundt(PointNeuron):
     def betal(cls, Vm):
         return cls.betal0 * np.exp(-cls.zl * (1 - cls.gammal) * (Vm - cls.Vhalfl) / cls.Vref) * 1e3  # s-1
 
-    # KCNQ Potassium kinetics: taken from Yamada 1989 (cannot find source...), with
-    # Q10 adaptation from 23.5 to 35 degrees.
+    # iM kinetics: taken from Yamada 1989, with notable changes:
+    # - Q10 correction to account for temperature adaptation from 23.5 to 35 degrees
+    # - not sure about tau_p formulation (3.3 factor multiplying first-only or both exponential terms ???)
 
     @staticmethod
     def pinf(Vm):
@@ -180,7 +181,7 @@ class Sundt(PointNeuron):
         tau = cls.taupMax / (3.3 * (np.exp((Vm + 35) / 20) + np.exp(-(Vm + 35) / 20)))  # s
         return tau * cls.q10_Yamada
 
-    # L-type Calcium kinetics: from Migliore 1995 that itself refers to Jaffe 1994.
+    # iCaL kinetics: from Migliore 1995 that itself refers to Jaffe 1994.
 
     @classmethod
     def alphac(cls, Vm):
@@ -190,7 +191,13 @@ class Sundt(PointNeuron):
     def betac(cls, Vm):
         return 0.29 * np.exp(-Vm / 10.86) * 1e3  # s-1
 
-    # Calcium-dependent Potassium kinetics: from Aradi 1999, correcting error in alphaq denominator (4.5 vs 4)
+    # iKCa kinetics: from Aradi 1999, which uses equations from Yuen 1991 with a few modifications:
+    # - 12 mV (???) shift in activation curve
+    # - log10 instead of log for Ca2+ sensitivity
+    # - global dampening factor of 1.67 applied on both rates
+    # Sundt 2015 applies an extra modification:
+    # - higher Calcium sensitivity (third power of Ca concentration)
+    # Also, there is an error in the alphaq denominator in the paper: using -4 instead of -4.5
 
     @classmethod
     def alphaq(cls, Cai):
@@ -203,16 +210,12 @@ class Sundt(PointNeuron):
 
     # ------------------------------ States derivatives ------------------------------
 
-    # Ca2+ dynamics: discrepancy in dissolution rate between Sundt (20 ms) and Aradi ref. (9 ms)
+    # Ca2+ dynamics: using accumulation-dissolution formalism as in Aradi, with
+    # a longer Ca2+ intracellular dissolution time constant (20 ms vs. 9 ms)
 
     @classmethod
     def derCai(cls, c, Cai, Vm):
-        return - cls.current_to_molar_rate_Ca * cls.iCaL(c, Cai, Vm) - (Cai - cls.Cai0) / cls.taur_Cai  # M/s
-
-    @classmethod
-    def ECa(cls, Cai):
-        ''' Calcium reversal potential '''
-        return 1e3 * np.log(cls.Cao / Cai) * cls.T * Rg / (Z_Ca * FARADAY)  # mV
+        return -cls.current_to_molar_rate_Ca * cls.iCaL(c, Cai, Vm) - (Cai - cls.Cai0) / cls.taur_Cai  # M/s
 
     @classmethod
     def derStates(cls):
@@ -261,7 +264,11 @@ class Sundt(PointNeuron):
 
     @classmethod
     def iNa(cls, m, h, Vm):
-        ''' Sodium current '''
+        ''' Sodium current.
+
+            Gating formalism from Migliore 1995, using 3rd power for m in order to
+            reproduce thinner AP waveform (half-width of ca. 1 ms)
+        '''
         return cls.gNabar * m**3 * h * (Vm - cls.ENa)  # mA/m2
 
     @classmethod
@@ -277,7 +284,8 @@ class Sundt(PointNeuron):
     @classmethod
     def iCaL(cls, c, Cai, Vm):
         ''' Calcium current '''
-        return cls.gCaLbar * c**2 * (Vm - cls.ECa(Cai))  # mA/m2
+        ECa = cls.nernst(Z_Ca, Cai, cls.Cao, cls.T)  # mV
+        return cls.gCaLbar * c**2 * (Vm - ECa)  # mA/m2
 
     @classmethod
     def iKCa(cls, q, Vm):
@@ -301,4 +309,5 @@ class Sundt(PointNeuron):
         }
 
     def chooseTimeStep(self):
+        ''' neuron-specific time step for fast dynamics. '''
         return super().chooseTimeStep() * 1e-2

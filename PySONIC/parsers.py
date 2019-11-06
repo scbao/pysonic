@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-07 18:07:27
+# @Last Modified time: 2019-11-06 15:11:14
 
 import os
 import logging
@@ -661,6 +661,7 @@ class AStimParser(PWSimParser, MechSimParser):
         self.defaults.update({'method': 'sonic'})
         self.allowed.update({'method': ['full', 'hybrid', 'sonic', 'qss']})
         self.addMethod()
+        self.addQSSVars()
 
     def addMethod(self):
         self.add_argument(
@@ -673,6 +674,10 @@ class AStimParser(PWSimParser, MechSimParser):
             if item not in self.allowed['method']:
                 raise ValueError('Unknown method type: "{}"'.format(item))
         return args['method']
+
+    def addQSSVars(self):
+        self.add_argument(
+            '--qss', nargs='+', type=str, help='QSS variables')
 
     def parseAmp(self, args):
         if args.pop('titrate'):
