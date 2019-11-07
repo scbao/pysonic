@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-07 12:43:43
+# @Last Modified time: 2019-11-07 14:41:07
 
 import numpy as np
 from ..core import PointNeuron
@@ -79,7 +79,6 @@ class Sundt(PointNeuron):
         cls.q10_Yamada = 3**((cls.celsius - cls.celsius_Yamada) / 10)
         cls.T = cls.celsius + CELSIUS_2_KELVIN
         # cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
-        # cls.Vref = Rg * cls.T / FARADAY * 1e3  # reference voltagte for iKd rate constants (mV)
 
         # Compute Eleak such that iLeak cancels out the net current at resting potential
         sstates = {k: cls.steadyStates()[k](cls.Vm0) for k in cls.statesNames()}
@@ -156,7 +155,7 @@ class Sundt(PointNeuron):
 
     # iM kinetics: taken from Yamada 1989, with notable changes:
     # - Q10 correction to account for temperature adaptation from 23.5 to 35 degrees
-    # - not sure about tau_p formulation (3.3 factor multiplying first-only or both exponential terms ???)
+    # - difference in normalization factor of positive exponential tau_p formulation vs. Yamada 1989 ref. (20 vs. 40)
 
     @staticmethod
     def pinf(Vm):
