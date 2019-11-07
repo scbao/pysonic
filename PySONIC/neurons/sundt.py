@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-06 19:27:27
+# @Last Modified time: 2019-11-07 12:43:43
 
 import numpy as np
 from ..core import PointNeuron
@@ -44,18 +44,6 @@ class Sundt(PointNeuron):
     # Na+ current parameters
     deltaVm = 6.0  # Voltage offset to shift the rate constants  (6 mV in Sundt 2015)
 
-    # Kd current parameters (Borg Graham 1987 for the formalism, Migliore 1995 for the values)
-    alphan0 = 0.03    # ms-1
-    alphal0 = 0.001   # ms-1
-    betan0 = alphan0  # ms-1
-    betal0 = alphal0  # ms-1
-    Vhalfn = -32      # Membrane voltage at which alphan = alphan0 and betan = betan0 (mV)
-    Vhalfl = -61      # Membrane voltage at which alphal = alphal0 and betal = betal0 (mV)
-    zn = 5            # Effective valence of the n-gating particle
-    zl = -2           # Effective valence of the l-gating particle
-    gamman = 0.4      # Normalized position of the n-transition state within the membrane
-    gammal = 1        # Normalized position of the l-transition state within the membrane
-
     # iM parameters
     taupMax = 1.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
@@ -91,7 +79,7 @@ class Sundt(PointNeuron):
         cls.q10_Yamada = 3**((cls.celsius - cls.celsius_Yamada) / 10)
         cls.T = cls.celsius + CELSIUS_2_KELVIN
         # cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
-        cls.Vref = Rg * cls.T / FARADAY * 1e3  # reference voltagte for iKd rate constants (mV)
+        # cls.Vref = Rg * cls.T / FARADAY * 1e3  # reference voltagte for iKd rate constants (mV)
 
         # Compute Eleak such that iLeak cancels out the net current at resting potential
         sstates = {k: cls.steadyStates()[k](cls.Vm0) for k in cls.statesNames()}
@@ -152,19 +140,19 @@ class Sundt(PointNeuron):
 
     @classmethod
     def alphan(cls, Vm):
-        return cls.alphan0 * np.exp(cls.zn * cls.gamman * (Vm - cls.Vhalfn) / cls.Vref) * 1e3  # s-1
+        return cls.alphaBorgGraham(0.03, 5, 0.4, -32., cls.T, Vm) * 1e3  # s-1
 
     @classmethod
     def betan(cls, Vm):
-        return cls.betan0 * np.exp(-cls.zn * (1 - cls.gamman) * (Vm - cls.Vhalfn) / cls.Vref) * 1e3  # s-1
+        return cls.betaBorgGraham(0.03, 5, 0.4, -32., cls.T, Vm) * 1e3  # s-1
 
     @classmethod
     def alphal(cls, Vm):
-        return cls.alphal0 * np.exp(cls.zl * cls.gammal * (Vm - cls.Vhalfl) / cls.Vref) * 1e3  # s-1
+        return cls.alphaBorgGraham(0.001, -2, 1., -61., cls.T, Vm) * 1e3  # s-1
 
     @classmethod
     def betal(cls, Vm):
-        return cls.betal0 * np.exp(-cls.zl * (1 - cls.gammal) * (Vm - cls.Vhalfl) / cls.Vref) * 1e3  # s-1
+        return cls.betaBorgGraham(0.001, -2, 1., -61., cls.T, Vm) * 1e3  # s-1
 
     # iM kinetics: taken from Yamada 1989, with notable changes:
     # - Q10 correction to account for temperature adaptation from 23.5 to 35 degrees

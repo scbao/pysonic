@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 16:10:59
+# @Last Modified time: 2019-11-07 12:40:52
 
 import abc
 import inspect
@@ -353,6 +353,38 @@ class PointNeuron(Model):
         eCin = Cion_in * cls.efun(-x)  # M
         eCout = Cion_out * cls.efun(x)  # M
         return FARADAY * (eCin - eCout) * 1e6  # mC/m3
+
+    @staticmethod
+    def alphaBorgGraham(alpha0, zeta, gamma, Vh, T, Vm):
+        ''' Compute the activation rate constant for a given voltage and temperature, using
+            a Borg-Graham formalism.
+
+            :param alpha0: pre-exponential multiplying factor
+            :param zeta: effective valence of the gating particle
+            :param gamma: normalized position of the transition state within the membrane
+            :param Vh: membrane voltage at which alpha = alpha0 (mV)
+            :param T: temperature (K)
+            :param Vm: membrane potential (mV)
+            :return: rate constant (in alpha0 units)
+        '''
+        x = (Vm - Vh) * FARADAY / (Rg * T) * 1e-3  # [-]
+        return alpha0 * np.exp(zeta * gamma * x)
+
+    @staticmethod
+    def betaBorgGraham(beta0, zeta, gamma, Vh, T, Vm):
+        ''' Compute the inactivation rate constant for a given voltage and temperature, using
+            a Borg-Graham formalism.
+
+            :param beta0: pre-exponential multiplying factor
+            :param zeta: effective valence of the gating particle
+            :param gamma: normalized position of the transition state within the membrane
+            :param Vh: membrane voltage at which beta = beta0 (mV)
+            :param T: temperature (K)
+            :param Vm: membrane potential (mV)
+            :return: rate constant (in beta0 units)
+        '''
+        x = (Vm - Vh) * FARADAY / (Rg * T) * 1e-3  # [-]
+        return beta0 * np.exp(-zeta * (1 - gamma) * x)
 
     @classmethod
     def getCurrentsNames(cls):
