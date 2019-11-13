@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 11:42:28
+# @Last Modified time: 2019-11-13 19:00:44
 
 import os
 from functools import wraps
@@ -71,8 +71,8 @@ class Model(metaclass=abc.ABCMeta):
         if len(args) == 1 and isinstance(args[0], dict):
             meta = args[0]
             meta.pop('tcomp', None)
-            nparams = len(signature(self.meta).parameters)
-            args = list(meta.values())[-nparams:]
+            meta_keys = list(signature(self.meta).parameters.keys())
+            args = [meta[k] for k in meta_keys]
 
         # Create file code by joining string-encoded inputs with underscores
         codes = self.filecodes(*args).values()
