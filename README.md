@@ -81,7 +81,7 @@ You can easily run simulations of any implemented point-neuron model under both 
 import logging
 import matplotlib.pyplot as plt
 
-from PySONIC.core import NeuronalBilayerSonophore
+from PySONIC.core import PulsedProtocol, NeuronalBilayerSonophore
 from PySONIC.neurons import getPointNeuron
 from PySONIC.utils import logger
 from PySONIC.plt import GroupedTimeSeries
@@ -93,21 +93,24 @@ a = 32e-9        # m
 Fdrive = 500e3   # Hz
 Adrive = 100e3   # Pa
 Astim = 10.      # mA/m2
+
+# Pulsing parameters
 tstim = 250e-3   # s
 toffset = 50e-3  # s
 PRF = 100.       # Hz
 DC = 0.5         # -
+pp = PulsedProtocol(tstim, toffset, PRF, DC)
 
 # Point-neuron model and corresponding neuronal intramembrane cavitation model
 pneuron = getPointNeuron('RS')
 nbls = NeuronalBilayerSonophore(a, pneuron)
 
 # Run simulation upon electrical stimulation, and plot results
-data, meta = pneuron.simulate(Astim, tstim, toffset, PRF, DC)
+data, meta = pneuron.simulate(Astim, pp)
 fig1 = GroupedTimeSeries([(data, meta)]).render()
 
 # Run simulation upon ultrasonic stimulation, and plot results
-data, meta = nbls.simulate(Fdrive, Adrive, tstim, toffset, PRF, DC)
+data, meta = nbls.simulate(Fdrive, Adrive, pp)
 fig2 = GroupedTimeSeries([(data, meta)]).render()
 
 plt.show()

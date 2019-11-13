@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-30 18:01:49
+# @Last Modified time: 2019-11-13 12:52:03
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -357,7 +357,7 @@ def computeSpikingMetrics(filenames):
 
         # Load data from file
         data, meta = loadData(fname)
-        tstim = meta['tstim']
+        tstim = meta['pp'].tstim
         t = data['t'].values
 
         # Detect spikes in data and extract features

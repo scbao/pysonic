@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-10 15:36:34
+# @Last Modified time: 2019-11-13 17:51:42
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -11,6 +11,7 @@ import csv
 from functools import wraps
 import operator
 import time
+from inspect import signature
 import os
 from shutil import get_terminal_size
 import lockfile
@@ -389,6 +390,38 @@ def timer(func):
     return wrapper
 
 
+def alignWithFuncDef(func, args, kwargs):
+    ''' Align a set of provided positional and keyword arguments with the arguments
+        signature in a specific function definition.
+
+        :param func: function object
+        :param args: list of provided positional arguments
+        :param kwargs: dictionary of provided keyword arguments
+        :return: 2-tuple with the modified arguments and
+    '''
+    # Get positional and keyword arguments from function signature
+    sig_params = {k: v for k, v in signature(func).parameters.items()}
+    sig_args = list(filter(lambda x: x.default == x.empty, sig_params.values()))
+    sig_kwargs = {k: v.default for k, v in sig_params.items() if v.default != v.empty}
+    sig_nargs = len(sig_args)
+    kwarg_keys = list(sig_kwargs.keys())
+
+    # Restrain provided positional arguments to those that are also positional in signature
+    new_args = args[:sig_nargs]
+
+    # Construct hybrid keyword arguments dictionary from:
+    # - remaining positional arguments
+    # - provided keyword arguments
+    # - default keyword arguments
+    new_kwargs = sig_kwargs
+    for i, x in enumerate(args[sig_nargs:]):
+        new_kwargs[kwarg_keys[i]] = x
+    for k, v in kwargs.items():
+        new_kwargs[k] = v
+
+    return new_args, new_kwargs
+
+
 def logCache(fpath, delimiter='\t', out_type=float):
     ''' Add an extra IO memoization functionality to a function using file caching,
         to avoid repetitions of tedious computations with identical inputs.
@@ -401,17 +434,20 @@ def logCache(fpath, delimiter='\t', out_type=float):
             if 'history' in kwargs:
                 return func(*args, **kwargs)
 
-            # Translate function arguments into string signature
+            # Modify positional and keyword arguments to match function signature, if needed
+            args, kwargs = alignWithFuncDef(func, args, kwargs)
+
+            # Translate args and kwargs into string signature
             args_repr = [repr(a) for a in args]
             kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
-            signature = '{}({})'.format(func.__name__, ', '.join(args_repr + kwargs_repr))
+            fsignature = '{}({})'.format(func.__name__, ', '.join(args_repr + kwargs_repr))
 
             # If entry present in log, return corresponding output
             if os.path.isfile(fpath):
                 with open(fpath, 'r', newline='') as f:
                     reader = csv.reader(f, delimiter=delimiter)
                     for row in reader:
-                        if row[0] == signature:
+                        if row[0] == fsignature:
                             logger.debug('entry found in "{}"'.format(os.path.basename(fpath)))
                             return out_type(row[1])
 
@@ -421,7 +457,7 @@ def logCache(fpath, delimiter='\t', out_type=float):
             lock.acquire()
             with open(fpath, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile, delimiter=delimiter)
-                writer.writerow([signature, str(out)])
+                writer.writerow([fsignature, str(out)])
             lock.release()
 
             return out
@@ -796,3 +832,22 @@ def alert(func):
             sendPushNotification(f'error during "{func.__name__}" execution: {e}')
             raise e
     return wrapper
+
+
+def sunflower(n, radius=1, alpha=1):
+    ''' Generate a population of uniformly distributed 2D data points
+        in a unit circle.
+
+        :param n: number of data points
+        :param alpha: coefficient determining evenness of the boundary
+        :return: 2D matrix of Cartesian (x, y) positions
+    '''
+    nbounds = np.round(alpha * np.sqrt(n))    # number of boundary points
+    phi = (np.sqrt(5) + 1) / 2                # golden ratio
+    k = np.arange(1, n + 1)                   # index vector
+    theta = 2 * np.pi * k / phi**2            # angle vector
+    r = np.sqrt((k - 1) / (n - nbounds - 1))  # radius vector
+    r[r > 1] = 1
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    return radius * np.vstack((x, y))

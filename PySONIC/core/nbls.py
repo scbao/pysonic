@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-06 15:43:02
+# @Last Modified time: 2019-11-13 12:47:05
 
 from copy import deepcopy
 import logging
@@ -14,7 +14,7 @@ from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator, OnOffSi
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .model import Model
-from .batches import Batch
+from .protocols import TimeProtocol, PulsedProtocol, createPulsedProtocols
 from ..utils import *
 from ..constants import *
 from ..postpro import getFixedPoints
@@ -88,23 +88,18 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         inputvars['method'] = None
         return inputvars
 
-    def filecodes(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, method):
+    def filecodes(self, Fdrive, Adrive, pp, fs, method):
         # Get parent codes and supress irrelevant entries
         bls_codes = super().filecodes(Fdrive, Adrive, 0.0)
-        pneuron_codes = self.pneuron.filecodes(0.0, tstim, toffset, PRF, DC)
-        for x in [bls_codes, pneuron_codes]:
-            del x['simkey']
-        del bls_codes['Qm']
-        del pneuron_codes['Astim']
-
-        # Fill in current codes in appropriate order
+        for key in ['simkey', 'Qm']:
+            del bls_codes[key]
         codes = {
             'simkey': self.simkey,
-            'neuron': pneuron_codes.pop('neuron'),
-            'nature': pneuron_codes.pop('nature')
+            'neuron': self.pneuron.name,
+            'nature': 'CW' if pp.isCW() else 'PW',
         }
         codes.update(bls_codes)
-        codes.update(pneuron_codes)
+        codes.update(pp.filecodes())
         codes['fs'] = 'fs{:.0f}%'.format(fs * 1e2) if fs < 1 else None
         codes['method'] = method
         return codes
@@ -271,7 +266,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         return [dQmdt, *dstates]
 
-    def __simFull(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, phi=np.pi):
+    def __simFull(self, Fdrive, Adrive, pp, fs, phi=np.pi):
         # Determine time step
         dt = 1 / (NPC_DENSE * Fdrive)
 
@@ -289,7 +284,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lambda t, y: self.fullDerivatives(t, y, Fdrive, Adrive, phi, fs),
             lambda t, y: self.fullDerivatives(t, y, 0., 0., 0., fs))
         t, y, stim = simulator(
-            y1, dt, tstim, toffset, PRF, DC,
+            y1, dt, pp,
             target_dt=CLASSIC_TARGET_DT,
             print_progress=logger.getEffectiveLevel() <= logging.INFO,
             monitor_func=None)
@@ -312,7 +307,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             data[self.pneuron.statesNames()[i]] = y[:, i + 4]
         return data
 
-    def __simHybrid(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, phi=np.pi):
+    def __simHybrid(self, Fdrive, Adrive, pp, fs, phi=np.pi):
         # Determine time steps
         dt_dense, dt_sparse = [1. / (n * Fdrive) for n in [NPC_DENSE, NPC_SPARSE]]
 
@@ -335,7 +330,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lambda yref: self.capacitance(yref[1]),
             is_dense_var,
             ivars_to_check=[1, 2])
-        t, y, stim = simulator(y1, dt_dense, dt_sparse, 1. / Fdrive, tstim, toffset, PRF, DC)
+        t, y, stim = simulator(y1, dt_dense, dt_sparse, 1. / Fdrive, pp)
 
         # Prepend initial conditions (prior to stimulation)
         t, y, stim = simulator.prependSolution(t, y, stim, y0=y0)
@@ -354,7 +349,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             data[self.pneuron.statesNames()[i]] = y[:, i + 4]
         return data
 
-    def __simSonic(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs):
+    def __simSonic(self, Fdrive, Adrive, pp, fs):
         # Load appropriate 2D lookups
         lkp2d = self.getLookup2D(Fdrive, fs)
 
@@ -370,7 +365,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         simulator = PWSimulator(
             lambda t, y: self.effDerivatives(t, y, lkps1d['ON']),
             lambda t, y: self.effDerivatives(t, y, lkps1d['OFF']))
-        t, y, stim = simulator(y0, self.pneuron.chooseTimeStep(), tstim, toffset, PRF, DC)
+        t, y, stim = simulator(y0, self.pneuron.chooseTimeStep(), pp)
 
         # Prepend initial conditions (prior to stimulation)
         t, y, stim = simulator.prependSolution(t, y, stim)
@@ -388,7 +383,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             data[self.pneuron.statesNames()[i]] = y[:, i + 1]
         return data
 
-    def __simQSS(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, qss_vars=None):
+    def __simQSS(self, Fdrive, Adrive, pp, fs, qss_vars=None):
         # Load appropriate 2D lookups
         lkp2d = self.getLookup2D(Fdrive, fs)
 
@@ -397,7 +392,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         lkps1d = {'ON': lkp2d.project('A', Adrive), 'OFF': lkp2d.project('A', 0.)}
 
         # Compute DC-averaged lookups for stimulus duration
-        lkps1d['ON'] = lkps1d['ON'] * DC + lkps1d['OFF'] * (1 - DC)
+        lkps1d['ON'] = lkps1d['ON'] * pp.DC + lkps1d['OFF'] * (1 - pp.DC)
 
         # Determine QSS and differential variables
         if qss_vars is None:
@@ -416,15 +411,16 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         y0 = np.array([self.Qm0, *sstates])
 
         # Adapt tstim and toffset to pulsing protocol to correctly capture ON-OFF transition
-        tstim_new = (int(tstim * PRF) - 1 + DC) / PRF
-        toffset_new = tstim + toffset - tstim_new
+        tstim = (int(pp.tstim * pp.PRF) - 1 + pp.DC) / pp.PRF
+        toffset = pp.tstim + pp.toffset - tstim
+        tp = TimeProtocol(tstim, toffset)
 
         # Initialize simulator and compute solution
         logger.debug('Computing QSS solution')
         simulator = OnOffSimulator(
             lambda t, y: self.QSSderivatives(t, y, lkps1d['ON'], qss_vars),
             lambda t, y: self.QSSderivatives(t, y, lkps1d['OFF'], qss_vars))
-        t, y, stim = simulator(y0, self.pneuron.chooseTimeStep(), tstim_new, toffset_new)
+        t, y, stim = simulator(y0, self.pneuron.chooseTimeStep(), tp)
 
         # Prepend initial conditions (prior to stimulation)
         t, y, stim = simulator.prependSolution(t, y, stim)
@@ -463,53 +459,43 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :params methods: integration methods
             :return: list of parameters (list) for each simulation
         '''
-        method_ids = list(range(len(methods)))
         if ('full' in methods or 'hybrid' in methods) and kwargs['outputdir'] is None:
             logger.warning('Running cumbersome simulation(s) without file saving')
+
         if amps is None:
-            amps = [np.nan]
-        DCs = np.array(DCs)
+            amps = [None]
+        ppqueue = createPulsedProtocols(durations, offsets, PRFs, DCs)
         queue = []
-        if 1.0 in DCs:
-            queue += Batch.createQueue(
-                freqs, amps, durations, offsets, min(PRFs), 1.0, fs, method_ids)
-        if np.any(DCs != 1.0):
-            queue += Batch.createQueue(
-                freqs, amps, durations, offsets, PRFs, DCs[DCs != 1.0], fs, method_ids)
-        for item in queue:
-            if np.isnan(item[1]):
-                item[1] = None
-            item[-1] = methods[int(item[-1])]
+        for f in freqs:
+            for A in amps:
+                for item in ppqueue:
+                    for cov in fs:
+                        for method in methods:
+                            queue.append([f, A, item, cov, method])
         return queue
 
     @Model.logNSpikes
     @Model.checkTitrate('Adrive')
     @Model.addMeta
-    def simulate(self, Fdrive, Adrive, tstim, toffset, PRF=100., DC=1., fs=1., method='sonic', qss_vars=None):
+    def simulate(self, Fdrive, Adrive, pp, fs=1., method='sonic', qss_vars=None):
         ''' Simulate the electro-mechanical model for a specific set of US stimulation parameters,
             and return output data in a dataframe.
 
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
+            :param pp: pulse protocol object
             :param fs: sonophore membrane coverage fraction (-)
             :param method: selected integration method
             :return: 2-tuple with the output dataframe and computation time.
         '''
-        logger.info(
-            '%s: %s simulation @ f = %sHz, A = %sPa, t = %ss (%ss offset)%s%s',
-            self, method, si_format(Fdrive, 0, space=' '), si_format(Adrive, 2, space=' '),
-            *si_format([tstim, toffset], 1, space=' '),
-            (', PRF = {}Hz, DC = {:.2f}%'.format(
-                si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''),
-            ', fs = {:.2f}%'.format(fs * 1e2) if fs < 1.0 else '')
+        s = '{}: {} simulation @ f = {}Hz, A = {}Pa, {}'.format(
+            self, method, si_format(Fdrive, 0), si_format(Adrive, 2), pp.pprint())
+        if fs < 1.0:
+            s += f', fs = {(fs * 1e2):.2f}%'
+        logger.info(s)
 
         # Check validity of stimulation parameters
         BilayerSonophore.checkInputs(Fdrive, Adrive, 0.0, 0.0)
-        PointNeuron.checkInputs(Adrive, tstim, toffset, PRF, DC)
 
         # Call appropriate simulation function and return
         try:
@@ -521,12 +507,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             }[method]
         except KeyError:
             raise ValueError('Invalid integration method: "{}"'.format(method))
-        simargs = [Fdrive, Adrive, tstim, toffset, PRF, DC, fs]
+        simargs = [Fdrive, Adrive, pp, fs]
         if method == 'qss':
             simargs.append(qss_vars)
         return simfunc(*simargs)
 
-    def meta(self, Fdrive, Adrive, tstim, toffset, PRF, DC, fs, method):
+    def meta(self, Fdrive, Adrive, pp, fs, method):
         return {
             'simkey': self.simkey,
             'neuron': self.pneuron.name,
@@ -534,10 +520,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             'd': self.d,
             'Fdrive': Fdrive,
             'Adrive': Adrive,
-            'tstim': tstim,
-            'toffset': toffset,
-            'PRF': PRF,
-            'DC': DC,
+            'pp': pp,
             'fs': fs,
             'method': method
         }
@@ -547,16 +530,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return PointNeuron.getNSpikes(data)
 
     @logCache(os.path.join(os.path.split(__file__)[0], 'astim_titrations.log'))
-    def titrate(self, Fdrive, tstim, toffset, PRF=100., DC=1., fs=1., method='sonic',
-                xfunc=None, Arange=None):
+    def titrate(self, Fdrive, pp, fs=1., method='sonic', xfunc=None, Arange=None):
         ''' Use a binary search to determine the threshold amplitude needed to obtain
-            neural excitation for a given frequency, duration, PRF and duty cycle.
+            neural excitation for a given frequency and pulsed protocol.
 
             :param Fdrive: US frequency (Hz)
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
+            :param pp: pulse protocol object
             :param fs: sonophore membrane coverage fraction (-)
             :param method: integration method
             :param xfunc: function determining whether condition is reached from simulation output
@@ -573,7 +552,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         return binarySearch(
             lambda x: xfunc(self.simulate(*x)[0]),
-            [Fdrive, tstim, toffset, PRF, DC, fs, method], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM
+            [Fdrive, pp, fs, method], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM
         )
 
     def getQuasiSteadyStates(self, Fdrive, amps=None, charges=None, DC=1.0, squeeze_output=False):

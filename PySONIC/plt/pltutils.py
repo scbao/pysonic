@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-06 15:27:07
+# @Last Modified time: 2019-11-13 12:44:10
 
 ''' Useful functions to generate plots. '''
 
@@ -28,31 +28,28 @@ matplotlib.rcParams['font.family'] = 'arial'
 
 def figtitle(meta):
     ''' Return appropriate title based on simulation metadata. '''
-    if 'Cm0' in meta:
+    simkey = meta['simkey']
+    if simkey == 'MECH':
         return '{:.0f}nm radius BLS structure: MECH-STIM {:.0f}kHz, {:.2f}kPa, {:.1f}nC/cm2'.format(
             meta['a'] * 1e9, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3, meta['Qm'] * 1e5)
+    elif simkey == 'VCLAMP':
+        return '{} neuron: V-CLAMP {:.1f}-{:.1f}mV, {}'.format(
+                    meta['neuron'], meta['Vhold'], meta['Vstep'], meta['tp'].pprint())
     else:
-        if 'DC' in meta:
-            if meta['DC'] < 1:
-                wavetype = 'PW'
-                suffix = ', {:.2f}Hz PRF, {:.0f}% DC'.format(meta['PRF'], meta['DC'] * 1e2)
-            else:
-                wavetype = 'CW'
-                suffix = ''
-            if 'Astim' in meta:
-                return '{} neuron: {} E-STIM {:.2f}mA/m2, {:.0f}ms{}'.format(
-                    meta['neuron'], wavetype, meta['Astim'], meta['tstim'] * 1e3, suffix)
-            else:
-                title = '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.2f}kPa, {:.0f}ms{} - {} model'.format(
-                    meta['neuron'], meta['a'] * 1e9, wavetype, meta['Fdrive'] * 1e-3,
-                    meta['Adrive'] * 1e-3, meta['tstim'] * 1e3, suffix, meta['method'])
-                if 'qss' in meta:
-                    title += f" - QSS ({','.join(meta['qss'])})"
-                return title
+        neuron = meta['neuron']
+        pp = meta['pp']
+        wavetype = 'CW' if pp.isCW() else 'PW'
+        if simkey == 'ESTIM':
+            return f'{neuron} neuron: {wavetype} E-STIM {meta["Astim"]:.2f}mA/m2, {pp.pprint()}'
+        elif simkey == 'ASTIM':
+            title = '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.2f}kPa, {} - {} model'.format(
+                neuron, meta['a'] * 1e9, wavetype, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3,
+                pp.pprint(), meta['method'])
+            if 'qss' in meta:
+                title += f" - QSS ({','.join(meta['qss'])})"
+            return title
         else:
-            return '{} neuron: V-CLAMP {:.1f}-{:.1f}mV, {:.0f}ms'.format(
-                    meta['neuron'], meta['Vhold'], meta['Vstep'], meta['tstim'] * 1e3)
-
+            return '??????????????????????????'
 
 
 def cm2inch(*tupl):

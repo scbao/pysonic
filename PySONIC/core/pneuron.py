@@ -3,14 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-07 12:40:52
+# @Last Modified time: 2019-11-13 12:38:30
 
 import abc
 import inspect
 import numpy as np
 import pandas as pd
 
-from .batches import Batch
+from .protocols import PulsedProtocol, createPulsedProtocols
 from .model import Model
 from .lookups import SmartLookup
 from .simulators import PWSimulator
@@ -55,56 +55,23 @@ class PointNeuron(Model):
 
     @staticmethod
     def inputs():
-        return {
+        return {**{
             'Astim': {
                 'desc': 'current density amplitude',
                 'label': 'A',
                 'unit': 'mA/m2',
                 'factor': 1e0,
                 'precision': 1
-            },
-            'tstim': {
-                'desc': 'stimulus duration',
-                'label': 't_{stim}',
-                'unit': 'ms',
-                'factor': 1e3,
-                'precision': 0
-            },
-            'toffset': {
-                'desc': 'offset duration',
-                'label': 't_{offset}',
-                'unit': 'ms',
-                'factor': 1e3,
-                'precision': 0
-            },
-            'PRF': {
-                'desc': 'pulse repetition frequency',
-                'label': 'PRF',
-                'unit': 'Hz',
-                'factor': 1e0,
-                'precision': 0
-            },
-            'DC': {
-                'desc': 'duty cycle',
-                'label': 'DC',
-                'unit': '%',
-                'factor': 1e2,
-                'precision': 2
-            }
-        }
+            }}, **PulsedProtocol.inputs()}
 
     @classmethod
-    def filecodes(cls, Astim, tstim, toffset, PRF, DC):
-        is_CW = DC == 1.
-        return {
+    def filecodes(cls, Astim, pp):
+        return {**{
             'simkey': cls.simkey,
             'neuron': cls.name,
-            'nature': 'CW' if is_CW else 'PW',
-            'Astim': '{:.1f}mAm2'.format(Astim),
-            'tstim': '{:.0f}ms'.format(tstim * 1e3),
-            'toffset': None,
-            'PRF': 'PRF{:.2f}Hz'.format(PRF) if not is_CW else None,
-            'DC': 'DC{:.2f}%'.format(DC * 1e2) if not is_CW else None
+            'nature': 'CW' if pp.isCW() else 'PW',
+            'Astim': '{:.1f}mAm2'.format(Astim)},
+            **pp.filecodes()
         }
 
     @classmethod
@@ -408,7 +375,7 @@ class PointNeuron(Model):
     @Model.checkOutputDir
     def simQueue(cls, amps, durations, offsets, PRFs, DCs, **kwargs):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
-            parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
+            parameter sweeps.
 
             :param amps: list (or 1D-array) of acoustic amplitudes
             :param durations: list (or 1D-array) of stimulus durations
@@ -418,46 +385,22 @@ class PointNeuron(Model):
             :return: list of parameters (list) for each simulation
         '''
         if amps is None:
-            amps = [np.nan]
-        DCs = np.array(DCs)
+            amps = [None]
+        ppqueue = createPulsedProtocols(durations, offsets, PRFs, DCs)
         queue = []
-        if 1.0 in DCs:
-            queue += Batch.createQueue(amps, durations, offsets, min(PRFs), 1.0)
-        if np.any(DCs != 1.0):
-            queue += Batch.createQueue(amps, durations, offsets, PRFs, DCs[DCs != 1.0])
-        for item in queue:
-            if np.isnan(item[0]):
-                item[0] = None
+        for A in amps:
+            for item in ppqueue:
+                queue.append([A, item])
         return queue
 
     @staticmethod
-    def checkInputs(Astim, tstim, toffset, PRF, DC):
+    def checkInputs(Astim):
         ''' Check validity of electrical stimulation parameters.
 
             :param Astim: pulse amplitude (mA/m2)
-            :param tstim: pulse duration (s)
-            :param toffset: offset duration (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
         '''
-        if not all(isinstance(param, float) for param in [Astim, tstim, toffset, DC]):
-            raise TypeError('Invalid stimulation parameters (must be float typed)')
-        if tstim <= 0:
-            raise ValueError('Invalid stimulus duration: {} ms (must be strictly positive)'
-                             .format(tstim * 1e3))
-        if toffset < 0:
-            raise ValueError('Invalid stimulus offset: {} ms (must be positive or null)'
-                             .format(toffset * 1e3))
-        if DC <= 0.0 or DC > 1.0:
-            raise ValueError('Invalid duty cycle: {} (must be within ]0; 1])'.format(DC))
-        if DC < 1.0:
-            if not isinstance(PRF, float):
-                raise TypeError('Invalid PRF value (must be float typed)')
-            if PRF is None:
-                raise AttributeError('Missing PRF value (must be provided when DC < 1)')
-            if PRF < 1 / tstim:
-                raise ValueError('Invalid PRF: {} Hz (PR interval exceeds stimulus duration)'
-                                 .format(PRF))
+        if not isinstance(Astim, float):
+            raise TypeError('Invalid simulation amplitude (must be float typed)')
 
     def chooseTimeStep(self):
         ''' Determine integration time step based on intrinsic temporal properties. '''
@@ -484,25 +427,18 @@ class PointNeuron(Model):
     @Model.logNSpikes
     @Model.checkTitrate('Astim')
     @Model.addMeta
-    def simulate(self, Astim, tstim, toffset, PRF=100., DC=1.0):
-        ''' Simulate a specific neuron model for a specific set of electrical parameters,
+    def simulate(self, Astim, pp):
+        ''' Simulate a specific neuron model for a set of simulation parameters,
             and return output data in a dataframe.
 
             :param Astim: pulse amplitude (mA/m2)
-            :param tstim: pulse duration (s)
-            :param toffset: offset duration (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
+            :param pp: pulse protocol object
             :return: 2-tuple with the output dataframe and computation time.
         '''
-        logger.info(
-            '%s: simulation @ A = %sA/m2, t = %ss (%ss offset)%s',
-            self, si_format(Astim, 2, space=' '), *si_format([tstim, toffset], 1, space=' '),
-            (', PRF = {}Hz, DC = {:.2f}%'.format(
-                si_format(PRF, 2, space=' '), DC * 1e2) if DC < 1.0 else ''))
+        logger.info(f'{self}: simulation @ A = {si_format(Astim, 2)}A/m2, {pp.pprint()}')
 
         # Check validity of stimulation parameters
-        self.checkInputs(Astim, tstim, toffset, PRF, DC)
+        self.checkInputs(Astim)
 
         # Set initial conditions
         y0 = np.array((self.Qm0(), *self.getSteadyStates(self.Vm0)))
@@ -513,7 +449,7 @@ class PointNeuron(Model):
             lambda t, y: self.derivatives(t, y, Iinj=Astim),
             lambda t, y: self.derivatives(t, y, Iinj=0.))
         t, y, stim = simulator(
-            y0, self.chooseTimeStep(), tstim, toffset, PRF, DC)
+            y0, self.chooseTimeStep(), pp)
 
         # Prepend initial conditions (prior to stimulation)
         t, y, stim = simulator.prependSolution(t, y, stim)
@@ -530,15 +466,12 @@ class PointNeuron(Model):
         return data
 
     @classmethod
-    def meta(cls, Astim, tstim, toffset, PRF, DC):
+    def meta(cls, Astim, pp):
         return {
             'simkey': cls.simkey,
             'neuron': cls.name,
             'Astim': Astim,
-            'tstim': tstim,
-            'toffset': toffset,
-            'PRF': PRF,
-            'DC': DC
+            'pp': pp
         }
 
     @staticmethod
@@ -593,14 +526,11 @@ class PointNeuron(Model):
         '''
         return not np.isnan(cls.getStabilizationValue(data))
 
-    def titrate(self, tstim, toffset, PRF, DC, xfunc=None, Arange=(0., 2 * AMP_UPPER_BOUND_ESTIM)):
+    def titrate(self, pp, xfunc=None, Arange=(0., 2 * AMP_UPPER_BOUND_ESTIM)):
         ''' Use a binary search to determine the threshold amplitude needed
             to obtain neural excitation for a given duration, PRF and duty cycle.
 
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
+            :param pp: pulsed protocol object
             :param xfunc: function determining whether condition is reached from simulation output
             :param Arange: search interval for Astim, iteratively refined
             :return: excitation threshold amplitude (mA/m2)
@@ -611,5 +541,5 @@ class PointNeuron(Model):
 
         return binarySearch(
             lambda x: xfunc(self.simulate(*x)[0]),
-            [tstim, toffset, PRF, DC], 0, Arange, THRESHOLD_CONV_RANGE_ESTIM
+            [pp], 0, Arange, THRESHOLD_CONV_RANGE_ESTIM
         )

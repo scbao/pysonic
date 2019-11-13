@@ -3,15 +3,16 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 16:12:22
+# @Last Modified time: 2019-11-13 12:45:38
 
 import numpy as np
 import pandas as pd
 
 from .batches import Batch
+from .protocols import TimeProtocol
 from .model import Model
 from .pneuron import PointNeuron
-from .simulators import PWSimulator
+from .simulators import OnOffSimulator
 from ..constants import *
 from ..utils import *
 
@@ -69,38 +70,40 @@ class VoltageClamp(Model):
         })
         return inputvars
 
-    def filecodes(self, Vhold, Vstep, tstim, toffset):
+    def filecodes(self, Vhold, Vstep, tp):
         return {
             'simkey': self.simkey,
             'neuron': self.pneuron.name,
             'Vhold': '{:.1f}mV'.format(Vhold),
             'Vstep': '{:.1f}mV'.format(Vstep),
-            'tstim': '{:.0f}ms'.format(tstim * 1e3),
-            'toffset': None
+            **tp.filecodes()
         }
 
     @classmethod
     @Model.checkOutputDir
-    def simQueue(cls, *args, **kwargs):
-        return Batch.createQueue(*args)
+    def simQueue(cls, holds, steps, durations, offsets, **kwargs):
+        ''' Create a serialized 2D array of all parameter combinations for a series of individual
+            parameter sweeps.
+
+            :param holds: list (or 1D-array) of held membrane potentials
+            :param steps: list (or 1D-array) of step membrane potentials
+            :param durations: list (or 1D-array) of stimulus durations
+            :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
+            :return: list of parameters (list) for each simulation
+        '''
+        queue = Batch.createQueue(holds, steps, durations, offsets)
+        queue = [[item[0], item[1], TimeProtocol(item[2], item[3])] for item in queue]
+        return queue
 
     @staticmethod
-    def checkInputs(Vhold, Vstep, tstim, toffset):
+    def checkInputs(Vhold, Vstep):
         ''' Check validity of stimulation parameters.
 
             :param Vhold: held membrane potential (mV)
             :param Vstep: step membrane potential (mV)
-            :param tstim: pulse duration (s)
-            :param toffset: offset duration (s)
         '''
-        if not all(isinstance(param, float) for param in [Vhold, Vstep, tstim, toffset]):
+        if not all(isinstance(param, float) for param in [Vhold, Vstep]):
             raise TypeError('Invalid stimulation parameters (must be float typed)')
-        if tstim <= 0:
-            raise ValueError('Invalid stimulus duration: {} ms (must be strictly positive)'
-                             .format(tstim * 1e3))
-        if toffset < 0:
-            raise ValueError('Invalid stimulus offset: {} ms (must be positive or null)'
-                             .format(toffset * 1e3))
 
     def derivatives(self, t, y, Vm=None):
         if Vm is None:
@@ -109,24 +112,22 @@ class VoltageClamp(Model):
         return self.pneuron.getDerStates(Vm, states_dict)
 
     @Model.addMeta
-    def simulate(self, Vhold, Vstep, tstim, toffset):
-        logger.info(
-            '%s: simulation @ Vhold = %sV, Vstep = %sV, t = %ss (%ss offset)',
-            self, *si_format([Vhold * 1e-3, Vstep * 1e-3, tstim, toffset], 1, space=' '))
+    def simulate(self, Vhold, Vstep, tp):
+        logger.info('{}: simulation @ Vhold = {}V, Vstep = {}V, {}'.format(
+            self, *si_format([Vhold * 1e-3, Vstep * 1e-3], 1), tp.pprint()))
 
         # Check validity of stimulation parameters
-        self.checkInputs(Vhold, Vstep, tstim, toffset)
+        self.checkInputs(Vhold, Vstep)
 
         # Set initial conditions
         y0 = self.pneuron.getSteadyStates(Vhold)
 
         # Initialize simulator and compute solution
         logger.debug('Computing solution')
-        simulator = PWSimulator(
+        simulator = OnOffSimulator(
             lambda t, y: self.derivatives(t, y, Vm=Vstep),
             lambda t, y: self.derivatives(t, y, Vm=Vhold))
-        t, y, stim = simulator(
-            y0, DT_EFFECTIVE, tstim, toffset, None, 1.)
+        t, y, stim = simulator(y0, DT_EFFECTIVE, tp)
 
         # Prepend initial conditions (prior to stimulation)
         t, y, stim = simulator.prependSolution(t, y, stim)
@@ -147,13 +148,12 @@ class VoltageClamp(Model):
             data[self.pneuron.statesNames()[i]] = y[:, i]
         return data
 
-    def meta(self, Vhold, Vstep, tstim, toffset):
+    def meta(self, Vhold, Vstep, tp):
         return {
             'simkey': self.simkey,
             'neuron': self.pneuron.name,
             'Vhold': Vhold,
             'Vstep': Vstep,
-            'tstim': tstim,
-            'toffset': toffset,
+            'tp': tp
         }
 

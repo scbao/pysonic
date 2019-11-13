@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-01 00:03:26
+# @Last Modified time: 2019-11-13 12:55:41
 
 import os
 import pickle
@@ -12,7 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
-from ..core import NeuronalBilayerSonophore
+from ..core import NeuronalBilayerSonophore, PulsedProtocol
 from ..utils import logger, si_format, loadData
 from ..constants import *
 from .pltutils import cm2inch, setNormalizer
@@ -94,7 +94,7 @@ class ActivationMap(Map):
         for i, A in enumerate(self.amps):
             for j, DC in enumerate(self.DCs):
                 fname = '{}.pkl'.format(self.nbls.filecode(
-                    self.Fdrive, A, self.tstim, 0., self.PRF, DC, 1., 'sonic'))
+                    self.Fdrive, A, PulsedProtocol(self.tstim, 0., self.PRF, DC), 1., 'sonic'))
                 fpath = os.path.join(self.root, fname)
                 if not os.path.isfile(fpath):
                     print(fpath)
@@ -135,7 +135,7 @@ class ActivationMap(Map):
 
     def addThresholdCurve(self, ax, fs):
         Athrs = np.array([
-            self.nbls.titrate(self.Fdrive, self.tstim, 0., self.PRF, DC, 1.0, 'sonic') for DC in self.DCs])
+            self.nbls.titrate(self.Fdrive, PulsedProtocol(self.tstim, 0., self.PRF, DC), 1.0, 'sonic') for DC in self.DCs])
         ax.plot(self.DCs * 1e2, Athrs * 1e-3, '-', color='#F26522', linewidth=3,
                 label='threshold amplitudes')
         ax.legend(loc='lower center', frameon=False, fontsize=fs)
@@ -197,7 +197,7 @@ class ActivationMap(Map):
 
         # Define filepath
         fname = '{}.pkl'.format(self.nbls.filecode(
-            self.Fdrive, Adrive, self.tstim, 0., self.PRF, DC, 1. , 'sonic'))
+            self.Fdrive, Adrive, PulsedProtocol(self.tstim, 0., self.PRF, DC), 1. , 'sonic'))
         fpath = os.path.join(self.root, fname)
 
         # Plot Q-trace

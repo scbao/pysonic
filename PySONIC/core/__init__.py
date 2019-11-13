@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-14 14:02:25
+# @Last Modified time: 2019-11-13 10:51:10
 
 import inspect
 import sys
@@ -17,6 +17,7 @@ from .translators import *
 from .nbls import *
 from .vclamp import *
 from .lookups import *
+from .protocols import *
 
 from ..neurons import getPointNeuron
 

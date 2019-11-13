@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-07 18:56:01
+# @Last Modified time: 2019-11-13 12:45:29
 
 import abc
 import numpy as np
@@ -266,16 +266,16 @@ class OnOffSimulator(Simulator):
         t_off = np.linspace(tstim, tstim + toffset, int(np.round(toffset / dt)))
         return t_on, t_off
 
-    def compute(self, y0, dt, tstim, toffset, target_dt=None):
+    def compute(self, y0, dt, tp, target_dt=None):
         ''' Simulate system for a specific stimulus application pattern.
 
             :param y0: 1D vector of initial conditions
             :param dt: integration time step (s)
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
+            :param tp: time protocol object
             :param target_dt: target time step after resampling
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
+        tstim, toffset = tp.tstim, tp.toffset
 
         # Get reference time vectors
         t_on, t_off = self.getTimeReference(dt, tstim, toffset)
@@ -363,20 +363,18 @@ class PWSimulator(Simulator):
         '''
         return int(np.round(tstim * PRF))
 
-    def compute(self, y0, dt, tstim, toffset, PRF, DC, target_dt=None,
+    def compute(self, y0, dt, pp, target_dt=None,
                 print_progress=False, monitor_func=None):
         ''' Simulate system for a specific stimulus application pattern.
 
             :param y0: 1D vector of initial conditions
             :param dt: integration time step (s)
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
+            :param pp: pulse protocol object
             :param target_dt: target time step after resampling
             :param monitor: string specifying how to monitor integration to show a progress bar
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
+        tstim, toffset, PRF, DC = pp.tstim, pp.toffset, pp.PRF, pp.DC
 
         # Adjust PRF and get number of pulses
         PRF = self.adjustPRF(tstim, PRF, DC, print_progress)
@@ -535,17 +533,14 @@ class HybridSimulator(PWSimulator):
 
         return t, y, stim
 
-    def compute(self, y0, dt_dense, dt_sparse, T, tstim, toffset, PRF, DC, print_progress=False):
+    def compute(self, y0, dt_dense, dt_sparse, T, pp, print_progress=False):
         ''' Simulate system for a specific stimulus application pattern.
 
             :param y0: 1D vector of initial conditions
             :param dt_dense: dense integration time step (s)
             :param dt_sparse: sparse integration time step (s)
             :param T: periodicity (s)
-            :param tstim: duration of US stimulation (s)
-            :param toffset: duration of the offset (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
+            :param pp: pulse protocol object
             :param print_progress: boolean specifying whether to show a progress bar
             :return: 3-tuple with the time profile, the effective solution matrix and a state vector
         '''
@@ -556,5 +551,5 @@ class HybridSimulator(PWSimulator):
 
         # Call and return parent compute method
         return PWSimulator.compute(
-            self, y0, dt_dense, tstim, toffset, PRF, DC,
+            self, y0, dt_dense, pp,
             target_dt=None, print_progress=print_progress)
