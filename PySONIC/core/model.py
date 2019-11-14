@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 16:31:16
+# @Last Modified time: 2019-11-14 18:02:56
 
 import os
 from functools import wraps
@@ -14,11 +14,13 @@ import inspect
 import numpy as np
 
 from .batches import Batch
-from ..utils import logger, loadData, timer, si_format, plural, debug, alignWithMethodDef, isIterable
+from ..utils import *
 
 
 class Model(metaclass=abc.ABCMeta):
     ''' Generic model interface. '''
+
+    titration_var = None
 
     @property
     @abc.abstractmethod
@@ -66,19 +68,7 @@ class Model(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def filecode(self, *args):
-        ''' Generate file code given a specific combination of model input parameters. '''
-        # If meta dictionary was passed, generate inputs list from it
-        if len(args) == 1 and isinstance(args[0], dict):
-            meta = args[0]
-            meta_keys = list(signature(self.meta).parameters.keys())
-            args = [meta[k] for k in meta_keys]
-            for i in range(len(args)):
-                if isIterable(args[i]):
-                    args[i] = ''.join([x for x in args[i]])
-
-        # Create file code by joining string-encoded inputs with underscores
-        codes = self.filecodes(*args).values()
-        return '_'.join([x for x in codes if x is not None])
+        return filecode(self, *args)
 
     @classmethod
     @abc.abstractmethod
@@ -214,40 +204,36 @@ class Model(metaclass=abc.ABCMeta):
         return wrapper
 
     @staticmethod
-    def checkTitrate(argname):
-        ''' If no None provided in the list of input parameters,
-            perform a titration to find the threshold parameter and add it to the list.
+    def checkTitrate(simfunc):
+        ''' If "None" amplitude provided in the list of input parameters,
+            perform a titration to find the threshold amplitude and add it to the list.
         '''
-        def wrapper_with_args(simfunc):
+        @wraps(simfunc)
+        def wrapper(self, *args, **kwargs):
+            # Get argument index from function signature
+            func_args = list(signature(simfunc).parameters.keys())[1:]
+            iarg = func_args.index(self.titration_var)
 
-            @wraps(simfunc)
-            def wrapper(self, *args, **kwargs):
-                # Get argument index from function signature
-                func_args = list(signature(simfunc).parameters.keys())[1:]
-                iarg = func_args.index(argname)
+            # If argument is None
+            if args[iarg] is None:
+                # Generate new args list without argument
+                args = list(args)
+                new_args = args.copy()
+                del new_args[iarg]
 
-                # If argument is None
-                if args[iarg] is None:
-                    # Generate new args list without argument
-                    args = list(args)
-                    new_args = args.copy()
-                    del new_args[iarg]
+                # Perform titration to find threshold argument value
+                xthr = self.titrate(*new_args)
+                if np.isnan(xthr):
+                    logger.error(f'Could not find threshold {self.titration_var}')
+                    return None
 
-                    # Perform titration to find threshold argument value
-                    xthr = self.titrate(*new_args)
-                    if np.isnan(xthr):
-                        logger.error(f'Could not find threshold {argname}')
-                        return None
+                # Re-insert it into arguments list
+                args[iarg] = xthr
 
-                    # Re-insert it into arguments list
-                    args[iarg] = xthr
+            # Execute simulation function
+            return simfunc(self, *args, **kwargs)
 
-                # Execute simulation function
-                return simfunc(self, *args, **kwargs)
-
-            return wrapper
-
-        return wrapper_with_args
+        return wrapper
 
     def simAndSave(self, *args, **kwargs):
         ''' Simulate the model and save the results in a specific output directory.
@@ -256,6 +242,7 @@ class Model(metaclass=abc.ABCMeta):
             :param **kwargs: optional arguments dictionary
             :return: output filepath
         '''
+
         # Extract output directory and overwrite boolean from keyword arguments.
         outputdir = kwargs.pop('outputdir')
         overwrite = kwargs.pop('overwrite')
@@ -263,16 +250,27 @@ class Model(metaclass=abc.ABCMeta):
         # Set data and meta to None
         data, meta = None, None
 
-        # None in sim args -> titration case -> store data and meta, and add threshold amp to args
-        if None in args:
-            args = list(args)
-            iNone = next(i for i, arg in enumerate(args) if arg is None)
-            out = self.simulate(*args)
-            if out is None:
-                logger.warning('returning None')
-                return None
-            data, meta = out
-            args[iNone] = meta['Adrive']
+        # If titration var exists
+        if self.titration_var is not None:
+            func_args = list(signature(self.simulate).parameters.keys())
+            ivar = func_args.index(self.titration_var)
+
+            # If corresponding function argument is set to None -> titration case
+            if args[ivar] is None:
+                # Call simulate to perform titration
+                out = self.simulate(*args)
+
+                # If titration yields nothing -> no file produced -> return None
+                if out is None:
+                    logger.warning('returning None')
+                    return None
+
+                # Store data and meta
+                data, meta = out
+
+                # Add threshold amp to args
+                args = list(args)
+                args[ivar] = meta[self.titration_var]
 
         # Check if a output file corresponding to sim inputs is found in the output directory
         # That check is performed prior to running the simulation, such that

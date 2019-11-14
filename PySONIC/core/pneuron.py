@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 14:55:00
+# @Last Modified time: 2019-11-14 17:47:30
 
 import abc
 import inspect
@@ -24,6 +24,7 @@ class PointNeuron(Model):
 
     tscale = 'ms'  # relevant temporal scale of the model
     simkey = 'ESTIM'  # keyword used to characterize simulations made with this model
+    titration_var = 'Astim'  # name of the titration parameter
 
     def __repr__(self):
         return self.__class__.__name__
@@ -428,7 +429,7 @@ class PointNeuron(Model):
         return [dQmdt, *cls.getDerStates(Vm, states_dict)]
 
     @Model.logNSpikes
-    @Model.checkTitrate('Astim')
+    @Model.checkTitrate
     @Model.addMeta
     @Model.logDesc
     @Model.checkSimParams

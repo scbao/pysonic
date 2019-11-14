@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 16:31:45
+# @Last Modified time: 2019-11-14 17:21:51
 
 ''' Useful functions to generate plots. '''
 
@@ -360,6 +360,7 @@ class ComparativePlot(GenericPlot):
 
     @staticmethod
     def getCommonLabel(lbls, seps='_'):
+        ''' Get a common label from a list of labels, by removing parts that differ across them. '''
 
         # Split every label according to list of separator characters, and save splitters as well
         splt_lbls = [re.split(f'([{seps}])', x) for x in lbls]

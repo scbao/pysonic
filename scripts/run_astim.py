@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-13 18:16:09
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-06 15:20:46
+# @Last Modified time: 2019-11-14 17:35:37
 
 ''' Run A-STIM simulations of a specific point-neuron. '''
 
@@ -21,11 +21,6 @@ def main():
     # Create simulation queue
     queue = NeuronalBilayerSonophore.simQueue(
         *parser.parseSimInputs(args), outputdir=args['outputdir'], overwrite=args['overwrite'])
-
-    # If QSS method selected, add QSS vars (if any) to simulation parameters
-    for item in queue:
-        if item[-1] == 'qss':
-            item.append(args['qss'])
 
     # Run A-STIM batch
     logger.info("Starting A-STIM simulation batch")

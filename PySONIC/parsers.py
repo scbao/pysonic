@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-06 15:59:45
+# @Last Modified time: 2019-11-14 17:31:51
 
 import os
 import logging
@@ -707,8 +707,7 @@ class AStimParser(PWSimParser, MechSimParser):
 
     @staticmethod
     def parseSimInputs(args):
-        return [args['freq']] + PWSimParser.parseSimInputs(args) + [args[k] for k in ['fs', 'method']]
-
+        return [args['freq']] + PWSimParser.parseSimInputs(args) + [args[k] for k in ['fs', 'method', 'qss']]
 
 
 

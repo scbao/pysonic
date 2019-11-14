@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 14:43:26
+# @Last Modified time: 2019-11-14 18:02:01
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -856,3 +856,24 @@ def sunflower(n, radius=1, alpha=1):
     x = r * np.cos(theta)
     y = r * np.sin(theta)
     return radius * np.vstack((x, y))
+
+
+def filecode(model, *args):
+    ''' Generate file code given a specific combination of model input parameters. '''
+    # If meta dictionary was passed, generate inputs list from it
+    if len(args) == 1 and isinstance(args[0], dict):
+        meta = args[0]
+        meta_keys = list(signature(model.meta).parameters.keys())
+        args = [meta[k] for k in meta_keys]
+    # Otherwise, transform args tuple into list
+    else:
+        args = list(args)
+
+    # If any argument is an iterable -> transform it to a continous string
+    for i in range(len(args)):
+        if isIterable(args[i]):
+            args[i] = ''.join([x for x in args[i]])
+
+    # Create file code by joining string-encoded inputs with underscores
+    codes = model.filecodes(*args).values()
+    return '_'.join([x for x in codes if x is not None])

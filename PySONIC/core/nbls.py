@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 16:26:16
+# @Last Modified time: 2019-11-14 17:47:39
 
 from copy import deepcopy
 import logging
@@ -30,6 +30,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     tscale = 'ms'  # relevant temporal scale of the model
     simkey = 'ASTIM'  # keyword used to characterize simulations made with this model
+    titration_var = 'Adrive'  # name of the titration parameter
 
     def __init__(self, a, pneuron, Fdrive=None, embedding_depth=0.0):
         ''' Constructor of the class.
@@ -455,7 +456,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     @classmethod
     @Model.checkOutputDir
-    def simQueue(cls, freqs, amps, durations, offsets, PRFs, DCs, fs, methods, **kwargs):
+    def simQueue(cls, freqs, amps, durations, offsets, PRFs, DCs, fs, methods, qss_vars, **kwargs):
         ''' Create a serialized 2D array of all parameter combinations for a series of individual
             parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 
@@ -467,6 +468,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param DCs: list (or 1D-array) of duty cycle values
             :param fs: sonophore membrane coverage fractions (-)
             :params methods: integration methods
+            :param qss_vars: QSS variables
             :return: list of parameters (list) for each simulation
         '''
         if ('full' in methods or 'hybrid' in methods) and kwargs['outputdir'] is None:
@@ -481,7 +483,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 for item in ppqueue:
                     for cov in fs:
                         for method in methods:
-                            queue.append([f, A, item, cov, method])
+                            queue.append([f, A, item, cov, method, qss_vars])
         return queue
 
     def checkInputs(self, Fdrive, Adrive, pp, fs, method, qss_vars):
@@ -507,7 +509,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             raise ValueError(f'Invalid integration method: "{method}"')
 
     @Model.logNSpikes
-    @Model.checkTitrate('Adrive')
+    @Model.checkTitrate
     @Model.addMeta
     @Model.logDesc
     @Model.checkSimParams

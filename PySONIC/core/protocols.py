@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 11:37:22
+# @Last Modified time: 2019-11-14 17:24:02
 
 import numpy as np
 from ..utils import si_format
@@ -96,9 +96,9 @@ class PulsedProtocol(TimeProtocol):
         self.npulses = int(np.round(self.tstim * self.PRF))
 
     def __eq__(self, other):
-        is_stim_eq = super().__eq__(other)
-        is_pulse_eq = self.PRF == other.PRF and self.DC == other.DC
-        return is_stim_eq and is_pulse_eq
+        if not isinstance(other, self.__class__):
+            return False
+        return super().__eq__(other) and self.PRF == other.PRF and self.DC == other.DC
 
     def __repr__(self):
         params = [f'{si_format(self.PRF, 1, space="")}Hz', f'{self.DC:.2f}']
