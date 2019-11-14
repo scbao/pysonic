@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 11:34:11
+# @Last Modified time: 2019-11-14 11:37:22
 
 import numpy as np
 from ..utils import si_format

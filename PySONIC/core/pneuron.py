@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 12:38:30
+# @Last Modified time: 2019-11-14 14:55:00
 
 import abc
 import inspect
@@ -394,13 +394,16 @@ class PointNeuron(Model):
         return queue
 
     @staticmethod
-    def checkInputs(Astim):
+    def checkInputs(Astim, pp):
         ''' Check validity of electrical stimulation parameters.
 
             :param Astim: pulse amplitude (mA/m2)
+            :param pp: pulse protocol object
         '''
         if not isinstance(Astim, float):
             raise TypeError('Invalid simulation amplitude (must be float typed)')
+        if not isinstance(pp, PulsedProtocol):
+            raise TypeError('Invalid pulsed protocol (must be "PulsedProtocol" instance)')
 
     def chooseTimeStep(self):
         ''' Determine integration time step based on intrinsic temporal properties. '''
@@ -408,7 +411,7 @@ class PointNeuron(Model):
 
     @classmethod
     def derivatives(cls, t, y, Cm=None, Iinj=0.):
-        ''' Compute system derivatives for a given mambrane capacitance and injected current.
+        ''' Compute system derivatives for a given membrane capacitance and injected current.
 
             :param t: specific instant in time (s)
             :param y: vector of HH system variables at time t
@@ -427,18 +430,16 @@ class PointNeuron(Model):
     @Model.logNSpikes
     @Model.checkTitrate('Astim')
     @Model.addMeta
+    @Model.logDesc
+    @Model.checkSimParams
     def simulate(self, Astim, pp):
         ''' Simulate a specific neuron model for a set of simulation parameters,
             and return output data in a dataframe.
 
             :param Astim: pulse amplitude (mA/m2)
             :param pp: pulse protocol object
-            :return: 2-tuple with the output dataframe and computation time.
+            :return: output dataframe
         '''
-        logger.info(f'{self}: simulation @ A = {si_format(Astim, 2)}A/m2, {pp.pprint()}')
-
-        # Check validity of stimulation parameters
-        self.checkInputs(Astim)
 
         # Set initial conditions
         y0 = np.array((self.Qm0(), *self.getSteadyStates(self.Vm0)))
@@ -473,6 +474,10 @@ class PointNeuron(Model):
             'Astim': Astim,
             'pp': pp
         }
+
+    def desc(self, meta):
+        return '{}: simulation @ A = {}A/m2, {}'.format(
+            self, si_format(meta["Astim"], 2), meta['pp'].pprint())
 
     @staticmethod
     def getNSpikes(data):
@@ -541,5 +546,4 @@ class PointNeuron(Model):
 
         return binarySearch(
             lambda x: xfunc(self.simulate(*x)[0]),
-            [pp], 0, Arange, THRESHOLD_CONV_RANGE_ESTIM
-        )
+            [pp], 0, Arange, THRESHOLD_CONV_RANGE_ESTIM)

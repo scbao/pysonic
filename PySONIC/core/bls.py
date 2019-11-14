@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 16:03:03
+# @Last Modified time: 2019-11-14 14:55:18
 
 from enum import Enum
 import os
@@ -622,16 +622,19 @@ class BilayerSonophore(Model):
         return -(3 * U**2) / (2 * R)
 
     @staticmethod
-    def checkInputs(Fdrive, Adrive, Qm, phi):
+    def checkInputs(Fdrive, Adrive, Qm, Pm_comp_method):
         ''' Check validity of stimulation parameters
 
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
-            :param phi: acoustic drive phase (rad)
             :param Qm: imposed membrane charge density (C/m2)
+            :param Pm_comp_method: type of method used to compute average intermolecular pressure
         '''
-        if not all(isinstance(param, float) for param in [Fdrive, Adrive, Qm, phi]):
-            raise TypeError('Invalid stimulation parameters (must be float typed)')
+        for k, v in {'Fdrive': Fdrive, 'Adrive': Adrive, 'Qm': Qm}.items():
+            if not isinstance(v, float):
+                raise TypeError(f'Invalid {k} parameter (must be float typed)')
+        if not isinstance(Pm_comp_method, PmCompMethod):
+            raise TypeError('Invalid Pm computation method (must be "PmCompmethod" type)')
         if Fdrive <= 0:
             raise ValueError('Invalid US driving frequency: {} kHz (must be strictly positive)'
                              .format(Fdrive * 1e-3))
@@ -641,11 +644,8 @@ class BilayerSonophore(Model):
         if Qm < CHARGE_RANGE[0] or Qm > CHARGE_RANGE[1]:
             raise ValueError('Invalid applied charge: {} nC/cm2 (must be within [{}, {}] interval'
                              .format(Qm * 1e5, CHARGE_RANGE[0] * 1e5, CHARGE_RANGE[1] * 1e5))
-        if phi < 0 or phi >= 2 * np.pi:
-            raise ValueError('Invalid US pressure phase: {:.2f} rad (must be within [0, 2 PI[ rad'
-                             .format(phi))
 
-    def derivatives(self, t, y, Fdrive, Adrive, Qm, phi, Pm_comp_method=PmCompMethod.predict):
+    def derivatives(self, t, y, Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.predict):
         ''' Evolution of the mechanical system
 
             :param t: time instant (s)
@@ -653,7 +653,6 @@ class BilayerSonophore(Model):
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
             :param Qm: membrane charge density (F/m2)
-            :param phi: acoustic drive phase (rad)
             :param Pm_comp_method: computation method for average intermolecular pressure
             :return: vector of mechanical system derivatives at time t
         '''
@@ -674,7 +673,7 @@ class BilayerSonophore(Model):
             Pm = self.PMavg(Z, self.curvrad(Z), self.surface(Z))
         elif Pm_comp_method is PmCompMethod.predict:
             Pm = self.PMavgpred(Z)
-        Ptot = (Pm + Pg - self.P0 - self.Pacoustic(t, Adrive, Fdrive, phi) +
+        Ptot = (Pm + Pg - self.P0 - self.Pacoustic(t, Adrive, Fdrive) +
                 self.PEtot(Z, R) + self.PVleaflet(U, R) + self.PVfluid(U, R) + self.Pelec(Z, Qm))
 
         # Compute derivatives
@@ -685,11 +684,11 @@ class BilayerSonophore(Model):
         # Return derivatives vector
         return [dUdt, dZdt, dngdt]
 
-    def computeInitialDeflection(self, Adrive, Fdrive, phi, Qm, dt, Pm_comp_method=PmCompMethod.predict):
+    def computeInitialDeflection(self, Adrive, Fdrive, Qm, dt, Pm_comp_method=PmCompMethod.predict):
         ''' Compute non-zero deflection value for a small perturbation
             (solving quasi-steady equation).
         '''
-        Pac = self.Pacoustic(dt, Adrive, Fdrive, phi)
+        Pac = self.Pacoustic(dt, Adrive, Fdrive)
         return self.balancedefQS(self.ng0, Qm, Pac, Pm_comp_method)
 
     @classmethod
@@ -698,28 +697,23 @@ class BilayerSonophore(Model):
         return Batch.createQueue(*args)
 
     @Model.addMeta
-    def simulate(self, Fdrive, Adrive, Qm, phi=np.pi, Pm_comp_method=PmCompMethod.predict):
+    @Model.logDesc
+    @Model.checkSimParams
+    def simulate(self, Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.predict):
         ''' Simulate until periodic stabilization for a specific set of ultrasound parameters,
             and return output data in a dataframe.
 
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
-            :param phi: acoustic drive phase (rad)
             :param Qm: imposed membrane charge density (C/m2)
             :param Pm_comp_method: type of method used to compute average intermolecular pressure
-            :return: 2-tuple with the output dataframe and computation time.
+            :return: output dataframe
         '''
-        logger.info('%s: simulation @ f = %sHz, A = %sPa, Q = %sC/cm2',
-                    self, *si_format([Fdrive, Adrive, Qm * 1e-4], 2, space=' '))
-
-        # Check validity of stimulation parameters
-        self.checkInputs(Fdrive, Adrive, Qm, phi)
-
         # Determine time step
         dt = 1 / (NPC_DENSE * Fdrive)
 
         # Compute initial non-zero deflection
-        Z = self.computeInitialDeflection(Adrive, Fdrive, phi, Qm, dt, Pm_comp_method=Pm_comp_method)
+        Z = self.computeInitialDeflection(Adrive, Fdrive, Qm, dt, Pm_comp_method=Pm_comp_method)
 
         # Set initial conditions
         y0 = np.array([0., 0., self.ng0])
@@ -727,7 +721,7 @@ class BilayerSonophore(Model):
 
         # Initialize simulator and compute solution
         simulator = PeriodicSimulator(
-            lambda t, y: self.derivatives(t, y, Fdrive, Adrive, Qm, phi, Pm_comp_method),
+            lambda t, y: self.derivatives(t, y, Fdrive, Adrive, Qm, Pm_comp_method),
             ivars_to_check=[1, 2])
         t, y, stim = simulator(y1, dt, 1. / Fdrive)
 
@@ -757,6 +751,10 @@ class BilayerSonophore(Model):
             'Qm': Qm,
             'Pm_comp_method': Pm_comp_method
         }
+
+    def desc(self, meta):
+        return '{}: simulation @ f = {}Hz, A = {}Pa, Q = {}C/cm2'.format(
+            self, *si_format([meta['Fdrive'], meta['Adrive'], meta['Qm'] * 1e-4], 2))
 
     def getCycleProfiles(self, Fdrive, Adrive, Qm):
         ''' Simulate mechanical system and compute pressures over the last acoustic cycle

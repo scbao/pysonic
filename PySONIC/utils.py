@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 18:31:10
+# @Last Modified time: 2019-11-14 14:43:26
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -420,6 +420,11 @@ def alignWithFuncDef(func, args, kwargs):
         new_kwargs[k] = v
 
     return new_args, new_kwargs
+
+
+def alignWithMethodDef(method, args, kwargs):
+    args, kwargs = alignWithFuncDef(method, [None] + list(args), kwargs)
+    return tuple(args[1:]), kwargs
 
 
 def logCache(fpath, delimiter='\t', out_type=float):

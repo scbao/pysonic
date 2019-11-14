@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 19:01:10
+# @Last Modified time: 2019-11-14 16:26:16
 
 from copy import deepcopy
 import logging
@@ -88,7 +88,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         inputvars['method'] = None
         return inputvars
 
-    def filecodes(self, Fdrive, Adrive, pp, fs, method):
+    def filecodes(self, Fdrive, Adrive, pp, fs, method, qss_vars):
         # Get parent codes and supress irrelevant entries
         bls_codes = super().filecodes(Fdrive, Adrive, 0.0)
         for key in ['simkey', 'Qm']:
@@ -102,6 +102,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         codes.update(pp.filecodes())
         codes['fs'] = 'fs{:.0f}%'.format(fs * 1e2) if fs < 1 else None
         codes['method'] = method
+        codes['qss_vars'] = qss_vars
         return codes
 
     @staticmethod
@@ -443,6 +444,15 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         return data
 
+    def intMethods(self):
+        ''' Listing of model integration methods. '''
+        return {
+                'full': self.__simFull,
+                'hybrid': self.__simHybrid,
+                'sonic': self.__simSonic,
+                'qss': self.__simQSS
+        }
+
     @classmethod
     @Model.checkOutputDir
     def simQueue(cls, freqs, amps, durations, offsets, PRFs, DCs, fs, methods, **kwargs):
@@ -474,9 +484,33 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                             queue.append([f, A, item, cov, method])
         return queue
 
+    def checkInputs(self, Fdrive, Adrive, pp, fs, method, qss_vars):
+        for k, v in {'Fdrive': Fdrive, 'Adrive': Adrive, 'fs': fs}.items():
+            if not isinstance(v, float):
+                raise TypeError(f'Invalid {k} parameter (must be float typed)')
+        if not isinstance(pp, PulsedProtocol):
+            raise TypeError('Invalid pulsed protocol (must be "PulsedProtocol" instance)')
+        if Fdrive <= 0:
+            raise ValueError('Invalid US driving frequency: {} kHz (must be strictly positive)'
+                             .format(Fdrive * 1e-3))
+        if Adrive < 0:
+            raise ValueError('Invalid US pressure amplitude: {} kPa (must be positive or null)'
+                             .format(Adrive * 1e-3))
+        if qss_vars is not None:
+            if not isinstance(qss_vars, list) or not isinstance(qss_vars[0], str):
+                raise ValueError('Invalid QSS variables: must be None or a list of strings')
+            sn = self.pneuron.statesNames()
+            for item in qss_vars:
+                if item not in sn:
+                    raise ValueError(f'Invalid QSS variable: {item} (must be in {sn}')
+        if method not in list(self.intMethods().keys()):
+            raise ValueError(f'Invalid integration method: "{method}"')
+
     @Model.logNSpikes
     @Model.checkTitrate('Adrive')
     @Model.addMeta
+    @Model.logDesc
+    @Model.checkSimParams
     def simulate(self, Fdrive, Adrive, pp, fs=1., method='sonic', qss_vars=None):
         ''' Simulate the electro-mechanical model for a specific set of US stimulation parameters,
             and return output data in a dataframe.
@@ -486,33 +520,16 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param pp: pulse protocol object
             :param fs: sonophore membrane coverage fraction (-)
             :param method: selected integration method
-            :return: 2-tuple with the output dataframe and computation time.
+            :return: output dataframe
         '''
-        s = '{}: {} simulation @ f = {}Hz, A = {}Pa, {}'.format(
-            self, method, si_format(Fdrive, 0), si_format(Adrive, 2), pp.pprint())
-        if fs < 1.0:
-            s += f', fs = {(fs * 1e2):.2f}%'
-        logger.info(s)
-
-        # Check validity of stimulation parameters
-        BilayerSonophore.checkInputs(Fdrive, Adrive, 0.0, 0.0)
-
         # Call appropriate simulation function and return
-        try:
-            simfunc = {
-                'full': self.__simFull,
-                'hybrid': self.__simHybrid,
-                'sonic': self.__simSonic,
-                'qss': self.__simQSS
-            }[method]
-        except KeyError:
-            raise ValueError('Invalid integration method: "{}"'.format(method))
+        simfunc = self.intMethods()[method]
         simargs = [Fdrive, Adrive, pp, fs]
         if method == 'qss':
             simargs.append(qss_vars)
         return simfunc(*simargs)
 
-    def meta(self, Fdrive, Adrive, pp, fs, method):
+    def meta(self, Fdrive, Adrive, pp, fs, method, qss_vars):
         return {
             'simkey': self.simkey,
             'neuron': self.pneuron.name,
@@ -522,8 +539,18 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             'Adrive': Adrive,
             'pp': pp,
             'fs': fs,
-            'method': method
+            'method': method,
+            'qss_vars': qss_vars
         }
+
+    def desc(self, meta):
+        s = '{}: {} simulation @ f = {}Hz, A = {}Pa, {}'.format(
+            self, meta['method'], *si_format([meta['Fdrive'], meta['Adrive']], 2), meta['pp'].pprint())
+        if meta['fs'] < 1.0:
+            s += f', fs = {(meta["fs"] * 1e2):.2f}%'
+        if 'qss_vars' in meta and meta['qss_vars'] is not None:
+                s += f" - QSS ({','.join(meta['qss_vars'])})"
+        return s
 
     @staticmethod
     def getNSpikes(data):

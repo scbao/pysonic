@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 11:34:17
+# @Last Modified time: 2019-11-14 16:21:47
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -239,11 +239,13 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
                 continue
             if 'tcomp' in meta:
                 meta.pop('tcomp')
-            full_labels.append(self.figtitle(meta))
 
             # Extract model
             model = self.getModel(meta)
             fcodes.append(model.filecode(meta))
+
+            # Add label to list
+            full_labels.append(model.desc(meta))
 
             # Check consistency of sim types and check differing inputs
             comp_values = self.checkConsistency(meta, comp_values)
@@ -292,8 +294,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         labels = self.chooseLabels(labels, comp_labels, full_labels)
 
         # - split labels by space
-        merge_keys = ['neuron']
-        common_label = self.getCommonLabel(full_labels.copy(), sep=' ', merge_keys=merge_keys)
+        common_label = self.getCommonLabel(full_labels.copy(), seps=':@,')
         ax.set_title(common_label, fontsize=fs)
 
         # Post-process figure
@@ -316,7 +317,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             self.addLegend(fig, ax, handles, labels, fs)
 
         # Add window title based on common pattern
-        common_fcode = self.getCommonLabel(fcodes.copy(), sep='_')
+        common_fcode = self.getCommonLabel(fcodes.copy())
         fig.canvas.set_window_title(common_fcode)
 
         return fig
@@ -453,7 +454,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
 
             # Post-process figure
             self.postProcess(axes, tplt, fs, meta, prettify)
-            axes[0].set_title(self.figtitle(meta), fontsize=fs)
+            axes[0].set_title(model.desc(meta), fontsize=fs)
             fig.tight_layout()
 
             fig.canvas.set_window_title(model.filecode(meta))

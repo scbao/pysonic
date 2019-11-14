@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 11:26:38
+# @Last Modified time: 2019-11-14 16:31:45
 
 ''' Useful functions to generate plots. '''
 
@@ -24,32 +24,6 @@ from ..constants import SPIKE_MIN_DT, SPIKE_MIN_QAMP, SPIKE_MIN_QPROM
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 matplotlib.rcParams['font.family'] = 'arial'
-
-
-def figtitle(meta):
-    ''' Return appropriate title based on simulation metadata. '''
-    simkey = meta['simkey']
-    if simkey == 'MECH':
-        return '{:.0f}nm radius BLS structure: MECH-STIM {:.0f}kHz, {:.2f}kPa, {:.1f}nC/cm2'.format(
-            meta['a'] * 1e9, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3, meta['Qm'] * 1e5)
-    elif simkey == 'VCLAMP':
-        return '{} neuron: V-CLAMP {:.1f}-{:.1f}mV, {}'.format(
-                    meta['neuron'], meta['Vhold'], meta['Vstep'], meta['tp'].pprint())
-    else:
-        neuron = meta['neuron']
-        pp = meta['pp']
-        wavetype = 'CW' if pp.isCW() else 'PW'
-        if simkey == 'ESTIM':
-            return f'{neuron} neuron: {wavetype} E-STIM {meta["Astim"]:.2f}mA/m2, {pp.pprint()}'
-        elif simkey == 'ASTIM':
-            title = '{} neuron ({:.1f}nm): {} A-STIM {:.0f}kHz {:.2f}kPa, {} - {} model'.format(
-                neuron, meta['a'] * 1e9, wavetype, meta['Fdrive'] * 1e-3, meta['Adrive'] * 1e-3,
-                pp.pprint(), meta['method'])
-            if 'qss' in meta:
-                title += f" - QSS ({','.join(meta['qss'])})"
-            return title
-        else:
-            return '??????????????????????????'
 
 
 def cm2inch(*tupl):
@@ -144,10 +118,6 @@ class GenericPlot:
     @staticmethod
     def getModel(*args, **kwargs):
         return getModel(*args, **kwargs)
-
-    @staticmethod
-    def figtitle(*args, **kwargs):
-        return figtitle(*args, **kwargs)
 
     @staticmethod
     def getTimePltVar(tscale):
@@ -389,19 +359,37 @@ class ComparativePlot(GenericPlot):
                 return full_labels
 
     @staticmethod
-    def getCommonLabel(lbls, sep=' ', merge_keys=None):
-        if merge_keys is not None:
-            for k in merge_keys:
-                lbls = [lbl.replace(f'{sep}{k}', f'-{k}') for lbl in lbls]
-        splt_lbls = [lbl.split(sep) for lbl in lbls]
-        ncomps = len(splt_lbls[0])
-        splt_lbls = np.array(splt_lbls).T
-        all_indentical = [np.all(x == x[0]) for x in splt_lbls]
-        if np.sum(all_indentical) < ncomps - 1:
+    def getCommonLabel(lbls, seps='_'):
+
+        # Split every label according to list of separator characters, and save splitters as well
+        splt_lbls = [re.split(f'([{seps}])', x) for x in lbls]
+        pieces = [x[::2] for x in splt_lbls]
+        splitters = [x[1::2] for x in splt_lbls]
+        ncomps = len(pieces[0])
+
+        # Assert that splitters are equivalent across all labels, and reduce them to a single array
+        assert (x == x[0] for x in splitters), 'Inconsistent splitters'
+        splitters = np.array(splitters[0])
+
+        # Transform pieces into 2D matrix, and evaluate equality of every piece across labels
+        pieces = np.array(pieces).T
+        all_identical = [np.all(x == x[0]) for x in pieces]
+        if np.sum(all_identical) < ncomps - 1:
             logger.warning('More than one differing inputs')
             return ''
-        common_lbl = sep.join(splt_lbls[all_indentical, 0])
-        if merge_keys is not None:
-            for k in merge_keys:
-                common_lbl = common_lbl.replace(f'-{k}', f'{sep}{k}')
+
+        # Discard differing pieces and remove associated splitters
+        pieces = pieces[all_identical, 0]
+        splitters = splitters[all_identical[:-1]]
+
+        # Remove last splitter if the last pieces were discarded
+        if splitters.size == pieces.size:
+            splitters = splitters[:-1]
+
+        # Join common pieces and associated splitters into a single label
+        common_lbl = ''
+        for p, s in zip(pieces, splitters):
+            common_lbl += f'{p}{s}'
+        common_lbl += pieces[-1]
+
         return common_lbl

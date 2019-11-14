@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 12:45:38
+# @Last Modified time: 2019-11-14 14:59:14
 
 import numpy as np
 import pandas as pd
@@ -96,14 +96,18 @@ class VoltageClamp(Model):
         return queue
 
     @staticmethod
-    def checkInputs(Vhold, Vstep):
+    def checkInputs(Vhold, Vstep, tp):
         ''' Check validity of stimulation parameters.
 
             :param Vhold: held membrane potential (mV)
             :param Vstep: step membrane potential (mV)
+            :param tp: time protocol object
         '''
-        if not all(isinstance(param, float) for param in [Vhold, Vstep]):
-            raise TypeError('Invalid stimulation parameters (must be float typed)')
+        for k, v in {'Vhold': Vhold, 'Vstep': Vstep}.items():
+            if not isinstance(v, float):
+                raise TypeError(f'Invalid {k} parameter (must be float typed)')
+        if not isinstance(tp, TimeProtocol):
+            raise TypeError('Invalid time protocol (must be "TimeProtocol" instance)')
 
     def derivatives(self, t, y, Vm=None):
         if Vm is None:
@@ -112,12 +116,22 @@ class VoltageClamp(Model):
         return self.pneuron.getDerStates(Vm, states_dict)
 
     @Model.addMeta
+    @Model.logDesc
+    @Model.checkSimParams
     def simulate(self, Vhold, Vstep, tp):
-        logger.info('{}: simulation @ Vhold = {}V, Vstep = {}V, {}'.format(
-            self, *si_format([Vhold * 1e-3, Vstep * 1e-3], 1), tp.pprint()))
+        ''' Simulate a specific neuron model for a set of simulation parameters,
+            and return output data in a dataframe.
 
-        # Check validity of stimulation parameters
-        self.checkInputs(Vhold, Vstep)
+            :param Vhold: held membrane potential (mV)
+            :param Vstep: step membrane potential (mV)
+            :param tp: time protocol object
+            :return: output dataframe
+        '''
+        # logger.info('{}: simulation @ Vhold = {}V, Vstep = {}V, {}'.format(
+        #     self, *si_format([Vhold * 1e-3, Vstep * 1e-3], 1), tp.pprint()))
+
+        # # Check validity of stimulation parameters
+        # self.checkInputs(Vhold, Vstep)
 
         # Set initial conditions
         y0 = self.pneuron.getSteadyStates(Vhold)
@@ -157,3 +171,6 @@ class VoltageClamp(Model):
             'tp': tp
         }
 
+    def desc(self, meta):
+        return '{}: simulation @ Vhold = {}V, Vstep = {}V, {}'.format(
+            self, *si_format([meta['Vhold'] * 1e-3, meta['Vstep'] * 1e-3], 1), meta['tp'].pprint())

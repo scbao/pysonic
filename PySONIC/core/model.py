@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 19:00:44
+# @Last Modified time: 2019-11-14 16:31:16
 
 import os
 from functools import wraps
@@ -14,7 +14,7 @@ import inspect
 import numpy as np
 
 from .batches import Batch
-from ..utils import logger, loadData, timer, si_format, plural, debug
+from ..utils import logger, loadData, timer, si_format, plural, debug, alignWithMethodDef, isIterable
 
 
 class Model(metaclass=abc.ABCMeta):
@@ -70,9 +70,11 @@ class Model(metaclass=abc.ABCMeta):
         # If meta dictionary was passed, generate inputs list from it
         if len(args) == 1 and isinstance(args[0], dict):
             meta = args[0]
-            meta.pop('tcomp', None)
             meta_keys = list(signature(self.meta).parameters.keys())
             args = [meta[k] for k in meta_keys]
+            for i in range(len(args)):
+                if isIterable(args[i]):
+                    args[i] = ''.join([x for x in args[i]])
 
         # Create file code by joining string-encoded inputs with underscores
         codes = self.filecodes(*args).values()
@@ -190,11 +192,32 @@ class Model(metaclass=abc.ABCMeta):
         return wrapper
 
     @staticmethod
+    def checkSimParams(simfunc):
+        ''' Check simulation parameters before launching simulation. '''
+        @wraps(simfunc)
+        def wrapper(self, *args, **kwargs):
+            args, kwargs = alignWithMethodDef(simfunc, args, kwargs)
+            self.checkInputs(*args, *list(kwargs.values()))
+            return simfunc(self, *args, **kwargs)
+
+        return wrapper
+
+    @staticmethod
+    def logDesc(simfunc):
+        ''' Log description of model and simulation parameters. '''
+        @wraps(simfunc)
+        def wrapper(self, *args, **kwargs):
+            args, kwargs = alignWithMethodDef(simfunc, args, kwargs)
+            logger.info(self.desc(self.meta(*args, *list(kwargs.values()))))
+            return simfunc(self, *args, **kwargs)
+
+        return wrapper
+
+    @staticmethod
     def checkTitrate(argname):
         ''' If no None provided in the list of input parameters,
             perform a titration to find the threshold parameter and add it to the list.
         '''
-
         def wrapper_with_args(simfunc):
 
             @wraps(simfunc)
