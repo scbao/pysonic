@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 17:21:51
+# @Last Modified time: 2019-11-14 19:35:30
 
 ''' Useful functions to generate plots. '''
 
@@ -89,6 +89,9 @@ class GenericPlot:
 
     def __call__(self, *args, **kwargs):
         return self.render(*args, **kwargs)
+
+    def figtitle(self, model, meta):
+        return model.desc(meta)
 
     @staticmethod
     def getData(entry, frequency=1, trange=None):

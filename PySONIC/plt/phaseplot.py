@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 13:56:07
+# @Last Modified time: 2019-11-14 19:34:28
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -101,7 +101,7 @@ class PhasePlot(GenericPlot):
 
             # Extract model
             model = getModel(meta)
-            full_labels.append(model.desc(meta))
+            full_labels.append(self.figtitle(model, meta))
 
             # Check consistency of sim types and check differing inputs
             comp_values = self.checkConsistency(meta, comp_values)

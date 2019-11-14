@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 16:21:47
+# @Last Modified time: 2019-11-14 19:34:53
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -245,7 +245,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             fcodes.append(model.filecode(meta))
 
             # Add label to list
-            full_labels.append(model.desc(meta))
+            full_labels.append(self.figtitle(model, meta))
 
             # Check consistency of sim types and check differing inputs
             comp_values = self.checkConsistency(meta, comp_values)
@@ -454,7 +454,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
 
             # Post-process figure
             self.postProcess(axes, tplt, fs, meta, prettify)
-            axes[0].set_title(model.desc(meta), fontsize=fs)
+            axes[0].set_title(self.figtitle(model, meta), fontsize=fs)
             fig.tight_layout()
 
             fig.canvas.set_window_title(model.filecode(meta))

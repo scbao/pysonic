@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 18:02:01
+# @Last Modified time: 2019-11-14 18:47:16
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -877,3 +877,68 @@ def filecode(model, *args):
     # Create file code by joining string-encoded inputs with underscores
     codes = model.filecodes(*args).values()
     return '_'.join([x for x in codes if x is not None])
+
+
+def simAndSave(model, *args, **kwargs):
+    ''' Simulate the model and save the results in a specific output directory.
+
+        :param *args: list of arguments provided to the simulation function
+        :param **kwargs: optional arguments dictionary
+        :return: output filepath
+    '''
+
+    # Extract output directory and overwrite boolean from keyword arguments.
+    outputdir = kwargs.pop('outputdir')
+    overwrite = kwargs.pop('overwrite')
+
+    # Set data and meta to None
+    data, meta = None, None
+
+    # If titration var exists
+    if model.titration_var is not None:
+        func_args = list(signature(model.simulate).parameters.keys())
+        ivar = func_args.index(model.titration_var)
+
+        # If corresponding function argument is set to None -> titration case
+        if args[ivar] is None:
+            # Call simulate to perform titration
+            out = model.simulate(*args)
+
+            # If titration yields nothing -> no file produced -> return None
+            if out is None:
+                logger.warning('returning None')
+                return None
+
+            # Store data and meta
+            data, meta = out
+
+            # Add threshold amp to args
+            args = list(args)
+            args[ivar] = meta[model.titration_var]
+
+    # Check if a output file corresponding to sim inputs is found in the output directory
+    # That check is performed prior to running the simulation, such that
+    # it is not run if the file is present and overwrite is set ot false.
+    fname = f'{model.filecode(*args)}.pkl'
+    fpath = os.path.join(outputdir, fname)
+    existing_file_msg = f'File "{fname}" already present in directory "{outputdir}"'
+    existing_file = os.path.isfile(fpath)
+
+    # If file exists and overwrite is set ot false -> return
+    if existing_file and not overwrite:
+        logger.warning(f'{existing_file_msg} -> preserving')
+        return fpath
+
+    # Run simulation if not already done (for titration cases)
+    if data is None:
+        data, meta = model.simulate(*args)
+
+    # Raise warning if an existing file is overwritten
+    if existing_file:
+        logger.warning(f'{existing_file_msg} -> overwriting')
+
+    # Save output file and return output filepath
+    with open(fpath, 'wb') as fh:
+        pickle.dump({'meta': meta, 'data': data}, fh)
+    logger.debug('simulation data exported to "%s"', fpath)
+    return fpath
