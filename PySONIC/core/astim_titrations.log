@@ -12,3 +12,16 @@ titrate(NeuronalBilayerSonophore(22.6 nm, CorticalRS), 500000.0, PulsedProtocol(
 titrate(NeuronalBilayerSonophore(45.3 nm, CorticalRS), 500000.0, PulsedProtocol(150.0ms, 100.0ms, 100.0Hz, 1.00), fs=1.0, method='sonic', xfunc=None, Arange=None)	34787.75024414061
 titrate(NeuronalBilayerSonophore(64.0 nm, CorticalRS), 500000.0, PulsedProtocol(150.0ms, 100.0ms, 100.0Hz, 1.00), fs=1.0, method='sonic', xfunc=None, Arange=None)	33755.493164062485
 titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(100.0ms, 50.0ms, 100.0Hz, 1.00), fs=1.0, method='sonic', xfunc=None, Arange=None)	38809.20410156247
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.01), fs=1.0, method='sonic', xfunc=None, Arange=None)	nan
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.02), fs=1.0, method='sonic', xfunc=None, Arange=None)	nan
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.03), fs=1.0, method='sonic', xfunc=None, Arange=None)	nan
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.04), fs=1.0, method='sonic', xfunc=None, Arange=None)	nan
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.05), fs=1.0, method='sonic', xfunc=None, Arange=None)	nan
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.06), fs=1.0, method='sonic', xfunc=None, Arange=None)	nan
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.07), fs=1.0, method='sonic', xfunc=None, Arange=None)	nan
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.08), fs=1.0, method='sonic', xfunc=None, Arange=None)	nan
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.09), fs=1.0, method='sonic', xfunc=None, Arange=None)	527188.1103515623
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.10), fs=1.0, method='sonic', xfunc=None, Arange=None)	405725.09765624977
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.11), fs=1.0, method='sonic', xfunc=None, Arange=None)	322375.48828124977
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.12), fs=1.0, method='sonic', xfunc=None, Arange=None)	262774.6582031249
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), 500000.0, PulsedProtocol(1.0s, 0.0s, 10.0Hz, 0.13), fs=1.0, method='sonic', xfunc=None, Arange=None)	219396.97265624988
