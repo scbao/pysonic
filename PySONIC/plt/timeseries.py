@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 19:34:53
+# @Last Modified time: 2019-11-15 13:49:15
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -295,7 +295,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
 
         # - split labels by space
         common_label = self.getCommonLabel(full_labels.copy(), seps=':@,')
-        ax.set_title(common_label, fontsize=fs)
+        self.wraptitle(ax, common_label, fs=fs)
 
         # Post-process figure
         self.postProcess(ax, tplt, yplt, fs, meta, prettify)
@@ -454,7 +454,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
 
             # Post-process figure
             self.postProcess(axes, tplt, fs, meta, prettify)
-            axes[0].set_title(self.figtitle(model, meta), fontsize=fs)
+            self.wraptitle(axes[0], self.figtitle(model, meta), fs=fs)
             fig.tight_layout()
 
             fig.canvas.set_window_title(model.filecode(meta))

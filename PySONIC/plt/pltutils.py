@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 19:35:30
+# @Last Modified time: 2019-11-15 13:50:12
 
 ''' Useful functions to generate plots. '''
 
@@ -92,6 +92,14 @@ class GenericPlot:
 
     def figtitle(self, model, meta):
         return model.desc(meta)
+
+    @staticmethod
+    def wraptitle(ax, title, maxwidth=120, sep=':', fs=10, y=1.0):
+        if len(title) > maxwidth:
+            title = l = '\n'.join(title.split(sep))
+            y = 0.94
+        h = ax.set_title(title, fontsize=fs)
+        h.set_y(y)
 
     @staticmethod
     def getData(entry, frequency=1, trange=None):
