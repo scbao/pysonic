@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 17:24:02
+# @Last Modified time: 2019-11-15 01:09:27
 
 import numpy as np
 from ..utils import si_format
@@ -94,6 +94,7 @@ class PulsedProtocol(TimeProtocol):
         self.T_ON = self.DC / self.PRF
         self.T_OFF = (1 - self.DC) / self.PRF
         self.npulses = int(np.round(self.tstim * self.PRF))
+        self.ttotal = self.tstim + self.toffset
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
