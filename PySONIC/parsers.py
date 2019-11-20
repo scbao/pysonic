@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 17:31:51
+# @Last Modified time: 2019-11-20 20:27:42
 
 import os
 import logging
@@ -674,7 +674,7 @@ class AStimParser(PWSimParser, MechSimParser):
         MechSimParser.__init__(self)
         PWSimParser.__init__(self)
         self.defaults.update({'method': 'sonic'})
-        self.allowed.update({'method': ['full', 'hybrid', 'sonic', 'qss']})
+        self.allowed.update({'method': ['full', 'hybrid', 'sonic']})
         self.addMethod()
         self.addQSSVars()
 
