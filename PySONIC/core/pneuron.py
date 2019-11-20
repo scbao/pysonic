@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 17:47:30
+# @Last Modified time: 2019-11-20 22:18:27
 
 import abc
 import inspect
@@ -478,7 +478,7 @@ class PointNeuron(Model):
 
     def desc(self, meta):
         return '{}: simulation @ A = {}A/m2, {}'.format(
-            self, si_format(meta["Astim"], 2), meta['pp'].pprint())
+            self, si_format(meta["Astim"] * 1e-3, 2), meta['pp'].pprint())
 
     @staticmethod
     def getNSpikes(data):

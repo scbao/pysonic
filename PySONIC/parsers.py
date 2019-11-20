@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-20 20:27:42
+# @Last Modified time: 2019-11-20 22:17:53
 
 import os
 import logging
@@ -57,6 +57,28 @@ class Parser(ArgumentParser):
         if nx < 2:
             raise ValueError('Specified number must be at least 2')
         return self.getDistribution(xmin, xmax, nx, scale=scale)
+
+    def addRangeParam(self, key, desc, shortcut=None):
+        if shortcut is not None:
+            args = [f'-{shortcut}']
+            rangekey = shortcut
+        else:
+            args = []
+            rangekey = key
+        args.append(f'--{key}')
+        self.add_argument(*args, nargs='+', type=float, help=desc)
+        self.add_argument(
+            f'--{rangekey}range', type=str, nargs='+', help=f'Range of {desc}: {self.dist_str}')
+        self.to_parse[key] = self.parseAmp
+
+    def parseRangeParam(self, args, key):
+        rangekey = f'{key}range'
+        params = [key, rangekey]
+        self.restrict(args)
+        if key in args:
+            return np.array(args[key]) * self.factors[key]
+        elif rangekey in args:
+            return self.getDistFromList(args[rangekey]) * self.factors[key]
 
     def addVerbose(self):
         self.add_argument(
