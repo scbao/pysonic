@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-22 18:34:23
+# @Last Modified time: 2019-11-22 18:41:36
 
 import numpy as np
 from ..core import PointNeuron
@@ -36,8 +36,8 @@ class Sundt(PointNeuron):
     # Maximal channel conductances (S/m2)
     gNabar = 400.0  # Sodium
     gKdbar = 400.0  # Delayed-rectifier Potassium
-    gMbar = 3.1     # Slow non-inactivating Potassium (from MOD file, paper studies 2-8 S/m2 range)
     gLeak = 1.0     # Non-specific leakage
+    # gMbar = 3.1     # Slow non-inactivating Potassium (from MOD file, paper studies 2-8 S/m2 range)
     # gCaLbar = 30    # High-threshold Calcium (from MOD file, but only in soma !!!)
     # gKCabar = 2.0   # Calcium dependent Potassium (only in soma !!!)
 
@@ -71,7 +71,7 @@ class Sundt(PointNeuron):
         'h': 'iNa inactivation gate',
         'n': 'iKd activation gate',
         'l': 'iKd inactivation gate',
-        'p': 'iM gate',
+        # 'p': 'iM gate',
         # 'c': 'iCaL gate',
         # 'q': 'iKCa Calcium dependent gate',
         # 'Cai': 'Calcium intracellular concentration (M)'
@@ -163,28 +163,28 @@ class Sundt(PointNeuron):
     def betal(cls, Vm):
         return cls.q10_BG * cls.betaBG(0.001, 2, 1., -61., Vm) * 1e3  # s-1
 
-    # iM kinetics: taken from Yamada 1989, with notable changes:
-    # - Q10 correction to account for temperature adaptation from 23.5 to 35 degrees
-    # - difference in normalization factor of positive exponential tau_p formulation vs. Yamada 1989 ref. (20 vs. 40)
+    # # iM kinetics: taken from Yamada 1989, with notable changes:
+    # # - Q10 correction to account for temperature adaptation from 23.5 to 35 degrees
+    # # - difference in normalization factor of positive exponential tau_p formulation vs. Yamada 1989 ref. (20 vs. 40)
 
-    @staticmethod
-    def pinf(Vm):
-        return 1.0 / (1 + np.exp(-(Vm + 35) / 10))
+    # @staticmethod
+    # def pinf(Vm):
+    #     return 1.0 / (1 + np.exp(-(Vm + 35) / 10))
 
-    @classmethod
-    def taup(cls, Vm):
-        tau = cls.taupMax / (3.3 * (np.exp((Vm + 35) / 20) + np.exp(-(Vm + 35) / 20)))  # s
-        return tau * cls.q10_Yamada
+    # @classmethod
+    # def taup(cls, Vm):
+    #     tau = cls.taupMax / (3.3 * (np.exp((Vm + 35) / 20) + np.exp(-(Vm + 35) / 20)))  # s
+    #     return tau * cls.q10_Yamada
 
-    # iCaL kinetics: from Migliore 1995 that itself refers to Jaffe 1994.
+    # # iCaL kinetics: from Migliore 1995 that itself refers to Jaffe 1994.
 
-    @classmethod
-    def alphac(cls, Vm):
-        return 15.69 * cls.vtrap((81.5 - Vm), 10.) * 1e3  # s-1
+    # @classmethod
+    # def alphac(cls, Vm):
+    #     return 15.69 * cls.vtrap((81.5 - Vm), 10.) * 1e3  # s-1
 
-    @classmethod
-    def betac(cls, Vm):
-        return 0.29 * np.exp(-Vm / 10.86) * 1e3  # s-1
+    # @classmethod
+    # def betac(cls, Vm):
+    #     return 0.29 * np.exp(-Vm / 10.86) * 1e3  # s-1
 
     # # iKCa kinetics: from Aradi 1999, which uses equations from Yuen 1991 with a few modifications:
     # # - 12 mV (???) shift in activation curve
@@ -219,7 +219,7 @@ class Sundt(PointNeuron):
             'h': lambda Vm, x: cls.alphah(Vm) * (1 - x['h']) - cls.betah(Vm) * x['h'],
             'n': lambda Vm, x: cls.alphan(Vm) * (1 - x['n']) - cls.betan(Vm) * x['n'],
             'l': lambda Vm, x: cls.alphal(Vm) * (1 - x['l']) - cls.betal(Vm) * x['l'],
-            'p': lambda Vm, x: (cls.pinf(Vm) - x['p']) / cls.taup(Vm),
+            # 'p': lambda Vm, x: (cls.pinf(Vm) - x['p']) / cls.taup(Vm),
             # 'c': lambda Vm, x: cls.alphac(Vm) * (1 - x['c']) - cls.betac(Vm) * x['c'],
             # 'q': lambda Vm, x: cls.alphaq(x['Cai']) * (1 - x['q']) - cls.betaq(x['Cai']) * x['q'],
             # 'Cai': lambda Vm, x: cls.derCai(x['c'], x['Cai'], Vm)
@@ -246,7 +246,7 @@ class Sundt(PointNeuron):
             'h': lambda Vm: cls.alphah(Vm) / (cls.alphah(Vm) + cls.betah(Vm)),
             'n': lambda Vm: cls.alphan(Vm) / (cls.alphan(Vm) + cls.betan(Vm)),
             'l': lambda Vm: cls.alphal(Vm) / (cls.alphal(Vm) + cls.betal(Vm)),
-            'p': lambda Vm: cls.pinf(Vm),
+            # 'p': lambda Vm: cls.pinf(Vm),
             # 'c': lambda Vm: cls.alphac(Vm) / (cls.alphac(Vm) + cls.betac(Vm)),
         }
         # lambda_dict['Cai'] = lambda Vm: cls.Caiinf(lambda_dict['c'](Vm), Vm)
@@ -261,8 +261,8 @@ class Sundt(PointNeuron):
     def iNa(cls, m, h, Vm):
         ''' Sodium current.
 
-            Gating formalism from Migliore 1995, using 3rd power for m in order to
-            reproduce thinner AP waveform (half-width of ca. 1 ms)
+            Gating formalism from Migliore 1995, using 3rd power for m
+            to reproduce 1 ms AP half-width
         '''
         return cls.gNabar * m**3 * h * (Vm - cls.ENa)  # mA/m2
 
