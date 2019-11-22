@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-20 22:18:27
+# @Last Modified time: 2019-11-22 18:22:09
 
 import abc
 import inspect
@@ -322,37 +322,43 @@ class PointNeuron(Model):
         eCout = Cion_out * cls.efun(x)  # M
         return FARADAY * (eCin - eCout) * 1e6  # mC/m3
 
-    @staticmethod
-    def alphaBorgGraham(alpha0, zeta, gamma, Vh, T, Vm):
+    @classmethod
+    def xBG(cls, Vref, Vm):
+        ''' Compute dimensionless Borg-Graham ratio for a given voltage.
+
+            :param Vref: reference voltage membrane (mV)
+            :param Vm: membrane potential (mV)
+            :return: dimensionless ratio
+        '''
+        return (Vm - Vref) * FARADAY / (Rg * cls.T) * 1e-3  # [-]
+
+    @classmethod
+    def alphaBG(cls, alpha0, zeta, gamma, Vref,  Vm):
         ''' Compute the activation rate constant for a given voltage and temperature, using
             a Borg-Graham formalism.
 
             :param alpha0: pre-exponential multiplying factor
             :param zeta: effective valence of the gating particle
             :param gamma: normalized position of the transition state within the membrane
-            :param Vh: membrane voltage at which alpha = alpha0 (mV)
-            :param T: temperature (K)
+            :param Vref: membrane voltage at which alpha = alpha0 (mV)
             :param Vm: membrane potential (mV)
             :return: rate constant (in alpha0 units)
         '''
-        x = (Vm - Vh) * FARADAY / (Rg * T) * 1e-3  # [-]
-        return alpha0 * np.exp(zeta * gamma * x)
+        return alpha0 * np.exp(-zeta * gamma * cls.xBG(Vref, Vm))
 
-    @staticmethod
-    def betaBorgGraham(beta0, zeta, gamma, Vh, T, Vm):
+    @classmethod
+    def betaBG(cls, beta0, zeta, gamma, Vref, Vm):
         ''' Compute the inactivation rate constant for a given voltage and temperature, using
             a Borg-Graham formalism.
 
             :param beta0: pre-exponential multiplying factor
             :param zeta: effective valence of the gating particle
             :param gamma: normalized position of the transition state within the membrane
-            :param Vh: membrane voltage at which beta = beta0 (mV)
-            :param T: temperature (K)
+            :param Vref: membrane voltage at which beta = beta0 (mV)
             :param Vm: membrane potential (mV)
             :return: rate constant (in beta0 units)
         '''
-        x = (Vm - Vh) * FARADAY / (Rg * T) * 1e-3  # [-]
-        return beta0 * np.exp(-zeta * (1 - gamma) * x)
+        return beta0 * np.exp(zeta * (1 - gamma) * cls.xBG(Vref, Vm))
 
     @classmethod
     def getCurrentsNames(cls):

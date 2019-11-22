@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-07 14:41:07
+# @Last Modified time: 2019-11-22 18:34:23
 
 import numpy as np
 from ..core import PointNeuron
@@ -37,12 +37,14 @@ class Sundt(PointNeuron):
     gNabar = 400.0  # Sodium
     gKdbar = 400.0  # Delayed-rectifier Potassium
     gMbar = 3.1     # Slow non-inactivating Potassium (from MOD file, paper studies 2-8 S/m2 range)
-    gLeak = 1e0     # Non-specific leakage
+    gLeak = 1.0     # Non-specific leakage
     # gCaLbar = 30    # High-threshold Calcium (from MOD file, but only in soma !!!)
     # gKCabar = 2.0   # Calcium dependent Potassium (only in soma !!!)
 
     # Na+ current parameters
-    deltaVm = 6.0  # Voltage offset to shift the rate constants  (6 mV in Sundt 2015)
+    Vrest_Traub = -65.  # Resting potential in Traub 1991 (mV), used as reference for m & h rates
+    mshift = -6.0       # m-gate activation voltage shift, from ModelDB file (mV)
+    hshift = 6.0        # h-gate activation voltage shift, from ModelDB file (mV)
 
     # iM parameters
     taupMax = 1.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
@@ -61,6 +63,7 @@ class Sundt(PointNeuron):
     celsius = 35.0         # Temperature (Celsius)
     celsius_Traub = 30.0   # Temperature in Traub 1991 (Celsius)
     celsius_Yamada = 23.5  # Temperature in Yamada 1989 (Celsius)
+    celsius_BG = 30.0      # Temperature in Borg-Graham 1987 (Celsius)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
@@ -77,6 +80,7 @@ class Sundt(PointNeuron):
     def __new__(cls):
         cls.q10_Traub = 3**((cls.celsius - cls.celsius_Traub) / 10)
         cls.q10_Yamada = 3**((cls.celsius - cls.celsius_Yamada) / 10)
+        cls.q10_BG = 3**((cls.celsius - cls.celsius_BG) / 10)
         cls.T = cls.celsius + CELSIUS_2_KELVIN
         # cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
 
@@ -112,46 +116,52 @@ class Sundt(PointNeuron):
 
     # iNa kinetics: adapted from Traub 1991, with 2 notable changes:
     # - Q10 correction to account for temperature adaptation from 30 to 35 degrees
-    # - 6 mV voltage offset in the activation and inactivation rates to shift iNa voltage dependence
+    # - 65 mV voltage offset to account for Traub 1991 relative voltage definition (Vm = v - Vrest)
+    # - voltage offsets in the m-gate (+6mV) and h-gate (-6mV) to shift iNa voltage dependence
     #   approximately midway between values reported for Nav1.7 and Nav1.8 currents.
 
     @classmethod
     def alpham(cls, Vm):
-        Vm += cls.deltaVm
+        Vm -= cls.Vrest_Traub
+        Vm += cls.mshift
         return cls.q10_Traub * 0.32 * cls.vtrap((13.1 - Vm), 4) * 1e3  # s-1
 
     @classmethod
     def betam(cls, Vm):
-        Vm += cls.deltaVm
+        Vm -= cls.Vrest_Traub
+        Vm += cls.mshift
         return cls.q10_Traub * 0.28 * cls.vtrap((Vm - 40.1), 5) * 1e3  # s-1
 
     @classmethod
     def alphah(cls, Vm):
-        Vm += cls.deltaVm
+        Vm -= cls.Vrest_Traub
+        Vm += cls.hshift
         return cls.q10_Traub * 0.128 * np.exp((17.0 - Vm) / 18) * 1e3  # s-1
 
     @classmethod
     def betah(cls, Vm):
-        Vm += cls.deltaVm
+        Vm -= cls.Vrest_Traub
+        Vm += cls.hshift
         return cls.q10_Traub * 4 / (1 + np.exp((40.0 - Vm) / 5)) * 1e3 # s-1
 
-    # iKd kinetics: using Migliore 1995 values, with Borg-Graham 1991 formalism
+    # iKd kinetics: using Migliore 1995 values, with Borg-Graham 1991 formalism, with:
+    # - Q10 correction to account for temperature adaptation from 30 to 35 degrees
 
     @classmethod
     def alphan(cls, Vm):
-        return cls.alphaBorgGraham(0.03, 5, 0.4, -32., cls.T, Vm) * 1e3  # s-1
+        return cls.q10_BG * cls.alphaBG(0.03, -5, 0.4, -32., Vm) * 1e3  # s-1
 
     @classmethod
     def betan(cls, Vm):
-        return cls.betaBorgGraham(0.03, 5, 0.4, -32., cls.T, Vm) * 1e3  # s-1
+        return cls.q10_BG * cls.betaBG(0.03, -5, 0.4, -32., Vm) * 1e3  # s-1
 
     @classmethod
     def alphal(cls, Vm):
-        return cls.alphaBorgGraham(0.001, -2, 1., -61., cls.T, Vm) * 1e3  # s-1
+        return cls.q10_BG * cls.alphaBG(0.001, 2, 1., -61., Vm) * 1e3  # s-1
 
     @classmethod
     def betal(cls, Vm):
-        return cls.betaBorgGraham(0.001, -2, 1., -61., cls.T, Vm) * 1e3  # s-1
+        return cls.q10_BG * cls.betaBG(0.001, 2, 1., -61., Vm) * 1e3  # s-1
 
     # iM kinetics: taken from Yamada 1989, with notable changes:
     # - Q10 correction to account for temperature adaptation from 23.5 to 35 degrees
@@ -261,10 +271,10 @@ class Sundt(PointNeuron):
         ''' delayed-rectifier Potassium current '''
         return cls.gKdbar * n**3 * l * (Vm - cls.EK)  # mA/m2
 
-    @classmethod
-    def iM(cls, p, Vm):
-        ''' slow non-inactivating Potassium current '''
-        return cls.gMbar * p * (Vm - cls.EK)  # mA/m2
+    # @classmethod
+    # def iM(cls, p, Vm):
+    #     ''' slow non-inactivating Potassium current '''
+    #     return cls.gMbar * p * (Vm - cls.EK)  # mA/m2
 
     # @classmethod
     # def iCaL(cls, c, Cai, Vm):
@@ -287,7 +297,7 @@ class Sundt(PointNeuron):
         return {
             'iNa': lambda Vm, x: cls.iNa(x['m'], x['h'], Vm),
             'iKd': lambda Vm, x: cls.iKd(x['n'], x['l'], Vm),
-            'iM': lambda Vm, x: cls.iM(x['p'], Vm),
+            # 'iM': lambda Vm, x: cls.iM(x['p'], Vm),
             # 'iCaL': lambda Vm, x: cls.iCaL(x['c'], x['Cai'], Vm),
             # 'iKCa': lambda Vm, x: cls.iKCa(x['q'], Vm),
             'iLeak': lambda Vm, _: cls.iLeak(Vm)
