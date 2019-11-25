@@ -3,12 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-22 18:41:36
+# @Last Modified time: 2019-11-25 12:21:41
 
 import numpy as np
 from ..core import PointNeuron
 from ..constants import CELSIUS_2_KELVIN, FARADAY, Rg, Z_Ca
-from ..utils import findModifiedEq
+from ..utils import findModifiedEq, logger
 
 
 class Sundt(PointNeuron):
@@ -90,7 +90,7 @@ class Sundt(PointNeuron):
         del i_dict['iLeak']
         iNet = sum([cfunc(cls.Vm0, sstates) for cfunc in i_dict.values()])  # mA/m2
         cls.ELeak = cls.Vm0 + iNet / cls.gLeak  # mV
-        # print(f'Eleak = {cls.ELeak:.2f} mV')
+        logger.debug(f'Eleak = {cls.ELeak:.2f} mV')
 
         return super(Sundt, cls).__new__(cls)
 
