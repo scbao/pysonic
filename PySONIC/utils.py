@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 18:47:16
+# @Last Modified time: 2019-11-26 18:50:37
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -804,7 +804,9 @@ def rotAroundPoint2D(x, theta, p):
 
 def getKey(keyfile='pushbullet.key'):
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    fpath = os.path.join(dir_path, keyfile)
+    package_root = os.path.abspath(os.path.join(dir_path, os.pardir))
+    fpath = os.path.join(package_root, keyfile)
+    print(fpath)
     if not os.path.isfile(fpath):
         raise FileNotFoundError('pushbullet API key file not found')
     with open(fpath) as f:

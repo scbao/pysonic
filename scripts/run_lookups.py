@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-26 15:36:02
+# @Last Modified time: 2019-11-26 18:47:35
 
 ''' Create lookup table for specific neuron. '''
 
@@ -13,11 +13,12 @@ import pickle
 import logging
 import numpy as np
 
-from PySONIC.utils import logger, isIterable
+from PySONIC.utils import logger, isIterable, alert
 from PySONIC.core import NeuronalBilayerSonophore, Batch
 from PySONIC.parsers import MechSimParser
 
 
+@alert
 def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
                         mpi=False, loglevel=logging.INFO):
     ''' Run simulations of the mechanical system for a multiple combinations of
