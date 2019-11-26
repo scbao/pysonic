@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-01 10:01:50
+# @Last Modified time: 2019-11-26 15:36:02
 
 ''' Create lookup table for specific neuron. '''
 
@@ -90,7 +90,7 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
         outputs += batch(mpi=mpi, loglevel=loglevel)
 
     # Split comp times and effvars from outputs
-    tcomps, effvars = [list(x) for x in zip(*outputs)]
+    effvars, tcomps = [list(x) for x in zip(*outputs)]
     effvars = list(itertools.chain.from_iterable(effvars))
 
     # Reshape effvars into nD arrays and add them to lookups dictionary

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 14:55:18
+# @Last Modified time: 2019-11-26 15:34:51
 
 from enum import Enum
 import os
@@ -696,10 +696,7 @@ class BilayerSonophore(Model):
     def simQueue(cls, *args, **kwargs):
         return Batch.createQueue(*args)
 
-    @Model.addMeta
-    @Model.logDesc
-    @Model.checkSimParams
-    def simulate(self, Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.predict):
+    def simUntilConvergence(self, Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.predict):
         ''' Simulate until periodic stabilization for a specific set of ultrasound parameters,
             and return output data in a dataframe.
 
@@ -738,6 +735,13 @@ class BilayerSonophore(Model):
             'Z': y[:, 1],
             'ng': y[:, 2]
         })
+
+    @Model.addMeta
+    @Model.logDesc
+    @Model.checkSimParams
+    def simulate(self, Fdrive, Adrive, Qm, Pm_comp_method=PmCompMethod.predict):
+        ''' Wrapper around the simUntilConvergence method, with decorators. '''
+        return self.simUntilConvergence(Fdrive, Adrive, Qm, Pm_comp_method=Pm_comp_method)
 
     def meta(self, Fdrive, Adrive, Qm, Pm_comp_method):
         return {

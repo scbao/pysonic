@@ -3,8 +3,9 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-20 20:26:09
+# @Last Modified time: 2019-11-26 15:36:36
 
+import time
 from copy import deepcopy
 import logging
 import numpy as np
@@ -126,6 +127,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         ''' fs-modulated spatial averaging. '''
         return fs * x + (1 - fs) * x0
 
+    @timer
     def computeEffVars(self, Fdrive, Adrive, Qm, fs):
         ''' Compute "effective" coefficients of the HH system for a specific
             combination of stimulus frequency, stimulus amplitude and charge density.
@@ -141,7 +143,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: list with computation time and a list of dictionaries of effective variables
         '''
         # Run simulation and retrieve deflection and gas content vectors from last cycle
-        data, meta = BilayerSonophore.simulate(self, Fdrive, Adrive, Qm)
+        data = BilayerSonophore.simUntilConvergence(self, Fdrive, Adrive, Qm)
         Z_last = data.loc[-NPC_DENSE:, 'Z'].values  # m
         Cm_last = self.v_capacitance(Z_last)  # F/m2
 
@@ -160,11 +162,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             self, *si_format([Fdrive, Adrive], precision=1, space=' '), Qm * 1e5)
         if len(fs) > 1:
             log += ', fs = {:.0f} - {:.0f}%'.format(fs.min() * 1e2, fs.max() * 1e2)
-        log += ', tcomp = {:.3f} s'.format(meta['tcomp'])
         logger.info(log)
 
         # Return effective coefficients
-        return [meta['tcomp'], effvars]
+        return effvars
 
     def getLookupFileName(self, a=None, Fdrive=None, Adrive=None, fs=False):
         fname = '{}_lookups'.format(self.pneuron.name)
