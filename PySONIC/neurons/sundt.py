@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-25 12:21:41
+# @Last Modified time: 2019-11-26 18:39:11
 
 import numpy as np
 from ..core import PointNeuron
@@ -62,8 +62,8 @@ class Sundt(PointNeuron):
     # Additional parameters
     celsius = 35.0         # Temperature (Celsius)
     celsius_Traub = 30.0   # Temperature in Traub 1991 (Celsius)
-    celsius_Yamada = 23.5  # Temperature in Yamada 1989 (Celsius)
     celsius_BG = 30.0      # Temperature in Borg-Graham 1987 (Celsius)
+    # celsius_Yamada = 23.5  # Temperature in Yamada 1989 (Celsius)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
@@ -79,8 +79,8 @@ class Sundt(PointNeuron):
 
     def __new__(cls):
         cls.q10_Traub = 3**((cls.celsius - cls.celsius_Traub) / 10)
-        cls.q10_Yamada = 3**((cls.celsius - cls.celsius_Yamada) / 10)
         cls.q10_BG = 3**((cls.celsius - cls.celsius_BG) / 10)
+        # cls.q10_Yamada = 3**((cls.celsius - cls.celsius_Yamada) / 10)
         cls.T = cls.celsius + CELSIUS_2_KELVIN
         # cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
 
