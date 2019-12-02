@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-22 18:22:09
+# @Last Modified time: 2019-12-02 18:52:53
 
 import abc
 import inspect
@@ -17,6 +17,7 @@ from .simulators import PWSimulator
 from ..postpro import detectSpikes, computeFRProfile
 from ..constants import *
 from ..utils import *
+from ..threshold import threshold
 
 
 class PointNeuron(Model):
@@ -538,7 +539,7 @@ class PointNeuron(Model):
         '''
         return not np.isnan(cls.getStabilizationValue(data))
 
-    def titrate(self, pp, xfunc=None, Arange=(0., 2 * AMP_UPPER_BOUND_ESTIM)):
+    def titrate(self, pp, xfunc=None, Arange=(0., ESTIM_AMP_UPPER_BOUND)):
         ''' Use a binary search to determine the threshold amplitude needed
             to obtain neural excitation for a given duration, PRF and duty cycle.
 
@@ -551,6 +552,6 @@ class PointNeuron(Model):
         if xfunc is None:
             xfunc = self.titrationFunc
 
-        return binarySearch(
-            lambda x: xfunc(self.simulate(*x)[0]),
-            [pp], 0, Arange, THRESHOLD_CONV_RANGE_ESTIM)
+        return threshold(
+            lambda x: xfunc(self.simulate(x, pp)[0]),
+            Arange, x0=ESTIM_AMP_INITIAL, rel_eps_thr=ESTIM_REL_CONV_THR, precheck=False)

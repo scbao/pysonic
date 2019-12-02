@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-26 15:36:36
+# @Last Modified time: 2019-12-02 18:53:06
 
 import time
 from copy import deepcopy
@@ -17,6 +17,7 @@ from .pneuron import PointNeuron
 from .model import Model
 from .protocols import TimeProtocol, PulsedProtocol, createPulsedProtocols
 from ..utils import *
+from ..threshold import threshold
 from ..constants import *
 from ..postpro import getFixedPoints
 from .lookups import SmartLookup, SmartDict, fixLookup
@@ -519,7 +520,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return PointNeuron.getNSpikes(data)
 
     @logCache(os.path.join(os.path.split(__file__)[0], 'astim_titrations.log'))
-    def titrate(self, Fdrive, pp, fs=1., method='sonic', xfunc=None, Arange=None):
+    def titrate(self, Fdrive, pp, fs=1., method='sonic', qss_vars=None, xfunc=None, Arange=None):
         ''' Use a binary search to determine the threshold amplitude needed to obtain
             neural excitation for a given frequency and pulsed protocol.
 
@@ -539,10 +540,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         if Arange is None:
             Arange = [0., self.getLookup().refs['A'].max()]
 
-        return binarySearch(
-            lambda x: xfunc(self.simulate(*x)[0]),
-            [Fdrive, pp, fs, method], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM
-        )
+        return threshold(
+            lambda x: xfunc(self.simulate(Fdrive, x, pp, fs=fs, method=method, qss_vars=qss_vars)[0]),
+            Arange, x0=ASTIM_AMP_INITIAL, eps_thr=ASTIM_ABS_CONV_THR, rel_eps_thr=1e0, precheck=True)
 
     def getQuasiSteadyStates(self, Fdrive, amps=None, charges=None, DC=1.0, squeeze_output=False):
         ''' Compute the quasi-steady state values of the neuron's gating variables
@@ -647,20 +647,3 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             dQdt = -self.pneuron.iNet(lookups['V'], QSS.tables)  # mA/m2
             classified_fixed_points = self.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)
             return len(classified_fixed_points['stable']) > 0
-
-    def titrateQSS(self, Fdrive, DC=1., Arange=None):
-
-        # Default amplitude interval
-        if Arange is None:
-            Arange = [0., self.getLookup().refs['A'].max()]
-
-        # Titration function
-        def xfunc(x):
-            if self.pneuron.name == 'STN':
-                return self.isStableQSS(*x)
-            else:
-                return not self.isStableQSS(*x)
-
-        return binarySearch(
-            xfunc,
-            [Fdrive, DC], 1, Arange, THRESHOLD_CONV_RANGE_ASTIM)

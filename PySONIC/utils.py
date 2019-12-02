@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-27 18:24:33
+# @Last Modified time: 2019-12-02 20:06:24
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -526,109 +526,6 @@ def fileCache(root, fcode_func, ext='json'):
         return wrapper
 
     return wrapper_with_args
-
-
-def binarySearch(bool_func, args, ix, xbounds, dx_thr, history=None):
-    ''' Use a binary search to determine the threshold satisfying a given condition
-        within a continuous search interval.
-
-        :param bool_func: boolean function returning whether condition is satisfied
-        :param args: list of function arguments other than refined value
-        :param xbounds: search interval for threshold (progressively refined)
-        :param dx_thr: accuracy criterion for threshold
-        :return: excitation threshold
-    '''
-
-    # If first function call: check that condition changes within the interval
-    if history is None:
-        sim_args = args[:]
-
-        # If condition not satisfied even for upper bound -> return nan
-        sim_args.insert(ix, xbounds[1])
-        if not bool_func(sim_args):
-            logger.warning('titration error: condition not satisfied for upper bound')
-            return np.nan
-
-        # If condition satisfied even for lower bound -> return nan
-        sim_args[ix] = xbounds[0]
-        if bool_func(sim_args):
-            logger.warning('titration error: condition satisfied even for lower bound')
-            return np.nan
-
-        # Assign empty history
-        history = []
-
-    # Compute function output at interval mid-point
-    x = (xbounds[0] + xbounds[1]) / 2
-    sim_args = args[:]
-    sim_args.insert(ix, x)
-    history.append(bool_func(sim_args))
-
-    # If titration interval is small enough
-    conv = False
-    if (xbounds[1] - xbounds[0]) <= dx_thr:
-        logger.debug('titration interval smaller than defined threshold')
-
-        # If both conditions have been encountered during titration process,
-        # we're going towards convergence
-        if (0 in history and 1 in history):
-            logger.debug('converging around threshold')
-
-            # If current value satisfies condition, convergence is achieved
-            # -> return threshold
-            if history[-1]:
-                logger.debug('currently satisfying condition -> convergence')
-                return x
-
-        # If only one condition has been encountered during titration process,
-        # then no titration is impossible within the defined interval -> return NaN
-        else:
-            logger.warning('titration does not converge within this interval')
-            return np.nan
-
-    # Return threshold if convergence is reached, otherwise refine interval and iterate
-    if conv:
-        return x
-    else:
-        if x > 0.:
-            xbounds = (xbounds[0], x) if history[-1] else (x, xbounds[1])
-        else:
-            xbounds = (x, xbounds[1]) if history[-1] else (xbounds[0], x)
-        return binarySearch(bool_func, args, ix, xbounds, dx_thr, history=history)
-
-
-def pow2Search(bool_func, args, ix, x, xmax, icall=0):
-    ''' Use an incremental power of 2 search to determine the threshold satisfying a given condition
-        within a continuous search interval.
-
-        :param bool_func: boolean function returning whether condition is satisfied
-        :param args: list of function arguments other than refined value
-        :param x: value to be tested (updated at each recursion step)
-        :param xmax: upper bound of search interval for x
-        :return: first (i.e. minimal) x value for which the condition is satisfied
-    '''
-
-    # Compute function output
-    sim_args = args[:]
-    sim_args.insert(ix, x)
-    res = bool_func(sim_args)
-
-    # If condition is satisfied -> return
-    if res is True:
-        # If first call -> return nan
-        if icall == 0:
-            logger.warning('titration error: condition satisfied for initial x value')
-            return np.nan
-        else:
-            logger.debug(f'condition satisfied on call {icall} -> returning')
-            return x
-    # Otherwise, double x value and call function recursively
-    else:
-        if x > xmax:
-            logger.error('titration error: condition not satisfied for max x value')
-            return np.nan
-        else:
-            return pow2Search(bool_func, args, ix, 2 * x, xmax, icall=icall + 1)
 
 
 def derivative(f, x, eps, method='central'):

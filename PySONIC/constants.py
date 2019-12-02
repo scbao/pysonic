@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-04 13:23:31
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-27 15:49:10
+# @Last Modified time: 2019-12-02 18:55:15
 
 ''' Numerical constants used in the package. '''
 
@@ -48,9 +48,11 @@ MIN_NSPIKES_SPECTRUM = 3  # minimum number of spikes to compute firing rate spec
 
 # -------------------------- Titrations --------------------------
 
-AMP_UPPER_BOUND_ESTIM = 50.0      # initial current density upper bound for titration (mA/m2)
-THRESHOLD_CONV_RANGE_ESTIM = 0.1  # current density search range threshold for titration (mA/m2)
-THRESHOLD_CONV_RANGE_ASTIM = 1e2  # acoustic pressure search range threshold for titration (Pa)
+ESTIM_AMP_UPPER_BOUND = 1e5  # initial current density upper bound for titration (mA/m2)
+ESTIM_AMP_INITIAL = 1e0      #  initial ESTIM titration amplitude (mA/m2)
+ESTIM_REL_CONV_THR = 1e-2    # relative ESTIM titration convergence threshold
+ASTIM_AMP_INITIAL = 1e4      #  initial ASTIM titration amplitude (Pa)
+ASTIM_ABS_CONV_THR = 1e2     # absolute ASTIM titration convergence threshold (Pa)
 
 # -------------------------- QSS stability analysis --------------------------
 
