@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-10 10:34:55
+# @Last Modified time: 2019-12-04 15:35:56
 
 import re
 import numpy as np
@@ -24,7 +24,8 @@ class Lookup:
                     k, v.shape, self.dims()))
 
     def __repr__(self):
-        return 'Lookup{}D({})'.format(self.ndims(), ', '.join(self.inputs()))
+        ref_str = ', '.join([f'{x[0]}: {x[1]}' for x in zip(self.inputs(), self.dims())])
+        return f'Lookup{self.ndims()}D({ref_str})'
 
     def __getitem__(self, key):
         return self.tables[key]
@@ -290,26 +291,3 @@ class SmartDict():
 
     def pop(self, key):
         return self.d.pop(key)
-
-
-if __name__ == '__main__':
-
-    refs = {
-        'a': np.logspace(np.log10(16), np.log10(64), 5) * 1e-9,
-        'f': np.array([100, 200, 500, 1e3, 2e3, 3e3, 4e3]) * 1e3,
-        'A': np.logspace(np.log10(1), np.log10(600), 100) * 1e3,
-        'Q': np.arange(-80, 50)
-    }
-    dims = [refs[x].shape for x in refs.keys()]
-    tables = {
-        'alpham': np.ones(dims) * 2,
-        'betam': np.ones(dims) * 3
-    }
-
-    lkp4d = SmartLookup(refs, tables)
-    print(lkp4d, lkp4d.dims())
-    lkp1d = lkp4d.projectN({'a': 32e-9, 'f': 500e3, 'A': 100e3})
-    print(lkp1d, lkp1d.dims())
-
-    for k in ['alpham', 'betam', 'taum', 'minf']:
-        print(k, lkp1d[k])
