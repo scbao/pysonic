@@ -193,24 +193,17 @@ If possible, use the `--mpi` argument to enable multiprocessing, as lookups pre-
 
 That's it! You can now run simulations of your point-neuron model upon ultrasonic stimulation.
 
-## Future developments
-
-Here is a list of future developments:
-
-- [ ] Add quasi-steady state analysis module
-- [x] Integration within the [NEURON simulation environment](https://www.neuron.yale.edu/neuron/)
-- [x] Spatial expansion into nanoscale multicompartmental model
-- [ ] Spatial expansion into morphological realistic fiber models
-- [ ] Model validation against experimental data (leech neurons)
-
 # Authors
 
 Code written and maintained by Theo Lemaire (theo.lemaire@epfl.ch).
 
-# License
+# License & citation
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+If PySONIC contributes to a project that leads to a scientific publication, please acknowledge this fact by citing [Lemaire, T., Neufeld, E., Kuster, N., and Micera, S. (2019). Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation. J. Neural Eng.](https://iopscience.iop.org/article/10.1088/1741-2552/ab1685)
+
+DOI: 10.1088/1741-2552/ab1685
 
 # References
 
