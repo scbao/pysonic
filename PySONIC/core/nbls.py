@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-02 18:53:06
+# @Last Modified time: 2019-12-04 15:44:53
 
 import time
 from copy import deepcopy
@@ -210,19 +210,18 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lkp2d = self.getLookup().projectN({'a': self.a, 'f': Fdrive})
         return lkp2d
 
-    def fullDerivatives(self, t, y, Fdrive, Adrive, phi, fs):
+    def fullDerivatives(self, t, y, Fdrive, Adrive, fs):
         ''' Compute the full system derivatives.
 
             :param t: specific instant in time (s)
             :param y: vector of state variables
             :param Fdrive: acoustic drive frequency (Hz)
             :param Adrive: acoustic drive amplitude (Pa)
-            :param phi: acoustic drive phase (rad)
             :param fs: sonophore membrane coevrage fraction (-)
             :return: vector of derivatives
         '''
         dydt_mech = BilayerSonophore.derivatives(
-            self, t, y[:3], Fdrive, Adrive, y[3], phi)
+            self, t, y[:3], Fdrive, Adrive, y[3])
         dydt_elec = self.pneuron.derivatives(
             t, y[3:], Cm=self.spatialAverage(fs, self.capacitance(y[1]), self.Cm0))
         return dydt_mech + dydt_elec
@@ -264,12 +263,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         return [dQmdt, *dstates]
 
-    def __simFull(self, Fdrive, Adrive, pp, fs, phi=np.pi):
+    def __simFull(self, Fdrive, Adrive, pp, fs):
         # Determine time step
         dt = 1 / (NPC_DENSE * Fdrive)
 
         # Compute initial non-zero deflection
-        Z = self.computeInitialDeflection(Adrive, Fdrive, phi, self.Qm0, dt)
+        Z = self.computeInitialDeflection(Adrive, Fdrive, self.Qm0, dt)
 
         # Set initial conditions
         ss0 = self.pneuron.getSteadyStates(self.pneuron.Vm0)
@@ -279,8 +278,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Initialize simulator and compute solution
         logger.debug('Computing detailed solution')
         simulator = PWSimulator(
-            lambda t, y: self.fullDerivatives(t, y, Fdrive, Adrive, phi, fs),
-            lambda t, y: self.fullDerivatives(t, y, 0., 0., 0., fs))
+            lambda t, y: self.fullDerivatives(t, y, Fdrive, Adrive, fs),
+            lambda t, y: self.fullDerivatives(t, y, 0., 0., fs))
         t, y, stim = simulator(
             y1, dt, pp,
             target_dt=CLASSIC_TARGET_DT,
@@ -305,12 +304,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             data[self.pneuron.statesNames()[i]] = y[:, i + 4]
         return data
 
-    def __simHybrid(self, Fdrive, Adrive, pp, fs, phi=np.pi):
+    def __simHybrid(self, Fdrive, Adrive, pp, fs):
         # Determine time steps
         dt_dense, dt_sparse = [1. / (n * Fdrive) for n in [NPC_DENSE, NPC_SPARSE]]
 
         # Compute initial non-zero deflection
-        Z = self.computeInitialDeflection(Adrive, Fdrive, phi, self.Qm0, dt_dense)
+        Z = self.computeInitialDeflection(Adrive, Fdrive, self.Qm0, dt_dense)
 
         # Set initial conditions
         ss0 = self.pneuron.getSteadyStates(self.pneuron.Vm0)
@@ -321,8 +320,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         is_dense_var = np.array([True] * 3 + [False] * (len(self.pneuron.states) + 1))
         logger.debug('Computing hybrid solution')
         simulator = HybridSimulator(
-            lambda t, y: self.fullDerivatives(t, y, Fdrive, Adrive, phi, fs),
-            lambda t, y: self.fullDerivatives(t, y, 0., 0., 0., fs),
+            lambda t, y: self.fullDerivatives(t, y, Fdrive, Adrive, fs),
+            lambda t, y: self.fullDerivatives(t, y, 0., 0., fs),
             lambda t, y, Cm: self.pneuron.derivatives(
                 t, y, Cm=self.spatialAverage(fs, Cm, self.Cm0)),
             lambda yref: self.capacitance(yref[1]),
