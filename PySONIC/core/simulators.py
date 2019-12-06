@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 12:45:29
+# @Last Modified time: 2019-12-05 14:18:15
 
 import abc
 import numpy as np
@@ -377,7 +377,8 @@ class PWSimulator(Simulator):
         tstim, toffset, PRF, DC = pp.tstim, pp.toffset, pp.PRF, pp.DC
 
         # Adjust PRF and get number of pulses
-        PRF = self.adjustPRF(tstim, PRF, DC, print_progress)
+        if tstim > 0:
+            PRF = self.adjustPRF(tstim, PRF, DC, print_progress)
         npulses = self.getNPulses(tstim, PRF)
 
         # Get reference time vectors

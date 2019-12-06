@@ -184,7 +184,7 @@ To add a new point-neuron model, follow this procedure:
 from .my_neuron import MyNeuron
 ```
 
-12. Verify your point-neuron model by running simulations under various electrical stimuli and comparing the output to the neurons's expected behavior. Implemented required corrections if any.
+12. Verify your point-neuron model by running simulations under various electrical stimuli and comparing the output to the neurons's expected behavior. Implement required corrections if any.
 13. Pre-compute lookup tables required to run coarse-grained  simulations of the neuron model upon ultrasonic stimulation. To do so, go to the `scripts` directory and run the `run_lookups.py` script with the neuron's name as command line argument, e.g.:
 
 ```python run_lookups.py -n myneuron --mpi```

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 12:52:03
+# @Last Modified time: 2019-12-05 18:41:54
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -166,6 +166,7 @@ def prependDataFrame(data):
             x0 = data[key].values[0]
         new_data[key] = np.insert(data[key].values, 0, x0)
     return pd.DataFrame(new_data)
+
 
 def find_tpeaks(t, y, **kwargs):
     ''' Wrapper around the scipy.signal.find_peaks function that provides a time vector
