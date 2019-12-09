@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-05 18:41:54
+# @Last Modified time: 2019-12-09 08:03:26
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -154,7 +154,7 @@ def resampleDataFrame(data, dt):
 
 
 def prependDataFrame(data):
-    ''' Resample dataframe at regular time step. '''
+    ''' Add an initial value (for t = 0) to all columns of a dataframe. '''
     tnew = np.insert(data['t'].values, 0, 0)
     new_data = {'t': tnew}
     for key in data:
@@ -166,6 +166,13 @@ def prependDataFrame(data):
             x0 = data[key].values[0]
         new_data[key] = np.insert(data[key].values, 0, x0)
     return pd.DataFrame(new_data)
+
+
+def boundDataFrame(data, tbounds):
+    ''' Restrict all columns of a dataframe to indexes corresponding to
+        time values within specific bounds. '''
+    tmin, tmax = tbounds
+    return data[np.logical_and(data.t >= tmin, data.t <= tmax)].reset_index(drop=True)
 
 
 def find_tpeaks(t, y, **kwargs):
