@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 20:03:16
+# @Last Modified time: 2019-12-09 16:05:13
 
 import numpy as np
 from ..core import PointNeuron
