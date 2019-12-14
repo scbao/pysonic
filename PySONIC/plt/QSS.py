@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-06 11:54:04
+# @Last Modified time: 2019-12-11 14:31:01
 
 import inspect
 import logging
@@ -22,86 +22,6 @@ FP_colors = {
     'saddle': 'tab:orange',
     'unstable': 'tab:red'
 }
-
-
-def plotVarQSSDynamics(pneuron, a, Fdrive, Adrive, charges, varname, varrange, fs=12):
-    ''' Plot the QSS-approximated derivative of a specific variable as function of
-        the variable itself, as well as equilibrium values, for various membrane
-        charge densities at a given acoustic amplitude.
-
-        :param pneuron: point-neuron model
-        :param a: sonophore radius (m)
-        :param Fdrive: US frequency (Hz)
-        :param Adrive: US amplitude (Pa)
-        :param charges: charge density vector (C/m2)
-        :param varname: name of variable to plot
-        :param varrange: range over which to compute the derivative
-        :return: figure handle
-    '''
-
-    # Extract information about variable to plot
-    pltvar = pneuron.getPltVars()[varname]
-
-    # Get methods to compute derivative and steady-state of variable of interest
-    derX_func = getattr(pneuron, 'der{}{}'.format(varname[0].upper(), varname[1:]))
-    Xinf_func = getattr(pneuron, '{}inf'.format(varname))
-    derX_args = inspect.getargspec(derX_func)[0][1:]
-    Xinf_args = inspect.getargspec(Xinf_func)[0][1:]
-
-    # Get dictionary of charge and amplitude dependent QSS variables
-    nbls = NeuronalBilayerSonophore(a, pneuron, Fdrive)
-    _, Qref, lookups, QSS = nbls.getQuasiSteadyStates(
-        Fdrive, amps=Adrive, charges=charges, squeeze_output=True)
-    df = QSS
-    df['Vm'] = lookups['V']
-
-    # Create figure
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.set_title('{} neuron - QSS {} dynamics @ {:.2f} kPa'.format(
-        pneuron.name, pltvar['desc'], Adrive * 1e-3), fontsize=fs)
-    ax.set_xscale('log')
-    for key in ['top', 'right']:
-        ax.spines[key].set_visible(False)
-    ax.set_xlabel('$\\rm {}\ ({})$'.format(pltvar['label'], pltvar.get('unit', '')),
-                  fontsize=fs)
-    ax.set_ylabel('$\\rm QSS\ d{}/dt\ ({}/s)$'.format(pltvar['label'], pltvar.get('unit', '1')),
-                  fontsize=fs)
-    ax.set_ylim(-40, 40)
-    ax.axhline(0, c='k', linewidth=0.5)
-
-    y0_str = '{}0'.format(varname)
-    if hasattr(pneuron, y0_str):
-        ax.axvline(getattr(pneuron, y0_str) * pltvar.get('factor', 1),
-                   label=y0_str, c='k', linewidth=0.5)
-
-    # For each charge value
-    icolor = 0
-    for j, Qm in enumerate(charges):
-        lbl = 'Q = {:.0f} nC/cm2'.format(Qm * 1e5)
-
-        # Compute variable derivative as a function of its value, as well as equilibrium value,
-        # keeping other variables at quasi steady-state
-        derX_inputs = [varrange if arg == varname else df[arg][j] for arg in derX_args]
-        Xinf_inputs = [df[arg][j] for arg in Xinf_args]
-        dX_QSS = pneuron.derCai(*derX_inputs)
-        Xeq_QSS = pneuron.Caiinf(*Xinf_inputs)
-
-        # Plot variable derivative and its root as a function of the variable itself
-        c = 'C{}'.format(icolor)
-        ax.plot(varrange * pltvar.get('factor', 1), dX_QSS * pltvar.get('factor', 1),
-                c=c, label=lbl)
-        ax.axvline(Xeq_QSS * pltvar.get('factor', 1), linestyle='--', c=c)
-        icolor += 1
-
-    ax.legend(frameon=False, fontsize=fs - 3)
-    for item in ax.get_xticklabels() + ax.get_yticklabels():
-        item.set_fontsize(fs)
-    fig.tight_layout()
-
-    fig.canvas.set_window_title('{}_QSS_{}_dynamics_{:.2f}kPa'.format(
-        pneuron.name, varname, Adrive * 1e-3))
-
-    return fig
 
 
 def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-10-09 15:18:55
+# @Last Modified time: 2019-12-11 12:26:50
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from PySONIC.utils import logger
-from PySONIC.plt import plotQSSdynamics, plotQSSVarVsQm, plotEqChargeVsAmp, plotQSSThresholdCurve
+from PySONIC.plt import plotQSSDerivativeVsState, plotQSSVarVsQm, plotEqChargeVsAmp, plotQSSThresholdCurve
 from PySONIC.parsers import AStimParser
 
 
@@ -33,14 +33,24 @@ def main():
         args['plot'] = ['dQdt']
     a, Fdrive, tstim, toffset, PRF = [
         args[k][0] for k in ['radius', 'freq', 'tstim', 'toffset', 'PRF']]
+    qss_vars = args['qss']
 
     figs = []
+    # For each neuron type
     for i, pneuron in enumerate(args['neuron']):
+
+        # If only 1 DC value
         if args['DC'].size == 1:
             DC = args['DC'][0]
+
+            # If only 1 amplitude value
             if args['amp'].size == 1:
                 Adrive = args['amp'][0]
-                figs.append(plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC))
+
+                # Plot QSS derivative vs state for specified variables
+                if qss_vars is not None:
+                    for k in qss_vars:
+                        figs.append(plotQSSDerivativeVsState(pneuron, a, Fdrive, Adrive, DC))
             else:
                 # Plot evolution of QSS vars vs Q for different amplitudes
                 # for pvar in args['plot']:

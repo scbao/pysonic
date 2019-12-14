@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-04 15:44:53
+# @Last Modified time: 2019-12-11 12:04:40
 
 import time
 from copy import deepcopy
@@ -459,8 +459,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             raise ValueError('Invalid US pressure amplitude: {} kPa (must be positive or null)'
                              .format(Adrive * 1e-3))
         if qss_vars is not None:
-            if not isinstance(qss_vars, list) or not isinstance(qss_vars[0], str):
-                raise ValueError('Invalid QSS variables: must be None or a list of strings')
+            if not isIterable(qss_vars) or not isinstance(qss_vars[0], str):
+                raise ValueError('Invalid QSS variables: must be None or an iterable of strings')
             sn = self.pneuron.statesNames()
             for item in qss_vars:
                 if item not in sn:
@@ -511,7 +511,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         if meta['fs'] < 1.0:
             s += f', fs = {(meta["fs"] * 1e2):.2f}%'
         if 'qss_vars' in meta and meta['qss_vars'] is not None:
-                s += f" - QSS ({','.join(meta['qss_vars'])})"
+                s += f" - QSS ({', '.join(meta['qss_vars'])})"
         return s
 
     @staticmethod

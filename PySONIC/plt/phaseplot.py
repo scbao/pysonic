@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 19:34:28
+# @Last Modified time: 2019-12-10 18:04:47
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -49,20 +49,6 @@ class PhasePlot(GenericPlot):
 
     def checkInputs(self, labels):
         self.checkLabels(labels)
-
-    @staticmethod
-    def extractSpikesData(t, y, tbounds, rel_tbounds, tspikes):
-        spikes_tvec, spikes_yvec, spikes_dydtvec = [], [], []
-        for j, (tspike, tbound) in enumerate(zip(tspikes, tbounds)):
-            left_bound = max(tbound[0], rel_tbounds[0] + tspike)
-            right_bound = min(tbound[1], rel_tbounds[1] + tspike)
-            inds = np.where((t > left_bound) & (t < right_bound))[0]
-            spikes_tvec.append(t[inds] - tspike)
-            spikes_yvec.append(y[inds])
-            dinds = np.hstack(([inds[0] - 1], inds, [inds[-1] + 1]))
-            dydt = np.diff(y[dinds]) / np.diff(t[dinds])
-            spikes_dydtvec.append((dydt[:-1] + dydt[1:]) / 2)  # average of the two
-        return spikes_tvec, spikes_yvec, spikes_dydtvec
 
     def addLegend(self, fig, axes, handles, labels, fs):
         fig.subplots_adjust(top=0.8)
