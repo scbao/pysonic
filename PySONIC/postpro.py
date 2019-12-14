@@ -210,7 +210,7 @@ def find_tpeaks(t, y, **kwargs):
         indexes_raw = np.arange(t_raw.size)
         t, y = resample(t, y, new_dt)
         dt = computeTimeStep(t)  # s
-        ipad = 0
+        #ipad = 0
 
     # Compute index vector
     nsamples = t.size
@@ -226,7 +226,6 @@ def find_tpeaks(t, y, **kwargs):
 
     # Find peaks in the regularly sampled signal
     ipeaks, properties = find_peaks(y, **kwargs)
-    # print(t[ipeaks] * 1e3)
 
     # Adjust peak prominences and bases with restricted analysis window length
     # based on smallest peak width
