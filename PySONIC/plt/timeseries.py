@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-15 13:49:15
+# @Last Modified time: 2020-01-09 11:40:44
 
 import numpy as np
 import matplotlib.pyplot as plt

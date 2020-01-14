@@ -3,13 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-05 16:42:05
+# @Last Modified time: 2020-01-13 22:01:16
 
 from inspect import signature
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..utils import logger, si_prefixes, isWithin
+from ..utils import logger, isWithin
 from ..core import NeuronalBilayerSonophore
 from .pltutils import setGrid, setNormalizer
 

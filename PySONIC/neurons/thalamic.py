@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 20:03:26
+# @Last Modified time: 2020-01-14 15:25:51
 
 import numpy as np
 from ..core import PointNeuron
@@ -143,7 +143,8 @@ class ThalamicRE(Thalamic):
     gLeak = 0.5      # Non-specific leakage
 
     # Additional parameters
-    VT = -67.0  # Spike threshold adjustment parameter (mV)
+    VT = -67.0    # Spike threshold adjustment parameter (mV)
+    area = 14e-9  # Cell membrane area (m2)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
@@ -223,6 +224,7 @@ class ThalamoCortical(Thalamic):
     k2 = 0.4         # intracellular Ca2+ regulation factor (s-1)
     k3 = 100.0       # intracellular Ca2+ regulation factor (s-1)
     k4 = 1.0         # intracellular Ca2+ regulation factor (s-1)
+    area = 29e-9     # Cell membrane area (m2)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {

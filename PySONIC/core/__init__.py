@@ -3,8 +3,9 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 10:51:10
+# @Last Modified time: 2020-01-14 14:21:42
 
+from types import MethodType
 import inspect
 import sys
 
@@ -31,15 +32,16 @@ def getModelsDict():
             models_dict[obj.simkey] = obj
     return models_dict
 
+# Add an initFromMeta method to the Pointneuron class (done here to avoid circular import)
+PointNeuron.initFromMeta = MethodType(
+    lambda self, meta: getPointNeuron(meta['neuron']), PointNeuron)
+models_dict = getModelsDict()
+
 
 def getModel(meta):
     ''' Return appropriate model object based on a dictionary of meta-information. '''
-    if meta['simkey'] == 'MECH':
-        model = BilayerSonophore(meta['a'], meta['Cm0'], meta['Qm0'])
-    else:
-        model = getPointNeuron(meta['neuron'])
-        if meta['simkey'] == 'ASTIM':
-            model = NeuronalBilayerSonophore(meta['a'], model, meta['Fdrive'])
-        elif meta['simkey'] == 'VCLAMP':
-            model = VoltageClamp(model)
-    return model
+    simkey = meta['simkey']
+    try:
+        return models_dict[simkey].initFromMeta(meta)
+    except KeyError:
+        raise ValueError(f'Unknown model type:{simkey}')

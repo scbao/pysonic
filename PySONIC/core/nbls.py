@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-11 12:04:40
+# @Last Modified time: 2020-01-14 13:34:06
 
 import time
 from copy import deepcopy
@@ -21,6 +21,7 @@ from ..threshold import threshold
 from ..constants import *
 from ..postpro import getFixedPoints
 from .lookups import SmartLookup, SmartDict, fixLookup
+from ..neurons import getPointNeuron
 
 
 NEURONS_LOOKUP_DIR = os.path.abspath(os.path.split(__file__)[0] + "/../neurons/")
@@ -56,6 +57,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         if self.d > 0.:
             s += ', d={}m'.format(si_format(self.d, precision=1, space=' '))
         return s + ')'
+
+    @classmethod
+    def initFromMeta(cls, meta):
+        return cls(meta['a'], getPointNeuron(meta['neuron']),
+                   Fdrive=meta['Fdrive'], embedding_depth=meta['d'])
 
     def params(self):
         return {**super().params(), **self.pneuron.params()}
@@ -646,3 +652,56 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             dQdt = -self.pneuron.iNet(lookups['V'], QSS.tables)  # mA/m2
             classified_fixed_points = self.fixedPointsQSS(Fdrive, Adrive, DC, lookups, dQdt)
             return len(classified_fixed_points['stable']) > 0
+
+
+
+class DrivenNeuronalBilayerSonophore(NeuronalBilayerSonophore):
+
+    simkey = 'DASTIM'  # keyword used to characterize simulations made with this model
+
+    def __init__(self, Idrive, *args, **kwargs):
+        self.Idrive = Idrive
+        super().__init__(*args, **kwargs)
+
+    def __repr__(self):
+        return super().__repr__()[:-1] + f', Idrive = {self.Idrive:.2f} mA/m2)'
+
+    @classmethod
+    def initFromMeta(cls, meta):
+        return cls(meta['Idrive'], meta['a'], getPointNeuron(meta['neuron']),
+                   Fdrive=meta['Fdrive'], embedding_depth=meta['d'])
+
+    def params(self):
+        return {**{'Idrive': self.Idrive}, **super().params()}
+
+    @staticmethod
+    def inputs():
+        inputvars = NeuronalBilayerSonophore.inputs()
+        inputvars['Idrive'] = {
+            'desc': 'driving current density',
+            'label': 'I_{drive}',
+            'unit': 'mA/m2',
+            'factor': 1e0,
+            'precision': 0
+        }
+        return inputvars
+
+    def filecodes(self, *args):
+        codes = super().filecodes(*args)
+        codes['Idrive'] = f'Idrive{self.Idrive:.1f}mAm2'
+        return codes
+
+    def fullDerivatives(self, *args):
+        dydt = super().fullDerivatives(*args)
+        dydt[3] += self.Idrive * 1e-3
+        return dydt
+
+    def effDerivatives(self, *args):
+        dQmdt, *dstates = super().effDerivatives(*args)
+        dQmdt += self.Idrive * 1e-3
+        return [dQmdt, *dstates]
+
+    def meta(self, Fdrive, Adrive, pp, fs, method, qss_vars):
+        d = super().meta(Fdrive, Adrive, pp, fs, method, qss_vars)
+        d['Idrive'] = self.Idrive
+        return d

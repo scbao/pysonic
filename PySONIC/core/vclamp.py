@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-14 14:59:14
+# @Last Modified time: 2020-01-14 13:48:16
 
 import numpy as np
 import pandas as pd
@@ -15,6 +15,7 @@ from .pneuron import PointNeuron
 from .simulators import OnOffSimulator
 from ..constants import *
 from ..utils import *
+from ..neurons import getPointNeuron
 
 
 class VoltageClamp(Model):
@@ -35,6 +36,10 @@ class VoltageClamp(Model):
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.pneuron)
+
+    @classmethod
+    def initFromMeta(cls, meta):
+        return cls(getPointNeuron(meta['neuron']))
 
     def params(self):
         return self.pneuron.params()
