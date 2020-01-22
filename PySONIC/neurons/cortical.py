@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-18 18:02:22
+# @Last Modified time: 2020-01-20 15:22:30
 
 import numpy as np
 from ..core import PointNeuron
@@ -143,8 +143,9 @@ class CorticalRS(Cortical):
     gLeak = 0.205   # Non-specific leakage
 
     # Additional parameters
-    VT = -56.2      # Spike threshold adjustment parameter (mV)
-    TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
+    VT = -56.2       # Spike threshold adjustment parameter (mV)
+    TauMax = 0.608   # Max. adaptation decay of slow non-inactivating Potassium current (s)
+    area = 11.84e-9  # Cell membrane area (m2)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
@@ -182,8 +183,9 @@ class CorticalFS(Cortical):
     gLeak = 0.38    # Non-specific leakage
 
     # Additional parameters
-    VT = -57.9      # Spike threshold adjustment parameter (mV)
-    TauMax = 0.502  # Max. adaptation decay of slow non-inactivating Potassium current (s)
+    VT = -57.9       # Spike threshold adjustment parameter (mV)
+    TauMax = 0.502   # Max. adaptation decay of slow non-inactivating Potassium current (s)
+    area = 10.17e-9  # Cell membrane area (m2)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
@@ -226,9 +228,10 @@ class CorticalLTS(Cortical):
     gLeak = 0.19    # Non-specific leakage
 
     # Additional parameters
-    VT = -50.0    # Spike threshold adjustment parameter (mV)
-    TauMax = 4.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
-    Vx = -7.0     # Voltage-dependence uniform shift factor at 36°C (mV)
+    VT = -50.0       # Spike threshold adjustment parameter (mV)
+    TauMax = 4.0     # Max. adaptation decay of slow non-inactivating Potassium current (s)
+    Vx = -7.0        # Voltage-dependence uniform shift factor at 36°C (mV)
+    area = 25.00e-9  # Cell membrane area (m2)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
@@ -327,8 +330,9 @@ class CorticalIB(Cortical):
     gLeak = 0.1    # Non-specific leakage
 
     # Additional parameters
-    VT = -56.2      # Spike threshold adjustment parameter (mV)
-    TauMax = 0.608  # Max. adaptation decay of slow non-inactivating Potassium current (s)
+    VT = -56.2       # Spike threshold adjustment parameter (mV)
+    TauMax = 0.608   # Max. adaptation decay of slow non-inactivating Potassium current (s)
+    area = 28.95e-9  # Cell membrane area (m2)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {

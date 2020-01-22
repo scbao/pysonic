@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-02 20:06:24
+# @Last Modified time: 2020-01-14 14:18:48
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -770,7 +770,7 @@ def filecode(model, *args):
     # If any argument is an iterable -> transform it to a continous string
     for i in range(len(args)):
         if isIterable(args[i]):
-            args[i] = ''.join([x for x in args[i]])
+            args[i] = ''.join([str(x) for x in args[i]])
 
     # Create file code by joining string-encoded inputs with underscores
     codes = model.filecodes(*args).values()
@@ -786,8 +786,8 @@ def simAndSave(model, *args, **kwargs):
     '''
 
     # Extract output directory and overwrite boolean from keyword arguments.
-    outputdir = kwargs.pop('outputdir')
-    overwrite = kwargs.pop('overwrite')
+    outputdir = kwargs.pop('outputdir', '.')
+    overwrite = kwargs.pop('overwrite', True)
 
     # Set data and meta to None
     data, meta = None, None

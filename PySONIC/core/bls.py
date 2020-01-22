@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-04 15:45:23
+# @Last Modified time: 2020-01-14 13:18:08
 
 from enum import Enum
 import os
@@ -145,6 +145,10 @@ class BilayerSonophore(Model):
         if self.d > 0.:
             s += ', d={}m'.format(si_format(self.d, precision=1, space=' '))
         return s + ')'
+
+    @classmethod
+    def initFromMeta(cls, meta):
+        return cls(meta['a'], meta['Cm0'], meta['Qm0'])
 
     @staticmethod
     def inputs():

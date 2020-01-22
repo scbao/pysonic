@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-09 16:05:13
+# @Last Modified time: 2020-01-20 15:35:44
 
 import numpy as np
 from ..core import PointNeuron
@@ -149,6 +149,8 @@ class OtsukaSTN(PointNeuron):
     thetax_r = 0.17e-6  # M
     kx_r = -0.08e-6     # M
     tau_r = 2e-3        # s
+
+    area = 2.86e-9  # Cell membrane area (m2)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
