@@ -3,8 +3,9 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-04 15:35:56
+# @Last Modified time: 2020-01-23 11:56:02
 
+import json
 import re
 import numpy as np
 from scipy.interpolate import interp1d
@@ -175,6 +176,28 @@ class Lookup:
         tables = {k: np.array([v for i in itiles]) for k, v in self.items()}
         refs = {**{ref_name: ref_values}, **self.refs}
         return self.__class__(refs, tables)
+
+    def toDict(self):
+        return {
+            'refs': {k: v.tolist() for k, v in self.refs.items()},
+            'tables': {k: v.tolist() for k, v in self.tables.items()},
+        }
+
+    @classmethod
+    def fromDict(cls, d):
+        refs = {k: np.array(v) for k, v in d['refs'].items()}
+        tables = {k: np.array(v) for k, v in d['tables'].items()}
+        return cls(refs, tables)
+
+    def toJson(self, fpath):
+        with open(fpath, 'w') as fh:
+            json.dump(self.toDict(), fh)
+
+    @classmethod
+    def fromJson(cls, fpath):
+        with open(fpath) as fh:
+            d = json.load(fh)
+        return cls.fromDict(d)
 
 
 class SmartLookup(Lookup):
