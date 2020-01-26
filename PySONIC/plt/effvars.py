@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-13 22:01:16
+# @Last Modified time: 2020-01-26 18:51:35
 
 from inspect import signature
 import numpy as np
@@ -132,13 +132,13 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
     pltvars = nbls.getPltVars()
 
     # Get lookups and re-organize them
-    lkp = nbls.getLookup()
+    lkp = nbls.getLookup().squeeze()
     Qref = lkp.refs['Q']
     lkp.rename('V', 'Vm')
     lkp['Cm'] = Qref / lkp['Vm'] * 1e3  # uF/cm2
 
     # Sort keys for display
-    keys = lkp.outputs()
+    keys = lkp.outputs
     del keys[keys.index('Cm')]
     del keys[keys.index('Vm')]
     keys = ['Cm', 'Vm'] + keys
@@ -154,7 +154,7 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
     lookups2D = lkp.projectN(inputs)
 
     # Get z-variable from remaining inputs
-    for key in lookups2D.inputs():
+    for key in lookups2D.inputs:
         if key != 'Q':
             zkey = key
             zref = lookups2D.refs[key]

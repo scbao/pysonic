@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 09:27:04
+# @Last Modified time: 2020-01-26 18:36:24
 
 import time
 from copy import deepcopy
@@ -20,7 +20,7 @@ from ..utils import *
 from ..threshold import threshold
 from ..constants import *
 from ..postpro import getFixedPoints
-from .lookups import SmartLookup, SmartDict, fixLookup
+from .lookups import EffectiveVariablesLookup
 from ..neurons import getPointNeuron
 
 
@@ -125,8 +125,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: interpolated effective variable vector
         '''
         x = np.zeros(stim.size)
-        x[stim == 0] = lkp['OFF'].interpVar(Qm[stim == 0], 'Q', key)
-        x[stim == 1] = lkp['ON'].interpVar(Qm[stim == 1], 'Q', key)
+        x[stim == 0] = lkp['OFF'].interpVar1D(Qm[stim == 0], key)
+        x[stim == 1] = lkp['ON'].interpVar1D(Qm[stim == 1], key)
         return x
 
     @staticmethod
@@ -190,30 +190,18 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return os.path.join(NEURONS_LOOKUP_DIR, self.getLookupFileName(*args, **kwargs))
 
     def getLookup(self, *args, **kwargs):
+        keep_tcomp = kwargs.pop('keep_tcomp', False)
         lookup_path = self.getLookupFilePath(*args, **kwargs)
-        if not os.path.isfile(lookup_path):
-            raise FileNotFoundError('Missing lookup file: "{}"'.format(lookup_path))
-        with open(lookup_path, 'rb') as fh:
-            frame = pickle.load(fh)
-        if 'ng' in frame['lookup']:
-            del frame['lookup']['ng']
-        refs = frame['input']
-
-        # Move fs to last reference dimension
-        keys = list(refs.keys())
-        if 'fs' in keys and keys.index('fs') < len(keys) - 1:
-            del keys[keys.index('fs')]
-            keys.append('fs')
-            refs = {k: refs[k] for k in keys}
-
-        lkp = SmartLookup(refs, frame['lookup'])
-        return fixLookup(lkp)
+        lkp = EffectiveVariablesLookup.fromPickle(lookup_path)
+        if not keep_tcomp:
+            del lkp.tables['tcomp']
+        return lkp
 
     def getLookup2D(self, Fdrive, fs):
         if fs < 1:
             lkp2d = self.getLookup(a=self.a, Fdrive=Fdrive, fs=True).project('fs', fs)
         else:
-            lkp2d = self.getLookup().projectN({'a': self.a, 'f': Fdrive})
+            lkp2d = self.getLookup().projectN({'a': self.a, 'f': Fdrive}).squeeze()
         return lkp2d
 
     def fullDerivatives(self, t, y, Fdrive, Adrive, fs):
@@ -246,7 +234,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
         # Unpack values and interpolate lookup at current charge density
         Qm, *states = y
-        lkp0d = lkp1d.interpolate1D('Q', Qm)
+        lkp0d = lkp1d.interpolate1D(Qm)
 
         # Compute states dictionary from differential and QSS variables
         states_dict = {}
@@ -374,7 +362,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Create 1D lookup of QSS variables with reference charge vector
         QSS_1D_lkp = {
-            key: SmartLookup(
+            key: EffectiveVariablesLookup(
                 lkps1d['ON'].refs,
                 {k: self.pneuron.quasiSteadyStates()[k](val) for k in qss_vars})
             for key, val in lkps1d.items()}
@@ -572,7 +560,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         nA = lkp.dims()[0]
 
         # Compute QSS states using these lookups
-        QSS = SmartLookup(
+        QSS = EffectiveVariablesLookup(
             lkp.refs,
             {k: v(lkp) for k, v in self.pneuron.quasiSteadyStates().items()})
 

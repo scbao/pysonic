@@ -3,24 +3,23 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 09:15:37
+# @Last Modified time: 2020-01-26 18:57:36
 
 ''' Create lookup table for specific neuron. '''
 
 import os
 import itertools
-import pickle
 import logging
 import numpy as np
 
 from PySONIC.utils import logger, isIterable, alert
-from PySONIC.core import NeuronalBilayerSonophore, Batch
+from PySONIC.core import NeuronalBilayerSonophore, Batch, Lookup
 from PySONIC.parsers import MechSimParser
 from PySONIC.constants import DQ_LOOKUP
 
 
 @alert
-def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
+def computeAStimLookup(pneuron, aref, fref, Aref, Qref, fsref=None,
                         mpi=False, loglevel=logging.INFO):
     ''' Run simulations of the mechanical system for a multiple combinations of
         imposed sonophore radius, US frequencies, acoustic amplitudes charge densities and
@@ -45,23 +44,26 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
         'fs': 'sonophore membrane coverage fractions'
     }
 
-    # Populate inputs dictionary
-    inputs = {
+    # Populate reference vectors dictionary
+    refs = {
         'a': aref,  # nm
         'f': fref,  # Hz
         'A': Aref,  # Pa
         'Q': Qref  # C/m2
     }
 
-    # Check inputs compatibility
+    # If multiple sonophore coverage values, ensure that only 1 value of
+    # sonophore radius and US frequency are provided
     err_fs = 'cannot span {} for more than 1 {}'
     if fsref.size > 1 or fsref[0] != 1.:
         for x in ['a', 'f']:
-            assert inputs[x].size == 1, err_fs.format(descs['fs'], descs[x])
-    inputs['fs'] = fsref
+            assert refs[x].size == 1, err_fs.format(descs['fs'], descs[x])
 
-    # Check validity of input parameters
-    for key, values in inputs.items():
+    # Add sonophore coverage vector to references
+    refs['fs'] = fsref
+
+    # Check validity of all reference vectors
+    for key, values in refs.items():
         if not isIterable(values):
             raise TypeError(
                 'Invalid {} (must be provided as list or numpy array)'.format(descs[key]))
@@ -74,16 +76,15 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
         if key in ('A', 'fs') and min(values) < 0:
             raise ValueError('Invalid {} (must all be positive or null)'.format(descs[key]))
 
-    # Get inputs dimensions
-    dims = np.array([x.size for x in inputs.values()])
-    ncombs = dims.prod()
+    # Get references dimensions
+    dims = np.array([x.size for x in refs.values()])
 
-    # Create simulation queue per radius
+    # Create simulation queue per sonophore radius
     queue = Batch.createQueue(fref, Aref, Qref)
     for i in range(len(queue)):
-        queue[i].append(inputs['fs'])
+        queue[i].append(refs['fs'])
 
-    # Run simulations and populate outputs (list of lists)
+    # Run simulations and populate outputs
     logger.info('Starting simulation batch for %s neuron', pneuron.name)
     outputs = []
     for a in aref:
@@ -95,23 +96,25 @@ def computeAStimLookups(pneuron, aref, fref, Aref, Qref, fsref=None,
     effvars, tcomps = [list(x) for x in zip(*outputs)]
     effvars = list(itertools.chain.from_iterable(effvars))
 
+    # Make sure outputs size matches inputs dimensions product
+    nout = len(effvars)
+    assert nout == dims.prod(), 'Number of outputs does not match number of combinations'
+
     # Reshape effvars into nD arrays and add them to lookups dictionary
     logger.info('Reshaping output into lookup tables')
     varkeys = list(effvars[0].keys())
-    nout = len(effvars)
-    assert nout == ncombs, 'number of outputs does not match number of combinations'
-    lookups = {}
+    tables = {}
     for key in varkeys:
         effvar = [effvars[i][key] for i in range(nout)]
-        lookups[key] = np.array(effvar).reshape(dims)
-    tcomps = np.array(tcomps).reshape(dims[:-1])
+        tables[key] = np.array(effvar).reshape(dims)
 
-    # Store inputs, lookup data and comp times in dictionary
-    return {
-        'input': inputs,
-        'lookup': lookups,
-        'tcomp': tcomps
-    }
+    # Reshape computation times, tile over extra fs dimension, and add it as a lookup table
+    tcomps = np.array(tcomps).reshape(dims[:-1])
+    tcomps = np.moveaxis(np.array([tcomps for i in range(dims[-1])]), 0, -1)
+    tables['tcomp'] = tcomps
+
+    # Construct and return lookup object
+    return Lookup(refs, tables)
 
 
 def main():
@@ -162,13 +165,13 @@ def main():
                 logger.error('%s Lookup creation canceled', pneuron.name)
                 return
 
-        # Compute lookups
-        df = computeAStimLookups(pneuron, *inputs, mpi=args['mpi'], loglevel=args['loglevel'])
+        # Compute lookup
+        lkp = computeAStimLookup(pneuron, *inputs, mpi=args['mpi'], loglevel=args['loglevel'])
+        logger.info(f'Generated lookup: {lkp}')
 
-        # Save dictionary in lookup file
-        logger.info('Saving %s neuron lookup table in file: "%s"', pneuron.name, lookup_fpath)
-        with open(lookup_fpath, 'wb') as fh:
-            pickle.dump(df, fh)
+        # Save lookup in PKL file
+        logger.info('Saving %s neuron lookup in file: "%s"', pneuron.name, lookup_fpath)
+        lkp.toPickle(lookup_fpath)
 
 
 if __name__ == '__main__':

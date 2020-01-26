@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-14 14:18:48
+# @Last Modified time: 2020-01-26 13:35:10
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -840,3 +840,26 @@ def simAndSave(model, *args, **kwargs):
         pickle.dump({'meta': meta, 'data': data}, fh)
     logger.debug('simulation data exported to "%s"', fpath)
     return fpath
+
+
+def moveItem(l, value, itarget):
+    ''' Move a list item to a specific target index.
+
+        :param l: list object
+        :param value: value of the item to move
+        :param itarget: target index
+        :return: re-ordered list.
+    '''
+    # Get absolute target index
+    if itarget < 0:
+        itarget += len(l)
+
+    assert itarget < len(l), f'target index {itarget} exceeds list size ({len(l)})'
+
+    # Get index corresponding to element and delete entry from list
+    iref = l.index(value)
+    new_l = l.copy()
+    del new_l[iref]
+
+    # Return re-organized list
+    return new_l[:itarget] + [value] + new_l[itarget:]

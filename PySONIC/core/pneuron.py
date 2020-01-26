@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 09:23:55
+# @Last Modified time: 2020-01-26 18:49:53
 
 import abc
 import inspect
@@ -12,7 +12,7 @@ import pandas as pd
 
 from .protocols import PulsedProtocol, createPulsedProtocols
 from .model import Model
-from .lookups import SmartLookup
+from .lookups import EffectiveVariablesLookup
 from .simulators import PWSimulator
 from ..postpro import detectSpikes, computeFRProfile
 from ..constants import *
@@ -241,7 +241,7 @@ class PointNeuron(Model):
         Qref = np.arange(Qmin, Qmax, 1e-5)  # C/m2
         Vref = Qref / self.Cm0 * 1e3  # mV
         tables = {k: np.vectorize(v)(Vref) for k, v in self.effRates().items()}
-        return SmartLookup({'Q': Qref}, {**{'V': Vref}, **tables})
+        return EffectiveVariablesLookup({'Q': Qref}, {**{'V': Vref}, **tables})
 
     @classmethod
     @abc.abstractmethod

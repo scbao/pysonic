@@ -3,10 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-07 17:14:17
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-04 15:35:12
+# @Last Modified time: 2020-01-26 12:36:20
 
 import numpy as np
-from PySONIC.core import SmartLookup
+from PySONIC.core import EffectiveVariablesLookup
 
 ''' Test the lookup functionalities. '''
 
@@ -25,7 +25,7 @@ tables = { k: np.random.rand(*dims) for k in ['alpham', 'betam']}
 ########### Generic lookup features  ###########
 
 # Initialization
-lkp4d = SmartLookup(refs, tables)
+lkp4d = EffectiveVariablesLookup(refs, tables)
 print('initialization:', lkp4d)
 print()
 
@@ -53,7 +53,7 @@ print()
 
 ########### Smart lookup features  ###########
 
-lkp4d = SmartLookup(refs, tables)
+lkp4d = EffectiveVariablesLookup(refs, tables)
 print('initialization:', lkp4d)
 print()
 

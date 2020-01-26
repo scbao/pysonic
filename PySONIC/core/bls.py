@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 08:50:59
+# @Last Modified time: 2020-01-26 18:15:53
 
 from enum import Enum
 import os
@@ -47,7 +47,6 @@ def lookup(func):
     lookup_path = os.path.join(os.path.split(__file__)[0], 'bls_lookups.json')
 
     def wrapper(obj):
-        # lookup_path = obj.getLookupsPath()
         akey = '{:.1f}'.format(obj.a * 1e9)
         Qkey = '{:.2f}'.format(obj.Qm0 * 1e5)
 

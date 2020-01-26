@@ -3,39 +3,68 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-23 11:56:02
+# @Last Modified time: 2020-01-26 18:36:36
 
+import os
+from sys import getsizeof
 import json
+import pickle
 import re
 import numpy as np
 from scipy.interpolate import interp1d
 
-from ..utils import isWithin, isIterable
+from ..utils import isWithin, isIterable, moveItem
 
 
 class Lookup:
-    ''' Lookup object. '''
+    ''' Multidimensional lookup object allowing to store, project,
+        interpolate and retrieve several lookup tables along multiple
+        reference input vectors.
+    '''
 
     def __init__(self, refs, tables):
+        ''' Constructor.
+
+            :param refs: dictionary of reference one-dimensional input vectors.
+            :param tables: dictionary of multi-dimensional lookup tables
+        '''
         self.refs = refs
-        self.tables = SmartDict(tables)
+        self.tables = tables
         for k, v in self.items():
-            if v.shape != self.dims():
+            if v.shape != self.dims:
                 raise ValueError('{} Table dimensions {} does not match references {}'.format(
-                    k, v.shape, self.dims()))
+                    k, v.shape, self.dims))
+
+        # If single input, mark it as sole ref
+        if self.ndims == 1:
+            self.ref = self.refs[self.inputs[0]]
 
     def __repr__(self):
-        ref_str = ', '.join([f'{x[0]}: {x[1]}' for x in zip(self.inputs(), self.dims())])
-        return f'Lookup{self.ndims()}D({ref_str})'
+        ref_str = ', '.join([f'{x[0]}: {x[1]}' for x in zip(self.inputs, self.dims)])
+        tables_str = ', '.join(self.outputs)
+        return f'{self.__class__.__name__}{self.ndims}D({ref_str})[{tables_str}]'
 
     def __getitem__(self, key):
+        ''' simplified lookup table getter. '''
         return self.tables[key]
 
     def __delitem__(self, key):
+        ''' simplified lookup table suppressor. '''
+        print(f'deleting table {key}')
         del self.tables[key]
 
     def __setitem__(self, key, value):
+        ''' simplified lookup table setter. '''
         self.tables[key] = value
+
+    def __sizeof__(self):
+        ''' Return the size of the lookup in bytes. '''
+        s = getsizeof(self.refs) + getsizeof(self.tables)
+        for k, v in self.refitems():
+            s += v.nbytes
+        for k, v in self.items():
+            s += v.nbytes
+        return s
 
     def keys(self):
         return self.tables.keys()
@@ -57,27 +86,36 @@ class Lookup:
     def rename(self, key1, key2):
         self.tables[key2] = self.tables.pop(key1)
 
+    @property
     def dims(self):
+        ''' Tuple indicating the size of each input vector. '''
         return tuple([x.size for x in self.refs.values()])
 
+    @property
     def ndims(self):
+        ''' Number of dimensions in lookup. '''
         return len(self.refs)
 
+    @property
     def inputs(self):
+        ''' Names of reference input vectors. '''
         return list(self.refs.keys())
 
+    @property
     def outputs(self):
+        ''' Names of the different output tables. '''
         return list(self.keys())
 
     def checkAgainst(self, other):
-        if self.inputs() != other.inputs():
+        ''' Check self object against another lookup object for compatibility. '''
+        if self.inputs != other.inputs:
             raise ValueError(f'Differing lookups (references names do not match)')
-        if self.dims() != other.dims():
-            raise ValueError(f'Differing lookup dimensions ({self.dims()} - {other.dims()})')
+        if self.dims != other.dims:
+            raise ValueError(f'Differing lookup dimensions ({self.dims} - {other.dims})')
         for k, v in self.refitems():
             if (other.refs[k] != v).any():
                 raise ValueError(f'Differing {k} lookup reference')
-        if self.outputs() != other.outputs():
+        if self.outputs != other.outputs:
             raise ValueError(f'Differing lookups (table names do not match)')
 
     def operate(self, other, op):
@@ -94,18 +132,24 @@ class Lookup:
         return self.__class__(self.refs, tables)
 
     def __add__(self, other):
+        ''' Addition operator. '''
         return self.operate(other, '__add__')
 
     def __sub__(self, other):
+        ''' Subtraction operator. '''
         return self.operate(other, '__sub__')
 
     def __mul__(self, other):
+        ''' Multiplication operator. '''
         return self.operate(other, '__mul__')
 
     def __div__(self, other):
+        ''' Division operator. '''
         return self.operate(other, '__div__')
 
     def squeeze(self):
+        ''' Return a new lookup object in which all lookup dimensions that only contain
+            a single value have been removed '''
         new_tables = {k: v.squeeze() for k, v in self.items()}
         new_refs = {}
         for k, v in self.refitems():
@@ -114,70 +158,130 @@ class Lookup:
         return self.__class__(new_refs, new_tables)
 
     def getAxisIndex(self, key):
-        assert key in self.inputs(), 'Unkown input dimension: {}'.format(key)
-        return self.inputs().index(key)
+        ''' Get the axis index of a specific input key. '''
+        assert key in self.inputs, 'Unkown input dimension: {}'.format(key)
+        return self.inputs.index(key)
+
+    def copy(self):
+        ''' Return a copy of the current lookup object. '''
+        return self.__class__(self.refs, self.tables)
 
     def project(self, key, value):
-        ''' Interpolate tables at specific value(s) along a given dimension. '''
+        ''' Return a new lookup object in which tables are interpolated at one/several
+            specific value(s) along a given dimension.
+
+            :param key: input key
+            :param value: value(s) to interpolate lookup tables at
+            :return: new interpolated lookup object with adapted dimensions
+        '''
+        # Check if value is 0 or 1-dimensional
         if not isIterable(value):
             delete_input_dim = True
         else:
             delete_input_dim = False
             value = np.asarray(value)
 
+        # Check that value is within the bounds of the reference vector
         value = isWithin(key, value, (self.refs[key].min(), self.refs[key].max()))
-        axis = self.getAxisIndex(key)
-        # print('interpolating lookup along {} (axis {}) at {}'.format(key, axis, value))
 
-        new_tables = {}
+        # Get the axis index of the reference vector
+        axis = self.getAxisIndex(key)
+        # print(f'interpolating lookup along {key} (axis {axis}) at {value}')
+
+        # Construct new tables dictionary
         if self.refs[key].size == 1:
-            for k, v in self.items():
-                new_tables[k] = v.mean(axis=axis)
+            # If reference vector has only 1 value, take the mean along corresponding dimension
+            new_tables = {k: v.mean(axis=axis) for k, v in self.items()}
         else:
-            for k, v in self.items():
-                new_tables[k] = interp1d(self.refs[key], v, axis=axis)(value)
+            # Otherwise, interpolate lookup tables appropriate value(s) along the reference vector
+            new_tables = {k: interp1d(self.refs[key], v, axis=axis)(value) for k, v in self.items()}
+
+        # Construct new refs dictionary, deleting
         new_refs = self.refs.copy()
         if delete_input_dim:
-            # print('removing {} input dimension'.format(key))
+            # If interpolation value is a scalar, remove the corresponding input vector
             del new_refs[key]
         else:
-            # print('updating {} reference values'.format(key))
+            # Otherwise, update the input vector at the interpolation values
             new_refs[key] = value
 
+        # Construct and return a lookup object with the updated refs and tables
         return self.__class__(new_refs, new_tables)
 
     def projectN(self, projections):
-        lkp = self.__class__(self.refs, self.tables)
+        ''' Project along multiple dimensions simultaneously.
+
+            :param projections: dictionary of input keys and corresponding interpolation value(s)
+            :return: new interpolated lookup object with adapted dimensions
+        '''
+        # Construct a copy of the current lookup object
+        lkp = self.copy()
+
+        # Apply successive projections, overwriting the lookup object at each step
         for k, v in projections.items():
             lkp = lkp.project(k, v)
+
+        # Return updated lookup object
         return lkp
 
     def move(self, key, index):
+        ''' Move a specific input to a new index and re-organize lookup object accordingly.
+
+            :param key: input key
+            :param index: target index
+        '''
+        # Get absolute target axis index
         if index == -1:
-            index = self.ndims() - 1
+            index = self.ndims - 1
+
+        # Get reference axis index
         iref = self.getAxisIndex(key)
+
+        # Re-organize all lookup tables, moving the reference axis to the target index
         for k in self.keys():
             self.tables[k] = np.moveaxis(self.tables[k], iref, index)
-        refkeys = list(self.refs.keys())
-        del refkeys[iref]
-        refkeys = refkeys[:index] + [key] + refkeys[index:]
-        self.refs = {k: self.refs[k] for k in refkeys}
 
-    def interpVar(self, ref_value, ref_key, var_key):
-        return np.interp(
-            ref_value, self.refs[ref_key], self.tables[var_key], left=np.nan, right=np.nan)
+        # Re-order refs dictionary such that key falls at the appropriate index
+        self.refs = {k: self.refs[k] for k in moveItem(list(self.refs.keys()), key, index)}
 
-    def interpolate1D(self, key, value):
-        return SmartDict({k: self.interpVar(value, key, k) for k in self.outputs()})
+    def interpVar1D(self, ref_value, var_key):
+        ''' Interpolate a specific lookup vector at one/several specific value(s)
+            along the reference input vector.
+
+            :param ref_value: specific input value
+            :param var_key: output table key
+            :return: interpolated value(s)
+
+            .. warning:: This method can only be used for 1 dimensional lookups.
+        '''
+        assert self.ndims == 1, 'Cannot interpolate multi-dimensional object'
+        return np.interp(ref_value, self.ref, self.tables[var_key], left=np.nan, right=np.nan)
+
+    def interpolate1D(self, value):
+        ''' Interpolate all lookup vectors variable at one/several specific value(s)
+            along the reference input vector.
+
+            :param value: specific input value
+            :return: dictionary of output keys: interpolated value(s)
+
+            .. warning:: This method can only be used for 1 dimensional lookups.
+        '''
+        return {k: self.interpVar1D(value, k) for k in self.outputs}
 
     def tile(self, ref_name, ref_values):
-        ''' Tile the lookups along a new dimension. '''
+        ''' Return a new lookup object in which tables are tiled along a new input dimension.
+
+            :param ref_name: input name
+            :param ref_values: input vector
+            :return: lookup object with additional input vector and tiled tables
+        '''
         itiles = range(ref_values.size)
         tables = {k: np.array([v for i in itiles]) for k, v in self.items()}
         refs = {**{ref_name: ref_values}, **self.refs}
         return self.__class__(refs, tables)
 
     def toDict(self):
+        ''' Translate self object into a dictionary. '''
         return {
             'refs': {k: v.tolist() for k, v in self.refs.items()},
             'tables': {k: v.tolist() for k, v in self.tables.items()},
@@ -185,25 +289,56 @@ class Lookup:
 
     @classmethod
     def fromDict(cls, d):
+        ''' Construct lookup instance from dictionary. '''
         refs = {k: np.array(v) for k, v in d['refs'].items()}
         tables = {k: np.array(v) for k, v in d['tables'].items()}
         return cls(refs, tables)
 
     def toJson(self, fpath):
+        ''' Save self object to a JSON file. '''
         with open(fpath, 'w') as fh:
             json.dump(self.toDict(), fh)
 
     @classmethod
     def fromJson(cls, fpath):
+        ''' Construct lookup instance from JSON file. '''
+        cls.checkForExistence(fpath)
         with open(fpath) as fh:
             d = json.load(fh)
         return cls.fromDict(d)
 
+    def toPickle(self, fpath):
+        ''' Save self object to a PKL file. '''
+        with open(fpath, 'wb') as fh:
+            pickle.dump({'refs': self.refs, 'tables': self.tables}, fh)
 
-class SmartLookup(Lookup):
+    @classmethod
+    def fromPickle(cls, fpath):
+        ''' Construct lookup instance from PKL file. '''
+        cls.checkForExistence(fpath)
+        with open(fpath, 'rb') as fh:
+            d = pickle.load(fh)
+        return cls(d['refs'], d['tables'])
 
-    def __repr__(self):
-        return 'Smart' + super().__repr__()
+    @staticmethod
+    def checkForExistence(fpath):
+        ''' Raise an error if filepath does not correspond to an existing file. '''
+        if not os.path.isfile(fpath):
+            raise FileNotFoundError(f'Missing lookup file: "{fpath}"')
+
+
+
+class EffectiveVariablesLookup(Lookup):
+    ''' Lookup object with added functionality to handle effective variables, namely:
+        - a special EffectiveVariablesDict wrapper around the output tables
+        - projectOff and projectDC methods allowing for smart projections.
+    '''
+
+    def __init__(self, refs, tables):
+        super().__init__(refs, EffectiveVariablesDict(tables))
+
+    def interpolate1D(self, value):
+        return EffectiveVariablesDict(super().interpolate1D(value))
 
     def projectOff(self):
         ''' Project for OFF periods (zero amplitude). '''
@@ -216,7 +351,7 @@ class SmartLookup(Lookup):
             lkp0.tables[k] = np.moveaxis(v, Qaxis, -1)
 
         # Iterate along dimensions and take first value along corresponding axis
-        for i in range(lkp0.ndims() - 1):
+        for i in range(lkp0.ndims - 1):
             for k, v in lkp0.items():
                 lkp0.tables[k] = v[0]
 
@@ -253,15 +388,11 @@ class SmartLookup(Lookup):
         return lkp
 
 
-def fixLookup(lkp):
-    if 'fs' in lkp.inputs():
-        if lkp.refs['fs'].size == 1:
-            if lkp.refs['fs'][0] == 1.:
-                lkp = lkp.project('fs', 1.)
-    return lkp
 
-
-class SmartDict():
+class EffectiveVariablesDict():
+    ''' Wrapper around a dictionary object, allowing to return derived
+        effetive variables for special keys.
+    '''
 
     # Key patterns
     suffix_pattern = '[A-Za-z0-9_]+'
@@ -272,7 +403,7 @@ class SmartDict():
         self.d = d
 
     def __repr__(self):
-        return 'SmartDict(' + ', '.join(self.d.keys()) + ')'
+        return self.__class__.__name__ + '(' + ', '.join(self.d.keys()) + ')'
 
     def items(self):
         return self.d.items()
@@ -311,6 +442,9 @@ class SmartDict():
 
     def __setitem__(self, key, value):
         self.d[key] = value
+
+    def __delitem__(self, key):
+        del self.d[key]
 
     def pop(self, key):
         return self.d.pop(key)
