@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-04 13:23:31
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-02 18:55:15
+# @Last Modified time: 2020-01-26 09:14:57
 
 ''' Numerical constants used in the package. '''
 
@@ -21,6 +21,10 @@ CELSIUS_2_KELVIN = 273.15  # Celsius to Kelvin conversion constant
 LJFIT_PM_MAX = 1e8        # Pm value at the deflection lower bound for LJ fitting (Pa)
 PNET_EQ_MAX = 1e-1        # Pnet error threshold at computed equilibrium position (Pa)
 PMAVG_STD_ERR_MAX = 5e3   # error threshold in intermolecular pressure nonlinear fit (Pa)
+
+# -------------------------- Lookups pre-computing --------------------------
+
+DQ_LOOKUP = 1e-5  # charge density interval step for lookup tables
 
 # -------------------------- Simulations --------------------------
 

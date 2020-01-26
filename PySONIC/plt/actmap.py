@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 12:55:41
+# @Last Modified time: 2020-01-26 09:25:14
 
 import os
 import pickle
@@ -236,7 +236,7 @@ class ActivationMap(Map):
         t, Qm, Vm = [df[k].values for k in ['t', 'Qm', 'Vm']]
         t = np.hstack((np.array([-tonset, t[0]]), t))  # s
         Vm = np.hstack((np.array([self.pneuron.Vm0] * 2), Vm))  # mV
-        Qm = np.hstack((np.array([self.pneuron.Qm0()] * 2), Qm))  # C/m2
+        Qm = np.hstack((np.array([self.pneuron.Qm0] * 2), Qm))  # C/m2
         t *= 1e3  # ms
         Qm *= 1e5  # nC/cm2
 

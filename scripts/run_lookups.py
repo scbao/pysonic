@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-26 18:47:35
+# @Last Modified time: 2020-01-26 09:15:37
 
 ''' Create lookup table for specific neuron. '''
 
@@ -16,6 +16,7 @@ import numpy as np
 from PySONIC.utils import logger, isIterable, alert
 from PySONIC.core import NeuronalBilayerSonophore, Batch
 from PySONIC.parsers import MechSimParser
+from PySONIC.constants import DQ_LOOKUP
 
 
 @alert
@@ -132,8 +133,8 @@ def main():
         # Determine charge vector
         charges = args['charge']
         if charges.size == 1 and np.isnan(charges[0]):
-            charges = np.arange(
-                pneuron.Qbounds()[0], pneuron.Qbounds()[1] + 1e-5, 1e-5)  # C/m2
+            Qmin, Qmax = pneuron.Qbounds
+            charges = np.arange(Qmin, Qmax + DQ_LOOKUP, DQ_LOOKUP)  # C/m2
 
         # Determine output filename
         f = NeuronalBilayerSonophore(32e-9, pneuron).getLookupFilePath

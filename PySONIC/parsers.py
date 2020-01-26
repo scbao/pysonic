@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-20 22:17:53
+# @Last Modified time: 2020-01-26 09:26:17
 
 import os
 import logging
@@ -418,8 +418,8 @@ class MechSimParser(SimParser):
         self.defaults.update({
             'radius': 32.0,  # nm
             'embedding': 0.,  # um
-            'Cm0': CorticalRS.Cm0 * 1e2,  # uF/m2
-            'Qm0': CorticalRS.Qm0() * 1e5,  # nC/m2
+            'Cm0': CorticalRS().Cm0 * 1e2,  # uF/m2
+            'Qm0': CorticalRS().Qm0 * 1e5,  # nC/m2
             'freq': 500.0,  # kHz
             'amp': 100.0,  # kPa
             'charge': 0.,  # nC/cm2

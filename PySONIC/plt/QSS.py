@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-11 14:31:01
+# @Last Modified time: 2020-01-26 09:25:20
 
 import inspect
 import logging
@@ -366,7 +366,7 @@ def plotEqChargeVsAmp(pneuron, a, Fdrive, amps=None, tstim=None, toffset=None, P
                        label='stabilization points from simulations')
 
     # Post-process figure
-    ax.set_ylim(np.array([pneuron.Qm0() - 10e-5, 0]) * 1e5)
+    ax.set_ylim(np.array([pneuron.Qm0 - 10e-5, 0]) * 1e5)
     ax.legend(frameon=False, fontsize=fs)
     fig.tight_layout()
 

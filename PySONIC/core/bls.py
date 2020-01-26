@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-14 13:18:08
+# @Last Modified time: 2020-01-26 08:50:59
 
 from enum import Enum
 import os
@@ -42,7 +42,7 @@ def LennardJones(x, beta, alpha, C, m, n):
 
 
 def lookup(func):
-    ''' Load parameters from lookup file, or compute them and sotre them in lookup file. '''
+    ''' Load parameters from lookup file, or compute them and store them in lookup file. '''
 
     lookup_path = os.path.join(os.path.split(__file__)[0], 'bls_lookups.json')
 
@@ -108,6 +108,8 @@ class BilayerSonophore(Model):
     epsilon0 = 8.854e-12  # Vacuum permittivity (F/m)
     epsilonR = 1.0        # Relative permittivity of intramembrane cavity (dimensionless)
 
+    rel_Zmin = -0.49  # relative deflection range lower bound (in multiples of Delta)
+
     tscale = 'us'    # relevant temporal scale of the model
     simkey = 'MECH'  # keyword used to characterize simulations made with this model
 
@@ -139,6 +141,36 @@ class BilayerSonophore(Model):
         # Compute initial volume and gas content
         self.V0 = np.pi * self.Delta * self.a**2
         self.ng0 = self.gasPa2mol(self.P0, self.V0)
+
+    @property
+    def a(self):
+        return self._a
+
+    @a.setter
+    def a(self, value):
+        if value <= 0.:
+            raise ValueError('Sonophore radius must be positive')
+        self._a = value
+
+    @property
+    def Cm0(self):
+        return self._Cm0
+
+    @Cm0.setter
+    def Cm0(self, value):
+        if value <= 0.:
+            raise ValueError('Resting membrane capacitance must be positive')
+        self._Cm0 = value
+
+    @property
+    def d(self):
+        return self._d
+
+    @d.setter
+    def d(self, value):
+        if value < 0.:
+            raise ValueError('Embedding depth cannot be negative')
+        self._d = value
 
     def __repr__(self):
         s = '{}({:.1f} nm'.format(self.__class__.__name__, self.a * 1e9)
@@ -253,6 +285,10 @@ class BilayerSonophore(Model):
             'Z': ['Z'],
             'n_g': ['ng']
         }
+
+    @property
+    def Zmin(self):
+        return self.rel_Zmin * self.Delta
 
     def curvrad(self, Z):
         ''' Leaflet curvature radius
@@ -400,14 +436,13 @@ class BilayerSonophore(Model):
         '''
         # Determine lower bound of deflection range: when Pm = Pmmax
         PMmax = LJFIT_PM_MAX  # Pa
-        Zminlb = -0.49 * self.Delta
-        Zminub = 0.0
-        Zmin = brentq(lambda Z, Pmmax: self.PMavg(Z, self.curvrad(Z), self.surface(Z)) - PMmax,
-                      Zminlb, Zminub, args=(PMmax), xtol=1e-16)
+        Zlb_range = (self.Zmin, 0.0)
+        Zlb = brentq(lambda Z, Pmmax: self.PMavg(Z, self.curvrad(Z), self.surface(Z)) - PMmax,
+                      *Zlb_range, args=(PMmax), xtol=1e-16)
 
         # Create vectors for geometric variables
-        Zmax = 2 * self.a
-        Z = np.arange(Zmin, Zmax, 1e-11)
+        Zub = 2 * self.a
+        Z = np.arange(Zlb, Zub, 1e-11)
         Pmavg = self.v_PMavg(Z, self.v_curvrad(Z), self.surface(Z))
 
         # Compute optimal nonlinear fit of custom LJ function with initial guess
@@ -543,10 +578,10 @@ class BilayerSonophore(Model):
             :param Pm_comp_method: computation method for average intermolecular pressure
             :return: leaflet deflection canceling quasi-steady pressure (m)
         '''
-        lb, ub = -0.49 * self.Delta, self.a
-        Plb, Pub = [self.PtotQS(x, ng, Qm, Pac, Pm_comp_method) for x in [lb, ub]]
-        assert (Plb > 0 > Pub), '[{}, {}] is not a sign changing interval for PtotQS'.format(lb, ub)
-        return brentq(self.PtotQS, lb, ub, args=(ng, Qm, Pac, Pm_comp_method), xtol=1e-16)
+        Zbounds = (self.Zmin, self.a)
+        Plb, Pub = [self.PtotQS(x, ng, Qm, Pac, Pm_comp_method) for x in Zbounds]
+        assert (Plb > 0 > Pub), '[{}, {}] is not a sign changing interval for PtotQS'.format(*Zbounds)
+        return brentq(self.PtotQS, *Zbounds, args=(ng, Qm, Pac, Pm_comp_method), xtol=1e-16)
 
     def TEleaflet(self, Z):
         ''' Elastic tension in leaflet
@@ -664,9 +699,9 @@ class BilayerSonophore(Model):
         U, Z, ng = y
 
         # Correct deflection value is below critical compression
-        if Z < -0.5 * self.Delta:
+        if Z < self.Zmin:
             logger.warning('Deflection out of range: Z = %.2f nm', Z * 1e9)
-            Z = -0.49 * self.Delta
+            Z = self.Zmin
 
         # Compute curvature radius
         R = self.curvrad(Z)

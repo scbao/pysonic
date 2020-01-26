@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-14 13:47:44
+# @Last Modified time: 2020-01-26 09:23:55
 
 import abc
 import inspect
@@ -51,9 +51,9 @@ class PointNeuron(Model):
         ''' Neuron's resting membrane potential(mV). '''
         raise NotImplementedError
 
-    @classmethod
-    def Qm0(cls):
-        return cls.Cm0 * cls.Vm0 * 1e-3  # C/cm2
+    @property
+    def Qm0(self):
+        return self.Cm0 * self.Vm0 * 1e-3  # C/cm2
 
     @staticmethod
     def inputs():
@@ -234,14 +234,13 @@ class PointNeuron(Model):
         ''' Compute array of effective rate constants for a given membrane potential vector. '''
         return {k: np.mean(np.vectorize(v)(Vm)) for k, v in cls.effRates().items()}
 
-    @classmethod
-    def getLookup(cls):
+    def getLookup(self):
         ''' Get lookup of membrane potential rate constants interpolated along the neuron's
             charge physiological range. '''
-        Qmin, Qmax = expandRange(*cls.Qbounds(), 10.)
+        Qmin, Qmax = expandRange(*self.Qbounds, exp_factor=10.)
         Qref = np.arange(Qmin, Qmax, 1e-5)  # C/m2
-        Vref = Qref / cls.Cm0 * 1e3  # mV
-        tables = {k: np.vectorize(v)(Vref) for k, v in cls.effRates().items()}
+        Vref = Qref / self.Cm0 * 1e3  # mV
+        tables = {k: np.vectorize(v)(Vref) for k, v in self.effRates().items()}
         return SmartLookup({'Q': Qref}, {**{'V': Vref}, **tables})
 
     @classmethod
@@ -369,10 +368,10 @@ class PointNeuron(Model):
     def firingRateProfile(*args, **kwargs):
         return computeFRProfile(*args, **kwargs)
 
-    @classmethod
-    def Qbounds(cls):
+    @property
+    def Qbounds(self):
         ''' Determine bounds of membrane charge physiological range for a given neuron. '''
-        return np.array([np.round(cls.Vm0 - 25.0), 50.0]) * cls.Cm0 * 1e-3  # C/m2
+        return np.array([np.round(self.Vm0 - 25.0), 50.0]) * self.Cm0 * 1e-3  # C/m2
 
     @classmethod
     def isVoltageGated(cls, state):
@@ -450,7 +449,7 @@ class PointNeuron(Model):
         '''
 
         # Set initial conditions
-        y0 = np.array((self.Qm0(), *self.getSteadyStates(self.Vm0)))
+        y0 = np.array((self.Qm0, *self.getSteadyStates(self.Vm0)))
 
         # Initialize simulator and compute solution
         logger.debug('Computing solution')

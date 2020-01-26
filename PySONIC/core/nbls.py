@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-14 13:34:06
+# @Last Modified time: 2020-01-26 09:27:04
 
 import time
 from copy import deepcopy
@@ -50,7 +50,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         self.pneuron = pneuron
 
         # Initialize BilayerSonophore parent object
-        BilayerSonophore.__init__(self, a, pneuron.Cm0, pneuron.Qm0(), embedding_depth)
+        super().__init__(a, pneuron.Cm0, pneuron.Qm0, embedding_depth)
 
     def __repr__(self):
         s = '{}({:.1f} nm, {}'.format(self.__class__.__name__, self.a * 1e9, self.pneuron)
