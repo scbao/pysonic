@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 18:36:36
+# @Last Modified time: 2020-01-26 20:40:10
 
 import os
 from sys import getsizeof
@@ -22,14 +22,20 @@ class Lookup:
         reference input vectors.
     '''
 
-    def __init__(self, refs, tables):
+    interp_choices = ('linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic', 'previous', 'next')
+
+    def __init__(self, refs, tables, interp_method='linear'):
         ''' Constructor.
 
             :param refs: dictionary of reference one-dimensional input vectors.
             :param tables: dictionary of multi-dimensional lookup tables
+            :param interp_method: interpolation method
         '''
         self.refs = refs
         self.tables = tables
+        if interp_method not in self.interp_choices:
+            raise ValueError(f'interpolation method must be one of {self.interp_choices}')
+        self.interp_method = interp_method
         for k, v in self.items():
             if v.shape != self.dims:
                 raise ValueError('{} Table dimensions {} does not match references {}'.format(
@@ -194,7 +200,7 @@ class Lookup:
             new_tables = {k: v.mean(axis=axis) for k, v in self.items()}
         else:
             # Otherwise, interpolate lookup tables appropriate value(s) along the reference vector
-            new_tables = {k: interp1d(self.refs[key], v, axis=axis)(value) for k, v in self.items()}
+            new_tables = {k: interp1d(self.refs[key], v, kind=self.interp_method, axis=axis)(value) for k, v in self.items()}
 
         # Construct new refs dictionary, deleting
         new_refs = self.refs.copy()
@@ -334,8 +340,8 @@ class EffectiveVariablesLookup(Lookup):
         - projectOff and projectDC methods allowing for smart projections.
     '''
 
-    def __init__(self, refs, tables):
-        super().__init__(refs, EffectiveVariablesDict(tables))
+    def __init__(self, refs, tables, **kwargs):
+        super().__init__(refs, EffectiveVariablesDict(tables), **kwargs)
 
     def interpolate1D(self, value):
         return EffectiveVariablesDict(super().interpolate1D(value))
