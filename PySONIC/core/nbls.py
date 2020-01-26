@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 20:41:54
+# @Last Modified time: 2020-01-26 23:34:08
 
 import time
 from copy import deepcopy
@@ -198,10 +198,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return lkp
 
     def getLookup2D(self, Fdrive, fs):
-        if fs < 1:
-            lkp2d = self.getLookup(a=self.a, Fdrive=Fdrive, fs=True).project('fs', fs)
-        else:
-            lkp2d = self.getLookup().projectN({'a': self.a, 'f': Fdrive}).squeeze()
+        kwargs = {'a': self.a, 'Fdrive': Fdrive, 'fs': True} if fs < 1 else {}
+        lkp2d = self.getLookup(**kwargs).projectN({'a': self.a, 'f': Fdrive, 'fs': fs})
         return lkp2d
 
     def fullDerivatives(self, t, y, Fdrive, Adrive, fs):
