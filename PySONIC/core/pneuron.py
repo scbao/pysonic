@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-02 14:43:45
+# @Last Modified time: 2020-02-03 15:11:03
 
 import abc
 import inspect
@@ -41,7 +41,7 @@ class PointNeuron(Model):
     @classmethod
     @abc.abstractmethod
     def Cm0(cls):
-        ''' Neuron's resting capacitance (F/cm2). '''
+        ''' Neuron's resting capacitance (F/m2). '''
         raise NotImplementedError
 
     @property
@@ -53,7 +53,7 @@ class PointNeuron(Model):
 
     @property
     def Qm0(self):
-        return self.Cm0 * self.Vm0 * 1e-3  # C/cm2
+        return self.Cm0 * self.Vm0 * 1e-3  # C/m2
 
     @property
     @staticmethod
