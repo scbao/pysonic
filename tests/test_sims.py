@@ -3,11 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-13 12:31:55
+# @Last Modified time: 2020-01-30 16:58:53
 
 ''' Test the basic functionalities of the package. '''
 
-from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore, PulsedProtocol
+from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore, AcousticSource, PulsedProtocol
 from PySONIC.utils import logger
 from PySONIC.neurons import getPointNeuron, getNeuronsDict
 from PySONIC.test import TestBase
@@ -22,9 +22,10 @@ class TestSims(TestBase):
         Cm0 = 1e-2      # membrane resting capacitance (F/m2)
         Fdrive = 350e3  # Hz
         Adrive = 100e3  # Pa
+        source = AcousticSource(Fdrive, Adrive)
         Qm = 50e-5      # C/m2
         bls = BilayerSonophore(a, Cm0, Qm0)
-        self.execute('bls.simulate(Fdrive, Adrive, Qm)', globals(), locals(), is_profiled)
+        self.execute('bls.simulate(source, Qm)', globals(), locals(), is_profiled)
 
     def test_ESTIM(self, is_profiled=False):
         logger.info('Test: running ESTIM simulation')
@@ -38,6 +39,7 @@ class TestSims(TestBase):
         a = 32e-9        # m
         Fdrive = 500e3   # Hz
         Adrive = 100e3   # Pa
+        source = AcousticSource(Fdrive, Adrive)
         pp = PulsedProtocol(50e-3, 10e-3)
         pneuron = getPointNeuron('RS')
         nbls = NeuronalBilayerSonophore(a, pneuron)
@@ -45,21 +47,21 @@ class TestSims(TestBase):
         # test error 1: sonophore radius outside of lookup range
         try:
             nbls = NeuronalBilayerSonophore(100e-9, pneuron)
-            nbls.simulate(Fdrive, Adrive, pp, method='sonic')
+            nbls.simulate(source, pp, method='sonic')
         except ValueError:
             logger.debug('Out of range radius: OK')
 
         # test error 2: frequency outside of lookups range
         try:
             nbls = NeuronalBilayerSonophore(a, pneuron)
-            nbls.simulate(10e3, Adrive, pp, method='sonic')
+            nbls.simulate(AcousticSource(10e3, Adrive), pp, method='sonic')
         except ValueError:
             logger.debug('Out of range frequency: OK')
 
         # test error 3: amplitude outside of lookups range
         try:
             nbls = NeuronalBilayerSonophore(a, pneuron)
-            nbls.simulate(Fdrive, 1e6, pp, method='sonic')
+            nbls.simulate(AcousticSource(Fdrive, 1e6), pp, method='sonic')
         except ValueError:
             logger.debug('Out of range amplitude: OK')
 
@@ -68,7 +70,7 @@ class TestSims(TestBase):
             if name not in ('template', 'LeechP', 'LeechT', 'LeechR', 'SW', 'sundt'):
                 pneuron = neuron_class()
                 nbls = NeuronalBilayerSonophore(a, pneuron)
-                self.execute("nbls.simulate(Fdrive, Adrive, pp, method='sonic')",
+                self.execute("nbls.simulate(source, pp, method='sonic')",
                              globals(), locals(), is_profiled)
 
     def test_ASTIM_full(self, is_profiled=False):
@@ -76,10 +78,11 @@ class TestSims(TestBase):
         a = 32e-9       # m
         Fdrive = 500e3  # Hz
         Adrive = 100e3  # Pa
+        source = AcousticSource(Fdrive, Adrive)
         pp = PulsedProtocol(1e-6, 1e-6)
         pneuron = getPointNeuron('RS')
         nbls = NeuronalBilayerSonophore(a, pneuron)
-        self.execute("nbls.simulate(Fdrive, Adrive, pp, method='full')",
+        self.execute("nbls.simulate(source, pp, method='full')",
                      globals(), locals(), is_profiled)
 
     def test_ASTIM_hybrid(self, is_profiled=False):
@@ -87,10 +90,11 @@ class TestSims(TestBase):
         a = 32e-9         # m
         Fdrive = 350e3    # Hz
         Adrive = 100e3    # Pa
+        source = AcousticSource(Fdrive, Adrive)
         pp = PulsedProtocol(0.6e-3, 0.1e-3)
         pneuron = getPointNeuron('RS')
         nbls = NeuronalBilayerSonophore(a, pneuron)
-        self.execute("nbls.simulate(Fdrive, Adrive, pp, method='hybrid')",
+        self.execute("nbls.simulate(source, pp, method='hybrid')",
                      globals(), locals(), is_profiled)
 
 

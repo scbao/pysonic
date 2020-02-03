@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 18:49:53
+# @Last Modified time: 2020-02-02 14:43:45
 
 import abc
 import inspect
@@ -55,25 +55,28 @@ class PointNeuron(Model):
     def Qm0(self):
         return self.Cm0 * self.Vm0 * 1e-3  # C/cm2
 
+    @property
     @staticmethod
     def inputs():
-        return {**{
+        return {
             'Astim': {
                 'desc': 'current density amplitude',
                 'label': 'A',
                 'unit': 'mA/m2',
                 'factor': 1e0,
                 'precision': 1
-            }}, **PulsedProtocol.inputs()}
+            },
+            **PulsedProtocol.inputs
+        }
 
     @classmethod
     def filecodes(cls, Astim, pp):
-        return {**{
+        return {
             'simkey': cls.simkey,
             'neuron': cls.name,
-            'nature': 'CW' if pp.isCW() else 'PW',
-            'Astim': '{:.1f}mAm2'.format(Astim)},
-            **pp.filecodes()
+            'nature': pp.nature,
+            'Astim': f'{Astim:.1f}mAm2',
+            **pp.filecodes
         }
 
     @classmethod
@@ -109,11 +112,10 @@ class PointNeuron(Model):
             cargs = inspect.getargspec(cfunc)[0][1:]
             pltvars[cname] = {
                 'desc': inspect.getdoc(cfunc).splitlines()[0],
-                'label': 'I_{{{}}}'.format(cname[1:]),
+                'label': f'I_{{{cname[1:]}}}',
                 'unit': 'A/m^2',
                 'factor': 1e-3,
-                'func': '{}({})'.format(cname, ', '.join(['{}{}{}'.format(wrapleft, a, wrapright)
-                                                          for a in cargs]))
+                'func': f"{cname}({', '.join([f'{wrapleft}{a}{wrapright}' for a in cargs])})"
             }
             for var in cargs:
                 if var != 'Vm':
@@ -128,8 +130,7 @@ class PointNeuron(Model):
             'label': 'I_{net}',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': 'iNet({0}Vm{1}, {2}{3}{4})'.format(
-                wrapleft, wrapright, wrapleft[:-1], cls.statesNames(), wrapright[1:]),
+            'func': f'iNet({wrapleft}Vm{wrapright}, {wrapleft[:-1]}{cls.statesNames()}{wrapright[1:]})',
             'ls': '--',
             'color': 'black'
         }
@@ -139,8 +140,7 @@ class PointNeuron(Model):
             'label': 'dQ_m/dt',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': 'dQdt({0}Vm{1}, {2}{3}{4})'.format(
-                wrapleft, wrapright, wrapleft[:-1], cls.statesNames(), wrapright[1:]),
+            'func': f'dQdt({wrapleft}Vm{wrapright}, {wrapleft[:-1]}{cls.statesNames()}{wrapright[1:]})',
             'ls': '--',
             'color': 'black'
         }
@@ -150,7 +150,7 @@ class PointNeuron(Model):
             'label': 'I_{cap}',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': 'iCap({0}t{1}, {0}Vm{1})'.format(wrapleft, wrapright)
+            'func': f'iCap({wrapleft}t{wrapright}, {wrapleft}Vm{wrapright})'
         }
 
         for rate in cls.rates:
@@ -158,7 +158,7 @@ class PointNeuron(Model):
                 prefix, suffix = 'alpha', rate[5:]
             else:
                 prefix, suffix = 'beta', rate[4:]
-            pltvars['{}'.format(rate)] = {
+            pltvars[rate] = {
                 'label': '\\{}_{{{}}}'.format(prefix, suffix),
                 'unit': 'ms^{-1}',
                 'factor': 1e-3
@@ -181,17 +181,17 @@ class PointNeuron(Model):
         dVdt = np.insert(np.diff(Vm) / np.diff(t), 0, 0.)
         return cls.Cm0 * dVdt
 
-    @classmethod
-    def getPltScheme(cls):
+    @property
+    def pltScheme(self):
         pltscheme = {
             'Q_m': ['Qm'],
             'V_m': ['Vm']
         }
-        pltscheme['I'] = cls.getCurrentsNames() + ['iNet']
-        for cname in cls.getCurrentsNames():
+        pltscheme['I'] = self.getCurrentsNames() + ['iNet']
+        for cname in self.getCurrentsNames():
             if 'Leak' not in cname:
-                key = 'i_{{{}}}\ kin.'.format(cname[1:])
-                cargs = inspect.getargspec(getattr(cls, cname))[0][1:]
+                key = f'i_{{{cname[1:]}}}\ kin.'
+                cargs = inspect.getargspec(getattr(self, cname))[0][1:]
                 pltscheme[key] = [var for var in cargs if var not in ['Vm', 'Cai']]
 
         return pltscheme
@@ -241,7 +241,7 @@ class PointNeuron(Model):
         Qref = np.arange(Qmin, Qmax, 1e-5)  # C/m2
         Vref = Qref / self.Cm0 * 1e3  # mV
         tables = {k: np.vectorize(v)(Vref) for k, v in self.effRates().items()}
-        return EffectiveVariablesLookup({'Q': Qref}, {**{'V': Vref}, **tables})
+        return EffectiveVariablesLookup({'Q': Qref}, {'V': Vref, **tables})
 
     @classmethod
     @abc.abstractmethod
@@ -376,7 +376,7 @@ class PointNeuron(Model):
     @classmethod
     def isVoltageGated(cls, state):
         ''' Determine whether a given state is purely voltage-gated or not.'''
-        return 'alpha{}'.format(state.lower()) in cls.rates
+        return f'alpha{state.lower()}' in cls.rates
 
     @classmethod
     @Model.checkOutputDir
@@ -483,8 +483,7 @@ class PointNeuron(Model):
         }
 
     def desc(self, meta):
-        return '{}: simulation @ A = {}A/m2, {}'.format(
-            self, si_format(meta["Astim"] * 1e-3, 2), meta['pp'].pprint())
+        return f'{self}: simulation @ A = {si_format(meta["Astim"] * 1e-3, 2)}A/m2, {meta["pp"].desc}'
 
     @staticmethod
     def getNSpikes(data):

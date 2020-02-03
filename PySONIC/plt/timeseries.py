@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-09 11:40:44
+# @Last Modified time: 2020-02-02 14:49:53
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -161,10 +161,10 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             patches = [True] + [False] * (len(self.filepaths) - 1)
             greypatch = True
         elif isinstance(patches, list):
-            if len(patches) != len(self.filepaths):
+            npatches, nfiles = len(patches), len(self.filepaths)
+            if npatches != nfiles:
                 raise ValueError(
-                    'Invalid patches ({}): not matching number of compared files ({})'.format(
-                        len(patches), len(self.filepaths)))
+                    f'Invalid patches ({npatches}): not matching number of compared files ({nfiles})')
             if not all(isinstance(p, bool) for p in patches):
                 raise TypeError('Invalid patch sequence: all list items must be boolean typed')
         else:
@@ -260,9 +260,9 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             # Extract y-variable
             pltvars = model.getPltVars()
             if self.varname not in pltvars:
+                pltvars_str = ', '.join([f'"{p}"' for p in pltvars.keys()])
                 raise KeyError(
-                    'Unknown plot variable: "{}". Possible plot variables are: {}'.format(
-                        self.varname, ', '.join(['"{}"'.format(p) for p in pltvars.keys()])))
+                    f'Unknown plot variable: "{self.varname}". Possible plot variables are: {pltvars_str}')
             yplt = pltvars[self.varname]
             y = extractPltVar(model, yplt, data, meta, t.size, self.varname)
 
@@ -289,7 +289,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
 
         # Determine labels
         if self.comp_ref_key is not None:
-            self.comp_info = model.inputs().get(self.comp_ref_key, None)
+            self.comp_info = model.inputs.get(self.comp_ref_key, None)
         comp_values, comp_labels = self.getCompLabels(comp_values)
         labels = self.chooseLabels(labels, comp_labels, full_labels)
 
@@ -401,10 +401,10 @@ class GroupedTimeSeries(TimeSeriesPlot):
             if self.pltscheme is not None:
                 for key in list(sum(list(self.pltscheme.values()), [])):
                     if key not in pltvars:
-                        raise KeyError('Unknown plot variable: "{}"'.format(key))
+                        raise KeyError(f'Unknown plot variable: "{key}"')
                 pltscheme = self.pltscheme
             else:
-                pltscheme = model.getPltScheme()
+                pltscheme = model.pltScheme
 
             # Create figure
             fig, axes = self.createBackBone(pltscheme)
@@ -430,10 +430,9 @@ class GroupedTimeSeries(TimeSeriesPlot):
                 # Plot time series
                 icolor = 0
                 for yplt, name in zip(ax_pltvars, pltscheme[grouplabel]):
-                    color = yplt.get('color', 'C{}'.format(icolor))
+                    color = yplt.get('color', f'C{icolor}')
                     y = extractPltVar(model, yplt, data, meta, t.size, name)
-                    ax.plot(t, y, yplt.get('ls', '-'), c=color, lw=lw,
-                            label='$\\rm {}$'.format(yplt['label']))
+                    ax.plot(t, y, yplt.get('ls', '-'), c=color, lw=lw, label='$\\rm {}$'.format(yplt["label"]))
                     if 'color' not in yplt:
                         icolor += 1
 
@@ -464,9 +463,9 @@ class GroupedTimeSeries(TimeSeriesPlot):
                 filecode = model.filecode(meta)
                 if outputdir is None:
                     outputdir = os.path.split(filepath)[0]
-                plt_filename = '{}/{}.{}'.format(outputdir, filecode, fig_ext)
+                plt_filename = f'{outputdir}/{filecode}.{fig_ext}'
                 plt.savefig(plt_filename)
-                logger.info('Saving figure as "{}"'.format(plt_filename))
+                logger.info(f'Saving figure as "{plt_filename}"')
                 plt.close()
 
             figs.append(fig)

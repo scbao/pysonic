@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-14 13:48:16
+# @Last Modified time: 2020-02-01 20:07:24
 
 import numpy as np
 import pandas as pd
@@ -30,12 +30,12 @@ class VoltageClamp(Model):
         '''
         # Check validity of input parameters
         if not isinstance(pneuron, PointNeuron):
-            raise ValueError('Invalid neuron type: "{}" (must inherit from PointNeuron class)'
-                             .format(pneuron.name))
+            raise ValueError(
+                f'Invalid neuron type: "{pneuron.name}" (must inherit from PointNeuron class)')
         self.pneuron = pneuron
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, self.pneuron)
+        return f'{self.__class__.__name__}({self.pneuron})'
 
     @classmethod
     def initFromMeta(cls, meta):
@@ -47,16 +47,18 @@ class VoltageClamp(Model):
     def getPltVars(self, wrapleft='df["', wrapright='"]'):
         return self.pneuron.getPltVars(wrapleft, wrapright)
 
-    def getPltScheme(self):
-        return self.pneuron.getPltScheme()
+    @property
+    def pltScheme(self):
+        return self.pneuron.pltScheme
 
     def filecode(self, *args):
         return Model.filecode(self, *args)
 
+    @property
     @staticmethod
     def inputs():
         # Get pneuron input vars and replace stimulation current by held and step voltages
-        inputvars = PointNeuron.inputs()
+        inputvars = PointNeuron.inputs
         for key in ['Astim', 'PRF', 'DC']:
             del inputvars[key]
         inputvars.update({
@@ -79,9 +81,9 @@ class VoltageClamp(Model):
         return {
             'simkey': self.simkey,
             'neuron': self.pneuron.name,
-            'Vhold': '{:.1f}mV'.format(Vhold),
-            'Vstep': '{:.1f}mV'.format(Vstep),
-            **tp.filecodes()
+            'Vhold': f'{Vhold:.1f}mV',
+            'Vstep': f'{Vstep:.1f}mV',
+            **tp.filecodes
         }
 
     @classmethod
@@ -132,12 +134,6 @@ class VoltageClamp(Model):
             :param tp: time protocol object
             :return: output dataframe
         '''
-        # logger.info('{}: simulation @ Vhold = {}V, Vstep = {}V, {}'.format(
-        #     self, *si_format([Vhold * 1e-3, Vstep * 1e-3], 1), tp.pprint()))
-
-        # # Check validity of stimulation parameters
-        # self.checkInputs(Vhold, Vstep)
-
         # Set initial conditions
         y0 = self.pneuron.getSteadyStates(Vhold)
 
@@ -178,4 +174,4 @@ class VoltageClamp(Model):
 
     def desc(self, meta):
         return '{}: simulation @ Vhold = {}V, Vstep = {}V, {}'.format(
-            self, *si_format([meta['Vhold'] * 1e-3, meta['Vstep'] * 1e-3], 1), meta['tp'].pprint())
+            self, *si_format([meta['Vhold'] * 1e-3, meta['Vstep'] * 1e-3], 1), meta['tp'].desc)

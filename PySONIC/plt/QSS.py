@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 09:25:20
+# @Last Modified time: 2020-02-02 14:52:33
 
 import inspect
 import logging
@@ -69,8 +69,8 @@ def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):
             item.set_fontsize(fs)
         for item in ax.get_xticklabels(minor=True):
             item.set_visible(False)
-    fig.suptitle('{} neuron - QSS dynamics @ {:.2f} kPa, {:.0f}%DC'.format(
-        pneuron.name, Adrive * 1e-3, DC * 1e2), fontsize=fs)
+    fig.suptitle(f'{pneuron.name} neuron - QSS dynamics @ {Adrive * 1e-3:.2f} kPa, {DC * 1e2:.0f}%DC',
+                 fontsize=fs)
 
     # Subplot: Vmeff
     ax = axes[0]
@@ -93,7 +93,7 @@ def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):
     ax.set_ylabel('QSS currents ($\\rm A/m^2$)', fontsize=fs)
     for i, (k, I) in enumerate(currents.items()):
         ax.plot(Qref * 1e5, -I * 1e-3, '--', c=cset[i],
-                label='$\\rm -{}$'.format(pneuron.getPltVars()[k]['label']))
+                label='$\\rm -{}$'.format(pneuron.getPltVars()[k]["label"]))
     ax.plot(Qref * 1e5, -iNet * 1e-3, color='k', label='$\\rm -I_{Net}$')
     ax.axhline(0, color='k', linewidth=0.5)
 
@@ -111,7 +111,7 @@ def plotQSSdynamics(pneuron, a, Fdrive, Adrive, DC=1., fs=12):
         ax.set_xticklabels([])
 
     fig.canvas.set_window_title(
-        '{}_QSS_dynamics_vs_Qm_{:.2f}kPa_DC{:.0f}%'.format(pneuron.name, Adrive * 1e-3, DC * 1e2))
+        f'{pneuron.name}_QSS_dynamics_vs_Qm_{Adrive * 1e-3:.2f}kPa_DC{DC * 1e2:.0f}%')
 
     return fig
 
@@ -150,11 +150,10 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    title = '{} neuron - QSS {} vs. Qm - {:.0f}% DC'.format(pneuron.name, varname, DC * 1e2)
+    title = f'{pneuron.name} neuron - QSS {varname} vs. Qm - {DC * 1e2:.0f}% DC'
     ax.set_title(title, fontsize=fs)
-    ax.set_xlabel('$\\rm {}\ ({})$'.format(Qvar['label'], Qvar['unit']), fontsize=fs)
-    ax.set_ylabel('$\\rm QSS\ {}\ ({})$'.format(pltvar['label'], pltvar.get('unit', '')),
-                  fontsize=fs)
+    ax.set_xlabel('$\\rm {}\ ({})$'.format(Qvar["label"], Qvar["unit"]), fontsize=fs)
+    ax.set_ylabel('$\\rm QSS\ {}\ ({})$'.format(pltvar["label"], pltvar.get("unit", "")), fontsize=fs)
     if yscale == 'log':
         ax.set_yscale('log')
     for key in ['top', 'right']:
@@ -162,7 +161,7 @@ def plotQSSVarVsQm(pneuron, a, Fdrive, varname, amps=None, DC=1.,
 
     # Plot y-variable reference line, if any
     y0 = None
-    y0_str = '{}0'.format(varname)
+    y0_str = f'{varname}0'
     if hasattr(pneuron, y0_str):
         y0 = getattr(pneuron, y0_str) * pltvar.get('factor', 1)
     elif varname in pneuron.getCurrentsNames() + ['iNet', 'dQdt']:
@@ -328,8 +327,7 @@ def plotEqChargeVsAmp(pneuron, a, Fdrive, amps=None, tstim=None, toffset=None, P
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    figname = '{} neuron - charge stability vs. amplitude @ {:.0f}%DC'.format(
-        pneuron.name, DC * 1e2)
+    figname = f'{pneuron.name} neuron - charge stability vs. amplitude @ {DC * 1e2:.0f}%DC'
     ax.set_title(figname)
     ax.set_xlabel('Amplitude (kPa)', fontsize=fs)
     ax.set_ylabel('$\\rm Q_m\ (nC/cm^2)$', fontsize=fs)
@@ -418,7 +416,7 @@ def plotQSSThresholdCurve(pneuron, a, Fdrive, tstim=None, toffset=None, PRF=None
 
     # Create figure
     fig, ax = plt.subplots(figsize=(6, 4))
-    figname = '{} neuron - threshold amplitude vs. duty cycle'.format(pneuron.name)
+    figname = f'{pneuron.name} neuron - threshold amplitude vs. duty cycle'
     ax.set_title(figname)
     ax.set_xlabel('Duty cycle (%)', fontsize=fs)
     ax.set_ylabel('Amplitude (kPa)', fontsize=fs)

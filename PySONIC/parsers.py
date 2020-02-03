@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 09:26:17
+# @Last Modified time: 2020-02-01 16:18:15
 
 import os
 import logging
@@ -268,7 +268,7 @@ class Parser(ArgumentParser):
             else:
                 return selectDirDialog(title=title)
         except ValueError:
-            raise ValueError('No {} selected'.format(key))
+            raise ValueError(f'No {key} selected')
 
     def parseInputDir(self, args):
         return self.parseDir(
@@ -300,7 +300,7 @@ class Parser(ArgumentParser):
     def restrict(self, args, keys):
         if sum([args[x] is not None for x in keys]) > 1:
             raise ValueError(
-                'You must provide only one of the following arguments: {}'.format(', '.join(keys)))
+                f'You must provide only one of the following arguments: {", ".join(keys)}')
 
     def parse2array(self, args, key, factor=1):
         return np.array(args[key]) * factor
@@ -470,13 +470,11 @@ class MechSimParser(SimParser):
         self.add_argument(
             '-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
         self.add_argument(
-            '--Arange', type=str, nargs='+',
-            help='Amplitude range {} (kPa)'.format(self.dist_str))
+            '--Arange', type=str, nargs='+', help=f'Amplitude range {self.dist_str} (kPa)')
         self.add_argument(
             '-I', '--intensity', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
         self.add_argument(
-            '--Irange', type=str, nargs='+',
-            help='Intensity range {} (W/cm2)'.format(self.dist_str))
+            '--Irange', type=str, nargs='+', help=f'Intensity range {self.dist_str} (W/cm2)')
         self.to_parse['amp'] = self.parseAmp
 
     def addAscale(self, default='lin'):
@@ -576,7 +574,7 @@ class VClampParser(NeuronSimParser):
             '--vstep', nargs='+', type=float, help='Step membrane potential (mV)')
         self.add_argument(
             '--vsteprange', type=str, nargs='+',
-            help='Step membrane potential range {} (mV)'.format(self.dist_str))
+            help=f'Step membrane potential range {self.dist_str} (mV)')
         self.to_parse['vstep'] = self.parseVstep
 
     def parseVstep(self, args):
@@ -670,8 +668,7 @@ class EStimParser(PWSimParser):
             '-A', '--amp', nargs='+', type=float,
             help='Amplitude of injected current density (mA/m2)')
         self.add_argument(
-            '--Arange', type=str, nargs='+',
-            help='Amplitude range {} (mA/m2)'.format(self.dist_str))
+            '--Arange', type=str, nargs='+', help=f'Amplitude range {self.dist_str} (mA/m2)')
         self.to_parse['amp'] = self.parseAmp
 
     def addVext(self):
@@ -703,13 +700,13 @@ class AStimParser(PWSimParser, MechSimParser):
     def addMethod(self):
         self.add_argument(
             '-m', '--method', nargs='+', type=str,
-            help='Numerical integration method ({})'.format(', '.join(self.allowed['method'])))
+            help=f'Numerical integration method ({", ".join(self.allowed["method"])})')
         self.to_parse['method'] = self.parseMethod
 
     def parseMethod(self, args):
         for item in args['method']:
             if item not in self.allowed['method']:
-                raise ValueError('Unknown method type: "{}"'.format(item))
+                raise ValueError(f'Unknown method type: "{item}"')
         return args['method']
 
     def addQSSVars(self):

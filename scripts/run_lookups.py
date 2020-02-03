@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 18:57:36
+# @Last Modified time: 2020-02-02 12:47:44
 
 ''' Create lookup table for specific neuron. '''
 
@@ -65,16 +65,15 @@ def computeAStimLookup(pneuron, aref, fref, Aref, Qref, fsref=None,
     # Check validity of all reference vectors
     for key, values in refs.items():
         if not isIterable(values):
-            raise TypeError(
-                'Invalid {} (must be provided as list or numpy array)'.format(descs[key]))
+            raise TypeError(f'Invalid {descs[key]} (must be provided as list or numpy array)')
         if not all(isinstance(x, float) for x in values):
-            raise TypeError('Invalid {} (must all be float typed)'.format(descs[key]))
+            raise TypeError(f'Invalid {descs[key]} (must all be float typed)')
         if len(values) == 0:
-            raise ValueError('Empty {} array'.format(key))
+            raise ValueError(f'Empty {key} array')
         if key in ('a', 'f') and min(values) <= 0:
-            raise ValueError('Invalid {} (must all be strictly positive)'.format(descs[key]))
+            raise ValueError(f'Invalid {descs[key]} (must all be strictly positive)')
         if key in ('A', 'fs') and min(values) < 0:
-            raise ValueError('Invalid {} (must all be positive or null)'.format(descs[key]))
+            raise ValueError(f'Invalid {descs[key]} (must all be positive or null)')
 
     # Get references dimensions
     dims = np.array([x.size for x in refs.values()])
@@ -154,7 +153,8 @@ def main():
             for i, x in enumerate(inputs):
                 if x is not None and x.size > 1:
                     inputs[i] = np.array([x.min(), x.max()])
-            lookup_fpath = '{}_test{}'.format(*os.path.splitext(lookup_fpath))
+            fcode, fext = os.path.splitext(lookup_fpath)
+            lookup_fpath = f'{fcode}_test{fext}'
 
         # Check if lookup file already exists
         if os.path.isfile(lookup_fpath):

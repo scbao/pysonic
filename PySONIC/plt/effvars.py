@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 18:51:35
+# @Last Modified time: 2020-02-02 14:45:17
 
 from inspect import signature
 import numpy as np
@@ -84,7 +84,7 @@ def plotGatingKinetics(pneuron, fs=15):
             taux_dict[xname] = taux
 
     fig, axes = plt.subplots(2)
-    fig.suptitle('{} neuron: gating dynamics'.format(pneuron.name))
+    fig.suptitle(f'{pneuron.name} neuron: gating dynamics')
 
     ax = axes[0]
     ax.get_xaxis().set_ticklabels([])
@@ -158,7 +158,7 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
         if key != 'Q':
             zkey = key
             zref = lookups2D.refs[key]
-    zvar = nbls.inputs()[{'a': 'a', 'f': 'Fdrive', 'A': 'Adrive'}[zkey]]
+    zvar = nbls.inputs[{'a': 'a', 'f': 'Fdrive', 'A': 'Adrive'}[zkey]]
     zref *= zvar['factor']
 
     # Optional: interpolate along z dimension if nlevels specified
@@ -190,7 +190,7 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
             ax.spines[s].set_visible(False)
         yvar = pltvars[key]
         if j // ncols == nrows - 1:
-            ax.set_xlabel('$\\rm {}\ ({})$'.format(xvar['label'], xvar['unit']), fontsize=fs)
+            ax.set_xlabel('$\\rm {}\ ({})$'.format(xvar["label"], xvar["unit"]), fontsize=fs)
             ax.set_xticks(Qbounds)
         else:
             ax.set_xticks([])
@@ -232,18 +232,16 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
             ylim = [np.floor(ylim[0] * factor) / factor, np.ceil(ylim[1] * factor) / factor]
         ax.set_yticks(ylim)
         ax.set_ylim(ylim)
-        ax.set_ylabel('$\\rm {}\ ({})$'.format(yvar['label'], yvar['unit']), fontsize=fs,
-                      rotation=0, ha='right', va='center')
+        ax.set_ylabel('$\\rm {}\ ({})$'.format(yvar["label"], yvar["unit"]),
+                      fontsize=fs, rotation=0, ha='right', va='center')
 
-    fig.suptitle('{} neuron: {} \n modulated effective variables'.format(
-        pneuron.name, zvar['label']))
+    fig.suptitle(f'{pneuron.name} neuron: {zvar["label"]} \n modulated effective variables')
 
     # Plot colorbar
     fig.subplots_adjust(left=0.20, bottom=0.05, top=0.8, right=0.80, hspace=0.5)
     cbarax = fig.add_axes([0.10, 0.90, 0.80, 0.02])
     fig.colorbar(sm, cax=cbarax, orientation='horizontal')
-    cbarax.set_xlabel('{} ({})'.format(
-        zvar['label'], zvar['unit']), fontsize=fs)
+    cbarax.set_xlabel(f'{zvar["label"]} ({zvar["unit"]})', fontsize=fs)
     for item in cbarax.get_yticklabels():
         item.set_fontsize(fs)
 

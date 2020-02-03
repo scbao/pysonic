@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-15 01:09:27
+# @Last Modified time: 2020-02-01 20:02:25
 
 import numpy as np
 from ..utils import si_format
@@ -37,12 +37,15 @@ class TimeProtocol:
         params = [f'{si_format(x, 1, space="")}s' for x in [self.tstim, self.toffset]]
         return f'{self.__class__.__name__}({", ".join(params)})'
 
-    def pprint(self):
+    @property
+    def desc(self):
         return f'{si_format(self.tstim, 1)}s stim, {si_format(self.toffset, 1)}s offset'
 
+    @property
     def filecodes(self):
         return {'tstim': f'{(self.tstim * 1e3):.0f}ms', 'toffset': None}
 
+    @property
     @staticmethod
     def inputs():
         return {
@@ -105,22 +108,30 @@ class PulsedProtocol(TimeProtocol):
         params = [f'{si_format(self.PRF, 1, space="")}Hz', f'{self.DC:.2f}']
         return f'{super().__repr__()[:-1]}, {", ".join(params)})'
 
-    def pprint(self):
-        s = super().pprint()
+    @property
+    def desc(self):
+        s = super().desc
         if self.DC < 1:
             s += f', {si_format(self.PRF, 2)}Hz PRF, {(self.DC * 1e2):.1f}% DC'
         return s
 
+    @property
     def isCW(self):
         return self.DC == 1.
 
+    @property
+    def nature(self):
+        return 'CW' if self.isCW else 'PW'
+
+    @property
     def filecodes(self):
-        if self.isCW():
+        if self.isCW:
             d = {'PRF': None, 'DC': None}
         else:
-            d = {'PRF': 'PRF{:.2f}Hz'.format(self.PRF), 'DC': 'DC{:04.1f}%'.format(self.DC * 1e2)}
-        return {**super().filecodes(), **d}
+            d = {'PRF': f'PRF{self.PRF:.2f}Hz', 'DC': f'DC{self.DC * 1e2:04.1f}%'}
+        return {**super().filecodes, **d}
 
+    @property
     @staticmethod
     def inputs():
         d = {
@@ -139,7 +150,7 @@ class PulsedProtocol(TimeProtocol):
                 'precision': 2
             }
         }
-        return {**TimeProtocol.inputs(), **d}
+        return {**TimeProtocol.inputs, **d}
 
 
 def createPulsedProtocols(durations, offsets, PRFs, DCs):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-20 15:20:03
+# @Last Modified time: 2020-02-01 20:08:11
 
 import numpy as np
 from ..core import PointNeuron
@@ -248,9 +248,9 @@ class ThalamoCortical(Thalamic):
         ''' O-gate locked-open probability '''
         return 1 - O - C
 
-    @classmethod
-    def getPltScheme(cls):
-        pltscheme = super().getPltScheme()
+    @property
+    def pltScheme(self):
+        pltscheme = super().pltScheme
         pltscheme['i_{H}\\ kin.'] = ['O', 'OL', 'P0']
         pltscheme['[Ca^{2+}]_i'] = ['Cai']
         return pltscheme
@@ -268,7 +268,7 @@ class ThalamoCortical(Thalamic):
                 'desc': 'iH O-gate locked-opening',
                 'label': 'O_L',
                 'bounds': (-0.1, 1.1),
-                'func': 'OL({0}O{1}, {0}C{1})'.format(wrapleft, wrapright)
+                'func': f'OL({wrapleft}O{wrapright}, {wrapleft}C{wrapright})'
             },
             'P0': {
                 'desc': 'iH regulating factor activation',

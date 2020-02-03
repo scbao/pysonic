@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-09 11:30:56
+# @Last Modified time: 2020-02-02 14:52:19
 
 ''' Useful functions to generate plots. '''
 
@@ -36,7 +36,9 @@ def cm2inch(*tupl):
 
 def extractPltVar(model, pltvar, df, meta=None, nsamples=0, name=''):
     if 'func' in pltvar:
-        s = 'model.{}'.format(pltvar['func'])
+        s = pltvar['func']
+        if not s.startswith('meta'):
+            s = f'model.{s}'
         try:
             var = eval(s)
         except AttributeError:
@@ -123,7 +125,7 @@ class GenericPlot:
         ''' Get sim type from filename. '''
         mo = re.search('(^[A-Z]*)_(.*).pkl', fname)
         if not mo:
-            raise ValueError('Could not find sim-key in filename: "{}"'.format(fname))
+            raise ValueError(f'Could not find sim-key in filename: "{fname}"')
         return mo.group(1)
 
     @staticmethod
@@ -243,11 +245,11 @@ class GenericPlot:
 
     @staticmethod
     def setXLabel(ax, xplt, fs):
-        ax.set_xlabel('$\\rm {}\ ({})$'.format(xplt['label'], xplt['unit']), fontsize=fs)
+        ax.set_xlabel('$\\rm {}\ ({})$'.format(xplt["label"], xplt["unit"]), fontsize=fs)
 
     @staticmethod
     def setYLabel(ax, yplt, fs):
-        ax.set_ylabel('$\\rm {}\ ({})$'.format(yplt['label'], yplt.get('unit', '')), fontsize=fs)
+        ax.set_ylabel('$\\rm {}\ ({})$'.format(yplt["label"], yplt.get("unit", "")), fontsize=fs)
 
     @classmethod
     def addCmap(cls, fig, cmap, handles, comp_values, comp_info, fs, prettify, zscale='lin'):
@@ -270,8 +272,8 @@ class GenericPlot:
         fig.subplots_adjust(left=0.1, right=0.8, bottom=0.15, top=0.95, hspace=0.5)
         cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
         cbar = fig.colorbar(sm, cax=cbarax, orientation='vertical')
-        cbarax.set_ylabel('$\\rm {}\ ({})$'.format(
-            comp_info['desc'].replace(' ', '\ '), comp_info['unit']), fontsize=fs)
+        desc_str = comp_info["desc"].replace(" ", "\ ")
+        cbarax.set_ylabel('$\\rm {}\ ({})$'.format(desc_str, comp_info["unit"]), fontsize=fs)
         if prettify:
             cls.prettify(cbar)
         for item in cbarax.get_yticklabels():
@@ -295,7 +297,7 @@ class ComparativePlot(GenericPlot):
 
     def checkColors(self, colors):
         if colors is None:
-            colors = ['C{}'.format(j) for j in range(len(self.filepaths))]
+            colors = [f'C{j}' for j in range(len(self.filepaths))]
         return colors
 
     def checkLines(self, lines):
@@ -305,10 +307,10 @@ class ComparativePlot(GenericPlot):
 
     def checkLabels(self, labels):
         if labels is not None:
-            if len(labels) != len(self.filepaths):
+            nlabels, nfiles = len(labels), len(self.filepaths)
+            if nlabels != nfiles:
                 raise ValueError(
-                    'Invalid labels ({}): not matching number of compared files ({})'.format(
-                        len(labels), len(self.filepaths)))
+                    f'Invalid labels ({nlabels}): not matching number of compared files ({nfiles})')
             if not all(isinstance(x, str) for x in labels):
                 raise TypeError('Invalid labels: must be string typed')
 
@@ -353,9 +355,8 @@ class ComparativePlot(GenericPlot):
     def getCompLabels(self, comp_values):
         if self.comp_info is not None:
             comp_values = np.array(comp_values) * self.comp_info.get('factor', 1)
-            comp_labels = [
-                '$\\rm{} = {}\ {}$'.format(self.comp_info['label'], x, self.comp_info['unit'])
-                for x in comp_values]
+            comp_labels = ['$\\rm{} = {x}\ {}$'.format(self.comp_info["label"], self.comp_info["unit"])
+                           for x in comp_values]
         else:
             comp_labels = comp_values
         return comp_values, comp_labels

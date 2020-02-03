@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-11 12:26:50
+# @Last Modified time: 2020-02-02 12:44:15
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -75,8 +75,7 @@ def main():
         for fig in figs:
             s = fig.canvas.get_window_title()
             s = s.replace('(', '- ').replace('/', '_').replace(')', '')
-            figname = '{}.png'.format(s)
-            fig.savefig(os.path.join(args['outputdir'], figname), transparent=True)
+            fig.savefig(os.path.join(args['outputdir'], f'{s}.png'), transparent=True)
     else:
         plt.show()
 

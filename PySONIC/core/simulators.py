@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 20:41:21
+# @Last Modified time: 2020-02-01 20:04:41
 
 import abc
 import numpy as np
@@ -161,9 +161,7 @@ class PeriodicSimulator(Simulator):
         # Classify the solution as periodically stable only if all RMSE/PTP ratios
         # are below critical threshold
         is_periodically_stable = np.all(ratios < MAX_RMSE_PTP_RATIO)
-        # logger.debug(
-        #     'step %u: ratios = [%s]', icycle,
-        #     ', '.join(['{:.2e}'.format(r) for r in ratios]))
+
         return is_periodically_stable
 
     def isAsymptoticallyStable(self, t, y, T):
@@ -232,11 +230,11 @@ class PeriodicSimulator(Simulator):
         t += t0
 
         # Log stopping criterion
-        t_str = 't = {:.5f} ms'.format(t[-1] * 1e3)
+        t_str = f't = {t[-1] * 1e3:.5f} ms'
         if icycle == nmax:
-            logger.warning('%s: criterion not met -> stopping after %u cycles', t_str, icycle)
+            logger.warning(f'{t_str}: criterion not met -> stopping after {icycle} cycles')
         else:
-            logger.debug('%s: stopping criterion met after %u cycles', t_str, icycle)
+            logger.debug(f'{t_str}: stopping criterion met after {icycle} cycles')
 
         # Return output variables
         return t, y, stim
@@ -502,7 +500,7 @@ class HybridSimulator(PWSimulator):
 
         # Until final integration time is reached
         while t[-1] < tnew[-1]:
-            logger.debug('t = {:.5f} ms: starting new hybrid integration'.format(t[-1] * 1e3))
+            logger.debug(f't = {t[-1] * 1e3:.5f} ms: starting new hybrid integration')
 
             # Integrate dense system until stopping criterion is met
             tdense, ydense, stimdense = dense_solver.compute(y[-1], dt_dense, self.T, t0=t[-1])
@@ -526,8 +524,7 @@ class HybridSimulator(PWSimulator):
                 self.sparse_solver.set_f_params(self.predfunc(ylast[j % npc_sparse]))
                 self.sparse_solver.integrate(tsparse[j])
                 if not self.sparse_solver.successful():
-                    raise ValueError(
-                        'integration error at t = {:.5f} ms'.format(tsparse[j] * 1e3))
+                    raise ValueError(f'integration error at t = {tsparse[j] * 1e3:.5f} ms')
                 ysparse[j, self.is_dense_var] = ylast[j % npc_sparse, self.is_dense_var]
                 ysparse[j, self.is_sparse_var] = self.sparse_solver.y
             t, y, stim = self.appendSolution(t, y, stim, tsparse, ysparse, is_on)

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 16:55:04
+# @Last Modified time: 2020-02-02 12:59:48
 
 from time import gmtime, strftime
 import re
@@ -84,8 +84,7 @@ class Translator:
         # Match lambda pattern in cleaned-up source, and return match groups
         m = re.match(cls.lambda_pattern, lambda_source)
         if m is None:
-            raise ValueError('source does not match lambda pattern: \n {}'.format(
-                lambda_source))
+            raise ValueError(f'source does not match lambda pattern: \n {lambda_source}')
         return m.groups()
 
     @staticmethod
@@ -139,7 +138,7 @@ class Translator:
         fprefix, fname = m.groups()
         fcall = fname
         if fprefix:
-            fcall = '{}{}'.format(fprefix, fname)
+            fcall = f'{fprefix}{fname}'
         else:
             fprefix = ''
         fclosure = self.getClosure(expr[m.end():])
@@ -185,9 +184,9 @@ class Translator:
     def getFuncArgs(m):
         ''' Determine function arguments. '''
         fprefix, fname, fargs = m.groups()
-        fcall = '{}({})'.format(fname, fargs)
+        fcall = f'{fname}({fargs})'
         if fprefix:
-            fcall = '{}.{}'.format(fprefix, fcall)
+            fcall = f'{fprefix}.{fcall}'
         fargs = fargs.split(',')
         fargs = [x.strip() for x in fargs]
         return fcall, fname, fargs
@@ -227,10 +226,10 @@ class PointNeuronTranslator(Translator):
     ''' Generic PointNeuron translator interface. '''
 
     # Gating patterns
-    xinf_pattern = re.compile('^({})inf$'.format(Translator.variable_pattern))
-    taux_pattern = re.compile('^tau({})$'.format(Translator.variable_pattern))
-    alphax_pattern = re.compile('^alpha({})$'.format(Translator.variable_pattern))
-    betax_pattern = re.compile('^beta({})$'.format(Translator.variable_pattern))
+    xinf_pattern = re.compile(f'^({Translator.variable_pattern})inf$')
+    taux_pattern = re.compile(f'^tau({Translator.variable_pattern})$')
+    alphax_pattern = re.compile(f'^alpha({Translator.variable_pattern})$')
+    betax_pattern = re.compile(f'^beta({Translator.variable_pattern})$')
 
     # Neuron-specific regexp patterns
     conductance_pattern = re.compile('(g)([A-Za-z0-9_]*)(Leak|bar)')
@@ -297,7 +296,7 @@ class SonicTranslator(PointNeuronTranslator):
             if p.match(expr):
                 try:
                     self.eff_rates[expr] = getattr(self.pclass, expr)
-                    self.eff_rates_str[expr] = 'self.{}'.format(expr)
+                    self.eff_rates_str[expr] = f'self.{expr}'
                     l.append(expr)
                 except AttributeError:
                     raise ValueError(err_str)
@@ -309,8 +308,8 @@ class SonicTranslator(PointNeuronTranslator):
                 m = p.match(expr)
                 if m:
                     k = m.group(1)
-                    alphax_str, betax_str = ['{}{}'.format(p, k) for p in ['alpha', 'beta']]
-                    xinf_str, taux_str = ['{}inf'.format(k), 'tau{}'.format(k)]
+                    alphax_str, betax_str = [f'{p}{k}' for p in ['alpha', 'beta']]
+                    xinf_str, taux_str = [f'{k}inf', f'tau{k}']
                     try:
                         xinf, taux = [getattr(self.pclass, s) for s in [xinf_str, taux_str]]
                         # If taux is a constant, define a lambda function that returns it
@@ -321,10 +320,8 @@ class SonicTranslator(PointNeuronTranslator):
                             betax_str: lambda Vm: (1 - xinf(Vm)) / taux(Vm)
                         })
                         self.eff_rates_str.update({
-                            alphax_str: 'lambda Vm: cls.{}(Vm) / cls.{}(Vm)'.format(
-                                xinf_str, taux_str),
-                            betax_str: 'lambda Vm: (1 - cls.{}(Vm)) / cls.{}(Vm)'.format(
-                                xinf_str, taux_str)
+                            alphax_str: f'lambda Vm: cls.{xinf_str}(Vm) / cls.{taux_str}(Vm)',
+                            betax_str: f'lambda Vm: (1 - cls.{xinf_str}(Vm)) / cls.{taux_str}(Vm)'
                         })
                         l.append(expr)
                     except AttributeError:
@@ -336,7 +333,7 @@ class SonicTranslator(PointNeuronTranslator):
             expr = re.sub(
                 self.lambda_dict_call_pattern,
                 lambda x: f'cls.{func_name}()[\'{x.group(3)}\']({x.group(5)})', expr)
-        f = eval('lambda cls, {}: {}'.format(', '.join(args_str), expr))
+        f = eval(f'lambda cls, {", ".join(args_str)}: {expr}')
         return lambda *args: f(self.pclass, *args)
 
     def translateExpr(self, expr, level=0):
@@ -350,7 +347,7 @@ class SonicTranslator(PointNeuronTranslator):
             # If effective variable -> replace by dict lookup
             if self.isEffectiveVariable(fname, fargs):
                 self.addToEffRates(fname)
-                new_fcall = "lkp['{}']".format(fname)
+                new_fcall = f"lkp['{fname}']"
                 expr = expr.replace(fcall, new_fcall)
 
         # Return modified expression
@@ -365,11 +362,11 @@ class SonicTranslator(PointNeuronTranslator):
         if self.verbose:
             print('---------- derEffStates ----------')
             for k, v in eff_dstates_str.items():
-                print("    {} : lambda lkp, x: {}".format(k, v))
+                print(f"    {k} : lambda lkp, x: {v}")
             print('')
             print('---------- effRates ----------')
             for k, v in self.eff_rates_str.items():
-                print("    {} : {}".format(k, v))
+                print(f"    {k} : {v}")
             print('')
 
         # Return dictionary of evaluated functions
@@ -384,7 +381,7 @@ class SonicTranslator(PointNeuronTranslator):
         if self.verbose:
             print('---------- quasiSteadyStates ----------')
             for k, v in qsstates_str.items():
-                print("    {} : lambda lkp: {}".format(k, v))
+                print(f"    {k} : lambda lkp: {v}")
             print('')
 
         # Return dictionary of evaluated functions

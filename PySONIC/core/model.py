@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-11-26 15:27:35
+# @Last Modified time: 2020-02-01 19:46:43
 
 import os
 from functools import wraps
@@ -55,6 +55,7 @@ class Model(metaclass=abc.ABCMeta):
     def description(cls):
         return getdoc(cls).split('\n', 1)[0].strip()
 
+    @property
     @staticmethod
     @abc.abstractmethod
     def inputs():
@@ -76,9 +77,9 @@ class Model(metaclass=abc.ABCMeta):
         ''' Return a dictionary with information about all plot variables related to the model. '''
         raise NotImplementedError
 
-    @classmethod
+    @property
     @abc.abstractmethod
-    def getPltScheme(self):
+    def pltScheme(self):
         ''' Return a dictionary model plot variables grouped by context. '''
         raise NotImplementedError
 
@@ -176,7 +177,7 @@ class Model(metaclass=abc.ABCMeta):
                 return None
             data, meta = out
             nspikes = self.getNSpikes(data)
-            logger.debug('{} spike{} detected'.format(nspikes, plural(nspikes)))
+            logger.debug(f'{nspikes} spike{plural(nspikes)} detected')
             return data, meta
 
         return wrapper
@@ -210,22 +211,45 @@ class Model(metaclass=abc.ABCMeta):
         '''
         @wraps(simfunc)
         def wrapper(self, *args, **kwargs):
+            args = list(args)
+            to_titrate = False
+
             # Get argument index from function signature
             func_args = list(signature(simfunc).parameters.keys())[1:]
-            iarg = func_args.index(self.titration_var)
+            is_wrapped = False
+            try:
+                iarg = func_args.index(self.titration_var)
+                var = args[iarg]
+                if var is None:
+                    # Generate new args list without argument
+                    new_args = args.copy()
+                    del new_args[iarg]
+                    to_titrate = True
+            except ValueError as err:
+                iarg = func_args.index(self.titration_obj)
+                obj = args[iarg]
+                var = getattr(obj, self.titration_var)
+                is_wrapped = True
+                if var is None:
+                    # Generate new args list with modified source
+                    d = obj.meta.copy()
+                    del d[self.titration_var]
+                    new_args = args.copy()
+                    new_args = new_args[:iarg] + list(d.values()) + new_args[iarg + 1:]
+                    to_titrate = True
 
             # If argument is None
-            if args[iarg] is None:
-                # Generate new args list without argument
-                args = list(args)
-                new_args = args.copy()
-                del new_args[iarg]
-
+            if to_titrate:
                 # Perform titration to find threshold argument value
                 xthr = self.titrate(*new_args)
                 if np.isnan(xthr):
                     logger.error(f'Could not find threshold {self.titration_var}')
                     return None
+
+                # Change the object titration variable if necessary
+                if is_wrapped:
+                    setattr(obj, self.titration_var, xthr)
+                    xthr = obj
 
                 # Re-insert it into arguments list
                 args[iarg] = xthr
@@ -245,7 +269,7 @@ class Model(metaclass=abc.ABCMeta):
             If a corresponding output file is not found in the specified directory, the model
             is first run and results are saved in the output file.
         '''
-        fpath = '{}/{}.pkl'.format(outputdir, self.filecode(*args))
+        fpath = f'{outputdir}/{self.filecode(*args)}.pkl'
         if not os.path.isfile(fpath):
             self.simAndSave(outputdir, *args, outputdir=outputdir)
         return loadData(fpath)

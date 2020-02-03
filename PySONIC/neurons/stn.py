@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-20 15:35:44
+# @Last Modified time: 2020-01-30 16:10:34
 
 import numpy as np
 from ..core import PointNeuron
@@ -173,9 +173,9 @@ class OtsukaSTN(PointNeuron):
         cls.current_to_molar_rate_Ca = cls.currentToConcentrationRate(Z_Ca, cls.deff)
         return super(OtsukaSTN, cls).__new__(cls)
 
-    @classmethod
-    def getPltScheme(cls):
-        pltscheme = super().getPltScheme()
+    @property
+    def pltScheme(self):
+        pltscheme = super().pltScheme
         pltscheme['[Ca^{2+}]_i'] = ['Cai']
         return pltscheme
 

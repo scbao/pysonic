@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 13:35:10
+# @Last Modified time: 2020-02-01 19:35:20
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -129,14 +129,12 @@ def si_format(x, precision=0, space=' '):
         else:
             sorted_si_prefixes = sorted(si_prefixes.items(), key=operator.itemgetter(1))
             vals = [tmp[1] for tmp in sorted_si_prefixes]
-            # vals = list(si_prefixes.values())
             ix = np.searchsorted(vals, np.abs(x)) - 1
             if np.abs(x) == vals[ix + 1]:
                 ix += 1
             factor = vals[ix]
             prefix = sorted_si_prefixes[ix][0]
-            # prefix = list(si_prefixes.keys())[ix]
-        return '{{:.{}f}}{}{}'.format(precision, space, prefix).format(x / factor)
+        return f'{x / factor:.{precision}f}{space}{prefix}'
     elif isinstance(x, list) or isinstance(x, tuple):
         return [si_format(item, precision, space) for item in x]
     elif isinstance(x, np.ndarray) and x.ndim == 1:
@@ -147,16 +145,16 @@ def si_format(x, precision=0, space=' '):
 
 def pow10_format(number, precision=2):
     ''' Format a number in power of 10 notation. '''
-    ret_string = '{0:.{1:d}e}'.format(number, precision)
-    a, b = ret_string.split("e")
-    a = float(a)
-    b = int(b)
-    return '{}10^{{{}}}'.format('{} * '.format(a) if a != 1. else '', b)
+    sci_string = f'{number:.{precision}e}'
+    value, exponent = sci_string.split("e")
+    value, exponent = float(value), int(exponent)
+    val_str = f'{value} * ' if value != 1. else ''
+    return f'{val_str}10^{{{exponent}}}'
 
 
 def plural(n):
     if n < 0:
-        raise ValueError('Cannot format negative integer (n = {})'.format(n))
+        raise ValueError(f'Cannot format negative integer (n = {n})')
     if n == 0:
         return ''
     else:
@@ -202,8 +200,8 @@ def Intensity2Pressure(I, rho=1075.0, c=1515.0):
 
 def convertPKL2JSON():
     for pkl_filepath in OpenFilesDialog('pkl')[0]:
-        logger.info('Processing {} ...'.format(pkl_filepath))
-        json_filepath = '{}.json'.format(os.path.splitext(pkl_filepath)[0])
+        logger.info(f'Processing {pkl_filepath} ...')
+        json_filepath = f'{os.path.splitext(pkl_filepath)[0]}.json'
         with open(pkl_filepath, 'rb') as fpkl, open(json_filepath, 'w') as fjson:
             data = pickle.load(fpkl)
             json.dump(data, fjson, ensure_ascii=False, sort_keys=True, indent=4)
@@ -320,8 +318,7 @@ def isWithin(name, val, bounds, rel_tol=1e-9):
         logger.warning('Rounding %s value (%s) to interval upper bound (%s)', name, val, bounds[1])
         return bounds[1]
     else:
-        raise ValueError('{} value ({}) out of [{}, {}] interval'.format(
-            name, val, bounds[0], bounds[1]))
+        raise ValueError(f'{name} value ({val}) out of [{bounds[0]}, {bounds[1]}] interval')
 
 
 def getDistribution(xmin, xmax, nx, scale='lin'):
@@ -358,20 +355,23 @@ def getIndex(container, value):
         container = np.array(container)
         imatches = np.where(np.isclose(container, value, rtol=1e-9, atol=1e-16))[0]
         if len(imatches) == 0:
-            raise ValueError('{} not found in {}'.format(value, container))
+            raise ValueError(f'{value} not found in {container}')
         return imatches[0]
     elif isinstance(value, str):
         return container.index(value)
+
+
+def funcSig(func, args, kwargs):
+    args_repr = [repr(a) for a in args]
+    kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+    return f'{func.__name__}({", ".join(args_repr + kwargs_repr)})'
 
 
 def debug(func):
     ''' Print the function signature and return value. '''
     @wraps(func)
     def wrapper_debug(*args, **kwargs):
-        args_repr = [repr(a) for a in args]
-        kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
-        signature = '{}({})'.format(func.__name__, ', '.join(args_repr + kwargs_repr))
-        print('Calling {}'.format(signature))
+        print(f'Calling {funcSig(func, args, kwargs)}')
         value = func(*args, **kwargs)
         print(f"{func.__name__!r} returned {value!r}")
         return value
@@ -443,9 +443,7 @@ def logCache(fpath, delimiter='\t', out_type=float):
             args, kwargs = alignWithFuncDef(func, args, kwargs)
 
             # Translate args and kwargs into string signature
-            args_repr = [repr(a) for a in args]
-            kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
-            fsignature = '{}({})'.format(func.__name__, ', '.join(args_repr + kwargs_repr))
+            fsignature = funcSig(func, args, kwargs)
 
             # If entry present in log, return corresponding output
             if os.path.isfile(fpath):
@@ -453,7 +451,7 @@ def logCache(fpath, delimiter='\t', out_type=float):
                     reader = csv.reader(f, delimiter=delimiter)
                     for row in reader:
                         if row[0] == fsignature:
-                            logger.debug('entry found in "{}"'.format(os.path.basename(fpath)))
+                            logger.debug(f'entry found in "{os.path.basename(fpath)}"')
                             return out_type(row[1])
 
             # Otherwise, compute output and log it into file before returning
@@ -502,19 +500,19 @@ def fileCache(root, fcode_func, ext='json'):
                 fcode = fcode_func(*args)
             else:
                 fcode = fcode_func
-            fpath = os.path.join(os.path.abspath(root), '{}.{}'.format(fcode, ext))
+            fpath = os.path.join(os.path.abspath(root), f'{fcode}.{ext}')
 
             # If file exists, load output from it
             if os.path.isfile(fpath):
-                logger.info('loading data from "{}"'.format(fpath))
+                logger.info(f'loading data from "{fpath}"')
                 with open(fpath, 'r' + mode) as f:
                     out = load_func(f)
 
             # Otherwise, execute function and create the file to dump the output
             else:
-                logger.warning('reference data file not found: "{}"'.format(fpath))
+                logger.warning(f'reference data file not found: "{fpath}"')
                 out = func(*args, **kwargs)
-                logger.info('dumping data in "{}"'.format(fpath))
+                logger.info(f'dumping data in "{fpath}"')
                 lock = lockfile.FileLock(fpath)
                 lock.acquire()
                 with open(fpath, 'w' + mode) as f:
@@ -617,7 +615,7 @@ def classifyFixedPoint(x, dfunc):
 
     # Compute eigenvalues and eigenvectors
     eigvals, eigvecs = linalg.eig(J)
-    logger.debug(f"eigenvalues = {['({0.real:.2e} + {0.imag:.2e}j)'.format(x) for x in eigvals]}")
+    logger.debug(f"eigenvalues = {[f'({x.real:.2e} + {x.imag:.2e}j)' for x in eigvals]}")
 
     # Determine fixed point stability based on eigenvalues
     is_neg_eigvals = eigvals.real < 0

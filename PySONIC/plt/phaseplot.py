@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-10 18:04:47
+# @Last Modified time: 2020-02-02 14:46:00
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,14 +25,14 @@ class PhasePlot(GenericPlot):
         # 1st axis: variable as function of time
         ax = axes[0]
         ax.set_xlabel('$\\rm time\ (ms)$', fontsize=fs)
-        ax.set_ylabel('$\\rm {}$'.format(pltvar['label']), fontsize=fs)
+        ax.set_ylabel('$\\rm {}$'.format(pltvar["label"]), fontsize=fs)
         ax.set_xlim(tbounds)
         ax.set_ylim(pltvar['lim'])
 
         # 2nd axis: phase plot (derivative of variable vs variable)
         ax = axes[1]
-        ax.set_xlabel('$\\rm {}$'.format(pltvar['label']), fontsize=fs)
-        ax.set_ylabel('$\\rm {}$'.format(pltvar['dlabel']), fontsize=fs)
+        ax.set_xlabel('$\\rm {}$'.format(pltvar["label"]), fontsize=fs)
+        ax.set_ylabel('$\\rm {}$'.format(pltvar["dlabel"]), fontsize=fs)
         ax.set_xlim(pltvar['lim'])
         ax.set_ylim(pltvar['dlim'])
         ax.plot([0, 0], [pltvar['dlim'][0], pltvar['dlim'][1]], '--', color='k', linewidth=1)
@@ -69,9 +69,9 @@ class PhasePlot(GenericPlot):
 
         # Check pltvar
         if self.varname not in self.phaseplotvars:
+            pltvars_str = ', '.join([f'"{p}"' for p in self.phaseplotvars.keys()])
             raise KeyError(
-                'Unknown plot variable: "{}". Possible plot variables are: {}'.format(
-                    self.varname, ', '.join(['"{}"'.format(p) for p in self.phaseplotvars.keys()])))
+                f'Unknown plot variable: "{self.varname}". Possible plot variables are: {pltvars_str}')
         pltvar = self.phaseplotvars[self.varname]
 
         fig, axes = self.createBackBone(pltvar, rel_tbounds * 1e3, fs, prettify)
@@ -116,7 +116,8 @@ class PhasePlot(GenericPlot):
                 lh0, lh1 = [], []
                 for j in range(nspikes):
                     if colors is None:
-                        color = 'C{}'.format(i if len(self.filepaths) > 1 else j % 10)
+                        icolor = i if len(self.filepaths) > 1 else j % 10
+                        color = f'C{icolor}'
                     else:
                         color = colors[i]
                     lh0.append(axes[0].plot(
@@ -131,7 +132,7 @@ class PhasePlot(GenericPlot):
 
         # Determine labels
         if self.comp_ref_key is not None:
-            self.comp_info = model.inputs().get(self.comp_ref_key, None)
+            self.comp_info = model.inputs.get(self.comp_ref_key, None)
         comp_values, comp_labels = self.getCompLabels(comp_values)
         labels = self.chooseLabels(labels, comp_labels, full_labels)
 

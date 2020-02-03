@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-15 15:59:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-28 09:49:42
+# @Last Modified time: 2020-02-02 13:00:24
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
@@ -37,7 +37,7 @@ def main():
     # Restrict radius, frequency and amplitude to single values
     for k in ['radius', 'freq', 'amp']:
         if len(args[k]) > 1:
-            logger.error('multiple {} values not allowed'.format(k))
+            logger.error(f'multiple {k} values not allowed')
         val = args[k][0]
         if np.isnan(val):
             args[k] = None

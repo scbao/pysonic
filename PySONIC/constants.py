@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-04 13:23:31
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 09:14:57
+# @Last Modified time: 2020-01-29 12:02:09
 
 ''' Numerical constants used in the package. '''
 

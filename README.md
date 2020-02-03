@@ -81,7 +81,7 @@ You can easily run simulations of any implemented point-neuron model under both 
 import logging
 import matplotlib.pyplot as plt
 
-from PySONIC.core import PulsedProtocol, NeuronalBilayerSonophore
+from PySONIC.core import PulsedProtocol, NeuronalBilayerSonophore, AcousticSource
 from PySONIC.neurons import getPointNeuron
 from PySONIC.utils import logger
 from PySONIC.plt import GroupedTimeSeries
@@ -93,6 +93,7 @@ a = 32e-9        # m
 Fdrive = 500e3   # Hz
 Adrive = 100e3   # Pa
 Astim = 10.      # mA/m2
+US_source = AcousticSource(Fdrive, Adrive)
 
 # Pulsing parameters
 tstim = 250e-3   # s
@@ -110,7 +111,7 @@ data, meta = pneuron.simulate(Astim, pp)
 fig1 = GroupedTimeSeries([(data, meta)]).render()
 
 # Run simulation upon ultrasonic stimulation, and plot results
-data, meta = nbls.simulate(Fdrive, Adrive, pp)
+data, meta = nbls.simulate(US_source, pp)
 fig2 = GroupedTimeSeries([(data, meta)]).render()
 
 plt.show()

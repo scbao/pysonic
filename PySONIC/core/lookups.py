@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 20:40:10
+# @Last Modified time: 2020-02-01 19:45:39
 
 import os
 from sys import getsizeof
@@ -38,8 +38,7 @@ class Lookup:
         self.interp_method = interp_method
         for k, v in self.items():
             if v.shape != self.dims:
-                raise ValueError('{} Table dimensions {} does not match references {}'.format(
-                    k, v.shape, self.dims))
+                raise ValueError(f'{k} Table dimensions {v.shape} does not match references {self.dims}')
 
         # If single input, mark it as sole ref
         if self.ndims == 1:
@@ -165,7 +164,7 @@ class Lookup:
 
     def getAxisIndex(self, key):
         ''' Get the axis index of a specific input key. '''
-        assert key in self.inputs, 'Unkown input dimension: {}'.format(key)
+        assert key in self.inputs, f'Unkown input dimension: {key}'
         return self.inputs.index(key)
 
     def copy(self):
@@ -402,8 +401,8 @@ class EffectiveVariablesDict():
 
     # Key patterns
     suffix_pattern = '[A-Za-z0-9_]+'
-    xinf_pattern = re.compile('^({})inf$'.format(suffix_pattern))
-    taux_pattern = re.compile('^tau({})$'.format(suffix_pattern))
+    xinf_pattern = re.compile(f'^({suffix_pattern})inf$')
+    taux_pattern = re.compile(f'^tau({suffix_pattern})$')
 
     def __init__(self, d):
         self.d = d
@@ -421,10 +420,10 @@ class EffectiveVariablesDict():
         return self.d.values()
 
     def alphax(self, x):
-        return self.d['alpha{}'.format(x)]
+        return self.d[f'alpha{x}']
 
     def betax(self, x):
-        return self.d['beta{}'.format(x)]
+        return self.d[f'beta{x}']
 
     def taux(self, x):
         return 1 / (self.alphax(x) + self.betax(x))

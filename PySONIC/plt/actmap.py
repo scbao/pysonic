@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-26 09:25:14
+# @Last Modified time: 2020-02-02 12:30:18
 
 import os
 import pickle
@@ -12,7 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
-from ..core import NeuronalBilayerSonophore, PulsedProtocol
+from ..core import NeuronalBilayerSonophore, PulsedProtocol, AcousticSource
 from ..utils import logger, si_format, loadData
 from ..constants import *
 from .pltutils import cm2inch, setNormalizer
@@ -93,17 +93,18 @@ class ActivationMap(Map):
         nfiles = self.DCs.size * self.amps.size
         for i, A in enumerate(self.amps):
             for j, DC in enumerate(self.DCs):
-                fname = '{}.pkl'.format(self.nbls.filecode(
-                    self.Fdrive, A, PulsedProtocol(self.tstim, 0., self.PRF, DC), 1., 'sonic'))
+                fcode = self.nbls.filecode(
+                    self.Fdrive, A, PulsedProtocol(self.tstim, 0., self.PRF, DC), 1., 'sonic')
+                fname = f'{fcode}.pkl'
                 fpath = os.path.join(self.root, fname)
                 if not os.path.isfile(fpath):
                     print(fpath)
-                    logger.error('"{}" file not found'.format(fname))
+                    logger.error(f'"{fname}" file not found')
                     actmap[i, j] = np.nan
                 else:
                     # Load data
-                    logger.debug('Loading file {}/{}: "{}"'.format(
-                        i * self.amps.size + j + 1, nfiles, fname))
+                    ifile = i * self.amps.size + j + 1
+                    logger.debug(f'Loading file {ifile}/{nfiles}: "{fname}"')
                     df, _ = loadData(fpath)
                     actmap[i, j] = self.classify(df)
         return actmap
@@ -196,8 +197,9 @@ class ActivationMap(Map):
         Adrive = self.amps[np.searchsorted(meshedges[1], y * 1e3) - 1]
 
         # Define filepath
-        fname = '{}.pkl'.format(self.nbls.filecode(
-            self.Fdrive, Adrive, PulsedProtocol(self.tstim, 0., self.PRF, DC), 1. , 'sonic'))
+        fcode = self.nbls.filecode(
+            AcousticSource(self.Fdrive, Adrive), PulsedProtocol(self.tstim, 0., self.PRF, DC), 1. , 'sonic')
+        fname = f'{fcode}.pkl'
         fpath = os.path.join(self.root, fname)
 
         # Plot Q-trace
@@ -221,7 +223,7 @@ class ActivationMap(Map):
         # Check file existence
         fname = os.path.basename(filepath)
         if not os.path.isfile(filepath):
-            raise FileNotFoundError('Error: "{}" file does not exist'.format(fname))
+            raise FileNotFoundError(f'Error: "{fname}" file does not exist')
 
         # Load data (with optional time restriction)
         logger.debug('Loading data from "%s"', fname)
@@ -256,7 +258,7 @@ class ActivationMap(Map):
         ax.yaxis.set_tick_params(width=2)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
         ax.set_xticks([])
-        ax.set_xlabel('{}s'.format(si_format(np.ptp(t), space=' ')), fontsize=fs)
+        ax.set_xlabel(f'{si_format(np.ptp(t))}s', fontsize=fs)
         ax.set_ylabel('mV - $\\rm nC/cm^2$', fontsize=fs, labelpad=-15)
         ax.set_ylim(ybounds)
         ax.set_yticks(ybounds)
