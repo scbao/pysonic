@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 21:04:14
+# @Last Modified time: 2020-02-03 22:43:58
 
 import abc
 import inspect
@@ -528,7 +528,11 @@ class PointNeuron(Model):
         '''
         return not np.isnan(cls.getStabilizationValue(data))
 
-    def titrate(self, drive, pp, choiceFunc=None, Arange=(0., ESTIM_AMP_UPPER_BOUND)):
+    @property
+    def Arange(self):
+        return (0., ESTIM_AMP_UPPER_BOUND)
+
+    def titrate(self, drive, pp, xfunc=None, Arange=None):
         ''' Use a binary search to determine the threshold amplitude needed
             to obtain neural excitation for a given duration, PRF and duty cycle.
 
@@ -539,8 +543,12 @@ class PointNeuron(Model):
             :return: excitation threshold amplitude (mA/m2)
         '''
         # Default output function
-        if choiceFunc is None:
+        if xfunc is None:
             xfunc = self.titrationFunc
+
+        # Default amplitude interval
+        if Arange is None:
+            Arange = self.Arange
 
         return threshold(
             lambda x: xfunc(self.simulate(drive.updatedX(x), pp)[0]),

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 21:33:52
+# @Last Modified time: 2020-02-03 22:59:11
 
 import abc
 import numpy as np
@@ -103,6 +103,8 @@ class XDrive(Drive):
 
 class ElectricDrive(XDrive):
     ''' Electric drive object with constant amplitude. '''
+
+    xkey = 'A'
 
     def __init__(self, A):
         ''' Constructor.
@@ -240,6 +242,8 @@ class VoltageDrive(Drive):
 
 class AcousticDrive(XDrive):
     ''' Acoustic drive object with intrinsic frequency and amplitude. '''
+
+    xkey = 'A'
 
     def __init__(self, f, A, phi=np.pi):
         ''' Constructor.

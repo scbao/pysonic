@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 21:11:49
+# @Last Modified time: 2020-02-03 22:59:57
 
 import os
 from functools import wraps
@@ -20,8 +20,6 @@ from ..utils import *
 
 class Model(metaclass=abc.ABCMeta):
     ''' Generic model interface. '''
-
-    titration_var = None
 
     @property
     @abc.abstractmethod
@@ -217,7 +215,7 @@ class Model(metaclass=abc.ABCMeta):
 
                 # If no threshold was found, return None
                 if np.isnan(xthr):
-                    logger.error(f'Could not find threshold {self.titration_var}')
+                    logger.error(f'Could not find threshold {drive.inputs()[drive.xkey]["desc"]}')
                     return None
 
                 # Otherwise, update args list with resovled drive

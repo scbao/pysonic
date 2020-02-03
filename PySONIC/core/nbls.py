@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 21:40:24
+# @Last Modified time: 2020-02-03 22:45:12
 
 import time
 from copy import deepcopy
@@ -506,6 +506,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     def getNSpikes(data):
         return PointNeuron.getNSpikes(data)
 
+    @property
+    def Arange(self):
+        return (0., self.getLookup().refs['A'].max())
+
     @logCache(os.path.join(os.path.split(__file__)[0], 'astim_titrations.log'))
     def titrate(self, drive, pp, fs=1., method='sonic', qss_vars=None, xfunc=None, Arange=None):
         ''' Use a binary search to determine the threshold amplitude needed to obtain
@@ -525,7 +529,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Default amplitude interval
         if Arange is None:
-            Arange = [0., self.getLookup().refs['A'].max()]
+            Arange = self.Arange
 
         return threshold(
             lambda x: xfunc(self.simulate(
