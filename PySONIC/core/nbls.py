@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 14:22:29
+# @Last Modified time: 2020-02-03 14:34:29
 
 import time
 from copy import deepcopy
@@ -25,7 +25,7 @@ from .lookups import EffectiveVariablesLookup
 from ..neurons import getPointNeuron
 
 
-NEURONS_LOOKUP_DIR = os.path.abspath(os.path.split(__file__)[0] + "/../neurons/")
+NEURONS_LOOKUP_DIR = os.path.abspath(os.path.split(__file__)[0] + "/../lookups/")
 
 
 class NeuronalBilayerSonophore(BilayerSonophore):
