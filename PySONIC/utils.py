@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-01 19:35:20
+# @Last Modified time: 2020-02-03 21:12:45
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -790,27 +790,24 @@ def simAndSave(model, *args, **kwargs):
     # Set data and meta to None
     data, meta = None, None
 
-    # If titration var exists
-    if model.titration_var is not None:
-        func_args = list(signature(model.simulate).parameters.keys())
-        ivar = func_args.index(model.titration_var)
+    # Extract drive object from args
+    drive, *other_args = args
 
-        # If corresponding function argument is set to None -> titration case
-        if args[ivar] is None:
-            # Call simulate to perform titration
-            out = model.simulate(*args)
+    # If drive is titratable and not fully resolved
+    if not drive.is_resolved:
+        # Call simulate to perform titration
+        out = model.simulate(*args)
 
-            # If titration yields nothing -> no file produced -> return None
-            if out is None:
-                logger.warning('returning None')
-                return None
+        # If titration yields nothing -> no file produced -> return None
+        if out is None:
+            logger.warning('returning None')
+            return None
 
-            # Store data and meta
-            data, meta = out
+        # Store data and meta
+        data, meta = out
 
-            # Add threshold amp to args
-            args = list(args)
-            args[ivar] = meta[model.titration_var]
+        # Update args list with resovled drive
+        args = (meta['drive'], *other_args)
 
     # Check if a output file corresponding to sim inputs is found in the output directory
     # That check is performed prior to running the simulation, such that

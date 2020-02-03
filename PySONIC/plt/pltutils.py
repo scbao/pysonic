@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-02 14:52:19
+# @Last Modified time: 2020-02-03 19:51:48
 
 ''' Useful functions to generate plots. '''
 
@@ -355,7 +355,7 @@ class ComparativePlot(GenericPlot):
     def getCompLabels(self, comp_values):
         if self.comp_info is not None:
             comp_values = np.array(comp_values) * self.comp_info.get('factor', 1)
-            comp_labels = ['$\\rm{} = {x}\ {}$'.format(self.comp_info["label"], self.comp_info["unit"])
+            comp_labels = ['$\\rm{} = {}\ {}$'.format(self.comp_info["label"], x, self.comp_info["unit"])
                            for x in comp_values]
         else:
             comp_labels = comp_values

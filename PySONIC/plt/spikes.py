@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-01 20:40:28
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-02 14:49:35
+# @Last Modified time: 2020-02-03 20:09:06
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -169,7 +169,7 @@ class SpikesDiagram(ComparativePlot):
 
         # Determine labels
         if self.comp_ref_key is not None:
-            self.comp_info = model.inputs.get(self.comp_ref_key, None)
+            self.comp_info = model.inputs().get(self.comp_ref_key, None)
         comp_values, comp_labels = self.getCompLabels(comp_values)
         labels = self.chooseLabels(labels, comp_labels, full_labels)
 

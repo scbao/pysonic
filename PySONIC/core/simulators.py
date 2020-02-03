@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-01 20:04:41
+# @Last Modified time: 2020-02-03 16:55:09
 
 import abc
 import numpy as np
@@ -92,7 +92,6 @@ class Simulator(metaclass=abc.ABCMeta):
         logger.debug(f'Downsampling output arrays by factor {rf} (Fs = {si_format(1 / (dt * rf), 2)}Hz)')
         return t[::rf], y[::rf, :], stim[::rf]
 
-    @property
     @abc.abstractmethod
     def compute(self):
         ''' Abstract compute method. '''

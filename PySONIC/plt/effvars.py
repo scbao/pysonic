@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-02 14:45:17
+# @Last Modified time: 2020-02-03 21:22:29
 
 from inspect import signature
 import numpy as np
@@ -105,7 +105,7 @@ def plotGatingKinetics(pneuron, fs=15):
     return fig
 
 
-def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10,
+def plotEffectiveVariables(pneuron, a=None, f=None, A=None, nlevels=10,
                            zscale='lin', cmap=None, fs=12, ncolmax=1):
     ''' Plot the profiles of effective variables of a specific neuron as a function of charge density
         and another reference variable (z-variable). For each effective variable, one charge-profile
@@ -113,8 +113,8 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
 
         :param pneuron: point-neuron model
         :param a: sonophore radius (m)
-        :param Fdrive: acoustic drive frequency (Hz)
-        :param Adrive: acoustic pressure amplitude (Pa)
+        :param f: acoustic drive frequency (Hz)
+        :param A: acoustic pressure amplitude (Pa)
         :param nlevels: number of levels for the z-variable
         :param zscale: scale type for the z-variable ('lin' or 'log')
         :param cmap: colormap name
@@ -122,8 +122,8 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
         :param ncolmax: max number of columns on the figure
         :return: handle to the created figure
     '''
-    if sum(isinstance(x, float) for x in [a, Fdrive, Adrive]) < 2:
-        raise ValueError('at least 2 parameters in (a, Fdrive, Adrive) must be fixed')
+    if sum(isinstance(x, float) for x in [a, f, A]) < 2:
+        raise ValueError('at least 2 parameters in (a, f, A) must be fixed')
 
     if cmap is None:
         cmap = 'viridis'
@@ -148,7 +148,7 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
 
     # Get 2D lookups at specific combination
     inputs = {}
-    for k, v in {'a': a, 'f': Fdrive, 'A': Adrive}.items():
+    for k, v in {'a': a, 'f': f, 'A': A}.items():
         if v is not None:
             inputs[k] = v
     lookups2D = lkp.projectN(inputs)
@@ -158,7 +158,7 @@ def plotEffectiveVariables(pneuron, a=None, Fdrive=None, Adrive=None, nlevels=10
         if key != 'Q':
             zkey = key
             zref = lookups2D.refs[key]
-    zvar = nbls.inputs[{'a': 'a', 'f': 'Fdrive', 'A': 'Adrive'}[zkey]]
+    zvar = nbls.inputs()[zkey]
     zref *= zvar['factor']
 
     # Optional: interpolate along z dimension if nlevels specified

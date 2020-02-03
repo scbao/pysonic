@@ -3,17 +3,18 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 15:11:03
+# @Last Modified time: 2020-02-03 21:04:14
 
 import abc
 import inspect
 import numpy as np
 import pandas as pd
 
-from .protocols import PulsedProtocol, createPulsedProtocols
+from .protocols import PulsedProtocol
 from .model import Model
 from .lookups import EffectiveVariablesLookup
 from .simulators import PWSimulator
+from .drives import Drive, ElectricDrive
 from ..postpro import detectSpikes, computeFRProfile
 from ..constants import *
 from ..utils import *
@@ -25,7 +26,6 @@ class PointNeuron(Model):
 
     tscale = 'ms'  # relevant temporal scale of the model
     simkey = 'ESTIM'  # keyword used to characterize simulations made with this model
-    titration_var = 'Astim'  # name of the titration parameter
 
     def __repr__(self):
         return self.__class__.__name__
@@ -55,27 +55,17 @@ class PointNeuron(Model):
     def Qm0(self):
         return self.Cm0 * self.Vm0 * 1e-3  # C/m2
 
-    @property
     @staticmethod
     def inputs():
-        return {
-            'Astim': {
-                'desc': 'current density amplitude',
-                'label': 'A',
-                'unit': 'mA/m2',
-                'factor': 1e0,
-                'precision': 1
-            },
-            **PulsedProtocol.inputs
-        }
+        return ElectricDrive.inputs()
 
     @classmethod
-    def filecodes(cls, Astim, pp):
+    def filecodes(cls, drive, pp):
         return {
             'simkey': cls.simkey,
             'neuron': cls.name,
             'nature': pp.nature,
-            'Astim': f'{Astim:.1f}mAm2',
+            **drive.filecodes,
             **pp.filecodes
         }
 
@@ -393,22 +383,23 @@ class PointNeuron(Model):
         '''
         if amps is None:
             amps = [None]
-        ppqueue = createPulsedProtocols(durations, offsets, PRFs, DCs)
+        drives = ElectricDrive.createQueue(amps)
+        protocols = PulsedProtocol.createQueue(durations, offsets, PRFs, DCs)
         queue = []
-        for A in amps:
-            for item in ppqueue:
-                queue.append([A, item])
+        for drive in drives:
+            for pp in protocols:
+                queue.append([drive, pp])
         return queue
 
     @staticmethod
-    def checkInputs(Astim, pp):
+    def checkInputs(drive, pp):
         ''' Check validity of electrical stimulation parameters.
 
-            :param Astim: pulse amplitude (mA/m2)
+            :param drive: electric drive object
             :param pp: pulse protocol object
         '''
-        if not isinstance(Astim, float):
-            raise TypeError('Invalid simulation amplitude (must be float typed)')
+        if not isinstance(drive, Drive):
+            raise TypeError(f'Invalid "drive" parameter (must be an "Drive" object)')
         if not isinstance(pp, PulsedProtocol):
             raise TypeError('Invalid pulsed protocol (must be "PulsedProtocol" instance)')
 
@@ -439,11 +430,11 @@ class PointNeuron(Model):
     @Model.addMeta
     @Model.logDesc
     @Model.checkSimParams
-    def simulate(self, Astim, pp):
+    def simulate(self, drive, pp):
         ''' Simulate a specific neuron model for a set of simulation parameters,
             and return output data in a dataframe.
 
-            :param Astim: pulse amplitude (mA/m2)
+            :param drive: electric drive object
             :param pp: pulse protocol object
             :return: output dataframe
         '''
@@ -454,7 +445,7 @@ class PointNeuron(Model):
         # Initialize simulator and compute solution
         logger.debug('Computing solution')
         simulator = PWSimulator(
-            lambda t, y: self.derivatives(t, y, Iinj=Astim),
+            lambda t, y: self.derivatives(t, y, Iinj=drive.A),
             lambda t, y: self.derivatives(t, y, Iinj=0.))
         t, y, stim = simulator(
             y0, self.chooseTimeStep(), pp)
@@ -474,16 +465,16 @@ class PointNeuron(Model):
         return data
 
     @classmethod
-    def meta(cls, Astim, pp):
+    def meta(cls, drive, pp):
         return {
             'simkey': cls.simkey,
             'neuron': cls.name,
-            'Astim': Astim,
+            'drive': drive,
             'pp': pp
         }
 
     def desc(self, meta):
-        return f'{self}: simulation @ A = {si_format(meta["Astim"] * 1e-3, 2)}A/m2, {meta["pp"].desc}'
+        return f'{self}: simulation @ {meta["drive"].desc}, {meta["pp"].desc}'
 
     @staticmethod
     def getNSpikes(data):
@@ -537,19 +528,20 @@ class PointNeuron(Model):
         '''
         return not np.isnan(cls.getStabilizationValue(data))
 
-    def titrate(self, pp, xfunc=None, Arange=(0., ESTIM_AMP_UPPER_BOUND)):
+    def titrate(self, drive, pp, choiceFunc=None, Arange=(0., ESTIM_AMP_UPPER_BOUND)):
         ''' Use a binary search to determine the threshold amplitude needed
             to obtain neural excitation for a given duration, PRF and duty cycle.
 
+            :param drive: unresolved electric drive object
             :param pp: pulsed protocol object
             :param xfunc: function determining whether condition is reached from simulation output
-            :param Arange: search interval for Astim, iteratively refined
+            :param Arange: search interval for electric current amplitude, iteratively refined
             :return: excitation threshold amplitude (mA/m2)
         '''
         # Default output function
-        if xfunc is None:
+        if choiceFunc is None:
             xfunc = self.titrationFunc
 
         return threshold(
-            lambda x: xfunc(self.simulate(x, pp)[0]),
+            lambda x: xfunc(self.simulate(drive.updatedX(x), pp)[0]),
             Arange, x0=ESTIM_AMP_INITIAL, rel_eps_thr=ESTIM_REL_CONV_THR, precheck=False)

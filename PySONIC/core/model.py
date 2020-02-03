@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-01 19:46:43
+# @Last Modified time: 2020-02-03 21:11:49
 
 import os
 from functools import wraps
@@ -13,6 +13,7 @@ import abc
 import inspect
 import numpy as np
 
+from .drives import XDrive
 from .batches import Batch
 from ..utils import *
 
@@ -34,7 +35,6 @@ class Model(metaclass=abc.ABCMeta):
         ''' Keyword used to characterize simulations made with the model. '''
         raise NotImplementedError
 
-    @property
     @abc.abstractmethod
     def __repr__(self):
         ''' String representation. '''
@@ -55,14 +55,12 @@ class Model(metaclass=abc.ABCMeta):
     def description(cls):
         return getdoc(cls).split('\n', 1)[0].strip()
 
-    @property
     @staticmethod
     @abc.abstractmethod
     def inputs():
         ''' Return an informative dictionary on input variables used to simulate the model. '''
         raise NotImplementedError
 
-    @property
     @abc.abstractmethod
     def filecodes(self, *args):
         ''' Return a dictionary of string-encoded inputs used for file naming. '''
@@ -117,13 +115,11 @@ class Model(metaclass=abc.ABCMeta):
         ''' Check the validity of simulation input parameters. '''
         raise NotImplementedError
 
-    @property
     @abc.abstractmethod
     def derivatives(self, *args, **kwargs):
         ''' Compute ODE derivatives for a specific set of ODE states and external parameters. '''
         raise NotImplementedError
 
-    @property
     @abc.abstractmethod
     def simulate(self, *args, **kwargs):
         ''' Simulate the model's differential system for specific input parameters
@@ -206,53 +202,26 @@ class Model(metaclass=abc.ABCMeta):
 
     @staticmethod
     def checkTitrate(simfunc):
-        ''' If "None" amplitude provided in the list of input parameters,
-            perform a titration to find the threshold amplitude and add it to the list.
+        ''' If unresolved drive provided in the list of input parameters,
+            perform a titration to find the threshold drive, and simulate with resolved drive.
         '''
         @wraps(simfunc)
         def wrapper(self, *args, **kwargs):
-            args = list(args)
-            to_titrate = False
+            # Extract drive object from args
+            drive, *other_args = args
 
-            # Get argument index from function signature
-            func_args = list(signature(simfunc).parameters.keys())[1:]
-            is_wrapped = False
-            try:
-                iarg = func_args.index(self.titration_var)
-                var = args[iarg]
-                if var is None:
-                    # Generate new args list without argument
-                    new_args = args.copy()
-                    del new_args[iarg]
-                    to_titrate = True
-            except ValueError as err:
-                iarg = func_args.index(self.titration_obj)
-                obj = args[iarg]
-                var = getattr(obj, self.titration_var)
-                is_wrapped = True
-                if var is None:
-                    # Generate new args list with modified source
-                    d = obj.meta.copy()
-                    del d[self.titration_var]
-                    new_args = args.copy()
-                    new_args = new_args[:iarg] + list(d.values()) + new_args[iarg + 1:]
-                    to_titrate = True
+            # If drive is not fully resolved
+            if not drive.is_resolved:
+                # Titrate
+                xthr = self.titrate(*args)
 
-            # If argument is None
-            if to_titrate:
-                # Perform titration to find threshold argument value
-                xthr = self.titrate(*new_args)
+                # If no threshold was found, return None
                 if np.isnan(xthr):
                     logger.error(f'Could not find threshold {self.titration_var}')
                     return None
 
-                # Change the object titration variable if necessary
-                if is_wrapped:
-                    setattr(obj, self.titration_var, xthr)
-                    xthr = obj
-
-                # Re-insert it into arguments list
-                args[iarg] = xthr
+                # Otherwise, update args list with resovled drive
+                args = (drive.updatedX(xthr), *other_args)
 
             # Execute simulation function
             return simfunc(self, *args, **kwargs)

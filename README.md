@@ -81,37 +81,37 @@ You can easily run simulations of any implemented point-neuron model under both 
 import logging
 import matplotlib.pyplot as plt
 
-from PySONIC.core import PulsedProtocol, NeuronalBilayerSonophore, AcousticSource
+from PySONIC.core import PulsedProtocol, NeuronalBilayerSonophore, ElectricDrive, AcousticDrive
 from PySONIC.neurons import getPointNeuron
 from PySONIC.utils import logger
 from PySONIC.plt import GroupedTimeSeries
 
 logger.setLevel(logging.INFO)
 
-# Stimulation parameters
-a = 32e-9        # m
-Fdrive = 500e3   # Hz
-Adrive = 100e3   # Pa
-Astim = 10.      # mA/m2
-US_source = AcousticSource(Fdrive, Adrive)
+# Point-neuron model and corresponding neuronal bilayer sonophore model
+pneuron = getPointNeuron('RS')
+a = 32e-9  # sonophore radius (m)
+nbls = NeuronalBilayerSonophore(a, pneuron)
 
-# Pulsing parameters
+# Electric and ultrasonic drives
+ELdrive = ElectricDrive(10.)  # mA/m2
+USdrive = AcousticDrive(
+	500e3,  # Hz
+	100e3)  # Pa
+
+# Pulsing protocol
 tstim = 250e-3   # s
 toffset = 50e-3  # s
 PRF = 100.       # Hz
 DC = 0.5         # -
 pp = PulsedProtocol(tstim, toffset, PRF, DC)
 
-# Point-neuron model and corresponding neuronal intramembrane cavitation model
-pneuron = getPointNeuron('RS')
-nbls = NeuronalBilayerSonophore(a, pneuron)
-
 # Run simulation upon electrical stimulation, and plot results
-data, meta = pneuron.simulate(Astim, pp)
+data, meta = pneuron.simulate(ELdrive, pp)
 fig1 = GroupedTimeSeries([(data, meta)]).render()
 
 # Run simulation upon ultrasonic stimulation, and plot results
-data, meta = nbls.simulate(US_source, pp)
+data, meta = nbls.simulate(USdrive, pp)
 fig2 = GroupedTimeSeries([(data, meta)]).render()
 
 plt.show()

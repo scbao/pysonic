@@ -3,11 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-30 16:58:53
+# @Last Modified time: 2020-02-03 21:26:23
 
 ''' Test the basic functionalities of the package. '''
 
-from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore, AcousticSource, PulsedProtocol
+from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore, AcousticDrive, ElectricDrive, PulsedProtocol
 from PySONIC.utils import logger
 from PySONIC.neurons import getPointNeuron, getNeuronsDict
 from PySONIC.test import TestBase
@@ -15,86 +15,73 @@ from PySONIC.test import TestBase
 
 class TestSims(TestBase):
 
+    a = 32e-9  # m
+    USdrive = AcousticDrive(500e3, 100e3)
+
     def test_MECH(self, is_profiled=False):
         logger.info('Test: running MECH simulation')
-        a = 32e-9       # m
         Qm0 = -80e-5    # membrane resting charge density (C/m2)
         Cm0 = 1e-2      # membrane resting capacitance (F/m2)
-        Fdrive = 350e3  # Hz
-        Adrive = 100e3  # Pa
-        source = AcousticSource(Fdrive, Adrive)
         Qm = 50e-5      # C/m2
-        bls = BilayerSonophore(a, Cm0, Qm0)
-        self.execute('bls.simulate(source, Qm)', globals(), locals(), is_profiled)
+        bls = BilayerSonophore(self.a, Cm0, Qm0)
+        self.execute('bls.simulate(self.USdrive, Qm)', globals(), locals(), is_profiled)
 
     def test_ESTIM(self, is_profiled=False):
         logger.info('Test: running ESTIM simulation')
-        Astim = 10.0     # mA/m2
+        ELdrive = ElectricDrive(10.0)  # mA/m2
         pp = PulsedProtocol(100e-3, 50e-3)
         pneuron = getPointNeuron('RS')
-        self.execute('pneuron.simulate(Astim, pp)', globals(), locals(), is_profiled)
+        self.execute('pneuron.simulate(ELdrive, pp)', globals(), locals(), is_profiled)
 
     def test_ASTIM_sonic(self, is_profiled=False):
         logger.info('Test: ASTIM sonic simulation')
-        a = 32e-9        # m
-        Fdrive = 500e3   # Hz
-        Adrive = 100e3   # Pa
-        source = AcousticSource(Fdrive, Adrive)
         pp = PulsedProtocol(50e-3, 10e-3)
         pneuron = getPointNeuron('RS')
-        nbls = NeuronalBilayerSonophore(a, pneuron)
+        nbls = NeuronalBilayerSonophore(self.a, pneuron)
 
         # test error 1: sonophore radius outside of lookup range
         try:
             nbls = NeuronalBilayerSonophore(100e-9, pneuron)
-            nbls.simulate(source, pp, method='sonic')
+            nbls.simulate(self.USdrive, pp, method='sonic')
         except ValueError:
             logger.debug('Out of range radius: OK')
 
         # test error 2: frequency outside of lookups range
         try:
-            nbls = NeuronalBilayerSonophore(a, pneuron)
-            nbls.simulate(AcousticSource(10e3, Adrive), pp, method='sonic')
+            nbls = NeuronalBilayerSonophore(self.a, pneuron)
+            nbls.simulate(AcousticDrive(10e3, self.USdrive.A), pp, method='sonic')
         except ValueError:
             logger.debug('Out of range frequency: OK')
 
         # test error 3: amplitude outside of lookups range
         try:
-            nbls = NeuronalBilayerSonophore(a, pneuron)
-            nbls.simulate(AcousticSource(Fdrive, 1e6), pp, method='sonic')
+            nbls = NeuronalBilayerSonophore(self.a, pneuron)
+            nbls.simulate(AcousticDrive(self.USdrive.f, 1e6), pp, method='sonic')
         except ValueError:
             logger.debug('Out of range amplitude: OK')
 
         # Run simulation on all neurons
         for name, neuron_class in getNeuronsDict().items():
-            if name not in ('template', 'LeechP', 'LeechT', 'LeechR', 'SW', 'sundt'):
+            if name not in ('template', 'LeechP', 'LeechT', 'LeechR', 'SW'):
                 pneuron = neuron_class()
-                nbls = NeuronalBilayerSonophore(a, pneuron)
-                self.execute("nbls.simulate(source, pp, method='sonic')",
+                nbls = NeuronalBilayerSonophore(self.a, pneuron)
+                self.execute("nbls.simulate(self.USdrive, pp, method='sonic')",
                              globals(), locals(), is_profiled)
 
     def test_ASTIM_full(self, is_profiled=False):
         logger.info('Test: running ASTIM detailed simulation')
-        a = 32e-9       # m
-        Fdrive = 500e3  # Hz
-        Adrive = 100e3  # Pa
-        source = AcousticSource(Fdrive, Adrive)
         pp = PulsedProtocol(1e-6, 1e-6)
         pneuron = getPointNeuron('RS')
-        nbls = NeuronalBilayerSonophore(a, pneuron)
-        self.execute("nbls.simulate(source, pp, method='full')",
+        nbls = NeuronalBilayerSonophore(self.a, pneuron)
+        self.execute("nbls.simulate(self.USdrive, pp, method='full')",
                      globals(), locals(), is_profiled)
 
     def test_ASTIM_hybrid(self, is_profiled=False):
         logger.info('Test: running ASTIM hybrid simulation')
-        a = 32e-9         # m
-        Fdrive = 350e3    # Hz
-        Adrive = 100e3    # Pa
-        source = AcousticSource(Fdrive, Adrive)
         pp = PulsedProtocol(0.6e-3, 0.1e-3)
         pneuron = getPointNeuron('RS')
-        nbls = NeuronalBilayerSonophore(a, pneuron)
-        self.execute("nbls.simulate(source, pp, method='hybrid')",
+        nbls = NeuronalBilayerSonophore(self.a, pneuron)
+        self.execute("nbls.simulate(self.USdrive, pp, method='hybrid')",
                      globals(), locals(), is_profiled)
 
 

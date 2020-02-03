@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-01 16:18:15
+# @Last Modified time: 2020-02-03 21:17:40
 
 import os
 import logging
@@ -441,8 +441,8 @@ class MechSimParser(SimParser):
         self.addEmbedding()
         self.addCm0()
         self.addQm0()
-        self.addFdrive()
-        self.addAdrive()
+        self.addFrequency()
+        self.addAmplitude()
         self.addCharge()
         self.addFs()
 
@@ -462,11 +462,11 @@ class MechSimParser(SimParser):
         self.add_argument(
             '--Qm0', type=float, nargs='+', help='Resting membrane charge density (nC/cm2)')
 
-    def addFdrive(self):
+    def addFrequency(self):
         self.add_argument(
             '-f', '--freq', nargs='+', type=float, help='US frequency (kHz)')
 
-    def addAdrive(self):
+    def addAmplitude(self):
         self.add_argument(
             '-A', '--amp', nargs='+', type=float, help='Acoustic pressure amplitude (kPa)')
         self.add_argument(
@@ -496,7 +496,7 @@ class MechSimParser(SimParser):
     def parseAmp(self, args):
         params = ['Irange', 'Arange', 'intensity', 'amp']
         self.restrict(args, params[:-1])
-        Irange, Arange, Int, Adrive = [args.pop(k) for k in params]
+        Irange, Arange, Int, A = [args.pop(k) for k in params]
         if Irange is not None:
             amps = Intensity2Pressure(self.getDistFromList(Irange) * 1e4)  # Pa
         elif Int is not None:
@@ -504,7 +504,7 @@ class MechSimParser(SimParser):
         elif Arange is not None:
             amps = self.getDistFromList(Arange) * self.factors['amp']  # Pa
         else:
-            amps = np.array(Adrive) * self.factors['amp']  # Pa
+            amps = np.array(A) * self.factors['amp']  # Pa
         return amps
 
     def parseFs(self, args):
@@ -661,28 +661,28 @@ class EStimParser(PWSimParser):
         super().__init__()
         self.defaults.update({'amp': 10.0})  # mA/m2
         self.factors.update({'amp': 1.})
-        self.addAstim()
+        self.addAmplitude()
 
-    def addAstim(self):
+    def addAmplitude(self):
         self.add_argument(
             '-A', '--amp', nargs='+', type=float,
             help='Amplitude of injected current density (mA/m2)')
         self.add_argument(
             '--Arange', type=str, nargs='+', help=f'Amplitude range {self.dist_str} (mA/m2)')
-        self.to_parse['amp'] = self.parseAmp
+        self.to_parse['amp'] = self.parseAmplitude
 
     def addVext(self):
         self.add_argument(
             '--Vext', nargs='+', type=float, help='Extracellular potential (mV)')
 
-    def parseAmp(self, args):
+    def parseAmplitude(self, args):
         if args.pop('titrate'):
             return None
-        Arange, Astim = [args.pop(k) for k in ['Arange', 'amp']]
+        Arange, A = [args.pop(k) for k in ['Arange', 'amp']]
         if Arange is not None:
             amps = self.getDistFromList(Arange) * self.factors['amp']  # mA/m2
         else:
-            amps = np.array(Astim) * self.factors['amp']  # mA/m2
+            amps = np.array(A) * self.factors['amp']  # mA/m2
         return amps
 
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-02 12:47:44
+# @Last Modified time: 2020-02-03 21:37:09
 
 ''' Create lookup table for specific neuron. '''
 
@@ -13,7 +13,7 @@ import logging
 import numpy as np
 
 from PySONIC.utils import logger, isIterable, alert
-from PySONIC.core import NeuronalBilayerSonophore, Batch, Lookup
+from PySONIC.core import NeuronalBilayerSonophore, Batch, Lookup, AcousticDrive
 from PySONIC.parsers import MechSimParser
 from PySONIC.constants import DQ_LOOKUP
 
@@ -79,9 +79,11 @@ def computeAStimLookup(pneuron, aref, fref, Aref, Qref, fsref=None,
     dims = np.array([x.size for x in refs.values()])
 
     # Create simulation queue per sonophore radius
-    queue = Batch.createQueue(fref, Aref, Qref)
-    for i in range(len(queue)):
-        queue[i].append(refs['fs'])
+    drives = AcousticDrive.createQueue(fref, Aref)
+    queue = []
+    for drive in drives:
+        for Qm in Qref:
+            queue.append([drive, Qm, refs['fs']])
 
     # Run simulations and populate outputs
     logger.info('Starting simulation batch for %s neuron', pneuron.name)
@@ -143,7 +145,7 @@ def main():
         if args['fs'].size == 1 and args['fs'][0] == 1.:
             lookup_fpath = f()
         else:
-            lookup_fpath = f(a=args['radius'][0], Fdrive=args['freq'][0], fs=True)
+            lookup_fpath = f(a=args['radius'][0], f=args['freq'][0], fs=True)
 
         # Combine inputs into single list
         inputs = [args[x] for x in ['radius', 'freq', 'amp']] + [charges, args['fs']]

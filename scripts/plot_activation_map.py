@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-08-22 15:26:17
+# @Last Modified time: 2020-02-03 21:36:53
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -37,10 +37,10 @@ def main():
 
     for pneuron in args['neuron']:
         for a in args['radius']:
-            for Fdrive in args['freq']:
+            for f in args['freq']:
                 for tstim in args['tstim']:
                     for PRF in args['PRF']:
-                        actmap = ActivationMap(args['inputdir'], pneuron, a, Fdrive, tstim, PRF,
+                        actmap = ActivationMap(args['inputdir'], pneuron, a, f, tstim, PRF,
                                                args['amp'], args['DC'])
                         actmap.render(
                             cmap=args['cmap'],

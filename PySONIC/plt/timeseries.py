@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-02 14:49:53
+# @Last Modified time: 2020-02-03 19:40:19
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -289,7 +289,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
 
         # Determine labels
         if self.comp_ref_key is not None:
-            self.comp_info = model.inputs.get(self.comp_ref_key, None)
+            self.comp_info = model.inputs().get(self.comp_ref_key, None)
         comp_values, comp_labels = self.getCompLabels(comp_values)
         labels = self.chooseLabels(labels, comp_labels, full_labels)
 

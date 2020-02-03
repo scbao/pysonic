@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-02 12:30:18
+# @Last Modified time: 2020-02-03 21:36:15
 
 import os
 import pickle
@@ -12,7 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
-from ..core import NeuronalBilayerSonophore, PulsedProtocol, AcousticSource
+from ..core import NeuronalBilayerSonophore, PulsedProtocol, AcousticDrive
 from ..utils import logger, si_format, loadData
 from ..constants import *
 from .pltutils import cm2inch, setNormalizer
@@ -38,22 +38,24 @@ class Map:
 
 class ActivationMap(Map):
 
-    def __init__(self, root, pneuron, a, Fdrive, tstim, PRF, amps, DCs):
+    def __init__(self, root, pneuron, a, f, tstim, PRF, amps, DCs):
         self.root = root
         self.pneuron = pneuron
         self.a = a
         self.nbls = NeuronalBilayerSonophore(self.a, self.pneuron)
-        self.Fdrive = Fdrive
+        self.f = f
         self.tstim = tstim
         self.PRF = PRF
         self.amps = amps
         self.DCs = DCs
 
+        self.ref_drive = AcousticDrive(self.f, None)
+
         self.Ascale = self.getAmpScale()
         self.title = '{} neuron @ {}Hz, {}Hz PRF ({}m sonophore)'.format(
-            self.pneuron.name, *si_format([self.Fdrive, self.PRF, self.a]))
+            self.pneuron.name, *si_format([self.f, self.PRF, self.a]))
         out_fname = 'actmap {} {}Hz PRF{}Hz {}s.csv'.format(
-            self.pneuron.name, *si_format([self.Fdrive, self.PRF, self.tstim], space=''))
+            self.pneuron.name, *si_format([self.f, self.PRF, self.tstim], space=''))
         out_fpath = os.path.join(self.root, out_fname)
 
         if os.path.isfile(out_fpath):
@@ -94,7 +96,7 @@ class ActivationMap(Map):
         for i, A in enumerate(self.amps):
             for j, DC in enumerate(self.DCs):
                 fcode = self.nbls.filecode(
-                    self.Fdrive, A, PulsedProtocol(self.tstim, 0., self.PRF, DC), 1., 'sonic')
+                    self.f, A, PulsedProtocol(self.tstim, 0., self.PRF, DC), 1., 'sonic')
                 fname = f'{fcode}.pkl'
                 fpath = os.path.join(self.root, fname)
                 if not os.path.isfile(fpath):
@@ -136,7 +138,8 @@ class ActivationMap(Map):
 
     def addThresholdCurve(self, ax, fs):
         Athrs = np.array([
-            self.nbls.titrate(self.Fdrive, PulsedProtocol(self.tstim, 0., self.PRF, DC), 1.0, 'sonic') for DC in self.DCs])
+            self.nbls.titrate(self.ref_drive, PulsedProtocol(self.tstim, 0., self.PRF, DC), 1.0, 'sonic')
+            for DC in self.DCs])
         ax.plot(self.DCs * 1e2, Athrs * 1e-3, '-', color='#F26522', linewidth=3,
                 label='threshold amplitudes')
         ax.legend(loc='lower center', frameon=False, fontsize=fs)
@@ -194,11 +197,11 @@ class ActivationMap(Map):
         # Get DC and A from x and y coordinates
         x, y = event.xdata, event.ydata
         DC = self.DCs[np.searchsorted(meshedges[0], x * 1e-2) - 1]
-        Adrive = self.amps[np.searchsorted(meshedges[1], y * 1e3) - 1]
+        A = self.amps[np.searchsorted(meshedges[1], y * 1e3) - 1]
 
         # Define filepath
         fcode = self.nbls.filecode(
-            AcousticSource(self.Fdrive, Adrive), PulsedProtocol(self.tstim, 0., self.PRF, DC), 1. , 'sonic')
+            self.ref_drive.updatedX(A), PulsedProtocol(self.tstim, 0., self.PRF, DC), 1. , 'sonic')
         fname = f'{fcode}.pkl'
         fpath = os.path.join(self.root, fname)
 

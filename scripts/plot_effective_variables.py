@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-02-15 15:59:37
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-02 13:00:24
+# @Last Modified time: 2020-02-03 21:21:58
 
 ''' Plot the effective variables as a function of charge density with color code. '''
 
@@ -46,7 +46,7 @@ def main():
 
     for pneuron in args['neuron']:
         plotEffectiveVariables(
-            pneuron, a=args['radius'], Fdrive=args['freq'], Adrive=args['amp'],
+            pneuron, a=args['radius'], f=args['freq'], A=args['amp'],
             zscale=args['cscale'], cmap=args['cmap'], ncolmax=args['ncol'], nlevels=args['nlevels'])
 
     plt.show()

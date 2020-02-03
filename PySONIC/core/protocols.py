@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-01 20:02:25
+# @Last Modified time: 2020-02-03 19:17:26
 
 import numpy as np
 from ..utils import si_format
@@ -64,6 +64,17 @@ class TimeProtocol:
                 'precision': 0
             }
         }
+
+    @classmethod
+    def createQueue(cls, durations, offsets):
+        ''' Create a serialized 2D array of all parameter combinations for a series of individual
+            parameter sweeps.
+
+            :param durations: list (or 1D-array) of stimulus durations
+            :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
+            :return: list of parameters (list) for each simulation
+        '''
+        return [cls(*item) for item in Batch.createQueue(durations, offsets)]
 
 
 class PulsedProtocol(TimeProtocol):
@@ -152,22 +163,22 @@ class PulsedProtocol(TimeProtocol):
         }
         return {**TimeProtocol.inputs, **d}
 
+    @classmethod
+    def createQueue(cls, durations, offsets, PRFs, DCs):
+        ''' Create a serialized 2D array of all parameter combinations for a series of individual
+            parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
 
-def createPulsedProtocols(durations, offsets, PRFs, DCs):
-    ''' Create a serialized 2D array of all parameter combinations for a series of individual
-        parameter sweeps, while avoiding repetition of CW protocols for a given PRF sweep.
-
-        :param durations: list (or 1D-array) of stimulus durations
-        :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
-        :param PRFs: list (or 1D-array) of pulse-repetition frequencies
-        :param DCs: list (or 1D-array) of duty cycle values
-        :return: list of parameters (list) for each simulation
-    '''
-    DCs = np.array(DCs)
-    queue = []
-    if 1.0 in DCs:
-        queue += Batch.createQueue(durations, offsets, min(PRFs), 1.0)
-    if np.any(DCs != 1.0):
-        queue += Batch.createQueue(durations, offsets, PRFs, DCs[DCs != 1.0])
-    queue = [PulsedProtocol(*item) for item in queue]
-    return queue
+            :param durations: list (or 1D-array) of stimulus durations
+            :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
+            :param PRFs: list (or 1D-array) of pulse-repetition frequencies
+            :param DCs: list (or 1D-array) of duty cycle values
+            :return: list of parameters (list) for each simulation
+        '''
+        DCs = np.array(DCs)
+        queue = []
+        if 1.0 in DCs:
+            queue += Batch.createQueue(durations, offsets, min(PRFs), 1.0)
+        if np.any(DCs != 1.0):
+            queue += Batch.createQueue(durations, offsets, PRFs, DCs[DCs != 1.0])
+        queue = [cls(*item) for item in queue]
+        return queue

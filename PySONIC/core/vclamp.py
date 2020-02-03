@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-01 20:07:24
+# @Last Modified time: 2020-02-03 19:56:15
 
 import numpy as np
 import pandas as pd
@@ -13,6 +13,7 @@ from .protocols import TimeProtocol
 from .model import Model
 from .pneuron import PointNeuron
 from .simulators import OnOffSimulator
+from .drives import Drive, VoltageDrive
 from ..constants import *
 from ..utils import *
 from ..neurons import getPointNeuron
@@ -54,35 +55,15 @@ class VoltageClamp(Model):
     def filecode(self, *args):
         return Model.filecode(self, *args)
 
-    @property
     @staticmethod
     def inputs():
-        # Get pneuron input vars and replace stimulation current by held and step voltages
-        inputvars = PointNeuron.inputs
-        for key in ['Astim', 'PRF', 'DC']:
-            del inputvars[key]
-        inputvars.update({
-            'Vhold': {
-                'desc': 'held membrane potential',
-                'label': 'V_{hold}',
-                'unit': 'mV',
-                'precision': 0
-            },
-            'Vstep': {
-                'desc': 'step membrane potential',
-                'label': 'V_{step}',
-                'unit': 'mV',
-                'precision': 0
-            }
-        })
-        return inputvars
+        return VoltageDrive.inputs()
 
-    def filecodes(self, Vhold, Vstep, tp):
+    def filecodes(self, drive, tp):
         return {
             'simkey': self.simkey,
             'neuron': self.pneuron.name,
-            'Vhold': f'{Vhold:.1f}mV',
-            'Vstep': f'{Vstep:.1f}mV',
+            **drive.filecodes,
             **tp.filecodes
         }
 
@@ -98,21 +79,23 @@ class VoltageClamp(Model):
             :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
             :return: list of parameters (list) for each simulation
         '''
-        queue = Batch.createQueue(holds, steps, durations, offsets)
-        queue = [[item[0], item[1], TimeProtocol(item[2], item[3])] for item in queue]
+        drives = VoltageDrive.createQueue(holds, steps)
+        protocols = TimeProtocol.createQueue(durations, offsets)
+        queue = []
+        for drive in drives:
+            for tp in protocols:
+                queue.append([drive, tp])
         return queue
 
     @staticmethod
-    def checkInputs(Vhold, Vstep, tp):
+    def checkInputs(drive, tp):
         ''' Check validity of stimulation parameters.
 
-            :param Vhold: held membrane potential (mV)
-            :param Vstep: step membrane potential (mV)
+            :param drive: voltage drive object
             :param tp: time protocol object
         '''
-        for k, v in {'Vhold': Vhold, 'Vstep': Vstep}.items():
-            if not isinstance(v, float):
-                raise TypeError(f'Invalid {k} parameter (must be float typed)')
+        if not isinstance(drive, Drive):
+            raise TypeError(f'Invalid "drive" parameter (must be an "Drive" object)')
         if not isinstance(tp, TimeProtocol):
             raise TypeError('Invalid time protocol (must be "TimeProtocol" instance)')
 
@@ -125,23 +108,22 @@ class VoltageClamp(Model):
     @Model.addMeta
     @Model.logDesc
     @Model.checkSimParams
-    def simulate(self, Vhold, Vstep, tp):
+    def simulate(self, drive, tp):
         ''' Simulate a specific neuron model for a set of simulation parameters,
             and return output data in a dataframe.
 
-            :param Vhold: held membrane potential (mV)
-            :param Vstep: step membrane potential (mV)
+            :param drive: voltage drive object
             :param tp: time protocol object
             :return: output dataframe
         '''
         # Set initial conditions
-        y0 = self.pneuron.getSteadyStates(Vhold)
+        y0 = self.pneuron.getSteadyStates(drive.Vhold)
 
         # Initialize simulator and compute solution
         logger.debug('Computing solution')
         simulator = OnOffSimulator(
-            lambda t, y: self.derivatives(t, y, Vm=Vstep),
-            lambda t, y: self.derivatives(t, y, Vm=Vhold))
+            lambda t, y: self.derivatives(t, y, Vm=drive.Vstep),
+            lambda t, y: self.derivatives(t, y, Vm=drive.Vhold))
         t, y, stim = simulator(y0, DT_EFFECTIVE, tp)
 
         # Prepend initial conditions (prior to stimulation)
@@ -149,8 +131,8 @@ class VoltageClamp(Model):
 
         # Compute clamped membrane potential vector
         Vm = np.zeros(stim.size)
-        Vm[stim == 0] = Vhold
-        Vm[stim == 1] = Vstep
+        Vm[stim == 0] = drive.Vhold
+        Vm[stim == 1] = drive.Vstep
 
         # Store output in dataframe and return
         data = pd.DataFrame({
@@ -163,15 +145,13 @@ class VoltageClamp(Model):
             data[self.pneuron.statesNames()[i]] = y[:, i]
         return data
 
-    def meta(self, Vhold, Vstep, tp):
+    def meta(self, drive, tp):
         return {
             'simkey': self.simkey,
             'neuron': self.pneuron.name,
-            'Vhold': Vhold,
-            'Vstep': Vstep,
+            'drive': drive,
             'tp': tp
         }
 
     def desc(self, meta):
-        return '{}: simulation @ Vhold = {}V, Vstep = {}V, {}'.format(
-            self, *si_format([meta['Vhold'] * 1e-3, meta['Vstep'] * 1e-3], 1), meta['tp'].desc)
+        return f'{self}: simulation @ {meta["drive"].desc}, {meta["tp"].desc}'

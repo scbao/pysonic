@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-28 16:13:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-02 12:44:15
+# @Last Modified time: 2020-02-03 21:38:46
 
 ''' Phase-plane analysis of neuron behavior under quasi-steady state approximation. '''
 
@@ -31,7 +31,7 @@ def main():
     logger.setLevel(args['loglevel'])
     if args['plot'] is None:
         args['plot'] = ['dQdt']
-    a, Fdrive, tstim, toffset, PRF = [
+    a, f, tstim, toffset, PRF = [
         args[k][0] for k in ['radius', 'freq', 'tstim', 'toffset', 'PRF']]
     qss_vars = args['qss']
 
@@ -45,29 +45,28 @@ def main():
 
             # If only 1 amplitude value
             if args['amp'].size == 1:
-                Adrive = args['amp'][0]
 
                 # Plot QSS derivative vs state for specified variables
                 if qss_vars is not None:
                     for k in qss_vars:
-                        figs.append(plotQSSDerivativeVsState(pneuron, a, Fdrive, Adrive, DC))
+                        figs.append(plotQSSDerivativeVsState(pneuron, a, f, args['amp'][0], DC))
             else:
                 # Plot evolution of QSS vars vs Q for different amplitudes
                 # for pvar in args['plot']:
                 #     figs.append(plotQSSVarVsQm(
-                #         pneuron, a, Fdrive, pvar, amps=args['amp'], DC=DC,
+                #         pneuron, a, f, pvar, amps=args['amp'], DC=DC,
                 #         cmap=args['cmap'], zscale=args['Ascale'], mpi=args['mpi'],
                 #         loglevel=args['loglevel']))
 
                 # Plot equilibrium charge as a function of amplitude
                 if 'dQdt' in args['plot']:
                     figs.append(plotEqChargeVsAmp(
-                        pneuron, a, Fdrive, amps=args['amp'], tstim=tstim, toffset=toffset, PRF=PRF,
+                        pneuron, a, f, amps=args['amp'], tstim=tstim, toffset=toffset, PRF=PRF,
                         DC=DC, xscale=args['Ascale'], compdir=args['inputdir'], mpi=args['mpi'],
                         loglevel=args['loglevel']))
         else:
             figs.append(plotQSSThresholdCurve(
-                pneuron, a, Fdrive, tstim=tstim, toffset=toffset, PRF=PRF, DCs=args['DC'],
+                pneuron, a, f, tstim=tstim, toffset=toffset, PRF=PRF, DCs=args['DC'],
                 Ascale=args['Ascale'], comp=args['compare'], mpi=args['mpi'],
                 loglevel=args['loglevel']))
 

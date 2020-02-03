@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-30 12:39:04
+# @Last Modified time: 2020-02-03 16:58:45
 
 from types import MethodType
 import inspect
@@ -19,7 +19,7 @@ from .nbls import *
 from .vclamp import *
 from .lookups import *
 from .protocols import *
-from .sources import *
+from .drives import *
 
 from ..neurons import getPointNeuron
 
