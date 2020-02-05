@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-04 20:01:48
+# @Last Modified time: 2020-02-05 18:12:07
 
 import abc
 import numpy as np
@@ -98,51 +98,51 @@ class XDrive(Drive):
 class ElectricDrive(XDrive):
     ''' Electric drive object with constant amplitude. '''
 
-    xkey = 'A'
+    xkey = 'I'
 
-    def __init__(self, A):
+    def __init__(self, I):
         ''' Constructor.
 
-            :param A: amplitude (mA/m2)
+            :param A: current density (mA/m2)
         '''
-        self.A = A
+        self.I = I
 
     @property
-    def A(self):
-        return self._A
+    def I(self):
+        return self._I
 
-    @A.setter
-    def A(self, value):
+    @I.setter
+    def I(self, value):
         if value is not None:
-            value = self.checkFloat('A', value)
-        self._A = value
+            value = self.checkFloat('I', value)
+        self._I = value
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return self.A == other.A
+        return self.I == other.I
 
     def __repr__(self):
         params = []
-        if self.A is not None:
-            params.append(f'{si_format(self.A * 1e-3, 1, space="")}A/m2')
+        if self.I is not None:
+            params.append(f'{si_format(self.I * 1e-3, 1, space="")}A/m2')
         return f'{self.__class__.__name__}({", ".join(params)})'
 
     @property
     def xvar(self):
-        return self.A
+        return self.I
 
     @xvar.setter
     def xvar(self, value):
-        self.A = value
+        self.I = value
 
     def copy(self):
-        return self.__class__(self.A)
+        return self.__class__(self.I)
 
     @staticmethod
     def inputs():
         return {
-            'A': {
+            'I': {
                 'desc': 'current density amplitude',
                 'label': 'A',
                 'unit': 'mA/m2',
@@ -153,18 +153,18 @@ class ElectricDrive(XDrive):
 
     @property
     def meta(self):
-        return {'A': self.A}
+        return {'I': self.I}
 
     @property
     def desc(self):
-        return f'A = {si_format(self.A * 1e-3, 2)}A/m2'
+        return f'I = {si_format(self.I * 1e-3, 2)}A/m2'
 
     @property
     def filecodes(self):
-        return {'A': f'{self.A:.2f}mAm2'}
+        return {'I': f'{self.I:.2f}mAm2'}
 
     def compute(self, t):
-        return self.A
+        return self.I
 
 
 class VoltageDrive(Drive):

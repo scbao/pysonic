@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 22:43:58
+# @Last Modified time: 2020-02-05 18:12:28
 
 import abc
 import inspect
@@ -445,7 +445,7 @@ class PointNeuron(Model):
         # Initialize simulator and compute solution
         logger.debug('Computing solution')
         simulator = PWSimulator(
-            lambda t, y: self.derivatives(t, y, Iinj=drive.A),
+            lambda t, y: self.derivatives(t, y, Iinj=drive.I),
             lambda t, y: self.derivatives(t, y, Iinj=0.))
         t, y, stim = simulator(
             y0, self.chooseTimeStep(), pp)
