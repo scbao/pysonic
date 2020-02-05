@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-05 18:19:32
+# @Last Modified time: 2020-02-05 18:44:29
 
 import os
 import logging
@@ -69,7 +69,7 @@ class Parser(ArgumentParser):
         self.add_argument(*args, nargs='+', type=float, help=desc)
         self.add_argument(
             f'--{rangekey}range', type=str, nargs='+', help=f'Range of {desc}: {self.dist_str}')
-        self.to_parse[key] = self.parseAmp
+        self.to_parse[key] = self.parseAmplitude
 
     def parseRangeParam(self, args, key):
         rangekey = f'{key}range'
@@ -475,7 +475,7 @@ class MechSimParser(SimParser):
             '-I', '--intensity', nargs='+', type=float, help='Acoustic intensity (W/cm2)')
         self.add_argument(
             '--Irange', type=str, nargs='+', help=f'Intensity range {self.dist_str} (W/cm2)')
-        self.to_parse['amp'] = self.parseAmp
+        self.to_parse['amp'] = self.parseAmplitude
 
     def addAscale(self, default='lin'):
         self.add_argument(
@@ -493,7 +493,7 @@ class MechSimParser(SimParser):
             '--spanFs', default=False, action='store_true', help='Span Fs from 1 to 100%%')
         self.to_parse['fs'] = self.parseFs
 
-    def parseAmp(self, args):
+    def parseAmplitude(self, args):
         params = ['Irange', 'Arange', 'intensity', 'amp']
         self.restrict(args, params[:-1])
         Irange, Arange, Int, A = [args.pop(k) for k in params]
@@ -633,7 +633,7 @@ class PWSimParser(NeuronSimParser):
         self.add_argument(
             '--titrate', default=False, action='store_true', help='Perform titration')
 
-    def parseAmp(self, args):
+    def parseAmplitude(self, args):
         raise NotImplementedError
 
     def parseDC(self, args):
@@ -713,10 +713,10 @@ class AStimParser(PWSimParser, MechSimParser):
         self.add_argument(
             '--qss', nargs='+', type=str, help='QSS variables')
 
-    def parseAmp(self, args):
+    def parseAmplitude(self, args):
         if args.pop('titrate'):
             return None
-        return MechSimParser.parseAmp(self, args)
+        return MechSimParser.parseAmplitude(self, args)
 
     def parse(self):
         args = PWSimParser.parse(self, args=MechSimParser.parse(self))
