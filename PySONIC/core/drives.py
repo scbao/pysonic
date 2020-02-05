@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-05 18:12:07
+# @Last Modified time: 2020-02-05 18:13:28
 
 import abc
 import numpy as np
@@ -144,7 +144,7 @@ class ElectricDrive(XDrive):
         return {
             'I': {
                 'desc': 'current density amplitude',
-                'label': 'A',
+                'label': 'I',
                 'unit': 'mA/m2',
                 'factor': 1e0,
                 'precision': 1
