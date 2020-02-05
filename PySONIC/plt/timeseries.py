@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 19:40:19
+# @Last Modified time: 2020-02-05 18:19:24
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,7 +27,7 @@ class TimeSeriesPlot(GenericPlot):
         return super().setYLabel(ax, yplt, fs)
 
     def checkInputs(self, *args, **kwargs):
-        return NotImplementedError
+        raise NotImplementedError
 
     @staticmethod
     def getStimStates(df):

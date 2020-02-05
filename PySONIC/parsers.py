@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 21:17:40
+# @Last Modified time: 2020-02-05 18:19:32
 
 import os
 import logging
@@ -634,7 +634,7 @@ class PWSimParser(NeuronSimParser):
             '--titrate', default=False, action='store_true', help='Perform titration')
 
     def parseAmp(self, args):
-        return NotImplementedError
+        raise NotImplementedError
 
     def parseDC(self, args):
         if args.pop('spanDC'):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-04 11:23:28
+# @Last Modified time: 2020-02-05 18:19:30
 
 import os
 from functools import wraps
@@ -104,7 +104,7 @@ class Model(metaclass=abc.ABCMeta):
     @classmethod
     @abc.abstractmethod
     def simQueue(cls, *args, outputdir=None, overwrite=True):
-        return NotImplementedError
+        raise NotImplementedError
 
     @staticmethod
     @abc.abstractmethod

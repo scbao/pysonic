@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 19:51:48
+# @Last Modified time: 2020-02-05 18:19:27
 
 ''' Useful functions to generate plots. '''
 
@@ -118,7 +118,7 @@ class GenericPlot:
         return data, meta
 
     def render(self, *args, **kwargs):
-        return NotImplementedError
+        raise NotImplementedError
 
     @staticmethod
     def getSimType(fname):
@@ -145,7 +145,7 @@ class GenericPlot:
 
     @staticmethod
     def createBackBone(*args, **kwargs):
-        return NotImplementedError
+        raise NotImplementedError
 
     @staticmethod
     def prettify(ax, xticks=None, yticks=None, xfmt='{:.0f}', yfmt='{:+.0f}'):
@@ -221,7 +221,7 @@ class GenericPlot:
             logger.warning('Inset x-coordinates intersect with those of target region')
 
     def postProcess(self, *args, **kwargs):
-        return NotImplementedError
+        raise NotImplementedError
 
     @staticmethod
     def removeSpines(ax):
