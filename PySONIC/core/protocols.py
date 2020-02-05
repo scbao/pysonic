@@ -3,14 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 19:17:26
+# @Last Modified time: 2020-02-04 15:50:37
 
 import numpy as np
-from ..utils import si_format
+from ..utils import si_format, StimObject
 from .batches import Batch
 
 
-class TimeProtocol:
+class TimeProtocol(StimObject):
 
     def __init__(self, tstim, toffset):
         ''' Class constructor.
@@ -18,15 +18,28 @@ class TimeProtocol:
             :param tstim: pulse duration (s)
             :param toffset: offset duration (s)
         '''
-        for k, v in {'stimulus': tstim, 'offset': toffset}.items():
-            if not isinstance(v, float):
-                raise TypeError(f'Invalid {k} duration value (must be float typed)')
-            if v < 0:
-                raise ValueError(f'Invalid {k} duration: {(v * 1e3)} ms (must be positive or null)')
-
-        # Assing attributes
         self.tstim = tstim
         self.toffset = toffset
+
+    @property
+    def tstim(self):
+        return self._tstim
+
+    @tstim.setter
+    def tstim(self, value):
+        value = self.checkFloat('tstim', value)
+        self.checkPositiveOrNull('tstim', value)
+        self._tstim = value
+
+    @property
+    def toffset(self):
+        return self._toffset
+
+    @toffset.setter
+    def toffset(self, value):
+        value = self.checkFloat('toffset', value)
+        self.checkPositiveOrNull('toffset', value)
+        self._toffset = value
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -45,7 +58,6 @@ class TimeProtocol:
     def filecodes(self):
         return {'tstim': f'{(self.tstim * 1e3):.0f}ms', 'toffset': None}
 
-    @property
     @staticmethod
     def inputs():
         return {
@@ -88,27 +100,30 @@ class PulsedProtocol(TimeProtocol):
             :param DC: pulse duty cycle (-)
         '''
         super().__init__(tstim, toffset)
-        if not isinstance(DC, float):
-            raise TypeError('Invalid duty cycle value (must be float typed)')
-        if DC <= 0.0 or DC > 1.0:
-            raise ValueError(f'Invalid duty cycle: {DC} (must be within ]0; 1])')
-        if DC < 1.0:
-            if not isinstance(PRF, float):
-                raise TypeError('Invalid PRF value (must be float typed)')
-            if PRF is None:
-                raise AttributeError('Missing PRF value (must be provided when DC < 1)')
-            if PRF < 1 / tstim:
-                raise ValueError(f'Invalid PRF: {PRF} Hz (PR interval exceeds stimulus duration)')
-
-        # Assing attributes
-        self.PRF = PRF
         self.DC = DC
+        self.PRF = PRF
 
-        # Derived attributes
-        self.T_ON = self.DC / self.PRF
-        self.T_OFF = (1 - self.DC) / self.PRF
-        self.npulses = int(np.round(self.tstim * self.PRF))
-        self.ttotal = self.tstim + self.toffset
+    @property
+    def DC(self):
+        return self._DC
+
+    @DC.setter
+    def DC(self, value):
+        value = self.checkFloat('DC', value)
+        self.checkBounded('DC', value, (0., 1.))
+        self._DC = value
+
+    @property
+    def PRF(self):
+        return self._PRF
+
+    @PRF.setter
+    def PRF(self, value):
+        value = self.checkFloat('PRF', value)
+        self.checkPositiveOrNull('PRF', value)
+        if self.DC < 1.:
+            self.checkBounded('PRF', value, (1 / self.tstim, np.inf))
+        self._PRF = value
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -118,6 +133,22 @@ class PulsedProtocol(TimeProtocol):
     def __repr__(self):
         params = [f'{si_format(self.PRF, 1, space="")}Hz', f'{self.DC:.2f}']
         return f'{super().__repr__()[:-1]}, {", ".join(params)})'
+
+    @property
+    def T_ON(self):
+        return self.DC / self.PRF
+
+    @property
+    def T_OFF(self):
+        return (1 - self.DC) / self.PRF
+
+    @property
+    def npulses(self):
+        return int(np.round(self.tstim * self.PRF))
+
+    @property
+    def ttotal(self):
+        return self.tstim + self.toffset
 
     @property
     def desc(self):
@@ -142,7 +173,6 @@ class PulsedProtocol(TimeProtocol):
             d = {'PRF': f'PRF{self.PRF:.2f}Hz', 'DC': f'DC{self.DC * 1e2:04.1f}%'}
         return {**super().filecodes, **d}
 
-    @property
     @staticmethod
     def inputs():
         d = {
@@ -161,7 +191,7 @@ class PulsedProtocol(TimeProtocol):
                 'precision': 2
             }
         }
-        return {**TimeProtocol.inputs, **d}
+        return {**TimeProtocol.inputs(), **d}
 
     @classmethod
     def createQueue(cls, durations, offsets, PRFs, DCs):

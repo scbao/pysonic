@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 22:59:57
+# @Last Modified time: 2020-02-04 11:23:28
 
 import os
 from functools import wraps
@@ -13,7 +13,6 @@ import abc
 import inspect
 import numpy as np
 
-from .drives import XDrive
 from .batches import Batch
 from ..utils import *
 
@@ -208,18 +207,19 @@ class Model(metaclass=abc.ABCMeta):
             # Extract drive object from args
             drive, *other_args = args
 
-            # If drive is not fully resolved
-            if not drive.is_resolved:
-                # Titrate
-                xthr = self.titrate(*args)
+            # If drive is titratable and not fully resolved
+            if drive.is_searchable:
+                if not drive.is_resolved:
+                    # Titrate
+                    xthr = self.titrate(*args)
 
-                # If no threshold was found, return None
-                if np.isnan(xthr):
-                    logger.error(f'Could not find threshold {drive.inputs()[drive.xkey]["desc"]}')
-                    return None
+                    # If no threshold was found, return None
+                    if np.isnan(xthr):
+                        logger.error(f'Could not find threshold {drive.inputs()[drive.xkey]["desc"]}')
+                        return None
 
-                # Otherwise, update args list with resovled drive
-                args = (drive.updatedX(xthr), *other_args)
+                    # Otherwise, update args list with resovled drive
+                    args = (drive.updatedX(xthr), *other_args)
 
             # Execute simulation function
             return simfunc(self, *args, **kwargs)

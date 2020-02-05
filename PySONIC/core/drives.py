@@ -3,17 +3,17 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 22:59:11
+# @Last Modified time: 2020-02-04 20:01:48
 
 import abc
 import numpy as np
 
-from ..utils import si_format
+from ..utils import si_format, StimObject
 from ..constants import NPC_DENSE, NPC_SPARSE
 from .batches import Batch
 
 
-class Drive(metaclass=abc.ABCMeta):
+class Drive(StimObject):
     ''' Generic interface to drive object. '''
 
     @abc.abstractmethod
@@ -29,17 +29,6 @@ class Drive(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def copy(self):
         ''' String representation. '''
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def checkInputs(self, *args):
-        ''' Check inputs. '''
-        raise NotImplementedError
-
-    @property
-    @staticmethod
-    @abc.abstractmethod
-    def inputs():
         raise NotImplementedError
 
     @property
@@ -75,18 +64,20 @@ class Drive(metaclass=abc.ABCMeta):
             return [cls(*item) for item in Batch.createQueue(*args)]
 
     @property
-    def isResolved(self):
-        return True
+    def is_searchable(self):
+        return False
 
 
 class XDrive(Drive):
     ''' Drive object that can be titrated to find the threshold value of one of its inputs. '''
 
     @property
+    @abc.abstractmethod
     def xvar(self):
         raise NotImplementedError
 
     @xvar.setter
+    @abc.abstractmethod
     def xvar(self, value):
         raise NotImplementedError
 
@@ -96,9 +87,12 @@ class XDrive(Drive):
         return other
 
     @property
+    def is_searchable(self):
+        return True
+
+    @property
     def is_resolved(self):
         return self.xvar is not None
-
 
 
 class ElectricDrive(XDrive):
@@ -111,17 +105,22 @@ class ElectricDrive(XDrive):
 
             :param A: amplitude (mA/m2)
         '''
-        self.checkInputs(A)
         self.A = A
 
     @property
-    def xvar(self):
-        return self.A
+    def A(self):
+        return self._A
 
-    @xvar.setter
-    def xvar(self, value):
-        self.checkInputs(value)
-        self.A = value
+    @A.setter
+    def A(self, value):
+        if value is not None:
+            value = self.checkFloat('A', value)
+        self._A = value
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.A == other.A
 
     def __repr__(self):
         params = []
@@ -129,18 +128,16 @@ class ElectricDrive(XDrive):
             params.append(f'{si_format(self.A * 1e-3, 1, space="")}A/m2')
         return f'{self.__class__.__name__}({", ".join(params)})'
 
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return self.A == other.A
+    @property
+    def xvar(self):
+        return self.A
+
+    @xvar.setter
+    def xvar(self, value):
+        self.A = value
 
     def copy(self):
         return self.__class__(self.A)
-
-    def checkInputs(self, A):
-        if A is not None:
-            if not isinstance(A, float):
-                raise TypeError('Invalid amplitude (must be float typed)')
 
     @staticmethod
     def inputs():
@@ -156,9 +153,7 @@ class ElectricDrive(XDrive):
 
     @property
     def meta(self):
-        return {
-            'A': self.A
-        }
+        return {'A': self.A}
 
     @property
     def desc(self):
@@ -178,40 +173,52 @@ class VoltageDrive(Drive):
     def __init__(self, Vhold, Vstep):
         ''' Constructor.
 
-            :param Vhold: held membrane potential (mV)
-            :param Vstep: step membrane potential (mV)
+            :param Vhold: held voltage (mV)
+            :param Vstep: step voltage (mV)
         '''
-        self.checkInputs(Vhold, Vstep)
         self.Vhold = Vhold
         self.Vstep = Vstep
 
-    def __repr__(self):
-        return f'{self.__class__.__name__}({self.desc})'
+    @property
+    def Vhold(self):
+        return self._Vhold
+
+    @Vhold.setter
+    def Vhold(self, value):
+        value = self.checkFloat('Vhold', value)
+        self._Vhold = value
+
+    @property
+    def Vstep(self):
+        return self._Vstep
+
+    @Vstep.setter
+    def Vstep(self, value):
+        value = self.checkFloat('Vstep', value)
+        self._Vstep = value
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
         return self.Vhold == other.Vhold and self.Vstep == other.Vstep
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.desc})'
+
     def copy(self):
         return self.__class__(self.Vhold, self.Vstep)
-
-    def checkInputs(self, Vhold, Vstep):
-        for k, v in {'Vhold': Vhold, 'Vstep': Vstep}.items():
-            if not isinstance(v, float):
-                raise TypeError(f'Invalid {k} parameter (must be float typed)')
 
     @staticmethod
     def inputs():
         return {
             'Vhold': {
-                'desc': 'held membrane potential',
+                'desc': 'held voltage',
                 'label': 'V_{hold}',
                 'unit': 'mV',
                 'precision': 0
             },
             'Vstep': {
-                'desc': 'step membrane potential',
+                'desc': 'step voltage',
                 'label': 'V_{step}',
                 'unit': 'mV',
                 'precision': 0
@@ -252,10 +259,39 @@ class AcousticDrive(XDrive):
             :param A: peak pressure amplitude (Pa)
             :param phi: phase (rad)
         '''
-        self.checkInputs(f, A, phi)
         self.f = f
         self.A = A
         self.phi = phi
+
+    @property
+    def f(self):
+        return self._f
+
+    @f.setter
+    def f(self, value):
+        value = self.checkFloat('f', value)
+        self.checkStrictlyPositive('f', value)
+        self._f = value
+
+    @property
+    def A(self):
+        return self._A
+
+    @A.setter
+    def A(self, value):
+        if value is not None:
+            value = self.checkFloat('A', value)
+            self.checkPositiveOrNull('A', value)
+        self._A = value
+
+    @property
+    def phi(self):
+        return self._phi
+
+    @phi.setter
+    def phi(self, value):
+        value = self.checkFloat('phi', value)
+        self._phi = value
 
     @property
     def xvar(self):
@@ -263,7 +299,6 @@ class AcousticDrive(XDrive):
 
     @xvar.setter
     def xvar(self, value):
-        self.checkInputs(self.f, value, self.phi)
         self.A = value
 
     def __repr__(self):
@@ -279,20 +314,6 @@ class AcousticDrive(XDrive):
 
     def copy(self):
         return self.__class__(self.f, self.A, phi=self.phi)
-
-    def checkInputs(self, f, A, phi):
-        floatvars = {'f': f, 'phi': phi}
-        if A is not None:
-            floatvars['A'] = A
-        for k, v in floatvars.items():
-            if not isinstance(v, float):
-                raise TypeError(f'Invalid {k} parameter (must be float typed)')
-        if f <= 0:
-            d = self.inputs()['f']
-            raise ValueError(f'Invalid {d["desc"]}: {f * d.get("factor", 1)} {d["unit"]} (must be strictly positive)')
-        if A is not None and A < 0:
-            d = self.inputs()['A']
-            raise ValueError(f'Invalid {d["desc"]}: {A * d.get("factor", 1)} {d["unit"]} (must be positive or null)')
 
     @staticmethod
     def inputs():

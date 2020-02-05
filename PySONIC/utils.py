@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 21:12:45
+# @Last Modified time: 2020-02-04 15:05:28
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -13,6 +13,7 @@ import operator
 import time
 from inspect import signature
 import os
+import abc
 from shutil import get_terminal_size
 import lockfile
 import math
@@ -793,21 +794,22 @@ def simAndSave(model, *args, **kwargs):
     # Extract drive object from args
     drive, *other_args = args
 
-    # If drive is titratable and not fully resolved
-    if not drive.is_resolved:
-        # Call simulate to perform titration
-        out = model.simulate(*args)
+    # If drive is searchable and not fully resolved
+    if drive.is_searchable:
+        if not drive.is_resolved:
+            # Call simulate to perform titration
+            out = model.simulate(*args)
 
-        # If titration yields nothing -> no file produced -> return None
-        if out is None:
-            logger.warning('returning None')
-            return None
+            # If titration yields nothing -> no file produced -> return None
+            if out is None:
+                logger.warning('returning None')
+                return None
 
-        # Store data and meta
-        data, meta = out
+            # Store data and meta
+            data, meta = out
 
-        # Update args list with resovled drive
-        args = (meta['drive'], *other_args)
+            # Update args list with resovled drive
+            args = (meta['drive'], *other_args)
 
     # Check if a output file corresponding to sim inputs is found in the output directory
     # That check is performed prior to running the simulation, such that
@@ -858,3 +860,51 @@ def moveItem(l, value, itarget):
 
     # Return re-organized list
     return new_l[:itarget] + [value] + new_l[itarget:]
+
+
+class StimObject(metaclass=abc.ABCMeta):
+    ''' Generic interface to a simulation object. '''
+
+    @staticmethod
+    @abc.abstractmethod
+    def inputs():
+        raise NotImplementedError
+
+    def checkInt(self, key, value):
+        if not isinstance(value, int):
+            raise TypeError(f'Invalid {self.inputs()[key]["desc"]} (must be an integer)')
+        return value
+
+    def checkFloat(self, key, value):
+        if isinstance(value, int):
+            value = float(value)
+        if not isinstance(value, float):
+            raise TypeError(f'Invalid {self.inputs()[key]["desc"]} (must be float typed)')
+        return value
+
+    def checkStrictlyPositive(self, key, value):
+        if value <= 0:
+            d = self.inputs()[key]
+            raise ValueError(f'Invalid {d["desc"]}: {value * d.get("factor", 1)} {d["unit"]} (must be strictly positive)')
+
+    def checkPositiveOrNull(self, key, value):
+        if value < 0:
+            d = self.inputs()[key]
+            raise ValueError(f'Invalid {d["desc"]}: {value * d.get("factor", 1)} {d["unit"]} (must be positive or null)')
+
+    def checkStrictlyNegative(self, key, value):
+        if value >= 0:
+            d = self.inputs()[key]
+            raise ValueError(f'Invalid {d["desc"]}: {value * d.get("factor", 1)} {d["unit"]} (must be strictly negative)')
+
+    def checkNegativeOrNull(self, key, value):
+        if value > 0:
+            d = self.inputs()[key]
+            raise ValueError(f'Invalid {d["desc"]}: {value * d.get("factor", 1)} {d["unit"]} (must be negative or null)')
+
+    def checkBounded(self, key, value, bounds):
+        if value < bounds[0] or value > bounds[1]:
+            d = self.inputs()[key]
+            f, u = d.get("factor", 1), d["unit"]
+            bounds_str = f'[{bounds[0] * f}; {bounds[1] * f}] {u}'
+            raise ValueError(f'Invalid {d["desc"]}: {value * f} {u} (must be within {bounds_str})')
