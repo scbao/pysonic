@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 19:43:02
+# @Last Modified time: 2020-02-11 07:53:59
 
 from enum import Enum
 import os
@@ -135,6 +135,9 @@ class BilayerSonophore(Model):
         # Compute initial volume and gas content
         self.V0 = np.pi * self.Delta * self.a**2
         self.ng0 = self.gasPa2mol(self.P0, self.V0)
+
+    def copy(self):
+        return self.__class__(self.a, self.Cm0, self.Qm0, embedding_depth=self.d)
 
     @property
     def a(self):

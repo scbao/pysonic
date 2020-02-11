@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-05 18:13:28
+# @Last Modified time: 2020-02-10 16:09:09
 
 import abc
 import numpy as np
@@ -400,6 +400,14 @@ class AcousticDriveArray(Drive):
             if other.drives[k] != v:
                 return False
         return True
+
+    def __repr__(self):
+        params = [repr(drive) for drive in self.drives.values()]
+        return f'{self.__class__.__name__}({", ".join(params)})'
+
+    @staticmethod
+    def inputs():
+        return self.drives.values()[0].inputs()
 
     def copy(self):
         return self.__class__([x.copy() for x in self.drives.values()])

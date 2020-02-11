@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 19:56:15
+# @Last Modified time: 2020-02-11 07:51:06
 
 import numpy as np
 import pandas as pd
@@ -37,6 +37,9 @@ class VoltageClamp(Model):
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.pneuron})'
+
+    def copy(self):
+        return self.__class__(self.pneuron)
 
     @classmethod
     def initFromMeta(cls, meta):

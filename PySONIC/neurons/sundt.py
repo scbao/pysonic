@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-30 16:11:40
+# @Last Modified time: 2020-02-06 12:25:49
 
 import numpy as np
 from ..core import PointNeuron
@@ -47,7 +47,7 @@ class Sundt(PointNeuron):
     hshift = 6.0        # h-gate activation voltage shift, from ModelDB file (mV)
 
     # iM parameters
-    taupMax = 1.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
+    # taupMax = 1.0  # Max. adaptation decay of slow non-inactivating Potassium current (s)
 
     # Ca2+ parameters
     # Cao = 2e-3        # Extracellular Calcium concentration (M)

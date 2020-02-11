@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-05 18:19:30
+# @Last Modified time: 2020-02-11 07:49:51
 
 import os
 from functools import wraps
@@ -51,6 +51,10 @@ class Model(metaclass=abc.ABCMeta):
     @classmethod
     def description(cls):
         return getdoc(cls).split('\n', 1)[0].strip()
+
+    @abc.abstractmethod
+    def copy(self):
+        raise NotImplementedError
 
     @staticmethod
     @abc.abstractmethod

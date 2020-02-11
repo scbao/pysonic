@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 22:45:12
+# @Last Modified time: 2020-02-11 07:51:37
 
 import time
 from copy import deepcopy
@@ -55,6 +55,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         if self.d > 0.:
             s += f', d={si_format(self.d, precision=1)}m'
         return f'{s})'
+
+    def copy(self):
+        return self.__class__(self.a, self.pneuron, embedding_depth=self.d)
 
     @classmethod
     def initFromMeta(cls, meta):

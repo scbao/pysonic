@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-05 18:12:28
+# @Last Modified time: 2020-02-11 07:50:29
 
 import abc
 import inspect
@@ -29,6 +29,9 @@ class PointNeuron(Model):
 
     def __repr__(self):
         return self.__class__.__name__
+
+    def copy(self):
+        return self.__class__()
 
     @property
     @classmethod
