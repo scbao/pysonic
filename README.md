@@ -55,6 +55,8 @@ Several conductance-based point-neuron models are implemented that inherit from 
 
 - Open a terminal.
 
+- Install [git-lfs](https://github.com/git-lfs/git-lfs/wiki/Installation) if not already done
+
 - Activate a Python3 environment if needed, e.g. on the tnesrv5 machine:
 
 ```source /opt/apps/anaconda3/bin activate```
