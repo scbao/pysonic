@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-14 14:41:21
+# @Last Modified time: 2020-02-18 12:01:24
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -915,3 +915,11 @@ class StimObject(metaclass=abc.ABCMeta):
 
 def gaussian(x, mu=0., sigma=1., A=1.):
     return A * np.exp(-((x - mu) / sigma)**2)
+
+
+def isPickable(obj):
+    try:
+        pickle.dumps(obj)
+    except Exception as err:
+        return False
+    return True

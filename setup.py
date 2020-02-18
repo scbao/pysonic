@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-13 09:40:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-12 14:08:03
+# @Last Modified time: 2020-02-18 13:44:05
 
 import os
 from setuptools import setup
@@ -41,7 +41,7 @@ setup(
     install_requires=[
         'numpy>=1.10',
         'scipy>=0.17',
-        'matplotlib>=2'
+        'matplotlib>=2',
         'pandas>=0.22.0',
         'colorlog>=3.0.1',
         'tqdm>=4.3',
