@@ -3,15 +3,19 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-17 16:03:19
+# @Last Modified time: 2020-02-18 21:26:09
 
 ''' Utility functions used in simulations '''
 
+import os
+import abc
+import csv
 import logging
-import multiprocess as mp
 import numpy as np
+import pandas as pd
+import multiprocess as mp
 
-from ..utils import logger
+from ..utils import logger, si_format
 
 
 class Consumer(mp.Process):
@@ -159,3 +163,139 @@ class Batch:
         queue = np.stack(np.meshgrid(*dims_in), -1).reshape(-1, ndims)
         queue = queue[:, inds_out]
         return queue.tolist()
+
+
+class LogBatch(metaclass=abc.ABCMeta):
+    ''' Generic interface to a simulation batch in with real-time input:output caching
+        in a specific log file.
+    '''
+
+    delimiter = '\t'  # csv delimiter
+
+    def __init__(self, inputs, root='.'):
+        ''' Construtor.
+
+            :param inputs: array of batch inputs
+            :param root: root for IO operations
+        '''
+        self.inputs = inputs
+        self.root = root
+        self.fpath = self.filepath()
+
+    @property
+    @abc.abstractmethod
+    def in_key(self):
+        ''' Input key. '''
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def out_keys(self):
+        ''' Output keys. '''
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def suffix(self):
+        ''' filename suffix '''
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def unit(self):
+        ''' Input unit. '''
+        raise NotImplementedError
+
+    @property
+    def in_label(self):
+        ''' Input label. '''
+        return f'{self.in_key} ({self.unit})'
+
+    @property
+    def inputscode(self):
+        ''' String describing the batch inputs. '''
+        bounds_str = si_format([self.inputs.min(), self.inputs.max()], 1, space="")
+        return '{0}{1}{3}-{2}{3}_{4}'.format(self.in_key, *bounds_str, self.unit, self.inputs.size)
+
+    @abc.abstractmethod
+    def corecode(self):
+        ''' String describing the batch core components. '''
+        raise NotImplementedError
+
+    def filecode(self):
+        ''' String fully describing the batch. '''
+        return f'{self.corecode()}_{self.inputscode}_{self.suffix}_results'
+
+    def filename(self):
+        ''' Batch associated filename. '''
+        return f'{self.filecode()}.csv'
+
+    def filepath(self):
+        ''' Batch associated filepath. '''
+        return os.path.join(self.root, self.filename())
+
+    def createLogFile(self):
+        ''' Create batch log file if it does not exist. '''
+        if not os.path.isfile(self.fpath):
+            logger.debug(f'creating batch log file: "{self.fpath}"')
+            self.writeLabels()
+        else:
+            logger.debug(f'existing batch log file: "{self.fpath}"')
+
+    def writeLabels(self):
+        ''' Write the column labels of the batch log file. '''
+        with open(self.fpath, 'w') as csvfile:
+            writer = csv.writer(csvfile, delimiter=self.delimiter)
+            writer.writerow([self.in_label, *self.out_keys])
+
+    def writeEntry(self, entry, outputs):
+        ''' Write a new input:ouputs entry in the batch log file. '''
+        with open(self.fpath, 'a', newline='') as csvfile:
+            writer = csv.writer(csvfile, delimiter=self.delimiter)
+            writer.writerow([entry, *outputs])
+
+    def getLogData(self):
+        ''' Retrieve the batch log file data (inputs and outputs) as a dataframe. '''
+        return pd.read_csv(self.fpath, sep=self.delimiter).sort_values(self.in_label)
+
+    def getInput(self):
+        ''' Retrieve the logged batch inputs as an array. '''
+        return self.getLogData()[self.in_label].values
+
+    def getOutput(self):
+        ''' Retrieve the logged batch outputs as an array (if 1 key) or dataframe (if several). '''
+        if len(self.out_keys) == 1:
+            return self.getLogData()[self.out_keys[0]].values
+        else:
+            return pd.DataFrame({k: self.getLogData()[k].values for k in self.out_keys})
+
+    def isEntry(self, value):
+        ''' Check if a given input is logged in the batch log file. '''
+        inputs = self.getInput()
+        if len(inputs) == 0:
+            return False
+        imatches = np.where(np.isclose(inputs, value, rtol=1e-9, atol=1e-16))[0]
+        if len(imatches) == 0:
+            return False
+        return True
+
+    @abc.abstractmethod
+    def compute(self, x):
+        ''' Compute the necessary output(s) for a given input. '''
+        raise NotImplementedError
+
+    def computeAndLog(self, x):
+        ''' Compute output(s) and log new entry only if input is not already in the log file. '''
+        if not self.isEntry(x):
+            logger.debug(f'entry not found: "{x}"')
+            self.writeEntry(x, self.compute(x))
+        else:
+            logger.debug(f'existing entry: "{x}"')
+        return 0
+
+    def run(self):
+        ''' Run the batch and return the output(s). '''
+        self.createLogFile()
+        for x in self.inputs:
+            self.computeAndLog(x)
+        return self.getOutput()

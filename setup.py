@@ -3,15 +3,31 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-13 09:40:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-18 13:44:05
+# @Last Modified time: 2020-02-18 14:44:55
 
 import os
 from setuptools import setup
 
+readme_file = 'README.md'
 
 def readme():
-    with open('README.md', encoding="utf8") as f:
+    with open(readme_file, encoding="utf8") as f:
         return f.read()
+
+def description():
+    with open(readme_file, encoding="utf8") as f:
+        started = False
+        lines = []
+        for line in f:
+            if not started:
+                if line.startswith('# Description'):
+                    started = True
+            else:
+                if line.startswith('#'):
+                    break
+                else:
+                    lines.append(line)
+    return ''.join(lines).strip('\n')
 
 def getFiles(path):
     return [f'{path}/{x}' for x in os.listdir(path)]
@@ -20,9 +36,7 @@ def getFiles(path):
 setup(
     name='PySONIC',
     version='1.0',
-    description='Python implementation of the **multi-Scale Optimized Neuronal Intramembrane \
-               Cavitation** (SONIC) model to compute individual neural responses to acoustic \
-               stimuli, as predicted by the *intramembrane cavitation* hypothesis.',
+    description=description(),
     long_description=readme(),
     url='https://iopscience.iop.org/article/10.1088/1741-2552/ab1685',
     classifiers=[

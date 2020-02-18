@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-04 15:50:37
+# @Last Modified time: 2020-02-18 20:33:46
 
 import numpy as np
 from ..utils import si_format, StimObject
@@ -40,6 +40,10 @@ class TimeProtocol(StimObject):
         value = self.checkFloat('toffset', value)
         self.checkPositiveOrNull('toffset', value)
         self._toffset = value
+
+    @property
+    def ttotal(self):
+        return self.tstim + self.toffset
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -145,10 +149,6 @@ class PulsedProtocol(TimeProtocol):
     @property
     def npulses(self):
         return int(np.round(self.tstim * self.PRF))
-
-    @property
-    def ttotal(self):
-        return self.tstim + self.toffset
 
     @property
     def desc(self):
