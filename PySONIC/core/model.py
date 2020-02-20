@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 16:55:24
+# @Last Modified time: 2020-02-20 17:11:00
 
 import os
 from functools import wraps
@@ -133,20 +133,6 @@ class Model(metaclass=abc.ABCMeta):
         ''' Return an informative dictionary about model and simulation parameters. '''
         raise NotImplementedError
 
-    def getMeta(self, simfunc, *args, **kwargs):
-        ''' Construct an informative dictionary about the model and simulation parameters. '''
-        # Retrieve function call arguments
-        args_dict = resolveFuncArgs(simfunc, self, *args, **kwargs)
-
-        # Construct meta dictionary
-        meta = {'simkey': self.simkey}
-        for k, v in args_dict.items():
-            if k == 'self':
-                meta['model'] = v.meta
-            else:
-                meta[k] = v
-        return meta
-
     @staticmethod
     def addMeta(simfunc):
         ''' Add an informative dictionary about model and simulation parameters to simulation output '''
@@ -155,7 +141,7 @@ class Model(metaclass=abc.ABCMeta):
         def wrapper(self, *args, **kwargs):
             data, tcomp = timer(simfunc)(self, *args, **kwargs)
             logger.debug('completed in %ss', si_format(tcomp, 1))
-            meta_dict = self.getMeta(simfunc, *args, **kwargs)
+            meta_dict = getMeta(self, simfunc, *args, **kwargs)
 
             # target_args = resolveFuncArgs(simfunc, model, *args, **kwargs)
             # # Try to retrieve meta information
@@ -207,7 +193,7 @@ class Model(metaclass=abc.ABCMeta):
         @wraps(simfunc)
         def wrapper(self, *args, **kwargs):
             args, kwargs = alignWithMethodDef(simfunc, args, kwargs)
-            logger.info(self.desc(self.getMeta(simfunc, *args, **kwargs)))
+            logger.info(self.desc(getMeta(self, simfunc, *args, **kwargs)))
             return simfunc(self, *args, **kwargs)
         return wrapper
 

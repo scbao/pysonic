@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 16:55:35
+# @Last Modified time: 2020-02-20 18:07:49
 
 import time
 from copy import deepcopy
@@ -493,9 +493,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return simfunc(*simargs)
 
     def desc(self, meta):
-        s = f'{self}: {meta["method"]} simulation @ {meta["drive"].desc}, {meta["pp"].desc}'
-        if meta['fs'] < 1.0:
-            s += f', fs = {(meta["fs"] * 1e2):.2f}%'
+        method = meta['method'] if 'method' in meta else meta['model']['method']
+        fs = meta['fs'] if 'fs' in meta else meta['model']['fs']
+        s = f'{self}: {method} simulation @ {meta["drive"].desc}, {meta["pp"].desc}'
+        if fs < 1.0:
+            s += f', fs = {(fs * 1e2):.2f}%'
         if 'qss_vars' in meta and meta['qss_vars'] is not None:
                 s += f" - QSS ({', '.join(meta['qss_vars'])})"
         return s

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 16:44:59
+# @Last Modified time: 2020-02-20 18:28:02
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -760,12 +760,14 @@ def filecode(model, *args):
     # If meta dictionary was passed, generate inputs list from it
     if len(args) == 1 and isinstance(args[0], dict):
         meta = args[0].copy()
-        for k in ['simkey', 'model', 'tcomp']:
+        if meta['simkey'] == 'ASTIM' and 'fs' not in meta:
+            meta['fs'] = meta['model']['fs']
+            meta['method'] = meta['model']['method']
+            meta['qss_vars'] = None
+        for k in ['simkey', 'model', 'tcomp', 'dt', 'atol']:
             if k in meta:
                 del meta[k]
         args = list(meta.values())
-        # meta_keys = list(signature(model.meta).parameters.keys())
-        # args = [meta[k] for k in meta_keys]
 
     # Otherwise, transform args tuple into list
     else:
@@ -937,3 +939,18 @@ def resolveFuncArgs(func, *args, **kwargs):
     bound_args = signature(func).bind(*args, **kwargs)
     bound_args.apply_defaults()
     return dict(bound_args.arguments)
+
+
+def getMeta(model, simfunc, *args, **kwargs):
+    ''' Construct an informative dictionary about the model and simulation parameters. '''
+    # Retrieve function call arguments
+    args_dict = resolveFuncArgs(simfunc, model, *args, **kwargs)
+
+    # Construct meta dictionary
+    meta = {'simkey': model.simkey}
+    for k, v in args_dict.items():
+        if k == 'self':
+            meta['model'] = v.meta
+        else:
+            meta[k] = v
+    return meta
