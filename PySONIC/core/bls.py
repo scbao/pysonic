@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-11 07:53:59
+# @Last Modified time: 2020-02-20 16:52:40
 
 from enum import Enum
 import os
@@ -175,9 +175,18 @@ class BilayerSonophore(Model):
             s += f', d={si_format(self.d, precision=1)}m'
         return f'{s})'
 
+    @property
+    def meta(self):
+        return {
+            'a': self.a,
+            'd': self.d,
+            'Cm0': self.Cm0,
+            'Qm0': self.Qm0,
+        }
+
     @classmethod
-    def initFromMeta(cls, meta):
-        return cls(meta['a'], meta['Cm0'], meta['Qm0'])
+    def initFromMeta(cls, d):
+        return cls(d['a'], d['Cm0'], d['Qm0'])
 
     @staticmethod
     def inputs():
@@ -765,18 +774,6 @@ class BilayerSonophore(Model):
     def simulate(self, drive, Qm, Pm_comp_method=PmCompMethod.predict):
         ''' Wrapper around the simUntilConvergence method, with decorators. '''
         return self.simCycles(drive, Qm, Pm_comp_method=Pm_comp_method)
-
-    def meta(self, drive, Qm, Pm_comp_method):
-        return {
-            'simkey': self.simkey,
-            'a': self.a,
-            'd': self.d,
-            'Cm0': self.Cm0,
-            'Qm0': self.Qm0,
-            'drive': drive,
-            'Qm': Qm,
-            'Pm_comp_method': Pm_comp_method
-        }
 
     def desc(self, meta):
         return f'{self}: simulation @ {meta["drive"].desc}, Q = {si_format(meta["Qm"] * 1e-4, 2)}C/cm2'

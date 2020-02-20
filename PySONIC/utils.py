@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-18 12:01:24
+# @Last Modified time: 2020-02-20 16:44:59
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -759,9 +759,14 @@ def filecode(model, *args):
     ''' Generate file code given a specific combination of model input parameters. '''
     # If meta dictionary was passed, generate inputs list from it
     if len(args) == 1 and isinstance(args[0], dict):
-        meta = args[0]
-        meta_keys = list(signature(model.meta).parameters.keys())
-        args = [meta[k] for k in meta_keys]
+        meta = args[0].copy()
+        for k in ['simkey', 'model', 'tcomp']:
+            if k in meta:
+                del meta[k]
+        args = list(meta.values())
+        # meta_keys = list(signature(model.meta).parameters.keys())
+        # args = [meta[k] for k in meta_keys]
+
     # Otherwise, transform args tuple into list
     else:
         args = list(args)
@@ -923,3 +928,12 @@ def isPickable(obj):
     except Exception as err:
         return False
     return True
+
+
+def resolveFuncArgs(func, *args, **kwargs):
+    ''' Return a dictionary of positional and keyword arguments upon function call,
+        adding defaults from simfunc signature if not provided at call time.
+    '''
+    bound_args = signature(func).bind(*args, **kwargs)
+    bound_args.apply_defaults()
+    return dict(bound_args.arguments)

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-11 07:51:37
+# @Last Modified time: 2020-02-20 16:55:35
 
 import time
 from copy import deepcopy
@@ -58,6 +58,14 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     def copy(self):
         return self.__class__(self.a, self.pneuron, embedding_depth=self.d)
+
+    @property
+    def meta(self):
+        return {
+            'neuron': self.pneuron.name,
+            'a': self.a,
+            'd': self.d,
+        }
 
     @classmethod
     def initFromMeta(cls, meta):
@@ -483,19 +491,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         if method == 'sonic':
             simargs.append(qss_vars)
         return simfunc(*simargs)
-
-    def meta(self, drive, pp, fs, method, qss_vars):
-        return {
-            'simkey': self.simkey,
-            'neuron': self.pneuron.name,
-            'a': self.a,
-            'd': self.d,
-            'drive': drive,
-            'pp': pp,
-            'fs': fs,
-            'method': method,
-            'qss_vars': qss_vars
-        }
 
     def desc(self, meta):
         s = f'{self}: {meta["method"]} simulation @ {meta["drive"].desc}, {meta["pp"].desc}'

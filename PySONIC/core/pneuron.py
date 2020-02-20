@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-11 07:50:29
+# @Last Modified time: 2020-02-20 16:52:27
 
 import abc
 import inspect
@@ -57,6 +57,10 @@ class PointNeuron(Model):
     @property
     def Qm0(self):
         return self.Cm0 * self.Vm0 * 1e-3  # C/m2
+
+    @property
+    def meta(self):
+        return {'neuron': self.name}
 
     @staticmethod
     def inputs():
@@ -466,15 +470,6 @@ class PointNeuron(Model):
         for i in range(len(self.states)):
             data[self.statesNames()[i]] = y[:, i + 1]
         return data
-
-    @classmethod
-    def meta(cls, drive, pp):
-        return {
-            'simkey': cls.simkey,
-            'neuron': cls.name,
-            'drive': drive,
-            'pp': pp
-        }
 
     def desc(self, meta):
         return f'{self}: simulation @ {meta["drive"].desc}, {meta["pp"].desc}'
