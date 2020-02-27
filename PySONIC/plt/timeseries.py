@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-05 18:19:24
+# @Last Modified time: 2020-02-27 15:08:39
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -189,7 +189,8 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
     def postProcess(cls, ax, tplt, yplt, fs, meta, prettify):
         cls.removeSpines(ax)
         if 'bounds' in yplt:
-            ax.set_ylim(*yplt['bounds'])
+            ymin, ymax = ax.get_ylim()
+            ax.set_ylim(min(ymin, yplt['bounds'][0]), max(ymax, yplt['bounds'][1]))
         cls.setTimeLabel(ax, tplt, fs)
         cls.setYLabel(ax, yplt, fs)
         if prettify:
@@ -420,13 +421,6 @@ class GroupedTimeSeries(TimeSeriesPlot):
                     ax_pltvars[0]['color'] = 'k'
                     ax_pltvars[0]['ls'] = '-'
 
-                # Set y-axis unit and bounds
-                self.setYLabel(ax, ax_pltvars[0].copy(), fs, grouplabel=grouplabel)
-                if 'bounds' in ax_pltvars[0]:
-                    ax_min = min([ap['bounds'][0] for ap in ax_pltvars])
-                    ax_max = max([ap['bounds'][1] for ap in ax_pltvars])
-                    ax.set_ylim(ax_min, ax_max)
-
                 # Plot time series
                 icolor = 0
                 for yplt, name in zip(ax_pltvars, pltscheme[grouplabel]):
@@ -440,6 +434,14 @@ class GroupedTimeSeries(TimeSeriesPlot):
                     if name == 'Qm' and spikes != 'none':
                         ax_legend_spikes = self.materializeSpikes(
                             ax, data, tplt, yplt, color, spikes, add_to_legend=True)
+
+                # Set y-axis unit and bounds
+                self.setYLabel(ax, ax_pltvars[0].copy(), fs, grouplabel=grouplabel)
+                if 'bounds' in ax_pltvars[0]:
+                    ymin, ymax = ax.get_ylim()
+                    ax_min = min(ymin, *[ap['bounds'][0] for ap in ax_pltvars])
+                    ax_max = max(ymax, *[ap['bounds'][1] for ap in ax_pltvars])
+                    ax.set_ylim(ax_min, ax_max)
 
                 # Add legend
                 if nvars > 1 or 'gate' in ax_pltvars[0]['desc'] or ax_legend_spikes:
