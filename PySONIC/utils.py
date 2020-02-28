@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-14 14:41:21
+# @Last Modified time: 2020-02-20 18:28:02
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -759,9 +759,16 @@ def filecode(model, *args):
     ''' Generate file code given a specific combination of model input parameters. '''
     # If meta dictionary was passed, generate inputs list from it
     if len(args) == 1 and isinstance(args[0], dict):
-        meta = args[0]
-        meta_keys = list(signature(model.meta).parameters.keys())
-        args = [meta[k] for k in meta_keys]
+        meta = args[0].copy()
+        if meta['simkey'] == 'ASTIM' and 'fs' not in meta:
+            meta['fs'] = meta['model']['fs']
+            meta['method'] = meta['model']['method']
+            meta['qss_vars'] = None
+        for k in ['simkey', 'model', 'tcomp', 'dt', 'atol']:
+            if k in meta:
+                del meta[k]
+        args = list(meta.values())
+
     # Otherwise, transform args tuple into list
     else:
         args = list(args)
@@ -915,3 +922,35 @@ class StimObject(metaclass=abc.ABCMeta):
 
 def gaussian(x, mu=0., sigma=1., A=1.):
     return A * np.exp(-((x - mu) / sigma)**2)
+
+
+def isPickable(obj):
+    try:
+        pickle.dumps(obj)
+    except Exception as err:
+        return False
+    return True
+
+
+def resolveFuncArgs(func, *args, **kwargs):
+    ''' Return a dictionary of positional and keyword arguments upon function call,
+        adding defaults from simfunc signature if not provided at call time.
+    '''
+    bound_args = signature(func).bind(*args, **kwargs)
+    bound_args.apply_defaults()
+    return dict(bound_args.arguments)
+
+
+def getMeta(model, simfunc, *args, **kwargs):
+    ''' Construct an informative dictionary about the model and simulation parameters. '''
+    # Retrieve function call arguments
+    args_dict = resolveFuncArgs(simfunc, model, *args, **kwargs)
+
+    # Construct meta dictionary
+    meta = {'simkey': model.simkey}
+    for k, v in args_dict.items():
+        if k == 'self':
+            meta['model'] = v.meta
+        else:
+            meta[k] = v
+    return meta

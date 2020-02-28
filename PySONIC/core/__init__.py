@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 16:58:45
+# @Last Modified time: 2020-02-20 16:35:41
 
 from types import MethodType
 import inspect
@@ -43,6 +43,6 @@ def getModel(meta):
     ''' Return appropriate model object based on a dictionary of meta-information. '''
     simkey = meta['simkey']
     try:
-        return models_dict[simkey].initFromMeta(meta)
+        return models_dict[simkey].initFromMeta(meta['model'])
     except KeyError:
         raise ValueError(f'Unknown model type:{simkey}')

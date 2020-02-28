@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-11 07:51:06
+# @Last Modified time: 2020-02-20 17:00:01
 
 import numpy as np
 import pandas as pd
@@ -40,6 +40,10 @@ class VoltageClamp(Model):
 
     def copy(self):
         return self.__class__(self.pneuron)
+
+    @property
+    def meta(self):
+        return {'neuron': self.pneuron.name}
 
     @classmethod
     def initFromMeta(cls, meta):
@@ -147,14 +151,6 @@ class VoltageClamp(Model):
         for i in range(len(self.pneuron.states)):
             data[self.pneuron.statesNames()[i]] = y[:, i]
         return data
-
-    def meta(self, drive, tp):
-        return {
-            'simkey': self.simkey,
-            'neuron': self.pneuron.name,
-            'drive': drive,
-            'tp': tp
-        }
 
     def desc(self, meta):
         return f'{self}: simulation @ {meta["drive"].desc}, {meta["tp"].desc}'
