@@ -252,7 +252,7 @@ class AcousticDrive(XDrive):
 
     xkey = 'A'
 
-    def __init__(self, f, A, phi=np.pi):
+    def __init__(self, f, A=None, phi=np.pi):
         ''' Constructor.
 
             :param f: carrier frequency (Hz)
