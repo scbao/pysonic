@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-01 19:45:39
+# @Last Modified time: 2020-02-28 16:34:02
 
 import os
 from sys import getsizeof
@@ -33,16 +33,22 @@ class Lookup:
         '''
         self.refs = refs
         self.tables = tables
-        if interp_method not in self.interp_choices:
-            raise ValueError(f'interpolation method must be one of {self.interp_choices}')
+        self.checkInterpMethod(interp_method)
         self.interp_method = interp_method
         for k, v in self.items():
             if v.shape != self.dims:
                 raise ValueError(f'{k} Table dimensions {v.shape} does not match references {self.dims}')
 
+        self.interpolators = None
+
+        # If no dimension, make sure tables contain scalars
+        if self.ndims == 0 and isinstance(self.tables[self.outputs[0]], np.ndarray):
+            self.tables = {k: v.item(0) for k, v in self.items()}
+
         # If single input, mark it as sole ref
         if self.ndims == 1:
-            self.ref = self.refs[self.inputs[0]]
+            self.refkey = self.inputs[0]
+            self.ref = self.refs[self.refkey]
 
     def __repr__(self):
         ref_str = ', '.join([f'{x[0]}: {x[1]}' for x in zip(self.inputs, self.dims)])
@@ -55,7 +61,6 @@ class Lookup:
 
     def __delitem__(self, key):
         ''' simplified lookup table suppressor. '''
-        print(f'deleting table {key}')
         del self.tables[key]
 
     def __setitem__(self, key, value):
@@ -171,6 +176,23 @@ class Lookup:
         ''' Return a copy of the current lookup object. '''
         return self.__class__(self.refs, self.tables)
 
+    def checkInterpMethod(self, interp_method):
+        if interp_method not in self.interp_choices:
+            raise ValueError(f'interpolation method must be one of {self.interp_choices}')
+
+    def getInterpolator(self, ref_key, table_key, axis=-1, interp_method=None):
+        ''' Return a 1D interpolator function along a given reference vector for a specific table .'''
+        if interp_method is None:
+            interp_method = self.interp_method
+        self.checkInterpMethod(interp_method)
+        return interp1d(self.refs[ref_key], self.tables[table_key], kind=interp_method, axis=axis)
+
+    def setInterpolators(self, **kwargs):
+        self.interpolators = {k: self.getInterpolator(self.refkey, k, **kwargs) for k in self.keys()}
+
+    def removeInterpolators(self):
+        self.interpolators = None
+
     def project(self, key, value):
         ''' Return a new lookup object in which tables are interpolated at one/several
             specific value(s) along a given dimension.
@@ -199,7 +221,7 @@ class Lookup:
             new_tables = {k: v.mean(axis=axis) for k, v in self.items()}
         else:
             # Otherwise, interpolate lookup tables appropriate value(s) along the reference vector
-            new_tables = {k: interp1d(self.refs[key], v, kind=self.interp_method, axis=axis)(value) for k, v in self.items()}
+            new_tables = {k: self.getInterpolator(key, k, axis=axis)(value) for k in self.keys()}
 
         # Construct new refs dictionary, deleting
         new_refs = self.refs.copy()
@@ -260,7 +282,14 @@ class Lookup:
             .. warning:: This method can only be used for 1 dimensional lookups.
         '''
         assert self.ndims == 1, 'Cannot interpolate multi-dimensional object'
-        return np.interp(ref_value, self.ref, self.tables[var_key], left=np.nan, right=np.nan)
+        if self.interpolators is None:
+            return np.interp(ref_value, self.ref, self.tables[var_key], left=np.nan, right=np.nan)
+        else:
+            ref_value = isWithin(self.refkey, ref_value, (self.ref.min(), self.ref.max()))
+            out = self.interpolators[var_key](ref_value)
+            if isinstance(ref_value, float):
+                out = out.item(0)
+            return out
 
     def interpolate1D(self, value):
         ''' Interpolate all lookup vectors variable at one/several specific value(s)
@@ -340,7 +369,9 @@ class EffectiveVariablesLookup(Lookup):
     '''
 
     def __init__(self, refs, tables, **kwargs):
-        super().__init__(refs, EffectiveVariablesDict(tables), **kwargs)
+        if not isinstance(tables, EffectiveVariablesDict):
+            tables = EffectiveVariablesDict(tables)
+        super().__init__(refs, tables, **kwargs)
 
     def interpolate1D(self, value):
         return EffectiveVariablesDict(super().interpolate1D(value))
