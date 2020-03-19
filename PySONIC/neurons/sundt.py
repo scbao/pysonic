@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-27 21:24:05
+# @Last Modified time: 2020-03-11 14:13:43
 
 import numpy as np
 from ..core import PointNeuron
@@ -141,7 +141,7 @@ class Sundt(PointNeuron):
     def betah(cls, Vm):
         Vm -= cls.Vrest_Traub
         Vm += cls.hshift
-        return cls.q10_Traub * 4 / (1 + np.exp((40.0 - Vm) / 5)) * 1e3 # s-1
+        return cls.q10_Traub * 4 / (1 + np.exp((40.0 - Vm) / 5)) * 1e3  # s-1
 
     # iKd kinetics: using Migliore 1995 values, with Borg-Graham 1991 formalism, with:
     # - Q10 correction to account for temperature adaptation from 30 to 35 degrees
@@ -200,7 +200,6 @@ class Sundt(PointNeuron):
     # @classmethod
     # def betaq(cls, Cai):
     #     return 0.006 / np.exp((12 * np.log10((Cai * cls.Ca_factor)**cls.Ca_power) + 60.4) / 35) * 1e3  # s-1
-
 
     # ------------------------------ States derivatives ------------------------------
 

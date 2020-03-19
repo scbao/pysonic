@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 18:28:02
+# @Last Modified time: 2020-03-04 12:10:54
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -954,3 +954,8 @@ def getMeta(model, simfunc, *args, **kwargs):
         else:
             meta[k] = v
     return meta
+
+
+def bounds(arr):
+    ''' Return the bounds or a numpy array / list. '''
+    return (np.nanmin(arr), np.nanmax(arr))

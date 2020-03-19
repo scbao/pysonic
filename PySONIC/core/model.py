@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 17:11:00
+# @Last Modified time: 2020-03-18 12:04:49
 
 import os
 from functools import wraps
@@ -215,7 +215,8 @@ class Model(metaclass=abc.ABCMeta):
 
                     # If no threshold was found, return None
                     if np.isnan(xthr):
-                        logger.error(f'Could not find threshold {drive.inputs()[drive.xkey]["desc"]}')
+                        logger.error(
+                            f'Could not find threshold {drive.inputs()[drive.xkey]["desc"]}')
                         return None
 
                     # Otherwise, update args list with resovled drive

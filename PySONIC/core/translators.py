@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-02 12:59:48
+# @Last Modified time: 2020-03-04 12:40:28
 
 from time import gmtime, strftime
 import re
@@ -75,10 +75,10 @@ class Translator:
             sep_character = '='
         lambda_source = lambda_source.split(sep_character, 1)[-1]
 
-        # Clean up source from
+        # Clean up source
         lambda_source = re.sub(' +', ' ', lambda_source.replace('\n', '')).strip().replace('( ', '(')
         lambda_source = cls.removeLineComments(lambda_source)
-        if lambda_source[-1] == ',':
+        if lambda_source[-1] in [',', '}']:
             lambda_source = lambda_source[:-1]
 
         # Match lambda pattern in cleaned-up source, and return match groups

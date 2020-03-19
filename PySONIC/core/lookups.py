@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-28 16:34:02
+# @Last Modified time: 2020-03-18 16:02:03
 
 import os
 from sys import getsizeof
@@ -22,24 +22,25 @@ class Lookup:
         reference input vectors.
     '''
 
-    interp_choices = ('linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic', 'previous', 'next')
+    interp_choices = ('linear', 'quadratic', 'cubic', 'poly1', 'poly2', 'poly3')
 
-    def __init__(self, refs, tables, interp_method='linear'):
+    def __init__(self, refs, tables, interp_method='linear', extrapolate=False):
         ''' Constructor.
 
             :param refs: dictionary of reference one-dimensional input vectors.
             :param tables: dictionary of multi-dimensional lookup tables
             :param interp_method: interpolation method
+            :param extrapolate: boolean stating whether tables can be extrapolated outside
+                of reference bounds
         '''
         self.refs = refs
         self.tables = tables
-        self.checkInterpMethod(interp_method)
         self.interp_method = interp_method
+        self.extrapolate = extrapolate
         for k, v in self.items():
             if v.shape != self.dims:
-                raise ValueError(f'{k} Table dimensions {v.shape} does not match references {self.dims}')
-
-        self.interpolators = None
+                raise ValueError(
+                    f'{k} Table dimensions {v.shape} does not match references {self.dims}')
 
         # If no dimension, make sure tables contain scalars
         if self.ndims == 0 and isinstance(self.tables[self.outputs[0]], np.ndarray):
@@ -116,6 +117,34 @@ class Lookup:
         ''' Names of the different output tables. '''
         return list(self.keys())
 
+    @property
+    def interp_method(self):
+        return self._interp_method
+
+    @interp_method.setter
+    def interp_method(self, value):
+        if value not in self.interp_choices:
+            raise ValueError(f'interpolation method must be one of {self.interp_choices}')
+        if self.isPolynomialMethod(value) and self.ndims > 1:
+            raise ValueError(f'polynomial interpolation only available for 1D lookups')
+        self._interp_method = value
+
+    @property
+    def extrapolate(self):
+        return self._extrapolate
+
+    @extrapolate.setter
+    def extrapolate(self, value):
+        if not isinstance(value, bool):
+            raise ValueError(f'extrapolate: expected boolean')
+        self._extrapolate = value
+
+    @property
+    def kwattrs(self):
+        return {
+            'interp_method': self.interp_method,
+            'extrapolate': self.extrapolate}
+
     def checkAgainst(self, other):
         ''' Check self object against another lookup object for compatibility. '''
         if self.inputs != other.inputs:
@@ -139,7 +168,7 @@ class Lookup:
             tables = {k: getattr(v, op)(other) for k, v in self.items()}
         else:
             raise ValueError(f'Cannot {op} {self.__class__} object with {type(other)} variable')
-        return self.__class__(self.refs, tables)
+        return self.__class__(self.refs, tables, **self.kwattrs)
 
     def __add__(self, other):
         ''' Addition operator. '''
@@ -165,7 +194,7 @@ class Lookup:
         for k, v in self.refitems():
             if v.size > 1:
                 new_refs[k] = v
-        return self.__class__(new_refs, new_tables)
+        return self.__class__(new_refs, new_tables, **self.kwattrs)
 
     def getAxisIndex(self, key):
         ''' Get the axis index of a specific input key. '''
@@ -174,24 +203,28 @@ class Lookup:
 
     def copy(self):
         ''' Return a copy of the current lookup object. '''
-        return self.__class__(self.refs, self.tables)
+        return self.__class__(self.refs, self.tables, **self.kwattrs)
 
     def checkInterpMethod(self, interp_method):
         if interp_method not in self.interp_choices:
             raise ValueError(f'interpolation method must be one of {self.interp_choices}')
 
-    def getInterpolator(self, ref_key, table_key, axis=-1, interp_method=None):
-        ''' Return a 1D interpolator function along a given reference vector for a specific table .'''
-        if interp_method is None:
-            interp_method = self.interp_method
-        self.checkInterpMethod(interp_method)
-        return interp1d(self.refs[ref_key], self.tables[table_key], kind=interp_method, axis=axis)
+    @staticmethod
+    def isPolynomialMethod(method):
+        return method.startswith('poly')
 
-    def setInterpolators(self, **kwargs):
-        self.interpolators = {k: self.getInterpolator(self.refkey, k, **kwargs) for k in self.keys()}
+    def getInterpolationDegree(self):
+        return int(self.interp_method[-1])
 
-    def removeInterpolators(self):
-        self.interpolators = None
+    def getInterpolator(self, ref_key, table_key, axis=-1):
+        ''' Return 1D interpolator function along a given reference vector for a specific table .'''
+        if self.isPolynomialMethod(self.interp_method):
+            return np.poly1d(np.polyfit(self.refs[ref_key], self.tables[table_key],
+                                        self.getInterpolationDegree()))
+        else:
+            fill_value = 'extrapolate' if self.kwattrs['extrapolate'] else np.nan
+            return interp1d(self.refs[ref_key], self.tables[table_key], axis=axis,
+                            kind=self.interp_method, assume_sorted=True, fill_value=fill_value)
 
     def project(self, key, value):
         ''' Return a new lookup object in which tables are interpolated at one/several
@@ -209,7 +242,8 @@ class Lookup:
             value = np.asarray(value)
 
         # Check that value is within the bounds of the reference vector
-        value = isWithin(key, value, (self.refs[key].min(), self.refs[key].max()))
+        if not self.kwattrs['extrapolate']:
+            value = isWithin(key, value, (self.refs[key].min(), self.refs[key].max()))
 
         # Get the axis index of the reference vector
         axis = self.getAxisIndex(key)
@@ -233,7 +267,7 @@ class Lookup:
             new_refs[key] = value
 
         # Construct and return a lookup object with the updated refs and tables
-        return self.__class__(new_refs, new_tables)
+        return self.__class__(new_refs, new_tables, **self.kwattrs)
 
     def projectN(self, projections):
         ''' Project along multiple dimensions simultaneously.
@@ -282,14 +316,7 @@ class Lookup:
             .. warning:: This method can only be used for 1 dimensional lookups.
         '''
         assert self.ndims == 1, 'Cannot interpolate multi-dimensional object'
-        if self.interpolators is None:
-            return np.interp(ref_value, self.ref, self.tables[var_key], left=np.nan, right=np.nan)
-        else:
-            ref_value = isWithin(self.refkey, ref_value, (self.ref.min(), self.ref.max()))
-            out = self.interpolators[var_key](ref_value)
-            if isinstance(ref_value, float):
-                out = out.item(0)
-            return out
+        return np.interp(ref_value, self.ref, self.tables[var_key], left=np.nan, right=np.nan)
 
     def interpolate1D(self, value):
         ''' Interpolate all lookup vectors variable at one/several specific value(s)
@@ -312,7 +339,7 @@ class Lookup:
         itiles = range(ref_values.size)
         tables = {k: np.array([v for i in itiles]) for k, v in self.items()}
         refs = {**{ref_name: ref_values}, **self.refs}
-        return self.__class__(refs, tables)
+        return self.__class__(refs, tables, **self.kwattrs)
 
     def toDict(self):
         ''' Translate self object into a dictionary. '''
@@ -359,7 +386,6 @@ class Lookup:
         ''' Raise an error if filepath does not correspond to an existing file. '''
         if not os.path.isfile(fpath):
             raise FileNotFoundError(f'Missing lookup file: "{fpath}"')
-
 
 
 class EffectiveVariablesLookup(Lookup):
@@ -422,7 +448,6 @@ class EffectiveVariablesLookup(Lookup):
         lkp.move('A', A_axis)
 
         return lkp
-
 
 
 class EffectiveVariablesDict():

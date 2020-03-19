@@ -3,15 +3,15 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-02-27 21:24:05
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-27 22:53:08
+# @Last Modified time: 2020-03-16 21:17:14
 
 import numpy as np
 from ..core import PointNeuron
-from ..utils import logger
+from ..constants import CELSIUS_2_KELVIN
 
 
-class MRG(PointNeuron):
-    ''' Mammalian myelinated fiber model.
+class MRGNode(PointNeuron):
+    ''' Mammalian myelinated fiber node.
 
         Reference:
         *McIntyre, C.C., Richardson, A.G., and Grill, W.M. (2002). Modeling the excitability
@@ -20,7 +20,7 @@ class MRG(PointNeuron):
     '''
 
     # Neuron name
-    name = 'MRG'
+    name = 'MRGnode'
 
     # ------------------------------ Biophysical parameters ------------------------------
 
@@ -39,6 +39,13 @@ class MRG(PointNeuron):
     gKsbar = 800.   # Slow Potassium
     gLeak = 70.     # Non-specific leakage
 
+    # Additional parameters
+    celsius = 36.0          # Temperature (Celsius)
+    celsius_Schwarz = 20.0  # Temperature in Schwarz 1995 (Celsius)
+    celsius_Ks = 36.0       # Temperature iused for Ks channels (unknown ref.)
+    mhshift = 3.            # m and h gates voltage shift (mV)
+    vtraub = -80.           # Reference voltage for the definition of the s rate constants (mV)
+
     # ------------------------------ States names & descriptions ------------------------------
     states = {
         'm': 'iNaf activation gate',
@@ -49,37 +56,63 @@ class MRG(PointNeuron):
 
     # ------------------------------ Gating states kinetics ------------------------------
 
+    def __new__(cls):
+        cls.q10_mp = 2.2**((cls.celsius - cls.celsius_Schwarz) / 10)  # from Schwarz 1987
+        cls.q10_h = 2.9**((cls.celsius - cls.celsius_Schwarz) / 10)   # from Schwarz 1987
+        cls.q10_s = 3.0**((cls.celsius - cls.celsius_Ks) / 10)        # from ???
+        return super(MRGNode, cls).__new__(cls)
+
+    # iNaf kinetics: adapted from Schwarz 1995, with notable changes:
+    # - Q10 correction to account for temperature adaptation from 20 degrees reference
+    # - 3 mV offset to m and h gates to shift voltage dependence in the hyperpolarizing direction,
+    #   to increase the conduction velocity and strength-duration time constant (from McIntyre 2002)
+    # - increase in tau_h to slow down inactivation (achieved through alphah?)
+
     @classmethod
     def alpham(cls, Vm):
-        return 6.57 * cls.vtrap(-(Vm + 20.4), 10.3) * 1e3  # s-1
+        Vm += cls.mhshift
+        return cls.q10_mp * 1.86 * cls.vtrap(-(Vm + 18.4), 10.3) * 1e3  # s-1
 
     @classmethod
     def betam(cls, Vm):
-        return 0.304 * cls.vtrap(Vm + 25.7, 9.16) * 1e3  # s-1
+        Vm += cls.mhshift
+        return cls.q10_mp * 0.086 * cls.vtrap(Vm + 22.7, 9.16) * 1e3  # s-1
 
     @classmethod
     def alphah(cls, Vm):
-        return 0.34 * cls.vtrap(Vm + 114., 11.) * 1e3  # s-1
+        Vm += cls.mhshift
+        return cls.q10_h * 0.062 * cls.vtrap(Vm + 111.0, 11.0) * 1e3  # s-1
 
     @classmethod
     def betah(cls, Vm):
-        return 12.6 / (1 + np.exp(-(Vm + 31.8) / 13.4)) * 1e3 # s-1
+        Vm += cls.mhshift
+        return cls.q10_h * 2.3 / (1 + np.exp(-(Vm + 28.8) / 13.4)) * 1e3  # s-1
+
+    # iNap kinetics: adapted from ???, with notable changes:
+    # - Q10 correction to account for temperature adaptation from 20 degrees reference
+    # - increase in tau_p in order to extend the duration and amplitude of the DAP.
 
     @classmethod
     def alphap(cls, Vm):
-        return 0.0353 * cls.vtrap(-(Vm + 27.), 10.2) * 1e3  # s-1
+        return cls.q10_mp * 0.01 * cls.vtrap(-(Vm + 27.), 10.2) * 1e3  # s-1
 
     @classmethod
     def betap(cls, Vm):
-        return 0.000883 * cls.vtrap(Vm + 34., 10.) * 1e3  # s-1
+        return cls.q10_mp * 0.00025 * cls.vtrap(Vm + 34., 10.) * 1e3  # s-1
+
+    # iKs kinetics: adapted from ???, with notable changes:
+    # - Q10 correction to account for temperature adaptation from 36 degrees reference
+    # - increase in tau_s in order to to create an AHP that matches experimental records.
 
     @classmethod
     def alphas(cls, Vm):
-        return 0.3 / (1 + np.exp(-(Vm + 53.) / 5)) * 1e3  # s-1
+        Vm -= cls.vtraub
+        return cls.q10_s * 0.3 / (1 + np.exp(-(Vm - 27.) / 5.)) * 1e3  # s-1
 
     @classmethod
     def betas(cls, Vm):
-        return 0.03 / (1 + np.exp(-(Vm + 90.))) * 1e3  # s-1
+        Vm -= cls.vtraub
+        return cls.q10_s * 0.03 / (1 + np.exp(-(Vm + 10.) / 1.)) * 1e3  # s-1
 
     # ------------------------------ States derivatives ------------------------------
 

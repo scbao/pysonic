@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-11 15:29:06
+# @Last Modified time: 2020-03-16 11:51:24
 
 import numpy as np
 
@@ -14,9 +14,9 @@ class SweeneyNode(PointNeuron):
     ''' Mammalian (rabbit) myelinated motor fiber fiber node.
 
         References:
-        *Sweeney, J.D., Mortimer, J.T., and Durand, D. (1987). Modeling of mammalian myelinated nerve
-        for functional neuromuscular stimulation. IEEE 9th Annual Conference of the Engineering
-        in Medicine and Biology Society 3, 1577–1578.*
+        *Sweeney, J.D., Mortimer, J.T., and Durand, D. (1987). Modeling of mammalian myelinated
+        nerve for functional neuromuscular stimulation. IEEE 9th Annual Conference of the
+        Engineering in Medicine and Biology Society 3, 1577–1578.*
 
         Corrections of maximal conductances and alpham rate constant according to:
         *Basser, P.J., and Roth, B.J. (1991). Stimulation of a myelinated nerve axon
@@ -38,7 +38,7 @@ class SweeneyNode(PointNeuron):
 
     # Maximal channel conductances (S/m2)
     gNabar = 1445e1  # Sodium
-    gLeak = 128e1   # Non-specific leakage
+    gLeak = 128e1    # Non-specific leakage
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
