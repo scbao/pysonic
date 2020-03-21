@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-27 15:08:39
+# @Last Modified time: 2020-03-21 18:50:22
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -355,6 +355,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
             #     cls.prettify(ax, xticks=(0, meta['tstim'] * tplt['factor']), yfmt=None)
             cls.setTickLabelsFontSize(ax, fs)
         for ax in axes[:-1]:
+            ax.get_shared_x_axes().join(ax, axes[-1])
             ax.set_xticklabels([])
         cls.setTimeLabel(axes[-1], tplt, fs)
 
