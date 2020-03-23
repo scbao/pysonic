@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-04 13:23:31
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-29 12:02:09
+# @Last Modified time: 2020-03-23 17:30:42
 
 ''' Numerical constants used in the package. '''
 
@@ -69,10 +69,9 @@ QSS_Q_DIV_THR = 1e-4                    # min. charge deviation to infer diverge
 TMIN_STABILIZATION = 500e-3             # time window for stabilization analysis (s)
 
 
-
 def getConstantsDict():
-	cdict = {}
-	for k, v in globals().items():
-		if not k.startswith('__') and k != 'getConstantsDict':
-			cdict[k] = v
-	return cdict
+    cdict = {}
+    for k, v in globals().items():
+        if not k.startswith('__') and k != 'getConstantsDict':
+            cdict[k] = v
+    return cdict

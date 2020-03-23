@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-28 16:42:50
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-02 19:18:42
+# @Last Modified time: 2020-03-23 17:50:50
 
 import numpy as np
 
@@ -22,7 +22,20 @@ class MaxNIterations(Exception):
         super().__init__(msg)
 
 
-def threshold(feval, xbounds, x0=None, eps_thr=None, rel_eps_thr=1e-2, max_nit=50, precheck=False, fbound=2, output_history=False):
+def getLogStartPoint(bounds, x=0.5):
+    ''' Define a value located at a given relative logarithmic distance between two bounds.
+
+        :param bounds: lower and upper bound values
+        :param x: relative logarithmic distance, between 0 (lower bound) and 1 (upper bound)
+        :return: scaled starting value
+    '''
+    log_bounds = np.log10(bounds)
+    log_x0 = (1 - x) * log_bounds[0] + x * log_bounds[1]
+    return np.power(10., log_x0)
+
+
+def threshold(feval, xbounds, x0=None, eps_thr=None, rel_eps_thr=1e-2,
+              max_nit=50, precheck=False, fbound=2, output_history=False):
     ''' Determine the threshold satisfying a given condition within a continuous search interval,
         using a binary search with initial preconditioning.
 
