@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-05 18:19:27
+# @Last Modified time: 2020-03-24 13:59:47
 
 ''' Useful functions to generate plots. '''
 
@@ -406,3 +406,14 @@ class ComparativePlot(GenericPlot):
         common_lbl += pieces[-1]
 
         return common_lbl
+
+
+def addExcitationInset(ax, is_excited):
+    ''' Add text inset on axis stating excitation status. '''
+    ax.text(
+        0.7, 0.7, f'{"" if is_excited else "not "}excited',
+        transform=ax.transAxes,
+        ha='center', va='center', size=30, bbox=dict(
+            boxstyle='round',
+            fc=(0.8, 1.0, 0.8) if is_excited else (1., 0.8, 0.8)
+        ))
