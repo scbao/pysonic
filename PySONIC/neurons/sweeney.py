@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-16 11:51:24
+# @Last Modified time: 2020-03-26 21:15:36
 
 import numpy as np
 
@@ -11,7 +11,7 @@ from ..core import PointNeuron
 
 
 class SweeneyNode(PointNeuron):
-    ''' Mammalian (rabbit) myelinated motor fiber fiber node.
+    ''' Mammalian (rabbit) myelinated motor fiber node.
 
         References:
         *Sweeney, J.D., Mortimer, J.T., and Durand, D. (1987). Modeling of mammalian myelinated
