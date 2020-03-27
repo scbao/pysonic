@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-26 21:15:36
+# @Last Modified time: 2020-03-27 12:23:35
 
 import numpy as np
 
@@ -23,8 +23,8 @@ class SweeneyNode(PointNeuron):
         by electromagnetic induction. Med Biol Eng Comput 29, 261–268.*
     '''
 
-    # Neuron name
-    name = 'SW'
+    # Mechanism name
+    name = 'SWnode'
 
     # ------------------------------ Biophysical parameters ------------------------------
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 21:26:23
+# @Last Modified time: 2020-03-26 22:19:28
 
 ''' Test the basic functionalities of the package. '''
 
@@ -62,7 +62,7 @@ class TestSims(TestBase):
 
         # Run simulation on all neurons
         for name, neuron_class in getNeuronsDict().items():
-            if name not in ('template', 'LeechP', 'LeechT', 'LeechR', 'SW'):
+            if name not in ('template', 'LeechP', 'LeechT', 'LeechR', 'SWnode'):
                 pneuron = neuron_class()
                 nbls = NeuronalBilayerSonophore(self.a, pneuron)
                 self.execute("nbls.simulate(self.USdrive, pp, method='sonic')",

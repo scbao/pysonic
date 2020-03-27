@@ -3,15 +3,15 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-27 20:13:05
+# @Last Modified time: 2020-03-27 12:24:04
 
 import numpy as np
 from ..core import PointNeuron
 from ..constants import CELSIUS_2_KELVIN, Z_Na, Z_K
 
 
-class FrankenhaeuserHuxley(PointNeuron):
-    ''' Xenopus myelinated fiber node
+class FrankenhaeuserHuxleyNode(PointNeuron):
+    ''' Amphibien (xenopus) myelinated fiber node.
 
         Reference:
         *Frankenhaeuser, B., and Huxley, A.F. (1964). The action potential in the myelinated nerve
@@ -19,8 +19,8 @@ class FrankenhaeuserHuxley(PointNeuron):
         J Physiol 171, 302–315.*
     '''
 
-    # Neuron name
-    name = 'FH'
+    # Mechanism name
+    name = 'FHnode'
 
     # ------------------------------ Biophysical parameters ------------------------------
 
@@ -59,7 +59,7 @@ class FrankenhaeuserHuxley(PointNeuron):
     def __new__(cls):
         cls.q10 = 3**((cls.celsius - 20) / 10)
         cls.T = cls.celsius + CELSIUS_2_KELVIN
-        return super(FrankenhaeuserHuxley, cls).__new__(cls)
+        return super(FrankenhaeuserHuxleyNode, cls).__new__(cls)
 
     @classmethod
     def getPltVars(cls, wrapleft='df["', wrapright='"]'):

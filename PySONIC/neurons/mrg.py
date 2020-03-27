@@ -3,11 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-02-27 21:24:05
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-16 21:17:14
+# @Last Modified time: 2020-03-27 19:43:40
 
 import numpy as np
 from ..core import PointNeuron
-from ..constants import CELSIUS_2_KELVIN
 
 
 class MRGNode(PointNeuron):
@@ -19,7 +18,7 @@ class MRGNode(PointNeuron):
         J. Neurophysiol. 87, 995–1006.*
     '''
 
-    # Neuron name
+    # Mechanism name
     name = 'MRGnode'
 
     # ------------------------------ Biophysical parameters ------------------------------

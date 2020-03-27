@@ -3,16 +3,16 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-11 14:13:43
+# @Last Modified time: 2020-03-27 12:25:31
 
 import numpy as np
 from ..core import PointNeuron
-from ..constants import CELSIUS_2_KELVIN, FARADAY, Rg, Z_Ca
-from ..utils import findModifiedEq, logger
+from ..constants import CELSIUS_2_KELVIN
+from ..utils import logger
 
 
-class Sundt(PointNeuron):
-    ''' Unmyelinated C-fiber model.
+class SundtSegment(PointNeuron):
+    ''' Unmyelinated C-fiber segment.
 
         Reference:
         *Sundt D., Gamper N., Jaffe D. B., Spike propagation through the dorsal
@@ -20,8 +20,8 @@ class Sundt(PointNeuron):
         Journal of Neurophysiology (2015)*
     '''
 
-    # Neuron name
-    name = 'sundt'
+    # Mechanism name
+    name = 'SUseg'
 
     # ------------------------------ Biophysical parameters ------------------------------
 
@@ -92,7 +92,7 @@ class Sundt(PointNeuron):
         cls.ELeak = cls.Vm0 + iNet / cls.gLeak  # mV
         logger.debug(f'Eleak = {cls.ELeak:.2f} mV')
 
-        return super(Sundt, cls).__new__(cls)
+        return super(SundtSegment, cls).__new__(cls)
 
     # @property
     # def pltScheme(self):
