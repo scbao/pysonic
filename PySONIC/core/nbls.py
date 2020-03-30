@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-28 15:04:55
+# @Last Modified time: 2020-03-30 13:27:31
 
 import time
 from copy import deepcopy
@@ -363,7 +363,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lkps1d['ON'] = lkps1d['ON'] * pp.DC + lkps1d['OFF'] * (1 - pp.DC)
             tstim = (int(pp.tstim * pp.PRF) - 1 + pp.DC) / pp.PRF
             toffset = pp.tstim + pp.toffset - tstim
-            tp = TimeProtocol(tstim, toffset)
+            pp = TimeProtocol(tstim, toffset)
 
         # # Determine QSS and differential variables
         if qss_vars is None:
