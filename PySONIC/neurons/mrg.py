@@ -3,12 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-02-27 21:24:05
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-27 19:43:40
+# @Last Modified time: 2020-03-31 18:13:32
 
 import numpy as np
-from ..core import PointNeuron
+from ..core import PointNeuron, addSonicFeatures
 
 
+@addSonicFeatures
 class MRGNode(PointNeuron):
     ''' Mammalian myelinated fiber node.
 

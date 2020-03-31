@@ -3,14 +3,15 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-27 12:25:31
+# @Last Modified time: 2020-03-31 18:13:50
 
 import numpy as np
-from ..core import PointNeuron
+from ..core import PointNeuron, addSonicFeatures
 from ..constants import CELSIUS_2_KELVIN
 from ..utils import logger
 
 
+@addSonicFeatures
 class SundtSegment(PointNeuron):
     ''' Unmyelinated C-fiber segment.
 

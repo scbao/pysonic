@@ -3,13 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-09-12 11:15:17
+# @Last Modified time: 2020-03-31 18:14:08
 
 import numpy as np
 
-from ..core import PointNeuron
+from ..core import PointNeuron, addSonicFeatures
 
 
+@addSonicFeatures
 class TemplateNeuron(PointNeuron):
     ''' Template neuron class '''
 

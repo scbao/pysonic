@@ -3,13 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-27 22:41:00
+# @Last Modified time: 2020-03-31 18:10:50
 
-from types import MethodType
 import inspect
 import sys
 
-from ..core.translators import SonicTranslator
 from .template import *
 from .cortical import *
 from .thalamic import *
@@ -39,21 +37,3 @@ def getPointNeuron(name):
     except KeyError:
         raise ValueError('"{}" neuron not found. Implemented neurons are: {}'.format(
             name, ', '.join(list(neuron_classes.keys()))))
-
-
-def createClassMethod(func):
-    return lambda self: func
-
-
-for pname, pclass in getNeuronsDict().items():
-    translator = SonicTranslator(pclass, verbose=False)
-    eff_dstates = translator.parseDerStates()
-    pclass.derEffStates = MethodType(createClassMethod(eff_dstates), pclass)
-    pclass.effRates = MethodType(createClassMethod(translator.eff_rates), pclass)
-    pclass.rates = list(translator.eff_rates.keys())
-    pclass.alphax_list = set(translator.alphax_list)
-    pclass.betax_list = set(translator.betax_list)
-    pclass.taux_list = set(translator.taux_list)
-    pclass.xinf_list = set(translator.xinf_list)
-    qsstates = translator.parseSteadyStates()
-    pclass.quasiSteadyStates = MethodType(createClassMethod(qsstates), pclass)

@@ -3,13 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-04 12:40:28
+# @Last Modified time: 2020-03-31 18:23:43
 
-from time import gmtime, strftime
 import re
 import inspect
-
-from ..constants import *
+from types import MethodType
 
 
 class Translator:
@@ -284,7 +282,6 @@ class SonicTranslator(PointNeuronTranslator):
     def translateLambdaDictcall(cls, x):
         return f'{x.group(1)}[\'{x.group(3)}\'](lkp)'
 
-
     def addToEffRates(self, expr):
         ''' add effective rate(s) corresponding to function expression '''
 
@@ -387,3 +384,31 @@ class SonicTranslator(PointNeuronTranslator):
         # Return dictionary of evaluated functions
         return {k: self.createClassLambda(['lkp'], v, func_name='quasiSteadyStates')
                 for k, v in qsstates_str.items()}
+
+
+def createClassMethod(func):
+    ''' Create a class method from a function. '''
+    return lambda self: func
+
+
+def addSonicFeatures(pclass):
+    ''' Add the necessary features to a point-neuron class to enable acoustic simulation
+        with the SONIC method.
+
+        That includes:
+        - derEffStates and effRates methods
+        - alphax, betax, taux and xinf list attributes
+        - quasiSteadyStates method
+    '''
+    translator = SonicTranslator(pclass, verbose=False)
+    eff_dstates = translator.parseDerStates()
+    pclass.derEffStates = MethodType(createClassMethod(eff_dstates), pclass)
+    pclass.effRates = MethodType(createClassMethod(translator.eff_rates), pclass)
+    pclass.rates = list(translator.eff_rates.keys())
+    pclass.alphax_list = set(translator.alphax_list)
+    pclass.betax_list = set(translator.betax_list)
+    pclass.taux_list = set(translator.taux_list)
+    pclass.xinf_list = set(translator.xinf_list)
+    qsstates = translator.parseSteadyStates()
+    pclass.quasiSteadyStates = MethodType(createClassMethod(qsstates), pclass)
+    return pclass

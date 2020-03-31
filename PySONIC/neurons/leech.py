@@ -3,15 +3,16 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-07-17 15:28:44
+# @Last Modified time: 2020-03-31 18:15:43
 
 from functools import partialmethod
 import numpy as np
 
-from ..core import PointNeuron
+from ..core import PointNeuron, addSonicFeatures
 from ..constants import FARADAY, Rg, Z_Na, Z_Ca
 
 
+@addSonicFeatures
 class LeechTouch(PointNeuron):
     ''' Leech touch sensory neuron
 
@@ -365,6 +366,7 @@ class LeechMech(PointNeuron):
         }
 
 
+@addSonicFeatures
 class LeechPressure(LeechMech):
     ''' Leech pressure sensory neuron
 
@@ -477,6 +479,7 @@ class LeechPressure(LeechMech):
         }}
 
 
+# @addSonicFeatures
 class LeechRetzius(LeechMech):
     ''' Leech Retzius neuron
 
@@ -493,7 +496,7 @@ class LeechRetzius(LeechMech):
     '''
 
     # Neuron name
-    # name = 'LeechR'
+    name = 'LeechR'
 
     # ------------------------------ Biophysical parameters ------------------------------
 

@@ -3,13 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 16:34:15
+# @Last Modified time: 2020-03-31 15:58:02
 
 import abc
 import numpy as np
 
 from ..utils import si_format, StimObject
-from ..constants import NPC_DENSE, NPC_SPARSE
+from ..constants import *
 from .batches import Batch
 
 
@@ -71,6 +71,11 @@ class Drive(StimObject):
 class XDrive(Drive):
     ''' Drive object that can be titrated to find the threshold value of one of its inputs. '''
 
+    xvar_initial = None
+    xvar_rel_thr = None
+    xvar_thr = None
+    xvar_precheck = False
+
     @property
     @abc.abstractmethod
     def xvar(self):
@@ -99,6 +104,9 @@ class ElectricDrive(XDrive):
     ''' Electric drive object with constant amplitude. '''
 
     xkey = 'I'
+    xvar_initial = ESTIM_AMP_INITIAL
+    xvar_rel_thr = ESTIM_REL_CONV_THR
+    xvar_range = (0., ESTIM_AMP_UPPER_BOUND)
 
     def __init__(self, I):
         ''' Constructor.
@@ -251,6 +259,10 @@ class AcousticDrive(XDrive):
     ''' Acoustic drive object with intrinsic frequency and amplitude. '''
 
     xkey = 'A'
+    xvar_initial = ASTIM_AMP_INITIAL
+    xvar_rel_thr = ASTIM_REL_CONV_THR
+    xvar_thr = ASTIM_ABS_CONV_THR
+    xvar_precheck = True
 
     def __init__(self, f, A=None, phi=np.pi):
         ''' Constructor.

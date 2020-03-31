@@ -27,7 +27,9 @@ Numerical integration routines are implemented outside the models, in separate `
 
 ### Neurons
 
-Several conductance-based point-neuron models are implemented that inherit from the `PointNeuron` generic interface:
+Several conductance-based point-neuron models are implemented that inherit from the `PointNeuron` generic interface.
+
+Among them, several CNS models:
 - `CorticalRS`: cortical regular spiking (`RS`) neuron
 - `CorticalFS`: cortical fast spiking (`FS`) neuron
 - `CorticalLTS`: cortical low-threshold spiking (`LTS`) neuron
@@ -35,7 +37,12 @@ Several conductance-based point-neuron models are implemented that inherit from 
 - `ThalamicRE`: thalamic reticular (`RE`) neuron
 - `ThalamoCortical`: thalamo-cortical (`TC`) neuron
 - `OstukaSTN`: subthalamic nucleus (`STN`) neuron
-- `FrankenhaeuserHuxleyNode`: Xenopus myelinated fiber node (`FHnode`)
+
+But also some valuable models used in peripheral axon models:
+- `FrankenhaeuserHuxleyNode`: Amphibian (Xenopus) myelinated fiber node (`FHnode`)
+- `SweeneyNode`: Mammalian (rabbit) myelinated motor fiber node (`SWnode`)
+- `MRGNode`: Mammalian (human / cat) myelinated fiber node (`MRGnode`)
+- `SundtSegment`: Mammalian unmyelinated C-fiber segment (`SUseg`)
 
 ### Other modules
 
@@ -166,7 +173,7 @@ To add a new point-neuron model, follow this procedure:
 
 1. Create a new file, and save it in the `neurons` sub-folder, with an explicit name (e.g. `my_neuron.py`).
 2. Copy-paste the content of the `template.py` file (also located in the `neurons` sub-folder) into your file.
-3. In your file, change the **class name** from `TemplateNeuron` to something more explicit (e.g. `MyNeuron`), and change the **neuron name** accordingly (e.g. `myneuron`). This name is a keyword used to refer to the model from outside the class.
+3. In your file, change the **class name** from `TemplateNeuron` to something more explicit (e.g. `MyNeuron`), and change the **neuron name** accordingly (e.g. `myneuron`). This name is a keyword used to refer to the model from outside the class. Also, comment out the `addSonicFeatures` decorator temporarily.
 4. Modify/add **biophysical parameters** of your model (resting parameters, reversal potentials, channel conductances, ionic concentrations, temperatures, diffusion constants, etc...) as class attributes. If some parameters are not fixed and must be computed, assign them to the class inside a  `__new__` method, taking the class (`cls`) as sole attribute.
 5. Specify a **dictionary of names:descriptions of your different differential states** (i.e. all the differential variables of your model, except for the membrane potential).
 6. Modify/add **gating states kinetics** (`alphax` and `betax` methods) that define the voltage-dependent activation and inactivation rates of the different ion channnels gates of your model. Those methods take the membrane potential `Vm` as input and return a rate in `s-1`. Alternatively, your can use steady-state open-probabilties (`xinf`) and adaptation time constants (`taux`) methods.
@@ -176,11 +183,6 @@ To add a new point-neuron model, follow this procedure:
    - add dependent steady-state functions to the dictionary, calling `lambda_dict[k](Vm)` for each state `k` whose value is required.
 9. Modify/add **membrane currents** (`iXX` methods) of your model. Those methods take relevant gating states and the membrane potential `Vm` as inputs, and must return a current density in `mA/m2`. **You also need to modify the docstring accordingly, as this information is used by the package**.
 10. Modify the `currents` method that defines the **membrane currents of your model**. These currents are defined inside a dictionary, where each current key is paired to a lambda function that takes the membrane potential `Vm` and a states vector `x` as inputs, and returns the associated current (in `mA/m2`).
-
-**The `derStates`, `steadyStates` and `currents` methods are automatically parsed by the package to adapt neuron models to US stimulation. Hence, make sure to**:
-   - **keep them as class methods**
-   - **check that all calls to functions that depend solely on `Vm` appear directly in the methods' lambda expressions and are not hidden inside nested function calls.**
-
 11. Add the neuron class to the package, by importing it in the `__init__.py` file of the `neurons` sub-folder:
 
 ```python
@@ -188,7 +190,10 @@ from .my_neuron import MyNeuron
 ```
 
 12. Verify your point-neuron model by running simulations under various electrical stimuli and comparing the output to the neurons's expected behavior. Implement required corrections if any.
-13. Pre-compute lookup tables required to run coarse-grained  simulations of the neuron model upon ultrasonic stimulation. To do so, go to the `scripts` directory and run the `run_lookups.py` script with the neuron's name as command line argument, e.g.:
+13. Uncomment the `addSonicFeatures` decorator on top of your class. **This decorator will automatically parse the `derStates`, `steadyStates` and `currents` methods in order to adapt your neuron model to US stimulation. For this to work, you need to make sure to**:
+   - **keep them as class methods**
+   - **check that all calls to functions that depend solely on `Vm` appear directly in the methods' lambda expressions and are not hidden inside nested function calls.**
+14. Pre-compute lookup tables required to run coarse-grained  simulations of the neuron model upon ultrasonic stimulation. To do so, go to the `scripts` directory and run the `run_lookups.py` script with the neuron's name as command line argument, e.g.:
 
 ```python run_lookups.py -n myneuron --mpi```
 

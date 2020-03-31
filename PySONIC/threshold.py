@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-28 16:42:50
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-23 17:50:50
+# @Last Modified time: 2020-03-31 16:09:42
 
 import numpy as np
 
@@ -22,16 +22,20 @@ class MaxNIterations(Exception):
         super().__init__(msg)
 
 
-def getLogStartPoint(bounds, x=0.5):
-    ''' Define a value located at a given relative logarithmic distance between two bounds.
+def getStartPoint(bounds, x=0.5, scale='lin'):
+    ''' Define a value located at a given relative distance between two bounds.
 
         :param bounds: lower and upper bound values
         :param x: relative logarithmic distance, between 0 (lower bound) and 1 (upper bound)
+        :param scale: scale type between bounds ('lin' / 'log')
         :return: scaled starting value
     '''
-    log_bounds = np.log10(bounds)
-    log_x0 = (1 - x) * log_bounds[0] + x * log_bounds[1]
-    return np.power(10., log_x0)
+    if scale == 'log':
+        bounds = np.log10(bounds)
+    x0 = (1 - x) * bounds[0] + x * bounds[1]
+    if scale == 'log':
+        x0 = np.power(10., x0)
+    return x0
 
 
 def threshold(feval, xbounds, x0=None, eps_thr=None, rel_eps_thr=1e-2,
@@ -199,3 +203,33 @@ def threshold(feval, xbounds, x0=None, eps_thr=None, rel_eps_thr=1e-2,
     else:
         return x[-1]
 
+
+def titrate(model, drive, pp, **kwargs):
+    ''' Use a binary search to determine the threshold amplitude needed
+        to obtain neural excitation for a given duration, PRF and duty cycle.
+
+        :param model: model object
+        :param drive: unresolved drive object
+        :param pp: pulsed protocol object
+        :param xfunc: function determining whether condition is reached from simulation output
+        :param Arange: search interval for electric current amplitude, iteratively refined
+        :return: excitation amplitude (in drive units)
+    '''
+    xfunc = kwargs.pop('xfunc', None)
+    Arange = kwargs.pop('Arange', None)
+
+    # Default output function
+    if xfunc is None:
+        xfunc = model.titrationFunc
+
+    # Default amplitude interval
+    if Arange is None:
+        Arange = model.getArange(drive)
+
+    return threshold(
+        lambda x: xfunc(model.simulate(drive.updatedX(x), pp, **kwargs)[0]),
+        Arange,
+        x0=drive.xvar_initial,
+        rel_eps_thr=drive.xvar_rel_thr,
+        eps_thr=drive.xvar_thr,
+        precheck=drive.xvar_precheck)

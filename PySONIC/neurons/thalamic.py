@@ -3,10 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-27 22:32:50
+# @Last Modified time: 2020-03-31 18:14:25
 
 import numpy as np
-from ..core import PointNeuron
+from ..core import PointNeuron, addSonicFeatures
 from ..constants import Z_Ca
 
 
@@ -111,6 +111,7 @@ class Thalamic(PointNeuron):
         }
 
 
+@addSonicFeatures
 class ThalamicRE(Thalamic):
     ''' Thalamic reticular neuron
 
@@ -175,6 +176,7 @@ class ThalamicRE(Thalamic):
             np.exp((Vm + 48.0) / 4.0) + np.exp(-(Vm + 407.0) / 50.0))) * 1e-3  # s
 
 
+@addSonicFeatures
 class ThalamoCortical(Thalamic):
     ''' Thalamo-cortical neuron
 

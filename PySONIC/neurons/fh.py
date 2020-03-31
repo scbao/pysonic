@@ -3,13 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-27 12:24:04
+# @Last Modified time: 2020-03-31 18:12:24
 
 import numpy as np
-from ..core import PointNeuron
+from ..core import PointNeuron, addSonicFeatures
 from ..constants import CELSIUS_2_KELVIN, Z_Na, Z_K
 
 
+@addSonicFeatures
 class FrankenhaeuserHuxleyNode(PointNeuron):
     ''' Amphibien (xenopus) myelinated fiber node.
 

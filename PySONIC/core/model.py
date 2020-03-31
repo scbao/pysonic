@@ -3,17 +3,17 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-18 12:04:49
+# @Last Modified time: 2020-03-31 16:11:46
 
 import os
 from functools import wraps
-from inspect import signature, getdoc
-import pickle
+from inspect import getdoc
 import abc
 import inspect
 import numpy as np
 
 from .batches import Batch
+from ..threshold import titrate
 from ..utils import *
 
 
@@ -196,6 +196,9 @@ class Model(metaclass=abc.ABCMeta):
             logger.info(self.desc(getMeta(self, simfunc, *args, **kwargs)))
             return simfunc(self, *args, **kwargs)
         return wrapper
+
+    def titrate(self, *args, **kwargs):
+        return titrate(self, *args, **kwargs)
 
     @staticmethod
     def checkTitrate(simfunc):

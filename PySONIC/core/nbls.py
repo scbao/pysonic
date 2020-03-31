@@ -3,22 +3,19 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-30 13:27:31
+# @Last Modified time: 2020-03-31 16:08:30
 
-import time
-from copy import deepcopy
 import logging
 import numpy as np
 import pandas as pd
 
-from .simulators import PWSimulator, HybridSimulator, PeriodicSimulator
+from .simulators import PWSimulator, HybridSimulator
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .model import Model
 from .drives import Drive, AcousticDrive
 from .protocols import TimeProtocol, PulsedProtocol
 from ..utils import *
-from ..threshold import threshold
 from ..constants import *
 from ..postpro import getFixedPoints
 from .lookups import EffectiveVariablesLookup
@@ -506,9 +503,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
     def getNSpikes(data):
         return PointNeuron.getNSpikes(data)
 
-    @property
-    def Arange(self):
+    def getArange(self, drive):
         return (0., self.getLookup().refs['A'].max())
+
+    @property
+    def titrationFunc(self):
+        return self.pneuron.titrationFunc
 
     @logCache(os.path.join(os.path.split(__file__)[0], 'astim_titrations.log'))
     def titrate(self, drive, pp, fs=1., method='sonic', qss_vars=None, xfunc=None, Arange=None):
@@ -519,22 +519,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param pp: pulse protocol object
             :param fs: sonophore membrane coverage fraction (-)
             :param method: integration method
-            :param xfunc: function determining whether condition is reached from simulation output
-            :param Arange: search interval for acoustic amplitude, iteratively refined
             :return: determined threshold amplitude (Pa)
         '''
-        # Default output function
-        if xfunc is None:
-            xfunc = self.pneuron.titrationFunc
-
-        # Default amplitude interval
-        if Arange is None:
-            Arange = self.Arange
-
-        return threshold(
-            lambda x: xfunc(self.simulate(
-                drive.updatedX(x), pp, fs=fs, method=method, qss_vars=qss_vars)[0]),
-            Arange, x0=ASTIM_AMP_INITIAL, eps_thr=ASTIM_ABS_CONV_THR, rel_eps_thr=1e0, precheck=True)
+        return super().titrate(drive, pp, fs=fs, method=method, qss_vars=qss_vars,
+                               xfunc=xfunc, Arange=Arange)
 
     def getQuasiSteadyStates(self, f, amps=None, charges=None, DC=1.0, squeeze_output=False):
         ''' Compute the quasi-steady state values of the neuron's gating variables

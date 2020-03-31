@@ -3,13 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-11 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-27 12:23:35
+# @Last Modified time: 2020-03-31 18:13:57
 
 import numpy as np
 
-from ..core import PointNeuron
+from ..core import PointNeuron, addSonicFeatures
 
 
+@addSonicFeatures
 class SweeneyNode(PointNeuron):
     ''' Mammalian (rabbit) myelinated motor fiber node.
 

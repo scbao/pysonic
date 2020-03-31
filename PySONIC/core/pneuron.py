@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 16:52:27
+# @Last Modified time: 2020-03-31 16:12:26
 
 import abc
 import inspect
@@ -18,7 +18,6 @@ from .drives import Drive, ElectricDrive
 from ..postpro import detectSpikes, computeFRProfile
 from ..constants import *
 from ..utils import *
-from ..threshold import threshold
 
 
 class PointNeuron(Model):
@@ -526,28 +525,5 @@ class PointNeuron(Model):
         '''
         return not np.isnan(cls.getStabilizationValue(data))
 
-    @property
-    def Arange(self):
-        return (0., ESTIM_AMP_UPPER_BOUND)
-
-    def titrate(self, drive, pp, xfunc=None, Arange=None):
-        ''' Use a binary search to determine the threshold amplitude needed
-            to obtain neural excitation for a given duration, PRF and duty cycle.
-
-            :param drive: unresolved electric drive object
-            :param pp: pulsed protocol object
-            :param xfunc: function determining whether condition is reached from simulation output
-            :param Arange: search interval for electric current amplitude, iteratively refined
-            :return: excitation threshold amplitude (mA/m2)
-        '''
-        # Default output function
-        if xfunc is None:
-            xfunc = self.titrationFunc
-
-        # Default amplitude interval
-        if Arange is None:
-            Arange = self.Arange
-
-        return threshold(
-            lambda x: xfunc(self.simulate(drive.updatedX(x), pp)[0]),
-            Arange, x0=ESTIM_AMP_INITIAL, rel_eps_thr=ESTIM_REL_CONV_THR, precheck=False)
+    def getArange(self, drive):
+        return drive.xvar_range

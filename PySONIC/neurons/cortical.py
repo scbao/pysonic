@@ -3,10 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-28 09:22:47
+# @Last Modified time: 2020-03-31 18:11:37
 
 import numpy as np
-from ..core import PointNeuron
+from ..core import PointNeuron, addSonicFeatures
 
 
 class Cortical(PointNeuron):
@@ -116,6 +116,7 @@ class Cortical(PointNeuron):
         }
 
 
+@addSonicFeatures
 class CorticalRS(Cortical):
     ''' Cortical regular spiking neuron
 
@@ -156,6 +157,7 @@ class CorticalRS(Cortical):
     }
 
 
+@addSonicFeatures
 class CorticalFS(Cortical):
     ''' Cortical fast-spiking neuron
 
@@ -196,6 +198,7 @@ class CorticalFS(Cortical):
     }
 
 
+@addSonicFeatures
 class CorticalLTS(Cortical):
     ''' Cortical low-threshold spiking neuron
 
@@ -297,6 +300,7 @@ class CorticalLTS(Cortical):
         }}
 
 
+@addSonicFeatures
 class CorticalIB(Cortical):
     ''' Cortical intrinsically bursting neuron
 

@@ -3,14 +3,15 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-01-30 16:10:34
+# @Last Modified time: 2020-03-31 18:13:41
 
 import numpy as np
-from ..core import PointNeuron
+from ..core import PointNeuron, addSonicFeatures
 from ..constants import FARADAY, Z_Ca
 from ..utils import findModifiedEq
 
 
+@addSonicFeatures
 class OtsukaSTN(PointNeuron):
     ''' Sub-thalamic nucleus neuron
 
