@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-31 16:12:26
+# @Last Modified time: 2020-04-03 14:09:15
 
 import abc
 import inspect
@@ -31,6 +31,11 @@ class PointNeuron(Model):
 
     def copy(self):
         return self.__class__()
+
+    def __eq__(self, other):
+        if not isinstance(other, PointNeuron):
+            return False
+        return self.name == other.name
 
     @property
     @classmethod

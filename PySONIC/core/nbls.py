@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-31 16:08:30
+# @Last Modified time: 2020-04-03 15:30:57
 
 import logging
 import numpy as np
@@ -39,22 +39,39 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param pneuron: point-neuron model
             :param embedding_depth: depth of the embedding tissue around the membrane (m)
         '''
-        # Check validity of input parameters
-        if not isinstance(pneuron, PointNeuron):
-            raise ValueError(f'Invalid neuron type: "{pneuron.name}" (must inherit from PointNeuron class)')
         self.pneuron = pneuron
-
-        # Initialize BilayerSonophore parent object
         super().__init__(a, pneuron.Cm0, pneuron.Qm0, embedding_depth=embedding_depth)
 
+    @property
+    def a_str(self):
+        return f'{self.a * 1e9:.1f} nm'
+
     def __repr__(self):
-        s = f'{self.__class__.__name__}({self.a * 1e9:.1f} nm, {self.pneuron}'
+        s = f'{self.__class__.__name__}({self.a_str}, {self.pneuron}'
         if self.d > 0.:
             s += f', d={si_format(self.d, precision=1)}m'
         return f'{s})'
 
     def copy(self):
         return self.__class__(self.a, self.pneuron, embedding_depth=self.d)
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.a == other.a and self.pneuron == other.pneuron and self.d == other.d
+
+    @property
+    def pneuron(self):
+        return self._pneuron
+
+    @pneuron.setter
+    def pneuron(self, value):
+        if not isinstance(value, PointNeuron):
+            raise ValueError(f'{value} is not a valid PointNeuron instance')
+        if not hasattr(self, '_pneuron') or value != self._pneuron:
+            self._pneuron = value
+            if hasattr(self, 'a'):
+                super().__init__(self.a, self.pneuron.Cm0, self.pneuron.Qm0, embedding_depth=self.d)
 
     @property
     def meta(self):
