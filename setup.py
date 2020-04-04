@@ -3,16 +3,18 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-13 09:40:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-18 14:44:55
+# @Last Modified time: 2020-04-04 15:31:21
 
 import os
 from setuptools import setup
 
 readme_file = 'README.md'
 
+
 def readme():
     with open(readme_file, encoding="utf8") as f:
         return f.read()
+
 
 def description():
     with open(readme_file, encoding="utf8") as f:
@@ -28,6 +30,7 @@ def description():
                 else:
                     lines.append(line)
     return ''.join(lines).strip('\n')
+
 
 def getFiles(path):
     return [f'{path}/{x}' for x in os.listdir(path)]
@@ -51,7 +54,7 @@ setup(
     author_email='theo.lemaire@epfl.ch',
     license='MIT',
     packages=['PySONIC'],
-    scripts=getFiles('scripts') + getFiles('tests'),
+    scripts=getFiles('scripts') + getFiles('tests') + getFiles('examples'),
     install_requires=[
         'numpy>=1.10',
         'scipy>=0.17',
