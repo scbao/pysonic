@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-05 15:10:51
+# @Last Modified time: 2020-04-05 17:52:08
 
 import numpy as np
 from ..utils import si_format, StimObject
@@ -92,11 +92,20 @@ class TimeProtocol(StimObject):
         '''
         return [cls(*item) for item in Batch.createQueue(durations, offsets)]
 
-    def eventsON(self):
+    def tOFFON(self):
+        ''' Return vector of times of OFF-ON transitions (in s). '''
         return np.array([0.])
 
-    def eventsOFF(self):
+    def tONOFF(self):
+        ''' Return vector of times of ON-OFF transitions (in s). '''
         return np.array([self.tstim])
+
+    def stimEvents(self):
+        ''' Return time-value pairs for each transition in stimulation state. '''
+        t_on_off = self.tONOFF()
+        t_off_on = self.tOFFON()
+        pairs = list(zip(t_off_on, [1] * len(t_off_on))) + list(zip(t_on_off, [0] * len(t_on_off)))
+        return sorted(pairs, key=lambda x: x[0])
 
 
 class PulsedProtocol(TimeProtocol):
@@ -219,14 +228,14 @@ class PulsedProtocol(TimeProtocol):
         queue = [cls(*item) for item in queue]
         return queue
 
-    def eventsON(self):
+    def tOFFON(self):
         if self.DC == 1:
-            return super().eventsON()
+            return super().tOFFON()
         else:
             return np.arange(self.npulses) / self.PRF
 
-    def eventsOFF(self):
+    def tONOFF(self):
         if self.DC == 1:
-            return super().eventsOFF()
+            return super().tONOFF()
         else:
-            return self.eventsON() + self.DC / self.PRF
+            return self.tOFFON() + self.DC / self.PRF
