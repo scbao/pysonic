@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-18 20:33:46
+# @Last Modified time: 2020-04-05 15:10:51
 
 import numpy as np
 from ..utils import si_format, StimObject
@@ -91,6 +91,12 @@ class TimeProtocol(StimObject):
             :return: list of parameters (list) for each simulation
         '''
         return [cls(*item) for item in Batch.createQueue(durations, offsets)]
+
+    def eventsON(self):
+        return np.array([0.])
+
+    def eventsOFF(self):
+        return np.array([self.tstim])
 
 
 class PulsedProtocol(TimeProtocol):
@@ -212,3 +218,15 @@ class PulsedProtocol(TimeProtocol):
             queue += Batch.createQueue(durations, offsets, PRFs, DCs[DCs != 1.0])
         queue = [cls(*item) for item in queue]
         return queue
+
+    def eventsON(self):
+        if self.DC == 1:
+            return super().eventsON()
+        else:
+            return np.arange(self.npulses) / self.PRF
+
+    def eventsOFF(self):
+        if self.DC == 1:
+            return super().eventsOFF()
+        else:
+            return self.eventsON() + self.DC / self.PRF

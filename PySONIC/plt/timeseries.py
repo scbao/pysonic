@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-23 17:21:20
+# @Last Modified time: 2020-04-05 15:20:45
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -427,7 +427,8 @@ class GroupedTimeSeries(TimeSeriesPlot):
                 for yplt, name in zip(ax_pltvars, pltscheme[grouplabel]):
                     color = yplt.get('color', f'C{icolor}')
                     y = extractPltVar(model, yplt, data, meta, t.size, name)
-                    ax.plot(t, y, yplt.get('ls', '-'), c=color, lw=lw, label='$\\rm {}$'.format(yplt["label"]))
+                    ax.plot(t, y, yplt.get('ls', '-'), c=color, lw=lw,
+                            label='$\\rm {}$'.format(yplt["label"]))
                     if 'color' not in yplt:
                         icolor += 1
 

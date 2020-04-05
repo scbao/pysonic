@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-13 09:40:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-04 15:31:21
+# @Last Modified time: 2020-04-04 16:42:02
 
 import os
 from setuptools import setup
