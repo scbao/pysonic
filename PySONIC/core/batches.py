@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-09 13:59:01
+# @Last Modified time: 2020-04-09 15:06:53
 
 ''' Utility functions used in simulations '''
 
@@ -11,6 +11,7 @@ import os
 import abc
 import csv
 import logging
+import lockfile
 import numpy as np
 import pandas as pd
 import multiprocess as mp
@@ -183,6 +184,7 @@ class LogBatch(metaclass=abc.ABCMeta):
         self.inputs = inputs
         self.root = root
         self.fpath = self.filepath()
+        self.lock = lockfile.FileLock(self.fpath)
 
     @property
     def root(self):
@@ -266,9 +268,11 @@ class LogBatch(metaclass=abc.ABCMeta):
 
     def writeEntry(self, entry, outputs):
         ''' Write a new input:ouputs entry in the batch log file. '''
+        self.lock.acquire()
         with open(self.fpath, 'a', newline='') as csvfile:
             writer = csv.writer(csvfile, delimiter=self.delimiter)
             writer.writerow([entry, *outputs])
+        self.lock.release()
 
     def getLogData(self):
         ''' Retrieve the batch log file data (inputs and outputs) as a dataframe. '''
@@ -309,9 +313,11 @@ class LogBatch(metaclass=abc.ABCMeta):
             logger.debug(f'existing entry: "{x}"')
         return 0
 
-    def run(self):
+    def run(self, mpi=False):
         ''' Run the batch and return the output(s). '''
         self.createLogFile()
-        for x in self.inputs:
-            self.computeAndLog(x)
+        batch = Batch(self.computeAndLog, [[x] for x in self.inputs])
+        batch.run(mpi=mpi, loglevel=logger.level)
+        # for x in self.inputs:
+        #     self.computeAndLog(x)
         return self.getOutput()

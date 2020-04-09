@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-09 14:02:48
+# @Last Modified time: 2020-04-09 15:48:44
 
 import abc
 import pandas as pd
@@ -26,7 +26,7 @@ class XYMap(LogBatch):
         self.root = root
         self.xvec = xvec
         self.yvec = yvec
-        super().__init__(product(self.xvec, self.yvec), root=root)
+        super().__init__([list(pair) for pair in product(self.xvec, self.yvec)], root=root)
 
     def checkVector(self, name, value):
         if not isIterable(value):
@@ -116,17 +116,14 @@ class XYMap(LogBatch):
 
     def getLogData(self):
         ''' Retrieve the batch log file data (inputs and outputs) as a dataframe. '''
-        df = pd.read_csv(self.fpath, sep=self.delimiter)
-        for lbl in self.in_labels[::-1]:
-            df = df.sort_values(lbl)
-        return df
+        return pd.read_csv(self.fpath, sep=self.delimiter).sort_values(self.in_labels)
 
     def getInput(self):
         ''' Retrieve the logged batch inputs as an array. '''
         return self.getLogData()[self.in_labels].values
 
     def getOutput(self):
-        return np.reshape(super().getOutput(), (self.xvec.size, self.yvec.size))
+        return np.reshape(super().getOutput(), (self.xvec.size, self.yvec.size)).T
 
     def writeLabels(self):
         with open(self.fpath, 'w') as csvfile:
@@ -299,7 +296,6 @@ class ActivationMap(XYMap):
         self.drive = AcousticDrive(f, None)
         self.pp = PulsedProtocol(tstim, 0., PRF, 1.)
         super().__init__(root, DCs, amps)
-        self.run()
 
     @property
     def sim_args(self):
