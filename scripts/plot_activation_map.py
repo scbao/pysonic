@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-09 15:45:19
+# @Last Modified time: 2020-04-09 16:04:43
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -21,13 +21,13 @@ def main():
     parser = AStimParser()
     parser.defaults['amp'] = np.logspace(np.log10(10), np.log10(600), 30)  # kPa
     parser.defaults['DC'] = np.arange(1, 101)  # %
-    parser.defaults['tstim'] = 1000.  # ms
+    parser.defaults['tstim'] = 200.  # ms
     parser.defaults['toffset'] = 0.  # ms
     parser.addInputDir()
     parser.addThresholdCurve()
     parser.addInteractive()
     parser.addAscale()
-    parser.addTimeRange(default=(0., 240.))
+    parser.addTimeRange(default=(0., 200.))
     parser.addFiringRateBounds((1e0, 1e3))
     parser.addFiringRateScale()
     parser.addPotentialBounds(default=(-150, 50))
