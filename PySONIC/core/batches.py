@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-18 21:26:09
+# @Last Modified time: 2020-04-09 13:59:01
 
 ''' Utility functions used in simulations '''
 
@@ -171,6 +171,8 @@ class LogBatch(metaclass=abc.ABCMeta):
     '''
 
     delimiter = '\t'  # csv delimiter
+    rtol = 1e-9
+    atol = 1e-16
 
     def __init__(self, inputs, root='.'):
         ''' Construtor.
@@ -181,6 +183,16 @@ class LogBatch(metaclass=abc.ABCMeta):
         self.inputs = inputs
         self.root = root
         self.fpath = self.filepath()
+
+    @property
+    def root(self):
+        return self._root
+
+    @root.setter
+    def root(self, value):
+        if not os.path.isdir(value):
+            raise ValueError(f'{value} is not a valid directory')
+        self._root = value
 
     @property
     @abc.abstractmethod
@@ -211,11 +223,15 @@ class LogBatch(metaclass=abc.ABCMeta):
         ''' Input label. '''
         return f'{self.in_key} ({self.unit})'
 
+    def rangecode(self, x, label, unit):
+        ''' String describing a batch input range. '''
+        bounds_str = si_format([x.min(), x.max()], 1, space="")
+        return '{0}{1}{3}-{2}{3}_{4}'.format(label.replace(' ', '_'), *bounds_str, unit, x.size)
+
     @property
     def inputscode(self):
         ''' String describing the batch inputs. '''
-        bounds_str = si_format([self.inputs.min(), self.inputs.max()], 1, space="")
-        return '{0}{1}{3}-{2}{3}_{4}'.format(self.in_key, *bounds_str, self.unit, self.inputs.size)
+        return self.rangecode(self.inputs, self.in_key, self.unit)
 
     @abc.abstractmethod
     def corecode(self):
@@ -274,7 +290,7 @@ class LogBatch(metaclass=abc.ABCMeta):
         inputs = self.getInput()
         if len(inputs) == 0:
             return False
-        imatches = np.where(np.isclose(inputs, value, rtol=1e-9, atol=1e-16))[0]
+        imatches = np.where(np.isclose(inputs, value, rtol=self.rtol, atol=self.atol))[0]
         if len(imatches) == 0:
             return False
         return True

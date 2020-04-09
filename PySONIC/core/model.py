@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-31 16:11:46
+# @Last Modified time: 2020-04-09 12:34:49
 
 import os
 from functools import wraps
@@ -233,14 +233,12 @@ class Model(metaclass=abc.ABCMeta):
     def simAndSave(self, *args, **kwargs):
         return simAndSave(self, *args, **kwargs)
 
-    def getOutput(self, outputdir, *args):
+    def getOutput(self, *args, **kwargs):
         ''' Get simulation output data for a specific parameters combination, by looking
             for an output file into a specific directory.
 
             If a corresponding output file is not found in the specified directory, the model
             is first run and results are saved in the output file.
         '''
-        fpath = f'{outputdir}/{self.filecode(*args)}.pkl'
-        if not os.path.isfile(fpath):
-            self.simAndSave(outputdir, *args, outputdir=outputdir)
+        fpath = self.simAndSave(*args, overwrite=False, **kwargs)
         return loadData(fpath)

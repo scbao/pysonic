@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 16:52:40
+# @Last Modified time: 2020-04-09 09:10:22
 
 from enum import Enum
 import os
@@ -16,7 +16,7 @@ from scipy.optimize import brentq, curve_fit
 from .model import Model
 from .simulators import PeriodicSimulator
 from .drives import Drive, AcousticDrive
-from ..utils import logger, si_format, debug
+from ..utils import logger, si_format
 from ..constants import *
 
 

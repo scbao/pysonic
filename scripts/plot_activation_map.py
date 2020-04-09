@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 21:36:53
+# @Last Modified time: 2020-04-09 13:56:48
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -48,8 +48,8 @@ def main():
                             FRscale=args['FRscale'],
                             FRbounds=args['FRbounds'],
                             interactive=args['interactive'],
-                            Vbounds=args['Vbounds'],
-                            trange=args['trange'],
+                            # Vbounds=args['Vbounds'],
+                            # trange=args['trange'],
                             thresholds=args['threshold'],
                         )
 
