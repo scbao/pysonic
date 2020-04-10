@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-19 12:47:27
+# @Last Modified time: 2020-04-10 18:30:51
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -818,7 +818,7 @@ def simAndSave(model, *args, **kwargs):
             # Update args list with resovled drive
             try:
                 args = (meta['drive'], *other_args)
-            except KeyError as err:
+            except KeyError:
                 args = (meta['source'], *other_args)
 
     # Check if a output file corresponding to sim inputs is found in the output directory
