@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-13 16:44:11
+# @Last Modified time: 2020-04-13 18:10:14
 
 import os
 import logging
@@ -155,6 +155,11 @@ class Parser(ArgumentParser):
     def addZvar(self, default):
         self.add_argument(
             '-z', '--zvar', type=str, default=default, help='z-variable type')
+
+    def addYscale(self, default='lin'):
+        self.add_argument(
+            '--yscale', type=str, choices=('lin', 'log'), default=default,
+            help='y-scale type ("lin" or "log")')
 
     def addZscale(self, default='lin'):
         self.add_argument(
@@ -475,11 +480,6 @@ class MechSimParser(SimParser):
         self.add_argument(
             '--Irange', type=str, nargs='+', help=f'Intensity range {self.dist_str} (W/cm2)')
         self.to_parse['amp'] = self.parseAmplitude
-
-    def addAscale(self, default='lin'):
-        self.add_argument(
-            '--Ascale', type=str, choices=('lin', 'log'), default=default,
-            help='Amplitude scale for plot ("lin" or "log")')
 
     def addCharge(self):
         self.add_argument(
