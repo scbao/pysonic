@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-09 15:48:44
+# @Last Modified time: 2020-04-13 12:31:25
 
 import abc
 import pandas as pd
@@ -291,25 +291,30 @@ class ActivationMap(XYMap):
     zfactor = 1e0
     suffix = 'actmap'
 
-    def __init__(self, root, pneuron, a, f, tstim, PRF, amps, DCs):
+    def __init__(self, root, pneuron, a, fs, f, tstim, PRF, amps, DCs):
         self.nbls = NeuronalBilayerSonophore(a, pneuron)
         self.drive = AcousticDrive(f, None)
         self.pp = PulsedProtocol(tstim, 0., PRF, 1.)
+        self.fs = fs
         super().__init__(root, DCs, amps)
 
     @property
     def sim_args(self):
-        return [self.drive, self.pp, 1., 'sonic', None]
+        return [self.drive, self.pp, self.fs, 'sonic', None]
 
     @property
     def title(self):
-        return '{} neuron @ {}Hz, {}Hz PRF ({}m sonophore)'.format(
+        s = '{} neuron @ {}Hz, {}Hz PRF ({}m sonophore'.format(
             self.nbls.pneuron.name, *si_format([self.drive.f, self.pp.PRF, self.nbls.a]))
+        if self.fs < 1:
+            s = f'{s}, {self.fs * 1e2:.0f}% coverage'
+        return f'{s})'
 
     def corecode(self):
-        return '{}_{}Hz_PRF{}Hz_{}s'.format(
-            self.nbls.pneuron.name,
-            *si_format([self.drive.f, self.pp.PRF, self.pp.tstim], space=''))
+        corecodes = self.nbls.filecodes(*self.sim_args)
+        corecodes['PRF'] = f'PRF{self.pp.PRF:.0f}Hz'
+        del corecodes['nature']
+        return '_'.join(filter(lambda x: x is not None, corecodes.values()))
 
     def compute(self, x):
         ''' Compute firing rate from simulation output '''

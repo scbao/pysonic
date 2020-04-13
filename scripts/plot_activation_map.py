@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-26 09:51:43
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-09 16:04:43
+# @Last Modified time: 2020-04-13 12:12:48
 
 ''' Plot (duty-cycle x amplitude) US activation map of a neuron at a given frequency and PRF. '''
 
@@ -37,22 +37,24 @@ def main():
 
     for pneuron in args['neuron']:
         for a in args['radius']:
-            for f in args['freq']:
-                for tstim in args['tstim']:
-                    for PRF in args['PRF']:
-                        actmap = ActivationMap(args['inputdir'], pneuron, a, f, tstim, PRF,
-                                               args['amp'], args['DC'])
-                        actmap.run(mpi=args['mpi'])
-                        actmap.render(
-                            cmap=args['cmap'],
-                            Ascale=args['Ascale'],
-                            FRscale=args['FRscale'],
-                            FRbounds=args['FRbounds'],
-                            interactive=args['interactive'],
-                            # Vbounds=args['Vbounds'],
-                            # trange=args['trange'],
-                            thresholds=args['threshold'],
-                        )
+            for fs in args['fs']:
+                for f in args['freq']:
+                    for tstim in args['tstim']:
+                        for PRF in args['PRF']:
+                            actmap = ActivationMap(
+                                args['inputdir'], pneuron, a, fs,
+                                f, tstim, PRF, args['amp'], args['DC'])
+                            actmap.run(mpi=args['mpi'])
+                            actmap.render(
+                                cmap=args['cmap'],
+                                Ascale=args['Ascale'],
+                                FRscale=args['FRscale'],
+                                FRbounds=args['FRbounds'],
+                                interactive=args['interactive'],
+                                # Vbounds=args['Vbounds'],
+                                # trange=args['trange'],
+                                thresholds=args['threshold'],
+                            )
 
     plt.show()
 

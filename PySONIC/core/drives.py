@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-31 15:58:02
+# @Last Modified time: 2020-04-13 12:19:46
 
 import abc
 import numpy as np
@@ -365,10 +365,10 @@ class AcousticDrive(XDrive):
 
     @property
     def filecodes(self):
-        return {
-            'f': f'{self.f * 1e-3:.0f}kHz',
-            'A': f'{self.A * 1e-3:.2f}kPa'
-        }
+        codes = {'f': f'{self.f * 1e-3:.0f}kHz'}
+        if self.A is not None:
+            codes['A'] = f'{self.A * 1e-3:.2f}kPa'
+        return codes
 
     @property
     def dt(self):
