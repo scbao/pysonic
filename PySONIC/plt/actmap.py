@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-13 12:31:25
+# @Last Modified time: 2020-04-13 17:52:37
 
 import abc
 import pandas as pd
@@ -11,11 +11,11 @@ import csv
 from itertools import product
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
 
 from ..core import NeuronalBilayerSonophore, PulsedProtocol, AcousticDrive, LogBatch
 from ..utils import logger, si_format, isIterable
 from .pltutils import cm2inch, setNormalizer
+from .timeseries import GroupedTimeSeries
 from ..postpro import detectSpikes
 
 
@@ -130,11 +130,6 @@ class XYMap(LogBatch):
             writer = csv.writer(csvfile, delimiter=self.delimiter)
             writer.writerow([*self.in_labels, *self.out_keys])
 
-    def writeEntry(self, entry, output):
-        with open(self.fpath, 'a', newline='') as csvfile:
-            writer = csv.writer(csvfile, delimiter=self.delimiter)
-            writer.writerow([*entry, output])
-
     def isEntry(self, comb):
         ''' Check if a given input is logged in the batch log file. '''
         inputs = self.getInput()
@@ -196,6 +191,10 @@ class XYMap(LogBatch):
         ''' Compute the necessary output(s) for a given inputs combination. '''
         raise NotImplementedError
 
+    def run(self, **kwargs):
+        super().run(**kwargs)
+        self.getLogData().to_csv(self.filepath(), sep=self.delimiter, index=False)
+
     def getOnClickXY(self, event):
         ''' Get x and y values from from x and y click event coordinates. '''
         x = self.xvec[np.searchsorted(self.xedges, event.xdata / self.xfactor) - 1]
@@ -215,7 +214,7 @@ class XYMap(LogBatch):
         matrix = self.getOutput()
         zmin, zmax = np.nanmin(matrix), np.nanmax(matrix)
         logger.info(
-            f'{self.zkey} range: {zmin * self.zfactor:.0f} - {zmax * self.zfactor:.0f} {self.zunit}')
+            f'{self.zkey} range: {zmin:.0f} - {zmax:.0f} {self.zunit}')
         return zmin, zmax
 
     def checkZbounds(self, zbounds):
@@ -286,10 +285,7 @@ class ActivationMap(XYMap):
     ykey = 'Amplitude'
     yfactor = 1e-3
     yunit = 'kPa'
-    zkey = 'Firing rate'
-    zunit = 'Hz'
-    zfactor = 1e0
-    suffix = 'actmap'
+    onclick_colors = None
 
     def __init__(self, root, pneuron, a, fs, f, tstim, PRF, amps, DCs):
         self.nbls = NeuronalBilayerSonophore(a, pneuron)
@@ -304,7 +300,7 @@ class ActivationMap(XYMap):
 
     @property
     def title(self):
-        s = '{} neuron @ {}Hz, {}Hz PRF ({}m sonophore'.format(
+        s = 'Activation map - {} neuron @ {}Hz, {}Hz PRF ({}m sonophore'.format(
             self.nbls.pneuron.name, *si_format([self.drive.f, self.pp.PRF, self.nbls.a]))
         if self.fs < 1:
             s = f'{s}, {self.fs * 1e2:.0f}% coverage'
@@ -323,18 +319,12 @@ class ActivationMap(XYMap):
         self.drive.A = x[1]
 
         # Get model output, running simulation if needed
-        data, meta = self.nbls.getOutput(*self.sim_args, outputdir=self.root)
+        data, _ = self.nbls.getOutput(*self.sim_args, outputdir=self.root)
+        return self.xfunc(data)
 
-        # Detect spikes in data
-        ispikes, _ = detectSpikes(data)
-
-        # Compute firing metrics
-        if ispikes.size > 1:
-            t = data['t'].values
-            sr = 1 / np.diff(t[ispikes])
-            return np.mean(sr)
-        else:
-            return np.nan
+    @abc.abstractmethod
+    def xfunc(self, data):
+        raise NotImplementedError
 
     def addThresholdCurve(self, ax, fs):
         Athrs = []
@@ -346,14 +336,10 @@ class ActivationMap(XYMap):
                 label='threshold amplitudes')
         ax.legend(loc='lower center', frameon=False, fontsize=fs)
 
-    def render(self, Ascale='log', FRscale='log', FRbounds=None, thresholds=False, **kwargs):
-        kwargs['yscale'] = Ascale
-        kwargs['zscale'] = FRscale
-        kwargs['zbounds'] = FRbounds
-        fig = super().render(**kwargs)
-        if thresholds:
-            self.addThresholdCurve(fig.axes[0], fs=8)
-        return fig
+    @property
+    @abc.abstractmethod
+    def onclick_pltscheme(self):
+        raise NotImplementedError
 
     def onClick(self, event):
         ''' Retrieve the specific input parameters of the x and y dimensions
@@ -367,59 +353,65 @@ class ActivationMap(XYMap):
         # Get model output, running simulation if needed
         data, meta = self.nbls.getOutput(*self.sim_args, outputdir=self.root)
 
-        # Plot Q-trace
-        self.plotQVeff(data, meta)
+        # Plot timeseries of appropriate variables
+        timeseries = GroupedTimeSeries([(data, meta)], pltscheme=self.onclick_pltscheme)
+        timeseries.render(colors=self.onclick_colors)
         plt.show()
 
-    def plotQVeff(self, data, meta, tonset=10e-3, trange=None, ybounds=None, fs=8, lw=1):
-        ''' Plot superimposed profiles of membrane charge density and
-            effective membrane potential.
-
-            :param data: simulation output dataframe
-            :param tonset: pre-stimulus onset to add to profiles (s)
-            :param trange: time lower and upper bounds on graph (s)
-            :param ybounds: y-axis bounds (mV / nC/cm2)
-            :return: handle to the generated figure
-        '''
-        # Bound time if needede
-        if trange is not None:
-            tmin, tmax = trange
-            data = data.loc[(data['t'] >= tmin) & (data['t'] <= tmax)]
-
-        # Load variables, add onset and rescale
-        t, Qm, Vm = [data[k].values for k in ['t', 'Qm', 'Vm']]
-        t = np.hstack((np.array([-tonset, t[0]]), t))  # s
-        Vm = np.hstack((np.array([self.nbls.pneuron.Vm0] * 2), Vm))  # mV
-        Qm = np.hstack((np.array([self.nbls.pneuron.Qm0] * 2), Qm))  # C/m2
-        t *= 1e3  # ms
-        Qm *= 1e5  # nC/cm2
-
-        # Determine axes bounds
-        if ybounds is None:
-            ybounds = (min(Vm.min(), Qm.min()), max(Vm.max(), Qm.max()))
-
-        # Create figure
-        fig, ax = plt.subplots(figsize=cm2inch(12, 5))
-        fig.canvas.set_window_title(self.nbls.desc(meta))
-        plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.95)
-        for key in ['top', 'right']:
-            ax.spines[key].set_visible(False)
-        for key in ['bottom', 'left']:
-            ax.spines[key].set_position(('axes', -0.03))
-            ax.spines[key].set_linewidth(2)
-        ax.yaxis.set_tick_params(width=2)
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
-        ax.set_xticks([])
-        ax.set_xlabel(f'{si_format(np.ptp(t))}s', fontsize=fs)
-        ax.set_ylabel('mV - $\\rm nC/cm^2$', fontsize=fs, labelpad=-15)
-        ax.set_ylim(ybounds)
-        ax.set_yticks(ybounds)
-        for item in ax.get_yticklabels():
-            item.set_fontsize(fs)
-
-        # Plot Qm and Vmeff profiles
-        ax.plot(t, Vm, color='darkgrey', linewidth=lw)
-        ax.plot(t, Qm, color='k', linewidth=lw)
-
-        # fig.tight_layout()
+    def render(self, yscale='log', thresholds=False, **kwargs):
+        fig = super().render(yscale=yscale, **kwargs)
+        if thresholds:
+            self.addThresholdCurve(fig.axes[0], fs=8)
         return fig
+
+
+class FiringRateMap(ActivationMap):
+
+    zkey = 'Firing rate'
+    zunit = 'Hz'
+    zfactor = 1e0
+    suffix = 'FRmap'
+    onclick_pltscheme = {'V_m\ |\ Q_/C_{m0}': ['Vm', 'Qm/Cm0']}
+    onclick_colors = ['darkgrey', 'k']
+
+    def xfunc(self, data):
+        ''' Detect spikes in data and compute firing rate. '''
+        ispikes, _ = detectSpikes(data)
+        if ispikes.size > 1:
+            t = data['t'].values
+            sr = 1 / np.diff(t[ispikes])
+            return np.mean(sr)
+        else:
+            return np.nan
+
+    def render(self, zscale='log', **kwargs):
+        return super().render(zscale=zscale, **kwargs)
+
+
+class CalciumMap(ActivationMap):
+
+    zkey = '[Ca2+]i'
+    zunit = 'uM'
+    zfactor = 1e6
+    suffix = 'Camap'
+    onclick_pltscheme = {'Cai': ['Cai']}
+
+    def xfunc(self, data):
+        ''' Detect spikes in data and compute firing rate. '''
+        Cai = data['Cai'].values * self.zfactor  # uM
+        return np.mean(Cai)
+
+    def render(self, zscale='log', **kwargs):
+        return super().render(zscale=zscale, **kwargs)
+
+
+map_classes = {
+    'FR': FiringRateMap,
+    'Cai': CalciumMap
+}
+
+
+def getActivationMap(key, *args, **kwargs):
+    if key not in map_classes:
+        raise ValueError(f'{key} is not a valid map type')
+    return map_classes[key](*args, **kwargs)

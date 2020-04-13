@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-05 18:44:29
+# @Last Modified time: 2020-04-13 16:44:11
 
 import os
 import logging
@@ -152,20 +152,19 @@ class Parser(ArgumentParser):
             help='Time lower and upper bounds (ms)')
         self.to_parse['trange'] = self.parseTimeRange
 
-    def addPotentialBounds(self, default=None):
+    def addZvar(self, default):
         self.add_argument(
-            '--Vbounds', type=float, nargs=2, default=default,
-            help='Membrane potential lower and upper bounds (mV)')
+            '-z', '--zvar', type=str, default=default, help='z-variable type')
 
-    def addFiringRateBounds(self, default):
+    def addZscale(self, default='lin'):
         self.add_argument(
-            '--FRbounds', type=float, nargs=2, default=default,
-            help='Firing rate lower and upper bounds (Hz)')
+            '--zscale', type=str, choices=('lin', 'log'), default=default,
+            help='z-scale type ("lin" or "log")')
 
-    def addFiringRateScale(self, default='lin'):
+    def addZbounds(self, default):
         self.add_argument(
-            '--FRscale', type=str, choices=('lin', 'log'), default=default,
-            help='Firing rate scale for plot ("lin" or "log")')
+            '--zbounds', type=float, nargs=2, default=default,
+            help='z-scale lower and upper bounds')
 
     def addCmap(self, default=None):
         self.add_argument(

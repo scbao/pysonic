@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-03 14:09:15
+# @Last Modified time: 2020-04-13 15:54:42
 
 import abc
 import inspect
@@ -81,6 +81,16 @@ class PointNeuron(Model):
         }
 
     @classmethod
+    def normalizedQm(cls, Qm):
+        ''' Compute membrane charge density normalized by resting capacitance.
+
+            :param Qm: membrane charge density (Q/m2)
+            :return: normalized charge density (mV)
+
+         '''
+        return Qm / cls.Cm0 * 1e3
+
+    @classmethod
     def getPltVars(cls, wrapleft='df["', wrapright='"]'):
         pltvars = {
             'Qm': {
@@ -89,6 +99,14 @@ class PointNeuron(Model):
                 'unit': 'nC/cm^2',
                 'factor': 1e5,
                 'bounds': ((cls.Vm0 - 20.0) * cls.Cm0 * 1e2, 60)
+            },
+
+            'Qm/Cm0': {
+                'desc': 'membrane charge density over resting capacitance',
+                'label': 'Q_m / C_{m0}',
+                'unit': 'mV',
+                'bounds': (-150, 70),
+                'func': f"normalizedQm({wrapleft}Qm{wrapright})"
             },
 
             'Vm': {

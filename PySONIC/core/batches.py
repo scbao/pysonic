@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-09 15:06:53
+# @Last Modified time: 2020-04-13 17:46:11
 
 ''' Utility functions used in simulations '''
 
@@ -11,12 +11,11 @@ import os
 import abc
 import csv
 import logging
-import lockfile
 import numpy as np
 import pandas as pd
 import multiprocess as mp
 
-from ..utils import logger, si_format
+from ..utils import logger, si_format, isIterable
 
 
 class Consumer(mp.Process):
@@ -184,7 +183,6 @@ class LogBatch(metaclass=abc.ABCMeta):
         self.inputs = inputs
         self.root = root
         self.fpath = self.filepath()
-        self.lock = lockfile.FileLock(self.fpath)
 
     @property
     def root(self):
@@ -266,13 +264,11 @@ class LogBatch(metaclass=abc.ABCMeta):
             writer = csv.writer(csvfile, delimiter=self.delimiter)
             writer.writerow([self.in_label, *self.out_keys])
 
-    def writeEntry(self, entry, outputs):
-        ''' Write a new input:ouputs entry in the batch log file. '''
-        self.lock.acquire()
+    def writeEntry(self, entry):
+        ''' Write a new input(s):ouput(s) entry in the batch log file. '''
         with open(self.fpath, 'a', newline='') as csvfile:
             writer = csv.writer(csvfile, delimiter=self.delimiter)
-            writer.writerow([entry, *outputs])
-        self.lock.release()
+            writer.writerow(entry)
 
     def getLogData(self):
         ''' Retrieve the batch log file data (inputs and outputs) as a dataframe. '''
@@ -308,16 +304,28 @@ class LogBatch(metaclass=abc.ABCMeta):
         ''' Compute output(s) and log new entry only if input is not already in the log file. '''
         if not self.isEntry(x):
             logger.debug(f'entry not found: "{x}"')
-            self.writeEntry(x, self.compute(x))
+            out = self.compute(x)
+            if not isIterable(x):
+                x = [x]
+            if not isIterable(out):
+                out = [out]
+            entry = [*x, *out]
+            if not self.mpi:
+                self.writeEntry(entry)
+            return entry
         else:
             logger.debug(f'existing entry: "{x}"')
-        return 0
+            return None
 
     def run(self, mpi=False):
         ''' Run the batch and return the output(s). '''
         self.createLogFile()
         batch = Batch(self.computeAndLog, [[x] for x in self.inputs])
-        batch.run(mpi=mpi, loglevel=logger.level)
-        # for x in self.inputs:
-        #     self.computeAndLog(x)
+        self.mpi = mpi
+        outputs = batch.run(mpi=mpi, loglevel=logger.level)
+        outputs = filter(lambda x: x is not None, outputs)
+        if mpi:
+            for out in outputs:
+                self.writeEntry(out)
+        self.mpi = False
         return self.getOutput()

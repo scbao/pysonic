@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-05 15:20:45
+# @Last Modified time: 2020-04-13 16:06:20
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -351,8 +351,8 @@ class GroupedTimeSeries(TimeSeriesPlot):
     def postProcess(cls, axes, tplt, fs, meta, prettify):
         for ax in axes:
             cls.removeSpines(ax)
-            # if prettify:
-            #     cls.prettify(ax, xticks=(0, meta['tstim'] * tplt['factor']), yfmt=None)
+            if prettify:
+                cls.prettify(ax, xticks=(0, meta['pp'].tstim * tplt['factor']), yfmt=None)
             cls.setTickLabelsFontSize(ax, fs)
         for ax in axes[:-1]:
             ax.get_shared_x_axes().join(ax, axes[-1])
@@ -379,6 +379,8 @@ class GroupedTimeSeries(TimeSeriesPlot):
             :param trange: optional lower and upper bounds to time axis
             :return: figure handle(s)
         '''
+        if colors is None:
+            colors = plt.get_cmap('tab10').colors
 
         figs = []
         for filepath in self.filepaths:
@@ -386,7 +388,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
             # Load data and extract model
             try:
                 data, meta = self.getData(filepath, frequency, trange)
-            except ValueError as err:
+            except ValueError:
                 continue
             model = self.getModel(meta)
 
@@ -425,7 +427,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
                 # Plot time series
                 icolor = 0
                 for yplt, name in zip(ax_pltvars, pltscheme[grouplabel]):
-                    color = yplt.get('color', f'C{icolor}')
+                    color = yplt.get('color', colors[icolor])
                     y = extractPltVar(model, yplt, data, meta, t.size, name)
                     ax.plot(t, y, yplt.get('ls', '-'), c=color, lw=lw,
                             label='$\\rm {}$'.format(yplt["label"]))
