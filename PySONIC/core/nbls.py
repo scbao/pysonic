@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-15 20:20:33
+# @Last Modified time: 2020-04-15 21:01:21
 
 import logging
 import numpy as np
@@ -168,7 +168,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :return: list with computation time and a list of dictionaries of effective variables
         '''
         # Run simulation and retrieve deflection and gas content vectors from last cycle
-        data = BilayerSonophore.simCycles(self, drive, Qm)
+        data = super().simCycles(drive, Qm)
         Z_last = data.loc[-NPC_DENSE:, 'Z'].values  # m
         Cm_last = self.v_capacitance(Z_last)  # F/m2
 
@@ -279,9 +279,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         ''' Compute deflection (and sonopphore coverage fraction) dependent voltage profile. '''
         return Qm / self.spatialAverage(fs, self.v_capacitance(Z), self.Cm0) * 1e3  # mV
 
-    def computeInitialConditions(self, *args, **kwargs):
+    def fullInitialConditions(self, *args, **kwargs):
         ''' Compute simulation initial conditions. '''
-        y0 = super().computeInitialConditions(*args, **kwargs)
+        y0 = super().initialConditions(*args, **kwargs)
         y0.update({
             'Qm': [self.Qm0] * 2,
             **{k: [self.pneuron.steadyStates()[k](self.pneuron.Vm0)] * 2
@@ -294,7 +294,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         dt = drive.dt
 
         # Compute initial conditions
-        y0 = self.computeInitialConditions(drive, self.Qm0, dt)
+        y0 = self.fullInitialConditions(drive, self.Qm0, dt)
 
         # Initialize solver and compute solution
         solver = EventDrivenSolver(
@@ -306,7 +306,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         data = solver(
             y0, pp.stimEvents(), pp.ttotal, target_dt=CLASSIC_TARGET_DT,
             log_period=pp.ttotal / 100 if logger.getEffectiveLevel() < logging.INFO else None,
-            logfunc=lambda y: f'Qm = {y[3] * 1e5:.2f} nC/cm2'
+            # logfunc=lambda y: f'Qm = {y[3] * 1e5:.2f} nC/cm2'
         )
 
         # Remove velocity and add voltage timeseries to solution
@@ -322,7 +322,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         dt_dense, dt_sparse = [drive.dt, drive.dt_sparse]
 
         # Compute initial conditions
-        y0 = self.computeInitialConditions(drive, self.Qm0, dt_dense)
+        y0 = self.fullInitialConditions(drive, self.Qm0, dt_dense)
 
         # Initialize solver and compute solution
         dense_vars = ['U', 'Z', 'ng']

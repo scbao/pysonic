@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-15 20:16:08
+# @Last Modified time: 2020-04-15 20:59:26
 
 from enum import Enum
 import os
@@ -719,7 +719,7 @@ class BilayerSonophore(Model):
                 queue.append([drive, Qm])
         return queue
 
-    def computeInitialConditions(self, *args, **kwargs):
+    def initialConditions(self, *args, **kwargs):
         ''' Compute simulation initial conditions. '''
         # Compute initial non-zero deflection
         Z = self.computeInitialDeflection(*args, **kwargs)
@@ -748,7 +748,7 @@ class BilayerSonophore(Model):
         self.setTissueModulus(drive)
 
         # Compute initial conditions
-        y0 = self.computeInitialConditions(drive, Qm, dt, Pm_comp_method=Pm_comp_method)
+        y0 = self.initialConditions(drive, Qm, dt, Pm_comp_method=Pm_comp_method)
 
         # Initialize solver and compute solution
         solver = PeriodicSolver(
