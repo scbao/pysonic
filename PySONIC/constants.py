@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-04 13:23:31
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-31 15:37:58
+# @Last Modified time: 2020-04-15 19:22:09
 
 ''' Numerical constants used in the package. '''
 
@@ -37,6 +37,7 @@ SOLVER_NSTEPS = 1000                # max number of steps during one ODE solver 
 CLASSIC_TARGET_DT = 1e-8            # target time step in output arrays of detailed simulations
 NPC_DENSE = 1000                    # nb of samples per acoustic period in detailed simulations
 NPC_SPARSE = 40                     # nb of samples per acoustic period in sparse simulations
+MIN_SPARSE_DT = 1e-12               # minimal time step used during sparse integration (s)
 HYBRID_UPDATE_INTERVAL = 5e-4       # time interval between two hybrid integrations (s)
 DT_EFFECTIVE = 5e-5                 # time step for effective integration (s)
 MIN_SAMPLES_PER_PULSE_INTERVAL = 1  # minimal number of time points per pulse interval (TON of TOFF)

@@ -14,12 +14,12 @@ The package contains four model classes:
 
 All model classes contain a `simulate` method to simulate the underlying model's behavior for a given set of stimulation and physiological parameters. The `NeuronalBilayerSonophore.simulate` method contains an additional `method` argument defining whether to perform a detailed (`full`), coarse-grained (`sonic`) or hybrid (`hybrid`) integration of the differential system.
 
-### Simulators
+### Solvers
 
-Numerical integration routines are implemented outside the models, in separate `Simulator` classes:
-- `PeriodicSimulator` integrates a differential system periodically until a stable periodic behavior is detected.
-- `PWSimulator` integrates a differential system given a specific temporal stimulation pattern (pulse repetition frequency, stimulus duty cycle and post-stimulus offset), using different derivative functions for "ON" (with stimulus) and "OFF" (without stimulus) periods
-- `HybridSimulator` inherits from both `PeriodicSimulator`and `PWSimulator`. It integrates a differential system using a hybrid scheme inside each "ON" or "OFF" period:
+Numerical integration routines are implemented outside the models, in a separate `solvers` module:
+- `PeriodicSolver` integrates a differential system periodically until a stable periodic behavior is detected.
+- `EventDrivenSolver` integrates a differential system across a specific set of "events" that modulate the stimuluation drive over time.
+- `HybridSolver` inherits from both `PeriodicSolver`and `EventDrivenSolver`. It integrates a differential system using a hybrid scheme inside each "ON" or "OFF" period:
   1. The full ODE system is integrated for a few cycles with a dense time granularity until a periodic stabilization detection
   2. The profiles of all variables over the last cycle are resampled to a far lower (i.e. sparse) sampling rate
   3. A subset of the ODE system is integrated with a sparse time granularity, while the remaining variables are periodically expanded from their last cycle profile, until the end of the period or that of an predefined update interval.

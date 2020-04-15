@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-09 09:10:22
+# @Last Modified time: 2020-04-15 20:16:08
 
 from enum import Enum
 import os
@@ -14,7 +14,7 @@ import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
 
 from .model import Model
-from .simulators import PeriodicSimulator
+from .solvers import PeriodicSolver
 from .drives import Drive, AcousticDrive
 from ..utils import logger, si_format
 from ..constants import *
@@ -719,6 +719,18 @@ class BilayerSonophore(Model):
                 queue.append([drive, Qm])
         return queue
 
+    def computeInitialConditions(self, *args, **kwargs):
+        ''' Compute simulation initial conditions. '''
+        # Compute initial non-zero deflection
+        Z = self.computeInitialDeflection(*args, **kwargs)
+
+        # Return initial conditions dictionary
+        return {
+            'U': [0.] * 2,
+            'Z': [0., Z],
+            'ng': [self.ng0] * 2,
+        }
+
     def simCycles(self, drive, Qm, n=None, Pm_comp_method=PmCompMethod.predict):
         ''' Simulate for a specific number of cycles or until periodic stabilization,
             for a specific set of ultrasound parameters, and return output data in a dataframe.
@@ -732,41 +744,24 @@ class BilayerSonophore(Model):
         # Determine time step
         dt = drive.dt
 
-        # Determine stop function
-        if n is not None:
-            stopfunc = lambda t, _, T: t[-1] > (n - 1) * T
-        else:
-            stopfunc = None
-
         # Set the tissue elastic modulus
         self.setTissueModulus(drive)
 
-        # Compute initial non-zero deflection
-        Z = self.computeInitialDeflection(drive, Qm, dt, Pm_comp_method=Pm_comp_method)
+        # Compute initial conditions
+        y0 = self.computeInitialConditions(drive, Qm, dt, Pm_comp_method=Pm_comp_method)
 
-        # Set initial conditions
-        y0 = np.array([0., 0., self.ng0])
-        y1 = np.array([0., Z, self.ng0])
-
-        # Initialize simulator and compute solution
-        simulator = PeriodicSimulator(
+        # Initialize solver and compute solution
+        solver = PeriodicSolver(
+            y0.keys(),
             lambda t, y: self.derivatives(t, y, drive, Qm, Pm_comp_method),
-            ivars_to_check=[1, 2], stopfunc=stopfunc)
-        t, y, stim = simulator(y1, dt, drive.periodicity)
+            drive.periodicity, dt=dt, primary_vars=['Z', 'ng'])
+        data = solver(y0, nmax=n)
 
-        # Prepend initial conditions (prior to stimulation)
-        t, y, stim = simulator.prependSolution(t, y, stim, y0=y0)
+        # Remove velocity timeries from solution
+        del data['U']
 
-        # Set last stimulation state to zero
-        stim[-1] = 0
-
-        # Store output in dataframe and return
-        return pd.DataFrame({
-            't': t,
-            'stimstate': stim,
-            'Z': y[:, 1],
-            'ng': y[:, 2]
-        })
+        # Return solution dataframe
+        return data
 
     @Model.addMeta
     @Model.logDesc

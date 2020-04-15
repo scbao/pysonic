@@ -3,17 +3,16 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-13 15:54:42
+# @Last Modified time: 2020-04-15 12:46:23
 
 import abc
 import inspect
 import numpy as np
-import pandas as pd
 
 from .protocols import PulsedProtocol
 from .model import Model
 from .lookups import EffectiveVariablesLookup
-from .simulators import PWSimulator
+from .solvers import EventDrivenSolver
 from .drives import Drive, ElectricDrive
 from ..postpro import detectSpikes, computeFRProfile
 from ..constants import *
@@ -465,32 +464,26 @@ class PointNeuron(Model):
 
             :param drive: electric drive object
             :param pp: pulse protocol object
-            :return: output dataframe
+            :return: output DataFrame
         '''
-
         # Set initial conditions
-        y0 = np.array((self.Qm0, *self.getSteadyStates(self.Vm0)))
+        y0 = {
+            'Qm': self.Qm0,
+            **{k: self.steadyStates()[k](self.Vm0) for k in self.statesNames()}
+        }
 
-        # Initialize simulator and compute solution
-        logger.debug('Computing solution')
-        simulator = PWSimulator(
-            lambda t, y: self.derivatives(t, y, Iinj=drive.I),
-            lambda t, y: self.derivatives(t, y, Iinj=0.))
-        t, y, stim = simulator(
-            y0, self.chooseTimeStep(), pp)
+        # Initialize solver and compute solution
+        solver = EventDrivenSolver(
+            y0.keys(),
+            lambda t, y: self.derivatives(t, y, Iinj=solver.A),
+            lambda x: setattr(solver, 'A', drive.I * x),
+            dt=self.chooseTimeStep())
+        data = solver(y0, pp.stimEvents(), pp.ttotal)
 
-        # Prepend initial conditions (prior to stimulation)
-        t, y, stim = simulator.prependSolution(t, y, stim)
+        # Add Vm timeries to solution
+        data = addColumn(data, 'Vm', data['Qm'].values / self.Cm0 * 1e3, preceding_key='Qm')
 
-        # Store output in dataframe and return
-        data = pd.DataFrame({
-            't': t,
-            'stimstate': stim,
-            'Qm': y[:, 0],
-            'Vm': y[:, 0] / self.Cm0 * 1e3,
-        })
-        for i in range(len(self.states)):
-            data[self.statesNames()[i]] = y[:, i + 1]
+        # Return solution dataframe
         return data
 
     def desc(self, meta):

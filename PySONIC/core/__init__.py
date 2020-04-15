@@ -3,13 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 16:35:41
+# @Last Modified time: 2020-04-15 20:48:13
 
 from types import MethodType
 import inspect
 import sys
 
-from .simulators import *
+from .solvers import *
 from .batches import *
 from .model import *
 from .pneuron import *
@@ -32,6 +32,7 @@ def getModelsDict():
         if inspect.isclass(obj) and hasattr(obj, 'simkey') and isinstance(obj.simkey, str):
             models_dict[obj.simkey] = obj
     return models_dict
+
 
 # Add an initFromMeta method to the Pointneuron class (done here to avoid circular import)
 PointNeuron.initFromMeta = MethodType(

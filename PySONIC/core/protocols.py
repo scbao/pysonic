@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-05 17:52:08
+# @Last Modified time: 2020-04-15 20:43:24
 
 import numpy as np
 from ..utils import si_format, StimObject

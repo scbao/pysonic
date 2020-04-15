@@ -3,13 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-10 16:07:06
+# @Last Modified time: 2020-04-15 20:20:33
 
 import logging
 import numpy as np
-import pandas as pd
 
-from .simulators import PWSimulator, HybridSimulator
+from .solvers import EventDrivenSolver, HybridSolver
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .model import Model
@@ -134,18 +133,19 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return codes
 
     @staticmethod
-    def interpOnOffVariable(key, Qm, stim, lkp):
-        ''' Interpolate Q-dependent effective variable along ON and OFF periods of a solution.
+    def interpEffVariable(key, Qm, stim, lkp):
+        ''' Interpolate Q-dependent effective variable along various stimulation states of a solution.
 
             :param key: lookup variable key
             :param Qm: charge density solution vector
             :param stim: stimulation state solution vector
-            :param lkp: dictionary of lookups for ON and OFF states
+            :param lkp: 2D lookup object
             :return: interpolated effective variable vector
         '''
         x = np.zeros(stim.size)
-        x[stim == 0] = lkp['OFF'].interpVar1D(Qm[stim == 0], key)
-        x[stim == 1] = lkp['ON'].interpVar1D(Qm[stim == 1], key)
+        stim_vals = np.unique(stim)
+        for s in stim_vals:
+            x[stim == s] = lkp.project('A', s).interpVar1D(Qm[stim == s], key)
         return x
 
     @staticmethod
@@ -275,161 +275,134 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         return [dQmdt, *dstates]
 
+    def deflectionDependentVm(self, Qm, Z, fs):
+        ''' Compute deflection (and sonopphore coverage fraction) dependent voltage profile. '''
+        return Qm / self.spatialAverage(fs, self.v_capacitance(Z), self.Cm0) * 1e3  # mV
+
+    def computeInitialConditions(self, *args, **kwargs):
+        ''' Compute simulation initial conditions. '''
+        y0 = super().computeInitialConditions(*args, **kwargs)
+        y0.update({
+            'Qm': [self.Qm0] * 2,
+            **{k: [self.pneuron.steadyStates()[k](self.pneuron.Vm0)] * 2
+               for k in self.pneuron.statesNames()}
+        })
+        return y0
+
     def __simFull(self, drive, pp, fs):
         # Determine time step
         dt = drive.dt
 
-        # Compute initial non-zero deflection
-        Z = self.computeInitialDeflection(drive, self.Qm0, dt)
+        # Compute initial conditions
+        y0 = self.computeInitialConditions(drive, self.Qm0, dt)
 
-        # Set initial conditions
-        ss0 = self.pneuron.getSteadyStates(self.pneuron.Vm0)
-        y0 = np.concatenate(([0., 0., self.ng0, self.Qm0], ss0))
-        y1 = np.concatenate(([0., Z, self.ng0, self.Qm0], ss0))
+        # Initialize solver and compute solution
+        solver = EventDrivenSolver(
+            y0.keys(),
+            lambda t, y: self.fullDerivatives(t, y, solver.drive, fs),
+            lambda x: setattr(solver.drive, 'A', drive.A * x),
+            event_params={'drive': drive.copy().updatedX(0.)},
+            dt=dt)
+        data = solver(
+            y0, pp.stimEvents(), pp.ttotal, target_dt=CLASSIC_TARGET_DT,
+            log_period=pp.ttotal / 100 if logger.getEffectiveLevel() < logging.INFO else None,
+            logfunc=lambda y: f'Qm = {y[3] * 1e5:.2f} nC/cm2'
+        )
 
-        drive_OFF = drive.copy()
-        drive_OFF.A = 0
+        # Remove velocity and add voltage timeseries to solution
+        del data['U']
+        data = addColumn(
+            data, 'Vm', self.deflectionDependentVm(data['Qm'], data['Z'], fs), preceding_key='Qm')
 
-        # Initialize simulator and compute solution
-        logger.debug('Computing detailed solution')
-        simulator = PWSimulator(
-            lambda t, y: self.fullDerivatives(t, y, drive, fs),
-            lambda t, y: self.fullDerivatives(t, y, drive_OFF, fs))
-        t, y, stim = simulator(
-            y1, dt, pp,
-            target_dt=CLASSIC_TARGET_DT,
-            print_progress=logger.getEffectiveLevel() <= logging.INFO,
-            monitor_func=None)
-            # monitor_func=lambda t, y: f't = {t * 1e3:.5f} ms, Qm = {y[3] * 1e5:.2f} nC/cm2')
-
-        # Prepend initial conditions (prior to stimulation)
-        t, y, stim = simulator.prependSolution(t, y, stim, y0=y0)
-
-        # Store output in dataframe and return
-        data = pd.DataFrame({
-            't': t,
-            'stimstate': stim,
-            'Z': y[:, 1],
-            'ng': y[:, 2],
-            'Qm': y[:, 3]
-        })
-        data['Vm'] = data['Qm'].values / self.spatialAverage(
-            fs, self.v_capacitance(data['Z'].values), self.Cm0) * 1e3  # mV
-        for i in range(len(self.pneuron.states)):
-            data[self.pneuron.statesNames()[i]] = y[:, i + 4]
+        # Return solution dataframe
         return data
 
     def __simHybrid(self, drive, pp, fs):
         # Determine time steps
         dt_dense, dt_sparse = [drive.dt, drive.dt_sparse]
 
-        # Compute initial non-zero deflection
-        Z = self.computeInitialDeflection(drive, self.Qm0, dt_dense)
+        # Compute initial conditions
+        y0 = self.computeInitialConditions(drive, self.Qm0, dt_dense)
 
-        # Set initial conditions
-        ss0 = self.pneuron.getSteadyStates(self.pneuron.Vm0)
-        y0 = np.concatenate(([0., 0., self.ng0, self.Qm0], ss0))
-        y1 = np.concatenate(([0., Z, self.ng0, self.Qm0], ss0))
-
-        drive_OFF = drive.copy()
-        drive_OFF.A = 0
-
-        # Initialize simulator and compute solution
-        is_dense_var = np.array([True] * 3 + [False] * (len(self.pneuron.states) + 1))
-        logger.debug('Computing hybrid solution')
-        simulator = HybridSimulator(
-            lambda t, y: self.fullDerivatives(t, y, drive, fs),
-            lambda t, y: self.fullDerivatives(t, y, drive_OFF, fs),
+        # Initialize solver and compute solution
+        dense_vars = ['U', 'Z', 'ng']
+        solver = HybridSolver(
+            y0.keys(),
+            lambda t, y: self.fullDerivatives(t, y, solver.drive, fs),  # dfunc
             lambda t, y, Cm: self.pneuron.derivatives(
-                t, y, Cm=self.spatialAverage(fs, Cm, self.Cm0)),
-            lambda yref: self.capacitance(yref[1]),
-            is_dense_var,
-            ivars_to_check=[1, 2])
-        t, y, stim = simulator(y1, dt_dense, dt_sparse, drive.periodicity, pp)
+                t, y, Cm=self.spatialAverage(fs, Cm, self.Cm0)),        # dfunc_sparse
+            lambda yref: self.capacitance(yref[1]),                     # predfunc
+            lambda x: setattr(solver.drive, 'A', drive.A * x),          # eventfunc
+            drive.periodicity, dense_vars, dt_dense, dt_sparse,
+            event_params={'drive': drive.copy().updatedX(0.)},
+            primary_vars=['Z', 'ng']
+        )
+        data = solver(
+            y0, pp.stimEvents(), pp.ttotal, target_dt=CLASSIC_TARGET_DT,
+            log_period=pp.ttotal / 100 if logger.getEffectiveLevel() < logging.INFO else None,
+            logfunc=lambda y: f'Qm = {y[3] * 1e5:.2f} nC/cm2'
+        )
 
-        # Prepend initial conditions (prior to stimulation)
-        t, y, stim = simulator.prependSolution(t, y, stim, y0=y0)
+        # Remove velocity and add voltage timeseries to solution
+        del data['U']
+        data = addColumn(
+            data, 'Vm', self.deflectionDependentVm(data['Qm'], data['Z'], fs), preceding_key='Qm')
 
-        # Store output in dataframe and return
-        data = pd.DataFrame({
-            't': t,
-            'stimstate': stim,
-            'Z': y[:, 1],
-            'ng': y[:, 2],
-            'Qm': y[:, 3]
-        })
-        data['Vm'] = data['Qm'].values / self.spatialAverage(
-            fs, self.v_capacitance(data['Z'].values), self.Cm0) * 1e3  # mV
-        for i in range(len(self.pneuron.states)):
-            data[self.pneuron.statesNames()[i]] = y[:, i + 4]
+        # Return solution dataframe
         return data
 
     def __simSonic(self, drive, pp, fs, qss_vars=None, pavg=False):
-        # Load appropriate 2D lookups
-        lkp2d = self.getLookup2D(drive.f, fs)
+        # Load appropriate 2D lookup
+        lkp = self.getLookup2D(drive.f, fs)
 
-        # Interpolate 2D lookups at zero and US amplitude
-        logger.debug('Interpolating lookups at A = %.2f kPa and A = 0', drive.A * 1e-3)
-        lkps1d = {'ON': lkp2d.project('A', drive.A), 'OFF': lkp2d.project('A', 0.)}
-
-        # Adapt lookups and pulsing protocol if pulse-average mode is selected
+        # Adapt lookup and pulsing protocol if pulse-average mode is selected
         if pavg:
-            lkps1d['ON'] = lkps1d['ON'] * pp.DC + lkps1d['OFF'] * (1 - pp.DC)
+            lkp = lkp * pp.DC + lkp.project('A', 0.).tile('A', lkp.refs['A']) * (1 - pp.DC)
             tstim = (int(pp.tstim * pp.PRF) - 1 + pp.DC) / pp.PRF
-            toffset = pp.tstim + pp.toffset - tstim
-            pp = TimeProtocol(tstim, toffset)
+            pp = TimeProtocol(tstim, pp.tstim + pp.toffset - tstim)
 
-        # # Determine QSS and differential variables
+        # Determine QSS and differential variables, and create optional QSS lookup
         if qss_vars is None:
             qss_vars = []
+        else:
+            lkp_QSS = EffectiveVariablesLookup(
+                lkp.refs, {k: self.pneuron.quasiSteadyStates()[k](lkp) for k in qss_vars})
         diff_vars = [item for item in self.pneuron.statesNames() if item not in qss_vars]
 
-        # Create 1D lookup of QSS variables with reference charge vector
-        QSS_1D_lkp = {
-            key: EffectiveVariablesLookup(
-                lkps1d['ON'].refs,
-                {k: self.pneuron.quasiSteadyStates()[k](val) for k in qss_vars})
-            for key, val in lkps1d.items()}
-
         # Set initial conditions
-        sstates = [self.pneuron.steadyStates()[k](self.pneuron.Vm0) for k in diff_vars]
-        y0 = np.array([self.Qm0, *sstates])
+        y0 = {
+            'Qm': self.Qm0,
+            **{k: self.pneuron.steadyStates()[k](self.pneuron.Vm0) for k in diff_vars}
+        }
 
-        # Initialize simulator and compute solution
-        logger.debug('Computing effective solution')
-        simulator = PWSimulator(
-            lambda t, y: self.effDerivatives(t, y, lkps1d['ON'], qss_vars),
-            lambda t, y: self.effDerivatives(t, y, lkps1d['OFF'], qss_vars))
-        t, y, stim = simulator(y0, self.pneuron.chooseTimeStep(), pp)
+        # Initialize solver and compute solution
+        solver = EventDrivenSolver(
+            y0.keys(),
+            lambda t, y: self.effDerivatives(t, y, solver.lkp, qss_vars),
+            lambda x: setattr(solver, 'lkp', lkp.project('A', drive.A * x)),
+            dt=self.pneuron.chooseTimeStep())
+        data = solver(y0, pp.stimEvents(), pp.ttotal)
 
-        # Prepend initial conditions (prior to stimulation)
-        t, y, stim = simulator.prependSolution(t, y, stim)
-
-        # Store output vectors in dataframe: time, stim state, charge, potential
-        # and other differential variables
-        data = pd.DataFrame({
-            't': t,
-            'stimstate': stim,
-            'Qm': y[:, 0]
-        })
-        data['Vm'] = self.interpOnOffVariable('V', data['Qm'].values, stim, lkps1d)
-        for key in ['Z', 'ng']:
-            data[key] = np.full(t.size, np.nan)
-        for i, k in enumerate(diff_vars):
-            data[k] = y[:, i + 1]
-
-        # Interpolate QSS variables along charge vector and store them in dataframe
+        # Interpolate Vm and QSS variables along charge vector and store them in solution dataframe
+        data = addColumn(
+            data, 'Vm', self.interpEffVariable('V', data['Qm'], data['stimstate'] * drive.A, lkp),
+            preceding_key='Qm')
         for k in qss_vars:
-            data[k] = self.interpOnOffVariable(k, data['Qm'].values, stim, QSS_1D_lkp)
+            data[k] = self.interpEffVariable(k, data['Qm'], data['stimstate'] * drive.A, lkp_QSS)
 
+        # Add dummy deflection and gas content vectors to solution
+        for key in ['Z', 'ng']:
+                data[key] = np.full(data['t'].size, np.nan)
+
+        # Return solution dataframe
         return data
 
     def intMethods(self):
         ''' Listing of model integration methods. '''
         return {
-                'full': self.__simFull,
-                'hybrid': self.__simHybrid,
-                'sonic': self.__simSonic
+            'full': self.__simFull,
+            'hybrid': self.__simHybrid,
+            'sonic': self.__simSonic
         }
 
     @classmethod

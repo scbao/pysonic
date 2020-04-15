@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-10 18:30:51
+# @Last Modified time: 2020-04-15 12:37:08
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -959,3 +959,13 @@ def getMeta(model, simfunc, *args, **kwargs):
 def bounds(arr):
     ''' Return the bounds or a numpy array / list. '''
     return (np.nanmin(arr), np.nanmax(arr))
+
+
+def addColumn(df, key, arr, preceding_key=None):
+    ''' Add a new column to a dataframe, right after a specific column. '''
+    df[key] = arr
+    if preceding_key is not None:
+        cols = df.columns.tolist()[:-1]
+        preceding_index = cols.index(preceding_key)
+        df = df[cols[:preceding_index + 1] + [key] + cols[preceding_index + 1:]]
+    return df

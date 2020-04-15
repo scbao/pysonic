@@ -3,16 +3,15 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 17:00:01
+# @Last Modified time: 2020-04-15 20:43:31
 
 import numpy as np
 import pandas as pd
 
-from .batches import Batch
 from .protocols import TimeProtocol
 from .model import Model
 from .pneuron import PointNeuron
-from .simulators import OnOffSimulator
+from .solvers import EventDrivenSolver
 from .drives import Drive, VoltageDrive
 from ..constants import *
 from ..utils import *
@@ -124,32 +123,27 @@ class VoltageClamp(Model):
             :return: output dataframe
         '''
         # Set initial conditions
-        y0 = self.pneuron.getSteadyStates(drive.Vhold)
+        y0 = {k: self.pneuron.steadyStates()[k](drive.Vhold) for k in self.pneuron.statesNames()}
+        # y0 = self.pneuron.getSteadyStates(drive.Vhold)
 
-        # Initialize simulator and compute solution
-        logger.debug('Computing solution')
-        simulator = OnOffSimulator(
-            lambda t, y: self.derivatives(t, y, Vm=drive.Vstep),
-            lambda t, y: self.derivatives(t, y, Vm=drive.Vhold))
-        t, y, stim = simulator(y0, DT_EFFECTIVE, tp)
-
-        # Prepend initial conditions (prior to stimulation)
-        t, y, stim = simulator.prependSolution(t, y, stim)
+        # Initialize solver and compute solution
+        solver = EventDrivenSolver(
+            y0.keys(),
+            lambda t, y: self.derivatives(t, y, Vm=solver.V),
+            lambda x: setattr(solver, 'V', (drive.Vstep - drive.Vhold) * x + drive.Vhold),
+            dt=DT_EFFECTIVE)
+        data = solver(y0, tp.stimEvents(), tp.ttotal)
 
         # Compute clamped membrane potential vector
-        Vm = np.zeros(stim.size)
-        Vm[stim == 0] = drive.Vhold
-        Vm[stim == 1] = drive.Vstep
+        Vm = np.zeros(len(data))
+        Vm[data['stimstate'] == 0] = drive.Vhold
+        Vm[data['stimstate'] == 1] = drive.Vstep
 
-        # Store output in dataframe and return
-        data = pd.DataFrame({
-            't': t,
-            'stimstate': stim,
-            'Qm': Vm * 1e-3 * self.pneuron.Cm0,
-            'Vm': Vm,
-        })
-        for i in range(len(self.pneuron.states)):
-            data[self.pneuron.statesNames()[i]] = y[:, i]
+        # Add Qm and Vm timeries to solution
+        data = addColumn(data, 'Qm', Vm * 1e-3 * self.pneuron.Cm0, preceding_key='stimstate')
+        data = addColumn(data, 'Vm', Vm, preceding_key='Qm')
+
+        # Return solution dataframe
         return data
 
     def desc(self, meta):
