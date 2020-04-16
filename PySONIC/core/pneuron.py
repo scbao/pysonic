@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-15 12:46:23
+# @Last Modified time: 2020-04-16 12:14:52
 
 import abc
 import inspect
@@ -474,10 +474,10 @@ class PointNeuron(Model):
 
         # Initialize solver and compute solution
         solver = EventDrivenSolver(
-            y0.keys(),
-            lambda t, y: self.derivatives(t, y, Iinj=solver.A),
-            lambda x: setattr(solver, 'A', drive.I * x),
-            dt=self.chooseTimeStep())
+            lambda x: setattr(solver, 'A', drive.I * x),         # eventfunc
+            y0.keys(),                                           # variables
+            lambda t, y: self.derivatives(t, y, Iinj=solver.A),  # dfunc
+            dt=self.chooseTimeStep())                            # time step
         data = solver(y0, pp.stimEvents(), pp.ttotal)
 
         # Add Vm timeries to solution

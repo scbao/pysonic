@@ -3,10 +3,9 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-15 20:43:31
+# @Last Modified time: 2020-04-16 12:17:48
 
 import numpy as np
-import pandas as pd
 
 from .protocols import TimeProtocol
 from .model import Model
@@ -124,14 +123,14 @@ class VoltageClamp(Model):
         '''
         # Set initial conditions
         y0 = {k: self.pneuron.steadyStates()[k](drive.Vhold) for k in self.pneuron.statesNames()}
-        # y0 = self.pneuron.getSteadyStates(drive.Vhold)
 
         # Initialize solver and compute solution
+        Vfunc = lambda x: (drive.Vstep - drive.Vhold) * x + drive.Vhold  # voltage setting function
         solver = EventDrivenSolver(
-            y0.keys(),
-            lambda t, y: self.derivatives(t, y, Vm=solver.V),
-            lambda x: setattr(solver, 'V', (drive.Vstep - drive.Vhold) * x + drive.Vhold),
-            dt=DT_EFFECTIVE)
+            lambda x: setattr(solver, 'V', Vfunc(x)),          # eventfunc
+            y0.keys(),                                         # variables list
+            lambda t, y: self.derivatives(t, y, Vm=solver.V),  # dfunc
+            dt=DT_EFFECTIVE)                                   # time step
         data = solver(y0, tp.stimEvents(), tp.ttotal)
 
         # Compute clamped membrane potential vector

@@ -3,9 +3,8 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-15 20:00:03
+# @Last Modified time: 2020-04-16 13:29:30
 
-import abc
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
@@ -16,7 +15,7 @@ from ..utils import *
 from ..constants import *
 
 
-class ODESolver(metaclass=abc.ABCMeta):
+class ODESolver:
     ''' Generic interface to ODE solver object. '''
 
     def __init__(self, ykeys, dfunc, dt=None):
@@ -48,6 +47,10 @@ class ODESolver(metaclass=abc.ABCMeta):
         self._ykeys = value
 
     @property
+    def nvars(self):
+        return len(self.ykeys)
+
+    @property
     def dfunc(self):
         return self._dfunc
 
@@ -72,8 +75,7 @@ class ODESolver(metaclass=abc.ABCMeta):
             self._dt = value
 
     def getNSamples(self, t0, tend, dt=None):
-        ''' Get the number of samples required to integrate from an initial to a final time with
-            a specific time step.
+        ''' Get the number of samples required to integrate across 2 times with a given time step.
 
             :param t0: initial time (s)
             :param tend: final time (s)
@@ -95,9 +97,10 @@ class ODESolver(metaclass=abc.ABCMeta):
         return np.linspace(t0, tend, self.getNSamples(t0, tend, **kwargs))
 
     def initialize(self, y0, t0=0.):
-        ''' Initialize time vector and solution matrix.
+        ''' Initialize global time vector, state vector and solution array.
 
             :param y0: dictionary of initial conditions
+            :param t0: optional initial time or time vector (s)
         '''
         keys = list(y0.keys())
         if len(keys) != len(self.ykeys):
@@ -114,27 +117,38 @@ class ODESolver(metaclass=abc.ABCMeta):
         self.x = np.zeros(self.t.size)
 
     def append(self, t, y):
-        ''' Append to time vector and solution matrix.
+        ''' Append to global time vector, state vector and solution array.
 
-            :param t: integration time vector for current interval
-            :param y: derivative function for current interval
+            :param t: new time vector to append (s)
+            :param y: new solution matrix to append
         '''
         self.t = np.concatenate((self.t, t))
         self.y = np.concatenate((self.y, y), axis=0)
         self.x = np.concatenate((self.x, np.ones(t.size) * self.xref))
 
     def bound(self, tbounds):
-        ''' Bound to time vector and solution matrix. '''
+        ''' Restrict global time vector, state vector ans solution matrix within
+            specific time range.
+
+            :param tbounds: minimal and maximal allowed time restricting the global arrays (s).
+        '''
         i_bounded = np.logical_and(self.t >= tbounds[0], self.t <= tbounds[1])
         self.t = self.t[i_bounded]
         self.y = self.y[i_bounded, :]
         self.x = self.x[i_bounded]
 
+    def timedlog(self, s, t=None):
+        ''' Add preceding time information to log string. '''
+        if t is None:
+            t = self.t[-1]
+        return f't = {t * 1e3:.5f} ms: {s}'
+
     def integrateUntil(self, target_t, remove_first=False):
-        ''' Integrate system for a time interval and append to preceding solution arrays.
+        ''' Integrate system until a target time and append new arrays to global arrays.
 
             :param target_t: target time (s)
-            :param dt: integration time step (s)
+            :param remove_first: optional boolean specifying whether to remove the first index
+            of the new arrays before appending
         '''
         if target_t < self.t[-1]:
             raise ValueError(f'target time ({target_t} s) precedes current time {self.t[-1]} s')
@@ -151,31 +165,45 @@ class ODESolver(metaclass=abc.ABCMeta):
             t, y = t[1:], y[1:]
         self.append(t, y)
 
-    def resampleArray(self, t, y, target_dt):
+    def resampleArrays(self, t, y, target_dt):
+        ''' Resample a time vector and soluton matrix to target time step.
+
+            :param t: time vector to resample (s)
+            :param y: solution matrix to resample
+            :target_dt: target time step (s)
+            :return: resampled time vector and solution matrix
+        '''
         tnew = self.getTimeVector(t[0], t[-1], dt=target_dt)
         ynew = np.array([np.interp(tnew, t, x) for x in y.T]).T
         return tnew, ynew
 
     def resample(self, target_dt):
-        ''' Resample solution to a new target time step.
+        ''' Resample global arrays to a new target time step.
 
             :target_dt: target time step (s)
         '''
-        tnew, self.y = self.resampleArray(self.t, self.y, target_dt)
+        tnew, self.y = self.resampleArrays(self.t, self.y, target_dt)
         self.x = interp1d(self.t, self.x, kind='nearest', assume_sorted=True)(tnew)
         self.t = tnew
 
-    @abc.abstractmethod
-    def solve(self, y0):
-        ''' Simulate system for a given time interval with specific initial conditions.
+    def solve(self, y0, tstop, **kwargs):
+        ''' Simulate system for a given time interval for specific initial conditions.
 
             :param y0: dictionary of initial conditions
+            :param tstop: stopping time (s)
         '''
-        raise NotImplementedError
+        # Initialize system
+        self.initialize(y0, **kwargs)
+
+        # Integrate until tstop
+        self.integrateUntil(tstop, remove_first=True)
 
     @property
     def solution(self):
-        ''' Return solution as a pandas dataframe. '''
+        ''' Return solution as a pandas dataframe.
+
+            :return: timeseries dataframe with labeled time, state and variables vectors.
+        '''
         return pd.DataFrame({
             't': self.t,
             'stimstate': self.x,
@@ -183,7 +211,8 @@ class ODESolver(metaclass=abc.ABCMeta):
         })
 
     def __call__(self, *args, target_dt=None, **kwargs):
-        ''' Call solve method and return solution dataframe. '''
+        ''' Specific call method: solve the system, resample solution if needed, and return
+            solution dataframe. '''
         self.solve(*args, **kwargs)
         if target_dt is not None:
             self.resample(target_dt)
@@ -191,17 +220,15 @@ class ODESolver(metaclass=abc.ABCMeta):
 
 
 class PeriodicSolver(ODESolver):
-    ''' ODE solver with specific periodicity. '''
+    ''' ODE solver that integrates periodically until a stable periodic behavior is detected.'''
 
-    def __init__(self, ykeys, dfunc, T, primary_vars=None, **kwargs):
+    def __init__(self, T, *args, primary_vars=None, **kwargs):
         ''' Initialization.
 
-            :param ykeys: list of differential variables names
-            :param dfunc: derivative function
             :param T: periodicity (s)
             :param primary_vars: keys of the primary solution variables to check for stability
         '''
-        super().__init__(ykeys, dfunc, **kwargs)
+        super().__init__(*args, **kwargs)
         self.T = T
         self.primary_vars = primary_vars
 
@@ -240,22 +267,50 @@ class PeriodicSolver(ODESolver):
     def xref(self):
         return 1.
 
-    def getNPerCycle(self, dt):
-        ''' Compute number of samples per cycle given a time step and a specific periodicity.
+    def getNPerCycle(self, dt=None):
+        ''' Compute number of samples per cycle.
 
-            :param dt: integration time step (s)
-            :return: number of samples per cycle
+            :param dt: optional integration time step (s)
+            :return: number of samples per cycle, rounded to nearest integer
         '''
-        if isIterable(dt):  # if time vector is provided, compute dt from its last 2 elements
-            dt = dt[-1] - dt[-2]
-        return int(np.round(self.T / dt)) + 1
+        # if time step not provided, compute dt from last 2 elements of time vector
+        if dt is None:
+            dt = self.t[-1] - self.t[-2]
+        return int(np.round(self.T / dt))
 
-    def getLastCycle(self, i=0):
-        ''' Get solution vector for the last ith cycle. '''
-        n = self.getNPerCycle(self.t) - 1
-        if i == 0:
-            return self.y[-n:]
-        return self.y[-(i + 1) * n:-i * n]
+    def getCycle(self, i, ivars=None):
+        ''' Get time vector and solution matrix for the ith cycle.
+
+            :param i: cycle index
+            :param ivars: optional indexes of subset of variables of interest
+            :return: solution matrix for ith cycle, filtered for variables of interest
+        '''
+        # By default, consider indexes of all variables
+        if ivars is None:
+            ivars = range(self.nvars)
+
+        # Get first time index where time difference differs from solver's time step, if any
+        i_diff_dt = np.where(np.invert(np.isclose(np.diff(self.t)[::-1], self.dt)))[0]
+
+        # Determine the number of samples to consider in the backwards direction
+        nsamples = i_diff_dt[0] if i_diff_dt.size > 0 else self.t.size
+
+        npc = self.getNPerCycle()                # number of samples per cycle
+        ncycles = int(np.round(nsamples / npc))  # rounded number of cycles
+        ioffset = self.t.size - npc * ncycles    # corresponding initial index offset
+
+        # Check index validity
+        if i < 0:
+            i += ncycles
+        if i < 0 or i >= ncycles:
+            raise ValueError('Invalid index')
+
+        # Compute start and end indexes
+        istart = i * npc + ioffset
+        iend = istart + npc
+
+        # Return arrays for corresponding cycle
+        return self.t[istart:iend], self.y[istart:iend, ivars]
 
     def isPeriodicallyStable(self):
         ''' Assess the periodic stabilization of a solution, by evaluating the deviation
@@ -263,16 +318,13 @@ class PeriodicSolver(ODESolver):
 
             :return: boolean stating whether the solution is periodically stable or not
         '''
-        # Extract the 2 cycles of interest from the solution
-        y_last, y_prec = self.getLastCycle(i=0), self.getLastCycle(i=1)
+        # Extract the last 2 cycles of the primary variables from the solution
+        y_last, y_prec = [self.getCycle(-i, ivars=self.i_primary_vars)[1] for i in [1, 2]]
 
-        # For each variable of interest, evaluate the RMSE between the two cycles, the
-        # variation range over the last cycle, and the ratio of these 2 quantities
-        ratios = np.array([rmse(y_last[:, i], y_prec[:, i]) / np.ptp(y_last[:, i])
-                           for i in self.i_primary_vars])
+        # Evaluate ratios of RMSE between the two cycles / variation range over the last cycle
+        ratios = rmse(y_last, y_prec, axis=0) / np.ptp(y_last, axis=0)
 
-        # Classify the solution as periodically stable only if all RMSE/PTP ratios
-        # are below critical threshold
+        # Classify solution as periodically stable only if all ratios are below critical threshold
         return np.all(ratios < MAX_RMSE_PTP_RATIO)
 
     def integrateCycle(self):
@@ -296,31 +348,28 @@ class PeriodicSolver(ODESolver):
         for i in range(2):
             self.integrateCycle()
 
-        # Keep integrating system cyclically until stopping criterion is met
+        # Keep integrating system periodically until stopping criterion is met
         while not self.isPeriodicallyStable() and i < nmax:
             self.integrateCycle()
             i += 1
 
         # Log stopping criterion
-        t_str = f't = {self.t[-1] * 1e3:.5f} ms'
         if i == nmax:
-            logger.warning(f'{t_str}: criterion not met -> stopping after {i} cycles')
+            logger.warning(self.timedlog(f'criterion not met -> stopping after {i} cycles'))
         else:
-            logger.debug(f'{t_str}: stopping criterion met after {i} cycles')
+            logger.debug(self.timedlog(f'stopping criterion met after {i} cycles'))
 
 
 class EventDrivenSolver(ODESolver):
     ''' Event-driven ODE solver. '''
 
-    def __init__(self, ykeys, dfunc, eventfunc, event_params=None, **kwargs):
+    def __init__(self, eventfunc, *args, event_params=None, **kwargs):
         ''' Initialization.
 
-            :param ykeys: list of differential variables names
-            :param dfunc: derivatives  function
             :param eventfunc: function called on each event
             :param event_params: dictionary of parameters used by the derivatives function
         '''
-        super().__init__(ykeys, dfunc, **kwargs)
+        super().__init__(*args, **kwargs)
         self.eventfunc = eventfunc
         self.assignEventParams(event_params)
 
@@ -361,6 +410,7 @@ class EventDrivenSolver(ODESolver):
                 self.xref = xevent
 
     def initLog(self, logfunc, n):
+        ''' Initialize progress logger. '''
         self.logfunc = logfunc
         if self.logfunc is None:
             setHandler(logger, TqdmHandler(my_log_formatter))
@@ -370,18 +420,21 @@ class EventDrivenSolver(ODESolver):
             logger.debug('integrating stimulus')
 
     def logProgress(self):
+        ''' Log simulation progress. '''
         if self.logfunc is None:
             self.pbar.update()
         else:
-            logger.debug(f't = {self.t[-1] * 1e3:.5f} ms: {self.logfunc(self.y[-1])}')
+            logger.debug(self.timedlog(self.logfunc(self.y[-1])))
 
     def terminateLog(self):
+        ''' Terminate progress logger. '''
         if self.logfunc is None:
             self.pbar.close()
         else:
             logger.debug('integration completed')
 
     def sortEvents(self, events):
+        ''' Sort events pairs by occurence time. '''
         return sorted(events, key=lambda x: x[0])
 
     def solve(self, y0, events, tstop, log_period=None, logfunc=None, **kwargs):
@@ -439,7 +492,7 @@ class HybridSolver(EventDrivenSolver, PeriodicSolver):
             :param dt_sparse: sparse integration time step (s)
         '''
         PeriodicSolver.__init__(
-            self, ykeys, dfunc, T, primary_vars=kwargs.get('primary_vars', None), dt=dt_dense)
+            self, T, ykeys, dfunc, primary_vars=kwargs.get('primary_vars', None), dt=dt_dense)
         self.eventfunc = eventfunc
         self.assignEventParams(kwargs.get('event_params', None))
         self.predfunc = predfunc
@@ -480,14 +533,18 @@ class HybridSolver(EventDrivenSolver, PeriodicSolver):
     def is_sparse_var(self):
         return np.invert(self.is_dense_var)
 
-    def integrateSparse(self, ysparse, tf):
-        ''' Integrate sparse system until a specific time. '''
+    def integrateSparse(self, ysparse, target_t):
+        ''' Integrate sparse system until a specific time.
+
+            :param ysparse: sparse 1-cycle solution matrix of fast-evolving variables
+            :paramt target_t: target time (s)
+        '''
         # Compute number of samples in the sparse cycle solution
         npc = ysparse.shape[0]
 
         # Initialize time vector and solution array for the current interval
-        n = int(np.ceil((tf - self.t[-1]) / self.dt_sparse))
-        t = np.linspace(self.t[-1], tf, n + 1)[1:]
+        n = int(np.ceil((target_t - self.t[-1]) / self.dt_sparse))
+        t = np.linspace(self.t[-1], target_t, n + 1)[1:]
         y = np.empty((n, self.y.shape[1]))
 
         # Initialize sparse integrator
@@ -498,7 +555,7 @@ class HybridSolver(EventDrivenSolver, PeriodicSolver):
                 self.sparse_solver.set_f_params(self.predfunc(ysparse[i % npc]))
                 self.sparse_solver.integrate(tt)
                 if not self.sparse_solver.successful():
-                    raise ValueError(f'integration error at t = {tt * 1e3:.5f} ms')
+                    raise ValueError(self.timedlog('integration error', tt))
 
             # Assign solution values (computed and propagated) to sparse solution array
             y[i, self.is_dense_var] = ysparse[i % npc, self.is_dense_var]
@@ -543,24 +600,27 @@ class HybridSolver(EventDrivenSolver, PeriodicSolver):
             # If time interval encompasses at least one cycle, solve periodic system
             nmax = int(np.round((tend - self.t[-1]) / self.T))
             if nmax > 0:
+                logger.debug(self.timedlog('integrating dense system'))
                 PeriodicSolver.solve(self, None, nmax=nmax)
 
             # If end-time of current interval has been exceeded, bound solution to that time
             if self.t[-1] > tend:
+                logger.debug(self.timedlog(f'bounding system at {tend * 1e3:.5f} ms'))
                 self.bound((self.t[0], tend))
 
             # If end-time of current interval has not been reached
             if self.t[-1] < tend:
                 # Get solution over last cycle and resample it to sparse time step
-                ylast = self.getLastCycle()
-                tlast = self.t[-ylast.shape[0]:]
-                _, ysparse = self.resampleArray(tlast, ylast, self.dt_sparse)
+                tlast, ylast = self.getCycle(-1)
+                _, ysparse = self.resampleArrays(tlast, ylast, self.dt_sparse)
 
                 # Integrate sparse system for the rest of the current interval
+                logger.debug(self.timedlog(f'integrating sparse system until {tend * 1e3:.5f} ms'))
                 self.integrateSparse(ysparse, tend)
 
             # If end-time corresponds to event, fire it and move to next event
             if self.t[-1] == tevent:
+                logger.debug(self.timedlog('firing event'))
                 self.fireEvent(xevent)
                 try:
                     tevent, xevent = next(ievent)

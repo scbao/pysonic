@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-15 12:37:08
+# @Last Modified time: 2020-04-16 11:47:08
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -162,9 +162,9 @@ def plural(n):
         return 's'
 
 
-def rmse(x1, x2):
+def rmse(x1, x2, axis=None):
     ''' Compute the root mean square error between two 1D arrays '''
-    return np.sqrt(((x1 - x2) ** 2).mean())
+    return np.sqrt(((x1 - x2) ** 2).mean(axis=axis))
 
 
 def rsquared(x1, x2):

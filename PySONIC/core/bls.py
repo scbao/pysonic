@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-15 20:59:26
+# @Last Modified time: 2020-04-16 12:23:40
 
 from enum import Enum
 import os
@@ -741,20 +741,20 @@ class BilayerSonophore(Model):
             :param Pm_comp_method: type of method used to compute average intermolecular pressure
             :return: output dataframe
         '''
-        # Determine time step
-        dt = drive.dt
-
         # Set the tissue elastic modulus
         self.setTissueModulus(drive)
 
         # Compute initial conditions
-        y0 = self.initialConditions(drive, Qm, dt, Pm_comp_method=Pm_comp_method)
+        y0 = self.initialConditions(drive, Qm, drive.dt, Pm_comp_method=Pm_comp_method)
 
         # Initialize solver and compute solution
         solver = PeriodicSolver(
-            y0.keys(),
-            lambda t, y: self.derivatives(t, y, drive, Qm, Pm_comp_method),
-            drive.periodicity, dt=dt, primary_vars=['Z', 'ng'])
+            drive.periodicity,                                               # periodicty
+            y0.keys(),                                                       # variables list
+            lambda t, y: self.derivatives(t, y, drive, Qm, Pm_comp_method),  # dfunc
+            primary_vars=['Z', 'ng'],                                        # primary variables
+            dt=drive.dt                                                      # time step
+        )
         data = solver(y0, nmax=n)
 
         # Remove velocity timeries from solution

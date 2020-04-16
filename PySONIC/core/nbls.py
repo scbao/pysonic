@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-15 21:01:21
+# @Last Modified time: 2020-04-16 12:23:17
 
 import logging
 import numpy as np
@@ -290,19 +290,16 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return y0
 
     def __simFull(self, drive, pp, fs):
-        # Determine time step
-        dt = drive.dt
-
         # Compute initial conditions
-        y0 = self.fullInitialConditions(drive, self.Qm0, dt)
+        y0 = self.fullInitialConditions(drive, self.Qm0, drive.dt)
 
         # Initialize solver and compute solution
         solver = EventDrivenSolver(
-            y0.keys(),
-            lambda t, y: self.fullDerivatives(t, y, solver.drive, fs),
-            lambda x: setattr(solver.drive, 'A', drive.A * x),
-            event_params={'drive': drive.copy().updatedX(0.)},
-            dt=dt)
+            lambda x: setattr(solver.drive, 'A', drive.A * x),          # eventfunc
+            y0.keys(),                                                  # variables list
+            lambda t, y: self.fullDerivatives(t, y, solver.drive, fs),  # dfunc
+            event_params={'drive': drive.copy().updatedX(0.)},          # event parameters
+            dt=drive.dt)                                                # time step
         data = solver(
             y0, pp.stimEvents(), pp.ttotal, target_dt=CLASSIC_TARGET_DT,
             log_period=pp.ttotal / 100 if logger.getEffectiveLevel() < logging.INFO else None,
@@ -318,14 +315,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return data
 
     def __simHybrid(self, drive, pp, fs):
-        # Determine time steps
-        dt_dense, dt_sparse = [drive.dt, drive.dt_sparse]
-
         # Compute initial conditions
-        y0 = self.fullInitialConditions(drive, self.Qm0, dt_dense)
+        y0 = self.fullInitialConditions(drive, self.Qm0, drive.dt)
 
         # Initialize solver and compute solution
-        dense_vars = ['U', 'Z', 'ng']
         solver = HybridSolver(
             y0.keys(),
             lambda t, y: self.fullDerivatives(t, y, solver.drive, fs),  # dfunc
@@ -333,9 +326,12 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 t, y, Cm=self.spatialAverage(fs, Cm, self.Cm0)),        # dfunc_sparse
             lambda yref: self.capacitance(yref[1]),                     # predfunc
             lambda x: setattr(solver.drive, 'A', drive.A * x),          # eventfunc
-            drive.periodicity, dense_vars, dt_dense, dt_sparse,
-            event_params={'drive': drive.copy().updatedX(0.)},
-            primary_vars=['Z', 'ng']
+            drive.periodicity,                                          # periodicity
+            ['U', 'Z', 'ng'],                                           # fast-evolving variables
+            drive.dt,                                                   # dense time step
+            drive.dt_sparse,                                            # sparse time step
+            event_params={'drive': drive.copy().updatedX(0.)},          # event parameters
+            primary_vars=['Z', 'ng']                                    # primary variables
         )
         data = solver(
             y0, pp.stimEvents(), pp.ttotal, target_dt=CLASSIC_TARGET_DT,
@@ -377,10 +373,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Initialize solver and compute solution
         solver = EventDrivenSolver(
-            y0.keys(),
-            lambda t, y: self.effDerivatives(t, y, solver.lkp, qss_vars),
-            lambda x: setattr(solver, 'lkp', lkp.project('A', drive.A * x)),
-            dt=self.pneuron.chooseTimeStep())
+            lambda x: setattr(solver, 'lkp', lkp.project('A', drive.A * x)),  # eventfunc
+            y0.keys(),                                                        # variables list
+            lambda t, y: self.effDerivatives(t, y, solver.lkp, qss_vars),     # dfunc
+            dt=self.pneuron.chooseTimeStep())                                 # time step
         data = solver(y0, pp.stimEvents(), pp.ttotal)
 
         # Interpolate Vm and QSS variables along charge vector and store them in solution dataframe
