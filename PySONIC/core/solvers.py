@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-16 13:29:30
+# @Last Modified time: 2020-04-17 15:23:18
 
 import numpy as np
 import pandas as pd
@@ -137,11 +137,15 @@ class ODESolver:
         self.y = self.y[i_bounded, :]
         self.x = self.x[i_bounded]
 
+    @staticmethod
+    def timeStr(t):
+        return f'{t * 1e3:.5f} ms'
+
     def timedlog(self, s, t=None):
         ''' Add preceding time information to log string. '''
         if t is None:
             t = self.t[-1]
-        return f't = {t * 1e3:.5f} ms: {s}'
+        return f't = {self.timeStr(t)}: {s}'
 
     def integrateUntil(self, target_t, remove_first=False):
         ''' Integrate system until a target time and append new arrays to global arrays.
@@ -564,7 +568,7 @@ class HybridSolver(EventDrivenSolver, PeriodicSolver):
         # Append to global solution
         self.append(t, y)
 
-    def solve(self, y0, events, tstop, logfunc=None, **kwargs):
+    def solve(self, y0, events, tstop, update_interval, logfunc=None, **kwargs):
         ''' Integrate system using a hybrid scheme:
 
             - First, the full ODE system is integrated for a few cycles with a dense time
@@ -595,7 +599,7 @@ class HybridSolver(EventDrivenSolver, PeriodicSolver):
         # While final event is not reached
         while not stop:
             # Determine end-time of current interval
-            tend = min(tevent, self.t[-1] + HYBRID_UPDATE_INTERVAL)
+            tend = min(tevent, self.t[-1] + update_interval)
 
             # If time interval encompasses at least one cycle, solve periodic system
             nmax = int(np.round((tend - self.t[-1]) / self.T))
@@ -605,7 +609,7 @@ class HybridSolver(EventDrivenSolver, PeriodicSolver):
 
             # If end-time of current interval has been exceeded, bound solution to that time
             if self.t[-1] > tend:
-                logger.debug(self.timedlog(f'bounding system at {tend * 1e3:.5f} ms'))
+                logger.debug(self.timedlog(f'bounding system at {self.timeStr(tend)}'))
                 self.bound((self.t[0], tend))
 
             # If end-time of current interval has not been reached
@@ -615,7 +619,7 @@ class HybridSolver(EventDrivenSolver, PeriodicSolver):
                 _, ysparse = self.resampleArrays(tlast, ylast, self.dt_sparse)
 
                 # Integrate sparse system for the rest of the current interval
-                logger.debug(self.timedlog(f'integrating sparse system until {tend * 1e3:.5f} ms'))
+                logger.debug(self.timedlog(f'integrating sparse system until {self.timeStr(tend)}'))
                 self.integrateSparse(ysparse, tend)
 
             # If end-time corresponds to event, fire it and move to next event

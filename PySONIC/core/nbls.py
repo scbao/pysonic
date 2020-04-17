@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-16 12:23:17
+# @Last Modified time: 2020-04-17 15:23:12
 
 import logging
 import numpy as np
@@ -334,7 +334,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             primary_vars=['Z', 'ng']                                    # primary variables
         )
         data = solver(
-            y0, pp.stimEvents(), pp.ttotal, target_dt=CLASSIC_TARGET_DT,
+            y0, pp.stimEvents(), pp.ttotal, HYBRID_UPDATE_INTERVAL, target_dt=CLASSIC_TARGET_DT,
             log_period=pp.ttotal / 100 if logger.getEffectiveLevel() < logging.INFO else None,
             logfunc=lambda y: f'Qm = {y[3] * 1e5:.2f} nC/cm2'
         )
