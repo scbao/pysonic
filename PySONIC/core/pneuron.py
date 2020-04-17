@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 19:20:05
+# @Last Modified time: 2020-04-17 19:55:23
 
 import abc
 import inspect
@@ -413,6 +413,19 @@ class PointNeuron(Model):
             amps = [None]
         drives = ElectricDrive.createQueue(amps)
         protocols = PulsedProtocol.createQueue(durations, offsets, PRFs, DCs)
+        queue = []
+        for drive in drives:
+            for pp in protocols:
+                queue.append([drive, pp])
+        return queue
+
+    @classmethod
+    @Model.checkOutputDir
+    def simQueueBurst(cls, amps, durations, PRFs, DCs, BRFs, nbursts, **kwargs):
+        if amps is None:
+            amps = [None]
+        drives = ElectricDrive.createQueue(amps)
+        protocols = BurstProtocol.createQueue(durations, PRFs, DCs, BRFs, nbursts)
         queue = []
         for drive in drives:
             for pp in protocols:

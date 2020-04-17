@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 18:31:40
+# @Last Modified time: 2020-04-17 20:06:59
 
 import numpy as np
 from ..utils import si_format, StimObject
@@ -254,14 +254,14 @@ class PulsedProtocol(TimeProtocol):
 
 class BurstProtocol(PulsedProtocol):
 
-    def __init__(self, tburst, BRF, nbursts=1, **kwargs):
+    def __init__(self, tburst, PRF=100., DC=1., BRF=1., nbursts=1):
         ''' Class constructor.
 
             :param tburst: burst duration (s)
             :param BRF: burst repetition frequency (Hz)
             :param nbursts: number of bursts
         '''
-        super().__init__(tburst, 1 / BRF - tburst, **kwargs)
+        super().__init__(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC)
         self.BRF = BRF
         self.nbursts = nbursts
 
@@ -347,9 +347,10 @@ class BurstProtocol(PulsedProtocol):
 
         # Complete queue with each BRF-nburts combination
         queue = []
-        for nb in nbursts:
-            for BRF in BRFs:
-                queue.append(pp_queue + [BRF, nbursts])
+        for item in pp_queue:
+            for nb in nbursts:
+                for BRF in BRFs:
+                    queue.append(item + [BRF, nb])
 
         # Construct and return objects queue
         return [cls(*item) for item in queue]

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 18:06:52
+# @Last Modified time: 2020-04-17 20:09:33
 
 import logging
 import numpy as np
@@ -420,11 +420,28 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         '''
         if ('full' in methods or 'hybrid' in methods) and kwargs['outputdir'] is None:
             logger.warning('Running cumbersome simulation(s) without file saving')
-
         if amps is None:
             amps = [None]
         drives = AcousticDrive.createQueue(freqs, amps)
         protocols = PulsedProtocol.createQueue(durations, offsets, PRFs, DCs)
+        queue = []
+        for drive in drives:
+            for pp in protocols:
+                for cov in fs:
+                    for method in methods:
+                        queue.append([drive, pp, cov, method, qss_vars])
+        return queue
+
+    @classmethod
+    @Model.checkOutputDir
+    def simQueueBurst(cls, freqs, amps, durations, PRFs, DCs, BRFs, nbursts,
+                      fs, methods, qss_vars, **kwargs):
+        if ('full' in methods or 'hybrid' in methods) and kwargs['outputdir'] is None:
+            logger.warning('Running cumbersome simulation(s) without file saving')
+        if amps is None:
+            amps = [None]
+        drives = AcousticDrive.createQueue(freqs, amps)
+        protocols = BurstProtocol.createQueue(durations, PRFs, DCs, BRFs, nbursts)
         queue = []
         for drive in drives:
             for pp in protocols:

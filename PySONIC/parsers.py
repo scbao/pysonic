@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 18:28:54
+# @Last Modified time: 2020-04-17 19:56:16
 
 import os
 import logging
@@ -604,16 +604,22 @@ class PWSimParser(NeuronSimParser):
         self.defaults.update({
             'PRF': 100.0,  # Hz
             'DC': 100.0,  # %
+            'BRF': 1.0,  # Hz
+            'nbursts': 1,  # (-)
         })
         self.factors.update({
             'PRF': 1.,
-            'DC': 1e-2
+            'DC': 1e-2,
+            'BRF': 1.,
+            'nbursts': 1,
         })
         self.allowed.update({
             'DC': range(101)
         })
         self.addPRF()
         self.addDC()
+        self.addBRF()
+        self.addNBursts()
         self.addTitrate()
         self.addSpikes()
 
@@ -628,13 +634,13 @@ class PWSimParser(NeuronSimParser):
             '--spanDC', default=False, action='store_true', help='Span DC from 1 to 100%%')
         self.to_parse['DC'] = self.parseDC
 
-    # def addBRF(self):
-    #     self.add_argument(
-    #         '--BRF', nargs='+', type=float, help='Burst repetition frequency (Hz)')
+    def addBRF(self):
+        self.add_argument(
+            '--BRF', nargs='+', type=float, help='Burst repetition frequency (Hz)')
 
-    # def addNBursts(self):
-    #     self.add_argument(
-    #         '--nbursts', nargs='+', type=float, help='Number of bursts')
+    def addNBursts(self):
+        self.add_argument(
+            '--nbursts', nargs='+', type=int, help='Number of bursts')
 
     def addTitrate(self):
         self.add_argument(
@@ -658,7 +664,11 @@ class PWSimParser(NeuronSimParser):
 
     @staticmethod
     def parseSimInputs(args):
-        return [args[k] for k in ['amp', 'tstim', 'toffset', 'PRF', 'DC']]
+        keys = ['amp', 'tstim', 'toffset', 'PRF', 'DC']
+        if len(args['nbursts']) > 1 or args['nbursts'][0] > 1:
+            del keys[2]
+            keys += ['BRF', 'nbursts']
+        return [args[k] for k in keys]
 
 
 class EStimParser(PWSimParser):
@@ -734,6 +744,3 @@ class AStimParser(PWSimParser, MechSimParser):
     @staticmethod
     def parseSimInputs(args):
         return [args['freq']] + PWSimParser.parseSimInputs(args) + [args[k] for k in ['fs', 'method', 'qss']]
-
-
-

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-24 11:55:07
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-20 18:34:39
+# @Last Modified time: 2020-04-17 20:12:56
 
 ''' Run E-STIM simulations of a specific point-neuron. '''
 
@@ -17,11 +17,13 @@ def main():
     parser = EStimParser()
     args = parser.parse()
     logger.setLevel(args['loglevel'])
+    sim_inputs = parser.parseSimInputs(args)
+    simQueue_func = {5: 'simQueue', 6: 'simQueueBurst'}[len(sim_inputs)]
 
     # Run E-STIM batch
     logger.info("Starting E-STIM simulation batch")
-    queue = PointNeuron.simQueue(
-        *parser.parseSimInputs(args), outputdir=args['outputdir'], overwrite=args['overwrite'])
+    queue = getattr(PointNeuron, simQueue_func)(
+        *sim_inputs, outputdir=args['outputdir'], overwrite=args['overwrite'])
     output = []
     for pneuron in args['neuron']:
         batch = Batch(pneuron.simAndSave if args['save'] else pneuron.simulate, queue)
