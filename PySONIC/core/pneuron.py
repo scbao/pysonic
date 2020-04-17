@@ -3,13 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-16 12:14:52
+# @Last Modified time: 2020-04-17 19:20:05
 
 import abc
 import inspect
 import numpy as np
 
-from .protocols import PulsedProtocol
+from .protocols import *
 from .model import Model
 from .lookups import EffectiveVariablesLookup
 from .solvers import EventDrivenSolver
@@ -428,8 +428,8 @@ class PointNeuron(Model):
         '''
         if not isinstance(drive, Drive):
             raise TypeError(f'Invalid "drive" parameter (must be an "Drive" object)')
-        if not isinstance(pp, PulsedProtocol):
-            raise TypeError('Invalid pulsed protocol (must be "PulsedProtocol" instance)')
+        if not isinstance(pp, TimeProtocol):
+            raise TypeError('Invalid time protocol (must be "TimeProtocol" instance)')
 
     def chooseTimeStep(self):
         ''' Determine integration time step based on intrinsic temporal properties. '''

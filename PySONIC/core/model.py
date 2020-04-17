@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 11:41:54
+# @Last Modified time: 2020-04-17 19:31:15
 
 from functools import wraps
 from inspect import getdoc
@@ -134,30 +134,14 @@ class Model(metaclass=abc.ABCMeta):
 
     @staticmethod
     def addMeta(simfunc):
-        ''' Add an informative dictionary about model and simulation parameters to simulation output '''
-
+        ''' Add informative dictionary to simulation output '''
         @wraps(simfunc)
         def wrapper(self, *args, **kwargs):
             data, tcomp = timer(simfunc)(self, *args, **kwargs)
             logger.debug('completed in %ss', si_format(tcomp, 1))
             meta_dict = getMeta(self, simfunc, *args, **kwargs)
-
-            # target_args = resolveFuncArgs(simfunc, model, *args, **kwargs)
-            # # Try to retrieve meta information
-            # try:
-            #     meta_params_names = list(signature(self.meta).parameters.keys())
-            #     meta_params = [target_args[k] for k in meta_params_names]
-            #     meta = self.meta(*meta_params)
-            # except KeyError as err:
-            #     logger.error(f'Could not find {err} parameter in "{simfunc.__name__}" function')
-            #     meta = {}
-
-            # Add computation time to it
             meta_dict['tcomp'] = tcomp
-
-            # Return data with meta dict
             return data, meta_dict
-
         return wrapper
 
     @staticmethod

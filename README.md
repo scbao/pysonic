@@ -84,22 +84,27 @@ But also some valuable models used in peripheral axon models:
 
 ## Python scripts
 
-You can easily run simulations of any implemented point-neuron model under both electrical and ultrasonic stimuli, and visualize the simulation results, in just a few lines of code:
+You can easily run simulations of any implemented point-neuron model under both electrical and ultrasonic stimuli with various temporal protocols, and visualize the simulation results, in just a few lines of code:
 
 ```python
 # -*- coding: utf-8 -*-
 # @Author: Theo Lemaire
 # @Email: theo.lemaire@epfl.ch
-# @Date:   2020-04-04 15:26:28
+# @Date:   2020-04-17 16:09:42
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-13 16:34:56
+# @Last Modified time: 2020-04-17 18:11:12
+
+''' Example script showing how to simulate a point-neuron model upon application
+    of both electrical and ultrasonic stimuli, with various temporal protocols.
+'''
 
 import logging
 import matplotlib.pyplot as plt
 
-from PySONIC.core import PulsedProtocol, NeuronalBilayerSonophore, ElectricDrive, AcousticDrive
-from PySONIC.neurons import getPointNeuron
 from PySONIC.utils import logger
+from PySONIC.neurons import getPointNeuron
+from PySONIC.core import NeuronalBilayerSonophore, ElectricDrive, AcousticDrive
+from PySONIC.core.protocols import *
 from PySONIC.plt import GroupedTimeSeries
 
 # Set logging level
@@ -116,20 +121,29 @@ USdrive = AcousticDrive(
     500e3,  # Hz
     100e3)  # Pa
 
-# Set pulsing protocol
-tstim = 250e-3   # s
-toffset = 50e-3  # s
+# Pulsing parameters
+tburst = 100e-3  # s
 PRF = 100.       # Hz
 DC = 0.5         # -
-pp = PulsedProtocol(tstim, toffset, PRF, DC)
+BRF = 1.0        # Hz
+nbursts = 3      # -
 
-# Run simulation upon electrical stimulation, and plot results
-data, meta = pneuron.simulate(ELdrive, pp)
-GroupedTimeSeries([(data, meta)]).render()
+# Protocols
+protocols = [
+    TimeProtocol(tburst, 1 / BRF - tburst),
+    PulsedProtocol(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC),
+    BurstProtocol(tburst, BRF, nbursts=nbursts, PRF=PRF, DC=DC)
+]
 
-# Run simulation upon ultrasonic stimulation, and plot results
-data, meta = nbls.simulate(USdrive, pp)
-GroupedTimeSeries([(data, meta)]).render()
+# For each protocol
+for p in protocols:
+    # Run simulation upon electrical stimulation, and plot results
+    data, meta = pneuron.simulate(ELdrive, p)
+    GroupedTimeSeries([(data, meta)]).render()
+
+    # Run simulation upon ultrasonic stimulation, and plot results
+    data, meta = nbls.simulate(USdrive, p)
+    GroupedTimeSeries([(data, meta)]).render()
 
 # Show figures
 plt.show()

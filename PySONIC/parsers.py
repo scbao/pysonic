@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-13 18:10:14
+# @Last Modified time: 2020-04-17 18:28:54
 
 import os
 import logging
@@ -542,7 +542,7 @@ class NeuronSimParser(SimParser):
 
     def addTstim(self):
         self.add_argument(
-            '-t', '--tstim', nargs='+', type=float, help='Stimulus duration (ms)')
+            '-t', '--tstim', nargs='+', type=float, help='Stimulus / burst duration (ms)')
 
     def addToffset(self):
         self.add_argument(
@@ -603,7 +603,7 @@ class PWSimParser(NeuronSimParser):
         super().__init__()
         self.defaults.update({
             'PRF': 100.0,  # Hz
-            'DC': 100.0  # %
+            'DC': 100.0,  # %
         })
         self.factors.update({
             'PRF': 1.,
@@ -627,6 +627,14 @@ class PWSimParser(NeuronSimParser):
         self.add_argument(
             '--spanDC', default=False, action='store_true', help='Span DC from 1 to 100%%')
         self.to_parse['DC'] = self.parseDC
+
+    # def addBRF(self):
+    #     self.add_argument(
+    #         '--BRF', nargs='+', type=float, help='Burst repetition frequency (Hz)')
+
+    # def addNBursts(self):
+    #     self.add_argument(
+    #         '--nbursts', nargs='+', type=float, help='Number of bursts')
 
     def addTitrate(self):
         self.add_argument(

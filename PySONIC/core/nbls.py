@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 15:23:12
+# @Last Modified time: 2020-04-17 18:06:52
 
 import logging
 import numpy as np
@@ -13,7 +13,7 @@ from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .model import Model
 from .drives import Drive, AcousticDrive
-from .protocols import TimeProtocol, PulsedProtocol
+from .protocols import *
 from ..utils import *
 from ..constants import *
 from ..postpro import getFixedPoints
@@ -434,10 +434,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return queue
 
     def checkInputs(self, drive, pp, fs, method, qss_vars):
-        if not isinstance(drive, Drive):
-            raise TypeError(f'Invalid "drive" parameter (must be an "Drive" object)')
-        if not isinstance(pp, PulsedProtocol):
-            raise TypeError('Invalid pulsed protocol (must be "PulsedProtocol" instance)')
+        PointNeuron.checkInputs(drive, pp)
         if not isinstance(fs, float):
             raise TypeError(f'Invalid "fs" parameter (must be float typed)')
         if qss_vars is not None:
