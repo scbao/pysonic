@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 19:55:23
+# @Last Modified time: 2020-04-17 22:45:39
 
 import abc
 import inspect
@@ -491,7 +491,7 @@ class PointNeuron(Model):
             y0.keys(),                                           # variables
             lambda t, y: self.derivatives(t, y, Iinj=solver.A),  # dfunc
             dt=self.chooseTimeStep())                            # time step
-        data = solver(y0, pp.stimEvents(), pp.ttotal)
+        data = solver(y0, pp.stimEvents(), pp.tstop)
 
         # Add Vm timeries to solution
         data = addColumn(data, 'Vm', data['Qm'].values / self.Cm0 * 1e3, preceding_key='Qm')

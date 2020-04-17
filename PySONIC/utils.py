@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 14:38:38
+# @Last Modified time: 2020-04-17 23:26:39
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -881,6 +881,47 @@ class StimObject(metaclass=abc.ABCMeta):
     def inputs():
         raise NotImplementedError
 
+    def paramStr(self, k, strict_nfigs=False):
+        val = getattr(self, k)
+        if val is None:
+            return None
+        val *= self.inputs()[k].get('factor', 1.)
+        precision = self.inputs()[k].get('precision', 0)
+        unit = self.inputs()[k].get('unit', '')
+        formatted_val = si_format(val, precision=precision, space='')
+        if strict_nfigs:
+            minfigs = self.inputs()[k].get('minfigs', None)
+            if minfigs is not None:
+                nfigs = len(formatted_val.split('.')[0])
+                if nfigs < minfigs:
+                    formatted_val = '0' * (minfigs - nfigs) + formatted_val
+        return f'{formatted_val}{unit}'
+
+    def pdict(self, sf='{key}={value}', **kwargs):
+        d = {k: sf.format(key=k, value=self.paramStr(k, **kwargs)) for k in self.inputs().keys()}
+        return {k: v for k, v in d.items() if v is not None}
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        for k in self.inputs().keys():
+            if getattr(self, k) != getattr(other, k):
+                print(f'{k} differs')
+                return False
+        return True
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({", ".join(self.pdict().values())})'
+
+    @property
+    def desc(self):
+        return ', '.join(self.pdict(sf='{key} = {value}').values())
+
+    @property
+    def filecodes(self):
+        return {k: v.replace('/', '_per_')
+                for k, v in self.pdict(sf='{key}_{value}', strict_nfigs=True).items()}
+
     def checkInt(self, key, value):
         if not isinstance(value, int):
             raise TypeError(f'Invalid {self.inputs()[key]["desc"]} (must be an integer)')
@@ -895,23 +936,20 @@ class StimObject(metaclass=abc.ABCMeta):
 
     def checkStrictlyPositive(self, key, value):
         if value <= 0:
-            d = self.inputs()[key]
-            raise ValueError(f'Invalid {d["desc"]}: {value * d.get("factor", 1)} {d["unit"]} (must be strictly positive)')
+            raise ValueError(f'Invalid {self.paramStr(key)} (must be strictly positive)')
 
     def checkPositiveOrNull(self, key, value):
         if value < 0:
-            d = self.inputs()[key]
-            raise ValueError(f'Invalid {d["desc"]}: {value * d.get("factor", 1)} {d["unit"]} (must be positive or null)')
+            raise ValueError(f'Invalid {self.paramStr(key)} (must be positive or null)')
 
     def checkStrictlyNegative(self, key, value):
         if value >= 0:
-            d = self.inputs()[key]
-            raise ValueError(f'Invalid {d["desc"]}: {value * d.get("factor", 1)} {d["unit"]} (must be strictly negative)')
+            raise ValueError(f'Invalid {self.paramStr(key)} (must be strictly negative)')
 
     def checkNegativeOrNull(self, key, value):
         if value > 0:
             d = self.inputs()[key]
-            raise ValueError(f'Invalid {d["desc"]}: {value * d.get("factor", 1)} {d["unit"]} (must be negative or null)')
+            raise ValueError(f'Invalid {self.paramStr(key)} {d["unit"]} (must be negative or null)')
 
     def checkBounded(self, key, value, bounds):
         if value < bounds[0] or value > bounds[1]:

@@ -3,11 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-16 12:17:48
+# @Last Modified time: 2020-04-17 22:48:33
 
 import numpy as np
 
-from .protocols import TimeProtocol
+from .protocols import PulsedProtocol
 from .model import Model
 from .pneuron import PointNeuron
 from .solvers import EventDrivenSolver
@@ -85,24 +85,21 @@ class VoltageClamp(Model):
             :return: list of parameters (list) for each simulation
         '''
         drives = VoltageDrive.createQueue(holds, steps)
-        protocols = TimeProtocol.createQueue(durations, offsets)
+        protocols = PulsedProtocol.createQueue(durations, offsets, [100.], [1.])
         queue = []
         for drive in drives:
-            for tp in protocols:
-                queue.append([drive, tp])
+            for pp in protocols:
+                queue.append([drive, pp])
         return queue
 
     @staticmethod
-    def checkInputs(drive, tp):
+    def checkInputs(drive, pp):
         ''' Check validity of stimulation parameters.
 
             :param drive: voltage drive object
             :param tp: time protocol object
         '''
-        if not isinstance(drive, Drive):
-            raise TypeError(f'Invalid "drive" parameter (must be an "Drive" object)')
-        if not isinstance(tp, TimeProtocol):
-            raise TypeError('Invalid time protocol (must be "TimeProtocol" instance)')
+        PointNeuron.checkInputs(drive, pp)
 
     def derivatives(self, t, y, Vm=None):
         if Vm is None:
@@ -113,12 +110,12 @@ class VoltageClamp(Model):
     @Model.addMeta
     @Model.logDesc
     @Model.checkSimParams
-    def simulate(self, drive, tp):
+    def simulate(self, drive, pp):
         ''' Simulate a specific neuron model for a set of simulation parameters,
             and return output data in a dataframe.
 
             :param drive: voltage drive object
-            :param tp: time protocol object
+            :param pp: pulsed protocol object
             :return: output dataframe
         '''
         # Set initial conditions
@@ -131,7 +128,7 @@ class VoltageClamp(Model):
             y0.keys(),                                         # variables list
             lambda t, y: self.derivatives(t, y, Vm=solver.V),  # dfunc
             dt=DT_EFFECTIVE)                                   # time step
-        data = solver(y0, tp.stimEvents(), tp.ttotal)
+        data = solver(y0, pp.stimEvents(), pp.tstop)
 
         # Compute clamped membrane potential vector
         Vm = np.zeros(len(data))
@@ -146,4 +143,4 @@ class VoltageClamp(Model):
         return data
 
     def desc(self, meta):
-        return f'{self}: simulation @ {meta["drive"].desc}, {meta["tp"].desc}'
+        return f'{self}: simulation @ {meta["drive"].desc}, {meta["pp"].desc}'

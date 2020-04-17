@@ -3,23 +3,98 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 20:48:15
+# @Last Modified time: 2020-04-17 23:00:54
 
+import abc
 import numpy as np
-from ..utils import si_format, StimObject
+from ..utils import StimObject, isIterable
 from .batches import Batch
 
 
 class TimeProtocol(StimObject):
 
-    def __init__(self, tstim, toffset):
+    @property
+    @abc.abstractmethod
+    def nature(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def stimEvents(self):
+        ''' Return time-value pairs for each transition in stimulation state. '''
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def tstop(self):
+        ''' Stopping time. '''
+        raise NotImplementedError
+
+
+class CustomProtocol(TimeProtocol):
+
+    def __init__(self, tevents, xevents, tstop):
+        ''' Class constructor.
+
+            :param tevents: vector of time events occurences (s)
+            :param xevents: vector of stimulus modulation values
+            :param tstop: stopping time (s)
+        '''
+        self.tevents = tevents
+        self.xevents = xevents
+        self.tstop = tstop
+
+    @property
+    def tevents(self):
+        return self._tevents
+
+    @tevents.setter
+    def tevents(self, value):
+        if not isIterable(value):
+            value = [value]
+        value = np.asarray([self.checkFloat('tevents', v) for v in value])
+        self.checkPositiveOrNull('tevents', value.min())
+        self._tevents = value
+
+    @property
+    def xevents(self):
+        return self._xevents
+
+    @xevents.setter
+    def xevents(self, value):
+        if not isIterable(value):
+            value = [value]
+        value = np.asarray([self.checkFloat('xevents', v) for v in value])
+        self.checkPositiveOrNull('xevents', value.min())
+        self._xevents = value
+
+    @property
+    def tstop(self):
+        return self._tstop
+
+    @tstop.setter
+    def tstop(self, value):
+        value = self.checkFloat('tstop', value)
+        self.checkBounded('tstop', value, (self.tevents.max(), np.inf))
+        self._tstop = value
+
+    def stimEvents(self):
+        return sorted(list(zip(self.tevents, self.xevents)), key=lambda x: x[0])
+
+
+class PulsedProtocol(TimeProtocol):
+
+    def __init__(self, tstim, toffset, PRF=100., DC=1.):
         ''' Class constructor.
 
             :param tstim: pulse duration (s)
             :param toffset: offset duration (s)
+            :param PRF: pulse repetition frequency (Hz)
+            :param DC: pulse duty cycle (-)
         '''
         self.tstim = tstim
         self.toffset = toffset
+        self.DC = DC
+        self.PRF = PRF
 
     @property
     def tstim(self):
@@ -40,109 +115,6 @@ class TimeProtocol(StimObject):
         value = self.checkFloat('toffset', value)
         self.checkPositiveOrNull('toffset', value)
         self._toffset = value
-
-    @property
-    def ttotal(self):
-        return self.tstim + self.toffset
-
-    @property
-    def nature(self):
-        return 'CW'
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return self.tstim == other.tstim and self.toffset == other.toffset
-
-    def paramStr(self, k, strict_nfigs=False):
-        val = getattr(self, k) * self.inputs()[k].get('factor', 1.)
-        precision = self.inputs()[k].get('precision', 0)
-        unit = self.inputs()[k].get('unit', '')
-        formatted_val = si_format(val, precision=precision, space='')
-        if strict_nfigs:
-            minfigs = self.inputs()[k].get('minfigs', None)
-            if minfigs is not None:
-                nfigs = len(formatted_val.split('.')[0])
-                if nfigs < minfigs:
-                    formatted_val = '0' * (minfigs - nfigs) + formatted_val
-        return f'{formatted_val}{unit}'
-
-    def pdict(self, sf='{key}={value}', **kwargs):
-        d = {k: sf.format(key=k, value=self.paramStr(k, **kwargs)) for k in self.inputs().keys()}
-        if self.toffset == 0.:
-            del d['toffset']
-        return d
-
-    def __repr__(self):
-        return f'{self.__class__.__name__}({", ".join(self.pdict().values())})'
-
-    @property
-    def desc(self):
-        return ', '.join(self.pdict(sf='{value} {key}').values())
-
-    @property
-    def filecodes(self):
-        return self.pdict(sf='{key}_{value}', strict_nfigs=True)
-
-    @staticmethod
-    def inputs():
-        return {
-            'tstim': {
-                'desc': 'stimulus duration',
-                'label': 't_{stim}',
-                'unit': 'ms',
-                'factor': 1e3,
-                'precision': 0
-            },
-            'toffset': {
-                'desc': 'offset duration',
-                'label': 't_{offset}',
-                'unit': 'ms',
-                'factor': 1e3,
-                'precision': 0
-            }
-        }
-
-    def tOFFON(self):
-        ''' Return vector of times of OFF-ON transitions (in s). '''
-        return np.array([0.])
-
-    def tONOFF(self):
-        ''' Return vector of times of ON-OFF transitions (in s). '''
-        return np.array([self.tstim])
-
-    def stimEvents(self):
-        ''' Return time-value pairs for each transition in stimulation state. '''
-        t_on_off = self.tONOFF()
-        t_off_on = self.tOFFON()
-        pairs = list(zip(t_off_on, [1] * len(t_off_on))) + list(zip(t_on_off, [0] * len(t_on_off)))
-        return sorted(pairs, key=lambda x: x[0])
-
-    @classmethod
-    def createQueue(cls, durations, offsets):
-        ''' Create a serialized 2D array of all parameter combinations for a series of individual
-            parameter sweeps.
-
-            :param durations: list (or 1D-array) of stimulus durations
-            :param offsets: list (or 1D-array) of stimulus offsets (paired with durations array)
-            :return: list of parameters (list) for each simulation
-        '''
-        return [cls(*item) for item in Batch.createQueue(durations, offsets)]
-
-
-class PulsedProtocol(TimeProtocol):
-
-    def __init__(self, tstim, toffset, PRF=100., DC=1.):
-        ''' Class constructor.
-
-            :param tstim: pulse duration (s)
-            :param toffset: offset duration (s)
-            :param PRF: pulse repetition frequency (Hz)
-            :param DC: pulse duty cycle (-)
-        '''
-        super().__init__(tstim, toffset)
-        self.DC = DC
-        self.PRF = PRF
 
     @property
     def DC(self):
@@ -166,13 +138,14 @@ class PulsedProtocol(TimeProtocol):
             self.checkBounded('PRF', value, (1 / self.tstim, np.inf))
         self._PRF = value
 
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return super().__eq__(other) and self.PRF == other.PRF and self.DC == other.DC
+    @property
+    def tstop(self):
+        return self.tstim + self.toffset
 
     def pdict(self, **kwargs):
         d = super().pdict(**kwargs)
+        if self.toffset == 0.:
+            del d['toffset']
         if self.isCW:
             del d['PRF']
             del d['DC']
@@ -200,7 +173,21 @@ class PulsedProtocol(TimeProtocol):
 
     @staticmethod
     def inputs():
-        d = {
+        return {
+            'tstim': {
+                'desc': 'stimulus duration',
+                'label': 't_{stim}',
+                'unit': 'ms',
+                'factor': 1e3,
+                'precision': 0
+            },
+            'toffset': {
+                'desc': 'offset duration',
+                'label': 't_{offset}',
+                'unit': 'ms',
+                'factor': 1e3,
+                'precision': 0
+            },
             'PRF': {
                 'desc': 'pulse repetition frequency',
                 'label': 'PRF',
@@ -217,19 +204,26 @@ class PulsedProtocol(TimeProtocol):
                 'minfigs': 2
             }
         }
-        return {**TimeProtocol.inputs(), **d}
 
     def tOFFON(self):
+        ''' Return vector of times of OFF-ON transitions (in s). '''
         if self.isCW:
-            return super().tOFFON()
+            return np.array([0.])
         else:
             return np.arange(self.npulses) / self.PRF
 
     def tONOFF(self):
+        ''' Return vector of times of ON-OFF transitions (in s). '''
         if self.isCW:
-            return super().tONOFF()
+            return np.array([self.tstim])
         else:
             return (np.arange(self.npulses) + self.DC) / self.PRF
+
+    def stimEvents(self):
+        t_on_off = self.tONOFF()
+        t_off_on = self.tOFFON()
+        pairs = list(zip(t_off_on, [1] * len(t_off_on))) + list(zip(t_on_off, [0] * len(t_on_off)))
+        return sorted(pairs, key=lambda x: x[0])
 
     @classmethod
     def createQueue(cls, durations, offsets, PRFs, DCs):
@@ -270,7 +264,7 @@ class BurstProtocol(PulsedProtocol):
         return self.tstim
 
     @property
-    def ttotal(self):
+    def tstop(self):
         return self.nbursts / self.BRF
 
     @property
@@ -283,11 +277,6 @@ class BurstProtocol(PulsedProtocol):
         self.checkPositiveOrNull('BRF', value)
         self.checkBounded('BRF', value, (0, 1 / self.tburst))
         self._BRF = value
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return super().__eq__(other) and self.BRF == other.BRF and self.nbursts == other.nbursts
 
     @staticmethod
     def inputs():

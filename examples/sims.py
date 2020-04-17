@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-04-17 16:09:42
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 20:05:44
+# @Last Modified time: 2020-04-17 23:25:35
 
 ''' Example script showing how to simulate a point-neuron model upon application
     of both electrical and ultrasonic stimuli, with various temporal protocols.
@@ -41,7 +41,6 @@ nbursts = 3      # -
 
 # Protocols
 protocols = [
-    TimeProtocol(tburst, 1 / BRF - tburst),
     PulsedProtocol(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC),
     BurstProtocol(tburst, PRF=PRF, DC=DC, BRF=BRF, nbursts=nbursts)
 ]

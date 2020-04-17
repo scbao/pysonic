@@ -3,12 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-13 12:19:46
+# @Last Modified time: 2020-04-17 23:24:40
 
 import abc
 import numpy as np
 
-from ..utils import si_format, StimObject
+from ..utils import StimObject
 from ..constants import *
 from .batches import Batch
 
@@ -17,33 +17,8 @@ class Drive(StimObject):
     ''' Generic interface to drive object. '''
 
     @abc.abstractmethod
-    def __repr__(self):
-        ''' String representation. '''
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def __eq__(self, other):
-        ''' Equality operator. '''
-        raise NotImplementedError
-
-    @abc.abstractmethod
     def copy(self):
         ''' String representation. '''
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def meta(self):
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def desc(self):
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def filecodes(self):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -125,17 +100,6 @@ class ElectricDrive(XDrive):
             value = self.checkFloat('I', value)
         self._I = value
 
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return self.I == other.I
-
-    def __repr__(self):
-        params = []
-        if self.I is not None:
-            params.append(f'{si_format(self.I * 1e-3, 1, space="")}A/m2')
-        return f'{self.__class__.__name__}({", ".join(params)})'
-
     @property
     def xvar(self):
         return self.I
@@ -158,18 +122,6 @@ class ElectricDrive(XDrive):
                 'precision': 1
             }
         }
-
-    @property
-    def meta(self):
-        return {'I': self.I}
-
-    @property
-    def desc(self):
-        return f'I = {si_format(self.I * 1e-3, 2)}A/m2'
-
-    @property
-    def filecodes(self):
-        return {'I': f'{self.I:.2f}mAm2'}
 
     def compute(self, t):
         return self.I
@@ -205,14 +157,6 @@ class VoltageDrive(Drive):
         value = self.checkFloat('Vstep', value)
         self._Vstep = value
 
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return self.Vhold == other.Vhold and self.Vstep == other.Vstep
-
-    def __repr__(self):
-        return f'{self.__class__.__name__}({self.desc})'
-
     def copy(self):
         return self.__class__(self.Vhold, self.Vstep)
 
@@ -222,27 +166,18 @@ class VoltageDrive(Drive):
             'Vhold': {
                 'desc': 'held voltage',
                 'label': 'V_{hold}',
-                'unit': 'mV',
-                'precision': 0
+                'unit': 'V',
+                'precision': 0,
+                'factor': 1e-3
             },
             'Vstep': {
                 'desc': 'step voltage',
                 'label': 'V_{step}',
-                'unit': 'mV',
-                'precision': 0
+                'unit': 'V',
+                'precision': 0,
+                'factor': 1e-3
             }
         }
-
-    @property
-    def meta(self):
-        return {
-            'Vhold': self.Vhold,
-            'Vstep': self.Vstep,
-        }
-
-    @property
-    def desc(self):
-        return f'Vhold = {self.Vhold:.1f}mV, Vstep = {self.Vstep:.1f}mV'
 
     @property
     def filecodes(self):
@@ -305,6 +240,12 @@ class AcousticDrive(XDrive):
         value = self.checkFloat('phi', value)
         self._phi = value
 
+    def pdict(self, **kwargs):
+        d = super().pdict(**kwargs)
+        if self.phi == np.pi:
+            del d['phi']
+        return d
+
     @property
     def xvar(self):
         return self.A
@@ -312,17 +253,6 @@ class AcousticDrive(XDrive):
     @xvar.setter
     def xvar(self, value):
         self.A = value
-
-    def __repr__(self):
-        params = [f'{si_format(self.f, 1, space="")}Hz']
-        if self.A is not None:
-            params.append(f'{si_format(self.A, 1, space="")}Pa')
-        return f'{self.__class__.__name__}({", ".join(params)})'
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return self.f == other.f and self.A == other.A and self.phi == other.phi
 
     def copy(self):
         return self.__class__(self.f, self.A, phi=self.phi)
@@ -333,15 +263,13 @@ class AcousticDrive(XDrive):
             'f': {
                 'desc': 'US drive frequency',
                 'label': 'f',
-                'unit': 'kHz',
-                'factor': 1e-3,
+                'unit': 'Hz',
                 'precision': 0
             },
             'A': {
                 'desc': 'US pressure amplitude',
                 'label': 'A',
-                'unit': 'kPa',
-                'factor': 1e-3,
+                'unit': 'Pa',
                 'precision': 2
             },
             'phi': {
@@ -351,24 +279,6 @@ class AcousticDrive(XDrive):
                 'precision': 2
             }
         }
-
-    @property
-    def meta(self):
-        return {
-            'f': self.f,
-            'A': self.A
-        }
-
-    @property
-    def desc(self):
-        return 'f = {}Hz, A = {}Pa'.format(*si_format([self.f, self.A], 2))
-
-    @property
-    def filecodes(self):
-        codes = {'f': f'{self.f * 1e-3:.0f}kHz'}
-        if self.A is not None:
-            codes['A'] = f'{self.A * 1e-3:.2f}kPa'
-        return codes
 
     @property
     def dt(self):

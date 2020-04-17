@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 20:09:33
+# @Last Modified time: 2020-04-17 22:45:28
 
 import logging
 import numpy as np
@@ -301,8 +301,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             event_params={'drive': drive.copy().updatedX(0.)},          # event parameters
             dt=drive.dt)                                                # time step
         data = solver(
-            y0, pp.stimEvents(), pp.ttotal, target_dt=CLASSIC_TARGET_DT,
-            log_period=pp.ttotal / 100 if logger.getEffectiveLevel() < logging.INFO else None,
+            y0, pp.stimEvents(), pp.tstop, target_dt=CLASSIC_TARGET_DT,
+            log_period=pp.tstop / 100 if logger.getEffectiveLevel() < logging.INFO else None,
             # logfunc=lambda y: f'Qm = {y[3] * 1e5:.2f} nC/cm2'
         )
 
@@ -334,8 +334,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             primary_vars=['Z', 'ng']                                    # primary variables
         )
         data = solver(
-            y0, pp.stimEvents(), pp.ttotal, HYBRID_UPDATE_INTERVAL, target_dt=CLASSIC_TARGET_DT,
-            log_period=pp.ttotal / 100 if logger.getEffectiveLevel() < logging.INFO else None,
+            y0, pp.stimEvents(), pp.tstop, HYBRID_UPDATE_INTERVAL, target_dt=CLASSIC_TARGET_DT,
+            log_period=pp.tstop / 100 if logger.getEffectiveLevel() < logging.INFO else None,
             logfunc=lambda y: f'Qm = {y[3] * 1e5:.2f} nC/cm2'
         )
 
@@ -377,7 +377,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             y0.keys(),                                                        # variables list
             lambda t, y: self.effDerivatives(t, y, solver.lkp, qss_vars),     # dfunc
             dt=self.pneuron.chooseTimeStep())                                 # time step
-        data = solver(y0, pp.stimEvents(), pp.ttotal)
+        data = solver(y0, pp.stimEvents(), pp.tstop)
 
         # Interpolate Vm and QSS variables along charge vector and store them in solution dataframe
         data = addColumn(
