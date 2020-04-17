@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 20:06:59
+# @Last Modified time: 2020-04-17 20:48:15
 
 import numpy as np
 from ..utils import si_format, StimObject
@@ -206,14 +206,14 @@ class PulsedProtocol(TimeProtocol):
                 'label': 'PRF',
                 'unit': 'Hz',
                 'factor': 1e0,
-                'precision': 0
+                'precision': 2
             },
             'DC': {
                 'desc': 'duty cycle',
                 'label': 'DC',
                 'unit': '%',
                 'factor': 1e2,
-                'precision': 2,
+                'precision': 1,
                 'minfigs': 2
             }
         }
@@ -306,7 +306,7 @@ class BurstProtocol(PulsedProtocol):
                 'desc': 'burst repetition frequency',
                 'label': 'BRF',
                 'unit': 'Hz',
-                'precision': 0
+                'precision': 1
             },
             'nbursts': {
                 'desc': 'number of bursts',
