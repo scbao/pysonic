@@ -3,9 +3,8 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-10 18:10:36
+# @Last Modified time: 2020-04-17 11:41:54
 
-import os
 from functools import wraps
 from inspect import getdoc
 import abc

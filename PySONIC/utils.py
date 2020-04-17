@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-16 11:47:08
+# @Last Modified time: 2020-04-17 14:38:38
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -288,6 +288,7 @@ def expandRange(xmin, xmax, exp_factor=2):
     xmid = (xmin + xmax) / 2
     xdev = xptp * exp_factor / 2
     return (xmid - xdev, xmin + xdev)
+
 
 def isIterable(x):
     for t in [list, tuple, np.ndarray]:
@@ -715,8 +716,8 @@ def sendPushNotification(msg):
         pb = Pushbullet(key)
         dt = datetime.datetime.now()
         s = dt.strftime('%Y-%m-%d %H:%M:%S')
-        push = pb.push_note('Code Messenger', f'{s}\n{msg}')
-    except FileNotFoundError as e:
+        pb.push_note('Code Messenger', f'{s}\n{msg}')
+    except FileNotFoundError:
         logger.error(f'Could not send push notification: "{msg}"')
 
 
@@ -927,7 +928,7 @@ def gaussian(x, mu=0., sigma=1., A=1.):
 def isPickable(obj):
     try:
         pickle.dumps(obj)
-    except Exception as err:
+    except Exception:
         return False
     return True
 

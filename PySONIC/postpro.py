@@ -3,11 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2019-12-09 08:03:26
+# @Last Modified time: 2020-04-17 14:50:28
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
-import pickle
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
@@ -15,7 +14,7 @@ from scipy.optimize import brentq
 from scipy.signal import find_peaks, peak_prominences
 
 from .constants import *
-from .utils import logger, debug, isIterable, loadData, plural
+from .utils import logger, isIterable, loadData
 
 
 def detectCrossings(x, thr=0.0, edge='both'):
@@ -104,6 +103,7 @@ def convertTime2SampleCriterion(x, dt, nsamples):
         else:
             return int(np.ceil(x / dt))
 
+
 def computeTimeStep(t):
     ''' Compute time step based on time vector.
 
@@ -117,7 +117,8 @@ def computeTimeStep(t):
     # Raise error if time step vector is not uniform
     is_uniform_dt = np.allclose(np.diff(dt), np.zeros(dt.size - 1), atol=1e-5)
     if not is_uniform_dt:
-        raise ValueError(f'non-uniform time step: from {dt.min():.2e} s (index {dt.argmin()}) to {dt.max():.2e} s (index {dt.argmax()})')
+        bounds_str = [f'{dt[i]:.2e} s (index {i})' for i in [dt.argmin(), dt.argmax()]]
+        raise ValueError(f'non-uniform time step: from {bounds_str[0]} to {bounds_str[1]}')
 
     # Return average dt value
     return np.mean(dt)  # s
@@ -203,14 +204,14 @@ def find_tpeaks(t, y, **kwargs):
         dt = computeTimeStep(t)  # s
         t_raw, y_raw = None, None
         indexes_raw = None
-    except ValueError as err:
+    except ValueError:
         new_dt = max(np.diff(t).min(), 1e-7)
         logger.debug(f'Resampling vector at regular time step (dt = {new_dt:.2e}s)')
         t_raw, y_raw = t.copy(), y.copy()
         indexes_raw = np.arange(t_raw.size)
         t, y = resample(t, y, new_dt)
         dt = computeTimeStep(t)  # s
-        #ipad = 0
+        # ipad = 0
 
     # Compute index vector
     nsamples = t.size
@@ -309,7 +310,7 @@ def convertPeaksProperties(t, properties):
         :return: properties dictionary (with time-based information)
     '''
     indexes = np.arange(t.size)
-    for key in ['left_bases', 'right_bases','left_ips', 'right_ips']:
+    for key in ['left_bases', 'right_bases', 'left_ips', 'right_ips']:
         if key in properties:
             properties[key] = np.interp(properties[key], indexes, t, left=np.nan, right=np.nan)
     return properties
@@ -323,6 +324,8 @@ def computeFRProfile(data):
     '''
     # Detect spikes in data
     ispikes, _ = detectSpikes(data)
+    if len(ispikes) == 0:
+        return np.ones(len(data)) * np.nan
 
     # Compute firing rate as function of spike time
     t = data['t'].values
