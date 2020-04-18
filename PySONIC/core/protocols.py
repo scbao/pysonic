@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 23:00:54
+# @Last Modified time: 2020-04-18 13:12:55
 
 import abc
 import numpy as np
@@ -44,6 +44,10 @@ class CustomProtocol(TimeProtocol):
         self.tstop = tstop
 
     @property
+    def nature(self):
+        return 'custom'
+
+    @property
     def tevents(self):
         return self._tevents
 
@@ -64,7 +68,6 @@ class CustomProtocol(TimeProtocol):
         if not isIterable(value):
             value = [value]
         value = np.asarray([self.checkFloat('xevents', v) for v in value])
-        self.checkPositiveOrNull('xevents', value.min())
         self._xevents = value
 
     @property
@@ -76,6 +79,30 @@ class CustomProtocol(TimeProtocol):
         value = self.checkFloat('tstop', value)
         self.checkBounded('tstop', value, (self.tevents.max(), np.inf))
         self._tstop = value
+
+    @staticmethod
+    def inputs():
+        return {
+            'tevents': {
+                'desc': 'events times',
+                'label': 't_{events}',
+                'unit': 's',
+                'factor': 1e0,
+                'precision': 2
+            },
+            'xevents': {
+                'desc': 'events modulation factors',
+                'label': 'x_{events}',
+                'precision': 1
+            },
+            'tstop': {
+                'desc': 'stopping time',
+                'label': 't_{stop}',
+                'unit': 's',
+                'factor': 1e0,
+                'precision': 0
+            }
+        }
 
     def stimEvents(self):
         return sorted(list(zip(self.tevents, self.xevents)), key=lambda x: x[0])
@@ -177,15 +204,15 @@ class PulsedProtocol(TimeProtocol):
             'tstim': {
                 'desc': 'stimulus duration',
                 'label': 't_{stim}',
-                'unit': 'ms',
-                'factor': 1e3,
+                'unit': 's',
+                'factor': 1e0,
                 'precision': 0
             },
             'toffset': {
                 'desc': 'offset duration',
                 'label': 't_{offset}',
-                'unit': 'ms',
-                'factor': 1e3,
+                'unit': 's',
+                'factor': 1e0,
                 'precision': 0
             },
             'PRF': {
@@ -287,8 +314,8 @@ class BurstProtocol(PulsedProtocol):
             'tburst': {
                 'desc': 'burst duration',
                 'label': 't_{burst}',
-                'unit': 'ms',
-                'factor': 1e3,
+                'unit': 's',
+                'factor': 1e0,
                 'precision': 0
             },
             'BRF': {

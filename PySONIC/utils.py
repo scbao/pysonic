@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 23:26:39
+# @Last Modified time: 2020-04-18 13:10:38
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -881,21 +881,28 @@ class StimObject(metaclass=abc.ABCMeta):
     def inputs():
         raise NotImplementedError
 
-    def paramStr(self, k, strict_nfigs=False):
+    def xformat(self, x, precision, minfigs, strict_nfigs=False):
+        if isIterable(x):
+            l = [self.xformat(xx, precision, minfigs, strict_nfigs=strict_nfigs) for xx in x]
+            return f'[{", ".join(l)}]'
+        xf = si_format(x, precision=precision, space='')
+        if strict_nfigs:
+            if minfigs is not None:
+                nfigs = len(xf.split('.')[0])
+                if nfigs < minfigs:
+                    xf = '0' * (minfigs - nfigs) + xf
+        return xf
+
+    def paramStr(self, k, **kwargs):
         val = getattr(self, k)
         if val is None:
             return None
-        val *= self.inputs()[k].get('factor', 1.)
-        precision = self.inputs()[k].get('precision', 0)
-        unit = self.inputs()[k].get('unit', '')
-        formatted_val = si_format(val, precision=precision, space='')
-        if strict_nfigs:
-            minfigs = self.inputs()[k].get('minfigs', None)
-            if minfigs is not None:
-                nfigs = len(formatted_val.split('.')[0])
-                if nfigs < minfigs:
-                    formatted_val = '0' * (minfigs - nfigs) + formatted_val
-        return f'{formatted_val}{unit}'
+        xf = self.xformat(
+            val * self.inputs()[k].get('factor', 1.),
+            self.inputs()[k].get('precision', 0),
+            self.inputs()[k].get('minfigs', None),
+            **kwargs)
+        return f"{xf}{self.inputs()[k].get('unit', '')}"
 
     def pdict(self, sf='{key}={value}', **kwargs):
         d = {k: sf.format(key=k, value=self.paramStr(k, **kwargs)) for k in self.inputs().keys()}
@@ -906,7 +913,6 @@ class StimObject(metaclass=abc.ABCMeta):
             return False
         for k in self.inputs().keys():
             if getattr(self, k) != getattr(other, k):
-                print(f'{k} differs')
                 return False
         return True
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 23:24:40
+# @Last Modified time: 2020-04-18 11:09:32
 
 import abc
 import numpy as np
@@ -86,7 +86,7 @@ class ElectricDrive(XDrive):
     def __init__(self, I):
         ''' Constructor.
 
-            :param A: current density (mA/m2)
+            :param I: current density (mA/m2)
         '''
         self.I = I
 
@@ -117,8 +117,8 @@ class ElectricDrive(XDrive):
             'I': {
                 'desc': 'current density amplitude',
                 'label': 'I',
-                'unit': 'mA/m2',
-                'factor': 1e0,
+                'unit': 'A/m2',
+                'factor': 1e-3,
                 'precision': 1
             }
         }
@@ -306,10 +306,10 @@ class AcousticDrive(XDrive):
         return self.A * np.sin(2 * np.pi * self.f * t - self.phi)
 
 
-class AcousticDriveArray(Drive):
+class DriveArray(Drive):
 
     def __init__(self, drives):
-        self.drives = {f'source {i + 1}': s for i, s in enumerate(drives)}
+        self.drives = {f'drive {i + 1}': s for i, s in enumerate(drives)}
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -351,6 +351,12 @@ class AcousticDriveArray(Drive):
     def filecodes(self):
         return {k: s.filecodes for k, s in self.drives.items()}
 
+    def compute(self, t):
+        return sum(s.compute(t) for s in self.drives.values())
+
+
+class AcousticDriveArray(Drive):
+
     @property
     def fmax(self):
         return max(s.f for s in self.drives.values())
@@ -380,6 +386,3 @@ class AcousticDriveArray(Drive):
     @property
     def modulationFrequency(self):
         return np.mean([s.f for s in self.drives.values()])
-
-    def compute(self, t):
-        return sum(s.compute(t) for s in self.drives.values())

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-08-14 13:49:25
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 22:48:33
+# @Last Modified time: 2020-04-18 13:21:26
 
 import numpy as np
 
@@ -11,7 +11,7 @@ from .protocols import PulsedProtocol
 from .model import Model
 from .pneuron import PointNeuron
 from .solvers import EventDrivenSolver
-from .drives import Drive, VoltageDrive
+from .drives import VoltageDrive
 from ..constants import *
 from ..utils import *
 from ..neurons import getPointNeuron

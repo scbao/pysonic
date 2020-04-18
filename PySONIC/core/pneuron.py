@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 22:45:39
+# @Last Modified time: 2020-04-18 11:51:29
 
 import abc
 import inspect
@@ -449,7 +449,7 @@ class PointNeuron(Model):
         return DT_EFFECTIVE
 
     @classmethod
-    def derivatives(cls, t, y, Cm=None, Iinj=0.):
+    def derivatives(cls, t, y, Cm=None, drive=None):
         ''' Compute system derivatives for a given membrane capacitance and injected current.
 
             :param t: specific instant in time (s)
@@ -463,7 +463,11 @@ class PointNeuron(Model):
         Qm, *states = y
         Vm = Qm / Cm * 1e3  # mV
         states_dict = dict(zip(cls.statesNames(), states))
-        dQmdt = (Iinj - cls.iNet(Vm, states_dict)) * 1e-3  # A/m2
+        dQmdt = - cls.iNet(Vm, states_dict)  # mA/m2
+        if drive is not None:
+            dQmdt += drive.compute(t)
+        dQmdt *= 1e-3  # A/m2
+        # dQmdt = (Iinj - cls.iNet(Vm, states_dict)) * 1e-3  # A/m2
         return [dQmdt, *cls.getDerStates(Vm, states_dict)]
 
     @Model.logNSpikes
@@ -487,10 +491,11 @@ class PointNeuron(Model):
 
         # Initialize solver and compute solution
         solver = EventDrivenSolver(
-            lambda x: setattr(solver, 'A', drive.I * x),         # eventfunc
-            y0.keys(),                                           # variables
-            lambda t, y: self.derivatives(t, y, Iinj=solver.A),  # dfunc
-            dt=self.chooseTimeStep())                            # time step
+            lambda x: setattr(solver.drive, 'xvar', drive.xvar * x),  # eventfunc
+            y0.keys(),                                                # variables
+            lambda t, y: self.derivatives(t, y, drive=solver.drive),  # dfunc
+            event_params={'drive': drive.copy().updatedX(0.)},        # event parameters
+            dt=self.chooseTimeStep())                                 # time step
         data = solver(y0, pp.stimEvents(), pp.tstop)
 
         # Add Vm timeries to solution

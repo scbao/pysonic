@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 22:45:28
+# @Last Modified time: 2020-04-18 12:17:31
 
 import logging
 import numpy as np
@@ -12,7 +12,7 @@ from .solvers import EventDrivenSolver, HybridSolver
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .model import Model
-from .drives import Drive, AcousticDrive
+from .drives import AcousticDrive
 from .protocols import *
 from ..utils import *
 from ..constants import *
@@ -295,7 +295,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Initialize solver and compute solution
         solver = EventDrivenSolver(
-            lambda x: setattr(solver.drive, 'A', drive.A * x),          # eventfunc
+            lambda x: setattr(solver.drive, 'xvar', drive.xvar * x),    # eventfunc
             y0.keys(),                                                  # variables list
             lambda t, y: self.fullDerivatives(t, y, solver.drive, fs),  # dfunc
             event_params={'drive': drive.copy().updatedX(0.)},          # event parameters
@@ -325,7 +325,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lambda t, y, Cm: self.pneuron.derivatives(
                 t, y, Cm=self.spatialAverage(fs, Cm, self.Cm0)),        # dfunc_sparse
             lambda yref: self.capacitance(yref[1]),                     # predfunc
-            lambda x: setattr(solver.drive, 'A', drive.A * x),          # eventfunc
+            lambda x: setattr(solver.drive, 'xvar', drive.xvar * x),    # eventfunc
             drive.periodicity,                                          # periodicity
             ['U', 'Z', 'ng'],                                           # fast-evolving variables
             drive.dt,                                                   # dense time step
@@ -373,10 +373,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Initialize solver and compute solution
         solver = EventDrivenSolver(
-            lambda x: setattr(solver, 'lkp', lkp.project('A', drive.A * x)),  # eventfunc
-            y0.keys(),                                                        # variables list
-            lambda t, y: self.effDerivatives(t, y, solver.lkp, qss_vars),     # dfunc
-            dt=self.pneuron.chooseTimeStep())                                 # time step
+            lambda x: setattr(solver, 'lkp', lkp.project('A', drive.xvar * x)),  # eventfunc
+            y0.keys(),                                                           # variables list
+            lambda t, y: self.effDerivatives(t, y, solver.lkp, qss_vars),        # dfunc
+            event_params={'lkp': lkp.project('A', 0.)},                          # event parameters
+            dt=self.pneuron.chooseTimeStep())                                    # time step
         data = solver(y0, pp.stimEvents(), pp.tstop)
 
         # Interpolate Vm and QSS variables along charge vector and store them in solution dataframe
@@ -452,6 +453,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     def checkInputs(self, drive, pp, fs, method, qss_vars):
         PointNeuron.checkInputs(drive, pp)
+        _, xevents, = zip(*pp.stimEvents())
+        if np.any(np.array([xevents]) < 0.):
+            raise ValueError('Invalid time protocol: contains negative modulators')
         if not isinstance(fs, float):
             raise TypeError(f'Invalid "fs" parameter (must be float typed)')
         if qss_vars is not None:
@@ -542,9 +546,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lkp = lkp.project('Q', charges)
 
         # Specify dimensions with A as the first axis
-        A_axis = lkp.getAxisIndex('A')
         lkp.move('A', 0)
-        nA = lkp.dims()[0]
 
         # Compute QSS states using these lookups
         QSS = EffectiveVariablesLookup(
@@ -572,7 +574,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             f, amps=A, charges=Qm, DC=DC, squeeze_output=True)
         return self.pneuron.iNet(lkp['V'], QSS)  # mA/m2
 
-
     def fixedPointsQSS(self, f, A, DC, lkp, dQdt):
         ''' Compute QSS fixed points along the charge dimension for a given combination
             of US parameters, and determine their stability.
@@ -584,7 +585,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param dQdt: charge derivative profile along charge dimension
             :return: 2-tuple with values of stable and unstable fixed points
         '''
-        pltvars = self.getPltVars()
         logger.debug(f'A = {A * 1e-3:.2f} kPa, DC = {DC * 1e2:.0f}%')
 
         # Extract fixed points from QSS charge variation profile
@@ -629,7 +629,6 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             return len(classified_fixed_points['stable']) > 0
 
 
-
 class DrivenNeuronalBilayerSonophore(NeuronalBilayerSonophore):
 
     simkey = 'DASTIM'  # keyword used to characterize simulations made with this model
@@ -643,7 +642,8 @@ class DrivenNeuronalBilayerSonophore(NeuronalBilayerSonophore):
 
     @classmethod
     def initFromMeta(cls, meta):
-        return cls(meta['Idrive'], meta['a'], getPointNeuron(meta['neuron']), embedding_depth=meta['d'])
+        return cls(meta['Idrive'], meta['a'], getPointNeuron(meta['neuron']),
+                   embedding_depth=meta['d'])
 
     def params(self):
         return {**{'Idrive': self.Idrive}, **super().params()}

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-13 16:06:20
+# @Last Modified time: 2020-04-18 13:05:43
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,21 +45,44 @@ class TimeSeriesPlot(GenericPlot):
             :param states: a vector of stimulation state (ON/OFF) at each instant in time.
             :return: 3-tuple with number of patches, timing of STIM-ON an STIM-OFF instants.
         '''
-        # Compute states derivatives and identify bounds indexes of pulses
+        # Compute states derivatives and identify transition indexes
         dstates = np.diff(states)
-        ipulse_on = np.where(dstates > 0.0)[0] + 1
-        ipulse_off = np.where(dstates < 0.0)[0] + 1
-        if ipulse_off.size < ipulse_on.size:
-            ioff = t.size - 1
-            if ipulse_off.size == 0:
-                ipulse_off = np.array([ioff])
-            else:
-                ipulse_off = np.insert(ipulse_off, ipulse_off.size - 1, ioff)
+        itransitions = np.where(np.abs(dstates) > 0)[0] + 1
+        if states[0] != 0.:
+            itransitions = np.hstack(([0], itransitions))
+        if states[-1] != 0:
+            itransitions = np.hstack((itransitions, [t.size - 1]))
+        return list(zip(t[itransitions[:-1]], t[itransitions[1:]], states[itransitions[:-1]]))
 
-        # Get time instants for pulses ON and OFF
-        tpulse_on = t[ipulse_on]
-        tpulse_off = t[ipulse_off]
-        return tpulse_on, tpulse_off
+        # ipulse_on = np.where(dstates > 0.0)[0] + 1
+        # ipulse_off = np.where(dstates < 0.0)[0] + 1
+        # if ipulse_off.size < ipulse_on.size:
+        #     ioff = t.size - 1
+        #     if ipulse_off.size == 0:
+        #         ipulse_off = np.array([ioff])
+        #     else:
+        #         ipulse_off = np.insert(ipulse_off, ipulse_off.size - 1, ioff)
+
+        # # Get time instants for pulses ON and OFF
+        # tpulse_on = t[ipulse_on]
+        # tpulse_off = t[ipulse_off]
+        # return tpulse_on, tpulse_off
+
+        # Compute states derivatives and identify bounds indexes of pulses
+        # dstates = np.diff(states)
+        # ipulse_on = np.where(dstates > 0.0)[0] + 1
+        # ipulse_off = np.where(dstates < 0.0)[0] + 1
+        # if ipulse_off.size < ipulse_on.size:
+        #     ioff = t.size - 1
+        #     if ipulse_off.size == 0:
+        #         ipulse_off = np.array([ioff])
+        #     else:
+        #         ipulse_off = np.insert(ipulse_off, ipulse_off.size - 1, ioff)
+
+        # # Get time instants for pulses ON and OFF
+        # tpulse_on = t[ipulse_on]
+        # tpulse_off = t[ipulse_off]
+        # return tpulse_on, tpulse_off
 
     def addLegend(self, fig, ax, handles, labels, fs, color=None, ls=None):
         lh = ax.legend(handles, labels, loc=1, fontsize=fs, frameon=False)
@@ -108,10 +131,24 @@ class TimeSeriesPlot(GenericPlot):
         return t * tplt['factor']
 
     @staticmethod
-    def addPatches(ax, tpatch_on, tpatch_off, tplt, color='#8A8A8A'):
-        for i in range(tpatch_on.size):
-            ax.axvspan(tpatch_on[i] * tplt['factor'], tpatch_off[i] * tplt['factor'],
-                       edgecolor='none', facecolor=color, alpha=0.2)
+    def getPatchesColors(x):
+        if np.all([xx == x[0] for xx in x]):
+            return ['#8A8A8A'] * len(x)
+        else:
+            xabsmax = np.abs(x).max()
+            _, sm = setNormalizer(plt.get_cmap('RdGy'), (-xabsmax, xabsmax), 'lin')
+            return [sm.to_rgba(xx) for xx in x]
+
+    @classmethod
+    def addPatches(cls, ax, pulses, tplt, color=None):
+        tstart, tend, x = zip(*pulses)
+        if color is None:
+            colors = cls.getPatchesColors(x)
+        else:
+            colors = [color] * len(x)
+        for i in range(len(pulses)):
+            ax.axvspan(tstart[i] * tplt['factor'], tend[i] * tplt['factor'],
+                       edgecolor='none', facecolor=colors[i], alpha=0.2)
 
     @staticmethod
     def plotInset(inset_ax, inset, t, y, tplt, yplt, line, color, lw):
@@ -119,24 +156,27 @@ class TimeSeriesPlot(GenericPlot):
         return inset_ax
 
     @staticmethod
-    def addInsetPatches(ax, inset_ax, inset, tpatch_on, tpatch_off, tplt, color):
-        return
+    def addInsetPatches(ax, inset_ax, inset, pulses, tplt, color):
+        tstart, tend, x = [np.array([z]) for z in zip(*pulses)]
+        # colors = cls.getPatchesColors(x)
         tfactor = tplt['factor']
         ybottom, ytop = ax.get_ylim()
-        cond_on = np.logical_and(tpatch_on > (inset['xlims'][0] / tfactor),
-                                 tpatch_on < (inset['xlims'][1] / tfactor))
-        cond_off = np.logical_and(tpatch_off > (inset['xlims'][0] / tfactor),
-                                  tpatch_off < (inset['xlims'][1] / tfactor))
-        cond_glob = np.logical_and(tpatch_on < (inset['xlims'][0] / tfactor),
-                                   tpatch_off > (inset['xlims'][1] / tfactor))
-        cond_onoff = np.logical_or(cond_on, cond_off)
+        cond_start = np.logical_and(tstart > (inset['xlims'][0] / tfactor),
+                                    tstart < (inset['xlims'][1] / tfactor))
+        cond_end = np.logical_and(tend > (inset['xlims'][0] / tfactor),
+                                  tend < (inset['xlims'][1] / tfactor))
+        cond_glob = np.logical_and(tstart < (inset['xlims'][0] / tfactor),
+                                   tend > (inset['xlims'][1] / tfactor))
+        cond_onoff = np.logical_or(cond_start, cond_end)
         cond = np.logical_or(cond_onoff, cond_glob)
-        npatches_inset = np.sum(cond)
+        tstart, tend, x = [z[cond] for z in [tstart, tend, x]]
+        colors = cls.getPatchesColors(x)
+        npatches_inset = tstart.size
         for i in range(npatches_inset):
-            inset_ax.add_patch(Rectangle((tpatch_on[cond][i] * tfactor, ybottom),
-                                         (tpatch_off[cond][i] - tpatch_on[cond][i]) *
-                                         tfactor, ytop - ybottom, color=color,
-                                         alpha=0.1))
+            inset_ax.add_patch(Rectangle(
+                (tstart[i] * tfactor, ybottom),
+                (tend[i] - tstart[i]) * tfactor, ytop - ybottom,
+                color=colors[i], alpha=0.1))
 
 
 class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
@@ -254,7 +294,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             # Extract time and stim pulses
             t = data['t'].values
             stimstate = self.getStimStates(data)
-            tpatch_on, tpatch_off = self.getStimPulses(t, stimstate)
+            pulses = self.getStimPulses(t, stimstate)
             tplt = self.getTimePltVar(model.tscale)
             t = self.prepareTime(t, tplt)
 
@@ -282,9 +322,9 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             if patches[j]:
                 ybottom, ytop = ax.get_ylim()
                 color = '#8A8A8A' if greypatch else handles[j].get_color()
-                self.addPatches(ax, tpatch_on, tpatch_off, tplt, color)
+                self.addPatches(ax, pulses, tplt, color=color)
                 if inset is not None:
-                    self.addInsetPatches(ax, inset_ax, inset, tpatch_on, tpatch_off, tplt, color)
+                    self.addInsetPatches(ax, inset_ax, inset, pulses, tplt, color)
 
             tmin, tmax = min(tmin, t.min()), max(tmax, t.max())
 
@@ -396,7 +436,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
             t = data['t'].values
             stimstate = self.getStimStates(data)
 
-            tpatch_on, tpatch_off = self.getStimPulses(t, stimstate)
+            pulses = self.getStimPulses(t, stimstate)
             tplt = self.getTimePltVar(model.tscale)
             t = self.prepareTime(t, tplt)
 
@@ -455,7 +495,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
             for ax in axes:
                 ax.set_xlim(t.min(), t.max())
                 if patches != 'none':
-                    self.addPatches(ax, tpatch_on, tpatch_off, tplt)
+                    self.addPatches(ax, pulses, tplt)
 
             # Post-process figure
             self.postProcess(axes, tplt, fs, meta, prettify)
