@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-13 17:52:37
+# @Last Modified time: 2020-04-18 18:11:15
 
 import abc
 import pandas as pd
@@ -145,8 +145,8 @@ class XYMap(LogBatch):
     @property
     def inputscode(self):
         ''' String describing the batch inputs. '''
-        xcode = self.rangecode(self.xvec * self.xfactor, self.xkey, self.xunit)
-        ycode = self.rangecode(self.yvec * self.yfactor, self.ykey, self.yunit)
+        xcode = self.rangecode(self.xvec, self.xkey, self.xunit)
+        ycode = self.rangecode(self.yvec, self.ykey, self.yunit)
         return '_'.join([xcode, ycode])
 
     @staticmethod
@@ -197,8 +197,8 @@ class XYMap(LogBatch):
 
     def getOnClickXY(self, event):
         ''' Get x and y values from from x and y click event coordinates. '''
-        x = self.xvec[np.searchsorted(self.xedges, event.xdata / self.xfactor) - 1]
-        y = self.yvec[np.searchsorted(self.yedges, event.ydata / self.yfactor) - 1]
+        x = self.xvec[np.searchsorted(self.xedges, event.xdata) - 1]
+        y = self.yvec[np.searchsorted(self.yedges, event.ydata) - 1]
         return x, y
 
     def onClick(self, event):
@@ -260,8 +260,7 @@ class XYMap(LogBatch):
 
         # Plot map with specific color code
         data = self.getOutput()
-        ax.pcolormesh(self.xedges * self.xfactor, self.yedges * self.yfactor, data,
-                      cmap=mymap, norm=norm)
+        ax.pcolormesh(self.xedges, self.yedges, data, cmap=mymap, norm=norm)
 
         # Plot z-scale colorbar
         pos1 = ax.get_position()  # get the map axis position
@@ -290,9 +289,9 @@ class ActivationMap(XYMap):
     def __init__(self, root, pneuron, a, fs, f, tstim, PRF, amps, DCs):
         self.nbls = NeuronalBilayerSonophore(a, pneuron)
         self.drive = AcousticDrive(f, None)
-        self.pp = PulsedProtocol(tstim, 0., PRF, 1.)
+        self.pp = PulsedProtocol(tstim, 0., PRF, .5)
         self.fs = fs
-        super().__init__(root, DCs, amps)
+        super().__init__(root, DCs * self.xfactor, amps * self.yfactor)
 
     @property
     def sim_args(self):
@@ -308,15 +307,16 @@ class ActivationMap(XYMap):
 
     def corecode(self):
         corecodes = self.nbls.filecodes(*self.sim_args)
-        corecodes['PRF'] = f'PRF{self.pp.PRF:.0f}Hz'
         del corecodes['nature']
+        if 'DC' in corecodes:
+            del corecodes['DC']
         return '_'.join(filter(lambda x: x is not None, corecodes.values()))
 
     def compute(self, x):
         ''' Compute firing rate from simulation output '''
         # Adapt drive and pulsed protocol
-        self.pp.DC = x[0]
-        self.drive.A = x[1]
+        self.pp.DC = x[0] / self.xfactor
+        self.drive.A = x[1] / self.yfactor
 
         # Get model output, running simulation if needed
         data, _ = self.nbls.getOutput(*self.sim_args, outputdir=self.root)
@@ -345,10 +345,9 @@ class ActivationMap(XYMap):
         ''' Retrieve the specific input parameters of the x and y dimensions
             when the user clicks on a cell in the 2D map, and define filename from it.
         '''
-        # Define filepath
         DC, A = self.getOnClickXY(event)
-        self.drive.A = A
-        self.pp.DC = DC
+        self.drive.A = A / self.yfactor
+        self.pp.DC = DC / self.xfactor
 
         # Get model output, running simulation if needed
         data, meta = self.nbls.getOutput(*self.sim_args, outputdir=self.root)

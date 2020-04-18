@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 14:43:53
+# @Last Modified time: 2020-04-18 17:46:42
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -921,8 +921,8 @@ class StimObject(metaclass=abc.ABCMeta):
         return f"{xf}{self.inputs()[k].get('unit', '')}"
 
     def pdict(self, sf='{key}={value}', **kwargs):
-        d = {k: sf.format(key=k, value=self.paramStr(k, **kwargs)) for k in self.inputs().keys()}
-        return {k: v for k, v in d.items() if v is not None}
+        d = {k: self.paramStr(k, **kwargs) for k in self.inputs().keys()}
+        return {k: sf.format(key=k, value=v) for k, v in d.items() if v is not None}
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):

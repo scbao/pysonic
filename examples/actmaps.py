@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-04-09 10:52:49
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-13 17:51:24
+# @Last Modified time: 2020-04-18 18:10:13
 
 ''' Example script showing how to build neuron activation maps. '''
 
