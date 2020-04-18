@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 11:53:09
+# @Last Modified time: 2020-04-18 21:22:21
 
 import numpy as np
 import pandas as pd
@@ -214,12 +214,14 @@ class ODESolver:
             **{k: self.y[:, i] for i, k in enumerate(self.ykeys)}
         })
 
-    def __call__(self, *args, target_dt=None, **kwargs):
+    def __call__(self, *args, target_dt=None, max_nsamples=None, **kwargs):
         ''' Specific call method: solve the system, resample solution if needed, and return
             solution dataframe. '''
         self.solve(*args, **kwargs)
         if target_dt is not None:
             self.resample(target_dt)
+        elif max_nsamples is not None and self.t.size > max_nsamples:
+            self.resample(np.ptp(self.t) / max_nsamples)
         return self.solution
 
 

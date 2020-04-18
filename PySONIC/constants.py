@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-04 13:23:31
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-15 19:22:09
+# @Last Modified time: 2020-04-18 21:22:53
 
 ''' Numerical constants used in the package. '''
 
@@ -41,6 +41,7 @@ MIN_SPARSE_DT = 1e-12               # minimal time step used during sparse integ
 HYBRID_UPDATE_INTERVAL = 5e-4       # time interval between two hybrid integrations (s)
 DT_EFFECTIVE = 5e-5                 # time step for effective integration (s)
 MIN_SAMPLES_PER_PULSE_INTERVAL = 1  # minimal number of time points per pulse interval (TON of TOFF)
+MAX_NSAMPLES_EFFECTIVE = 1e5        # maximum number of time samples in effective simulations output
 
 # -------------------------- Post-processing --------------------------
 

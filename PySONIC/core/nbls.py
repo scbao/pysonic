@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 12:17:31
+# @Last Modified time: 2020-04-18 21:24:48
 
 import logging
 import numpy as np
@@ -378,7 +378,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             lambda t, y: self.effDerivatives(t, y, solver.lkp, qss_vars),        # dfunc
             event_params={'lkp': lkp.project('A', 0.)},                          # event parameters
             dt=self.pneuron.chooseTimeStep())                                    # time step
-        data = solver(y0, pp.stimEvents(), pp.tstop)
+        data = solver(
+            y0, pp.stimEvents(), pp.tstop,
+            log_period=pp.tstop / 100 if pp.tstop >= 5 else None,
+            max_nsamples=MAX_NSAMPLES_EFFECTIVE)
 
         # Interpolate Vm and QSS variables along charge vector and store them in solution dataframe
         data = addColumn(
