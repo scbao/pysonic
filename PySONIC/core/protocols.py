@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 13:12:55
+# @Last Modified time: 2020-04-18 14:15:04
 
 import abc
 import numpy as np
@@ -79,6 +79,9 @@ class CustomProtocol(TimeProtocol):
         value = self.checkFloat('tstop', value)
         self.checkBounded('tstop', value, (self.tevents.max(), np.inf))
         self._tstop = value
+
+    def copy(self):
+        return self.__class__(self.tevents, self.xevents, self.tstop)
 
     @staticmethod
     def inputs():
@@ -164,6 +167,9 @@ class PulsedProtocol(TimeProtocol):
         if self.DC < 1.:
             self.checkBounded('PRF', value, (1 / self.tstim, np.inf))
         self._PRF = value
+
+    def copy(self):
+        return self.__class__(self.tstim, self.toffset, PRF=self.PRF, DC=self.DC)
 
     @property
     def tstop(self):
@@ -285,6 +291,10 @@ class BurstProtocol(PulsedProtocol):
         super().__init__(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC)
         self.BRF = BRF
         self.nbursts = nbursts
+
+    def copy(self):
+        return self.__class__(
+            self.tburst, PRF=self.PRF, DC=self.DC, BRF=self.BRF, nbursts=self.nbursts)
 
     @property
     def tburst(self):

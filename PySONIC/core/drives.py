@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 11:09:32
+# @Last Modified time: 2020-04-18 14:15:22
 
 import abc
 import numpy as np
@@ -15,11 +15,6 @@ from .batches import Batch
 
 class Drive(StimObject):
     ''' Generic interface to drive object. '''
-
-    @abc.abstractmethod
-    def copy(self):
-        ''' String representation. '''
-        raise NotImplementedError
 
     @abc.abstractmethod
     def compute(self, t):

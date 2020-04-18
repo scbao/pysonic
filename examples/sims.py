@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-04-17 16:09:42
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 13:20:18
+# @Last Modified time: 2020-04-18 13:51:23
 
 ''' Example script showing how to simulate a point-neuron model upon application
     of both electrical and ultrasonic stimuli, with various temporal protocols.

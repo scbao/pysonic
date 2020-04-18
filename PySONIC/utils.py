@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 13:10:38
+# @Last Modified time: 2020-04-18 14:43:53
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -875,17 +875,32 @@ def moveItem(l, value, itarget):
 
 class StimObject(metaclass=abc.ABCMeta):
     ''' Generic interface to a simulation object. '''
+    fcode_replace_pairs = [
+        ('/', '_per_'),
+        (',', '_'),
+        ('(', ''),
+        (')', ''),
+        (' ', '')
+    ]
+
+    @abc.abstractmethod
+    def copy(self):
+        ''' String representation. '''
+        raise NotImplementedError
 
     @staticmethod
     @abc.abstractmethod
     def inputs():
         raise NotImplementedError
 
-    def xformat(self, x, precision, minfigs, strict_nfigs=False):
+    def xformat(self, x, factor, precision, minfigs, strict_nfigs=False):
         if isIterable(x):
-            l = [self.xformat(xx, precision, minfigs, strict_nfigs=strict_nfigs) for xx in x]
-            return f'[{", ".join(l)}]'
-        xf = si_format(x, precision=precision, space='')
+            l = [self.xformat(xx, factor, precision, minfigs, strict_nfigs=strict_nfigs)
+                 for xx in x]
+            return f'({", ".join(l)})'
+        if isinstance(x, str):
+            return x
+        xf = si_format(x * factor, precision=precision, space='')
         if strict_nfigs:
             if minfigs is not None:
                 nfigs = len(xf.split('.')[0])
@@ -898,7 +913,8 @@ class StimObject(metaclass=abc.ABCMeta):
         if val is None:
             return None
         xf = self.xformat(
-            val * self.inputs()[k].get('factor', 1.),
+            val,
+            self.inputs()[k].get('factor', 1.),
             self.inputs()[k].get('precision', 0),
             self.inputs()[k].get('minfigs', None),
             **kwargs)
@@ -923,10 +939,15 @@ class StimObject(metaclass=abc.ABCMeta):
     def desc(self):
         return ', '.join(self.pdict(sf='{key} = {value}').values())
 
+    def adaptCode(self, s):
+        for pair in self.fcode_replace_pairs:
+            s = s.replace(*pair)
+        return s
+
     @property
     def filecodes(self):
-        return {k: v.replace('/', '_per_')
-                for k, v in self.pdict(sf='{key}_{value}', strict_nfigs=True).items()}
+        d = self.pdict(sf='{key}_{value}', strict_nfigs=True)
+        return {k: self.adaptCode(v) for k, v in d.items()}
 
     def checkInt(self, key, value):
         if not isinstance(value, int):
