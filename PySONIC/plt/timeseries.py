@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 13:05:43
+# @Last Modified time: 2020-04-18 16:14:12
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -43,7 +43,7 @@ class TimeSeriesPlot(GenericPlot):
 
             :param t: time vector (s).
             :param states: a vector of stimulation state (ON/OFF) at each instant in time.
-            :return: 3-tuple with number of patches, timing of STIM-ON an STIM-OFF instants.
+            :return: list of 3-tuples start time, end time and value of each pulse.
         '''
         # Compute states derivatives and identify transition indexes
         dstates = np.diff(states)
@@ -52,37 +52,8 @@ class TimeSeriesPlot(GenericPlot):
             itransitions = np.hstack(([0], itransitions))
         if states[-1] != 0:
             itransitions = np.hstack((itransitions, [t.size - 1]))
-        return list(zip(t[itransitions[:-1]], t[itransitions[1:]], states[itransitions[:-1]]))
-
-        # ipulse_on = np.where(dstates > 0.0)[0] + 1
-        # ipulse_off = np.where(dstates < 0.0)[0] + 1
-        # if ipulse_off.size < ipulse_on.size:
-        #     ioff = t.size - 1
-        #     if ipulse_off.size == 0:
-        #         ipulse_off = np.array([ioff])
-        #     else:
-        #         ipulse_off = np.insert(ipulse_off, ipulse_off.size - 1, ioff)
-
-        # # Get time instants for pulses ON and OFF
-        # tpulse_on = t[ipulse_on]
-        # tpulse_off = t[ipulse_off]
-        # return tpulse_on, tpulse_off
-
-        # Compute states derivatives and identify bounds indexes of pulses
-        # dstates = np.diff(states)
-        # ipulse_on = np.where(dstates > 0.0)[0] + 1
-        # ipulse_off = np.where(dstates < 0.0)[0] + 1
-        # if ipulse_off.size < ipulse_on.size:
-        #     ioff = t.size - 1
-        #     if ipulse_off.size == 0:
-        #         ipulse_off = np.array([ioff])
-        #     else:
-        #         ipulse_off = np.insert(ipulse_off, ipulse_off.size - 1, ioff)
-
-        # # Get time instants for pulses ON and OFF
-        # tpulse_on = t[ipulse_on]
-        # tpulse_off = t[ipulse_off]
-        # return tpulse_on, tpulse_off
+        pulses = list(zip(t[itransitions[:-1]], t[itransitions[1:]], states[itransitions[:-1]]))
+        return list(filter(lambda x: x[2] != 0, pulses))
 
     def addLegend(self, fig, ax, handles, labels, fs, color=None, ls=None):
         lh = ax.legend(handles, labels, loc=1, fontsize=fs, frameon=False)
