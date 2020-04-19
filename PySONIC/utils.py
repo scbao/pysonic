@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 17:46:42
+# @Last Modified time: 2020-04-19 16:37:16
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -1035,3 +1035,11 @@ def addColumn(df, key, arr, preceding_key=None):
         preceding_index = cols.index(preceding_key)
         df = df[cols[:preceding_index + 1] + [key] + cols[preceding_index + 1:]]
     return df
+
+
+def integerSuffix(n):
+    return 'th' if 4 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+
+
+def customStrftime(fmt, dt_obj):
+    return dt_obj.strftime(fmt).replace('{S}', str(dt_obj.day) + integerSuffix(dt_obj.day))
