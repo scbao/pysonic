@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 16:14:12
+# @Last Modified time: 2020-04-19 15:00:52
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -292,7 +292,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             # Add optional STIM-ON patches
             if patches[j]:
                 ybottom, ytop = ax.get_ylim()
-                color = '#8A8A8A' if greypatch else handles[j].get_color()
+                color = None if greypatch else handles[j].get_color()
                 self.addPatches(ax, pulses, tplt, color=color)
                 if inset is not None:
                     self.addInsetPatches(ax, inset_ax, inset, pulses, tplt, color)

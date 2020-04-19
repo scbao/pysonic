@@ -3,10 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 14:15:04
+# @Last Modified time: 2020-04-19 14:57:18
 
 import abc
 import numpy as np
+import itertools
 from ..utils import StimObject, isIterable
 from .batches import Batch
 
@@ -380,3 +381,94 @@ class BurstProtocol(PulsedProtocol):
 
         # Construct and return objects queue
         return [cls(*item) for item in queue]
+
+
+class BalancedPulsedProtocol(PulsedProtocol):
+
+    def __init__(self, tpulse, xratio, toffset, tstim=None, PRF=100):
+        self.tpulse = tpulse
+        self.xratio = xratio
+        if tstim is None:
+            tstim = self.ttotal
+            PRF = 1 / tstim
+        super().__init__(tstim, toffset, PRF=PRF, DC=self.tpulse * PRF)
+
+    @property
+    def tpulse(self):
+        return self._tpulse
+
+    @tpulse.setter
+    def tpulse(self, value):
+        value = self.checkFloat('tpulse', value)
+        self.checkPositiveOrNull('tpulse', value)
+        self._tpulse = value
+
+    @property
+    def xratio(self):
+        return self._xratio
+
+    @xratio.setter
+    def xratio(self, value):
+        value = self.checkFloat('xratio', value)
+        self.checkBounded('xratio', value, (0., 1.))
+        self._xratio = value
+
+    @property
+    def PRF(self):
+        return self._PRF
+
+    @PRF.setter
+    def PRF(self, value):
+        value = self.checkFloat('PRF', value)
+        self.checkPositiveOrNull('PRF', value)
+        if self.tstim != self.ttotal:
+            self.checkBounded('PRF', value, (1 / self.tstim, 1 / self.ttotal))
+        self._PRF = value
+
+    @property
+    def treversal(self):
+        return self.tpulse / self.xratio
+
+    @property
+    def ttotal(self):
+        return self.tpulse + self.treversal
+
+    def copy(self):
+        return self.__class__(
+            self.tpulse, self.xratio, self.toffset, tstim=self.tstim, PRF=self.PRF)
+
+    @staticmethod
+    def inputs():
+        d = PulsedProtocol.inputs()
+        del d['DC']
+        return {
+            'tpulse': {
+                'desc': 'pulse width',
+                'label': 't_{pulse}',
+                'unit': 's',
+                'factor': 1e0,
+                'precision': 2
+            },
+            'xratio': {
+                'desc': 'balance amplitude factor',
+                'label': 'x_{ratio}',
+                'factor': 1e2,
+                'unit': '%',
+                'precision': 1
+            },
+            **d
+        }
+
+    def tRev(self):
+        return self.tOFFON() + self.tpulse
+
+    def tONOFF(self):
+        return self.tOFFON() + self.ttotal
+
+    def stimEvents(self):
+        pairs = list(itertools.chain.from_iterable([
+            list(zip(t, [x] * len(t))) for t, x in [
+                (self.tOFFON(), 1), (self.tRev(), -self.xratio), (self.tONOFF(), 0)
+            ]
+        ]))
+        return sorted(pairs, key=lambda x: x[0])
