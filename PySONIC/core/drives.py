@@ -3,12 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-01-30 11:46:47
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 14:15:22
+# @Last Modified time: 2020-04-21 11:34:26
 
 import abc
 import numpy as np
 
-from ..utils import StimObject
+from .stimobj import StimObject
 from ..constants import *
 from .batches import Batch
 

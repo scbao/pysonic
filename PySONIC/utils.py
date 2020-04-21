@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-19 16:37:16
+# @Last Modified time: 2020-04-21 11:46:00
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -13,7 +13,6 @@ import operator
 import time
 from inspect import signature
 import os
-import abc
 from shutil import get_terminal_size
 import lockfile
 import math
@@ -30,7 +29,6 @@ from scipy.optimize import brentq
 from scipy import linalg
 import colorlog
 from pushbullet import Pushbullet
-
 
 # Package logger
 my_log_formatter = colorlog.ColoredFormatter(
@@ -151,15 +149,6 @@ def pow10_format(number, precision=2):
     value, exponent = float(value), int(exponent)
     val_str = f'{value} * ' if value != 1. else ''
     return f'{val_str}10^{{{exponent}}}'
-
-
-def plural(n):
-    if n < 0:
-        raise ValueError(f'Cannot format negative integer (n = {n})')
-    if n == 0:
-        return ''
-    else:
-        return 's'
 
 
 def rmse(x1, x2, axis=None):
@@ -871,119 +860,6 @@ def moveItem(l, value, itarget):
 
     # Return re-organized list
     return new_l[:itarget] + [value] + new_l[itarget:]
-
-
-class StimObject(metaclass=abc.ABCMeta):
-    ''' Generic interface to a simulation object. '''
-    fcode_replace_pairs = [
-        ('/', '_per_'),
-        (',', '_'),
-        ('(', ''),
-        (')', ''),
-        (' ', '')
-    ]
-
-    @abc.abstractmethod
-    def copy(self):
-        ''' String representation. '''
-        raise NotImplementedError
-
-    @staticmethod
-    @abc.abstractmethod
-    def inputs():
-        raise NotImplementedError
-
-    def xformat(self, x, factor, precision, minfigs, strict_nfigs=False):
-        if isIterable(x):
-            l = [self.xformat(xx, factor, precision, minfigs, strict_nfigs=strict_nfigs)
-                 for xx in x]
-            return f'({", ".join(l)})'
-        if isinstance(x, str):
-            return x
-        xf = si_format(x * factor, precision=precision, space='')
-        if strict_nfigs:
-            if minfigs is not None:
-                nfigs = len(xf.split('.')[0])
-                if nfigs < minfigs:
-                    xf = '0' * (minfigs - nfigs) + xf
-        return xf
-
-    def paramStr(self, k, **kwargs):
-        val = getattr(self, k)
-        if val is None:
-            return None
-        xf = self.xformat(
-            val,
-            self.inputs()[k].get('factor', 1.),
-            self.inputs()[k].get('precision', 0),
-            self.inputs()[k].get('minfigs', None),
-            **kwargs)
-        return f"{xf}{self.inputs()[k].get('unit', '')}"
-
-    def pdict(self, sf='{key}={value}', **kwargs):
-        d = {k: self.paramStr(k, **kwargs) for k in self.inputs().keys()}
-        return {k: sf.format(key=k, value=v) for k, v in d.items() if v is not None}
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        for k in self.inputs().keys():
-            if getattr(self, k) != getattr(other, k):
-                return False
-        return True
-
-    def __repr__(self):
-        return f'{self.__class__.__name__}({", ".join(self.pdict().values())})'
-
-    @property
-    def desc(self):
-        return ', '.join(self.pdict(sf='{key} = {value}').values())
-
-    def adaptCode(self, s):
-        for pair in self.fcode_replace_pairs:
-            s = s.replace(*pair)
-        return s
-
-    @property
-    def filecodes(self):
-        d = self.pdict(sf='{key}_{value}', strict_nfigs=True)
-        return {k: self.adaptCode(v) for k, v in d.items()}
-
-    def checkInt(self, key, value):
-        if not isinstance(value, int):
-            raise TypeError(f'Invalid {self.inputs()[key]["desc"]} (must be an integer)')
-        return value
-
-    def checkFloat(self, key, value):
-        if isinstance(value, int):
-            value = float(value)
-        if not isinstance(value, float):
-            raise TypeError(f'Invalid {self.inputs()[key]["desc"]} (must be float typed)')
-        return value
-
-    def checkStrictlyPositive(self, key, value):
-        if value <= 0:
-            raise ValueError(f'Invalid {self.paramStr(key)} (must be strictly positive)')
-
-    def checkPositiveOrNull(self, key, value):
-        if value < 0:
-            raise ValueError(f'Invalid {self.paramStr(key)} (must be positive or null)')
-
-    def checkStrictlyNegative(self, key, value):
-        if value >= 0:
-            raise ValueError(f'Invalid {self.paramStr(key)} (must be strictly negative)')
-
-    def checkNegativeOrNull(self, key, value):
-        if value > 0:
-            d = self.inputs()[key]
-            raise ValueError(f'Invalid {self.paramStr(key)} {d["unit"]} (must be negative or null)')
-
-    def checkBounded(self, key, value, bounds):
-        if value < bounds[0] or value > bounds[1]:
-            d = self.inputs()[key]
-            f, u = d.get("factor", 1), d["unit"]
-            bounds_str = f'[{bounds[0] * f}; {bounds[1] * f}] {u}'
-            raise ValueError(f'Invalid {d["desc"]}: {value * f} {u} (must be within {bounds_str})')
 
 
 def gaussian(x, mu=0., sigma=1., A=1.):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-15 20:48:13
+# @Last Modified time: 2020-04-21 11:33:31
 
 from types import MethodType
 import inspect
@@ -18,6 +18,7 @@ from .translators import *
 from .nbls import *
 from .vclamp import *
 from .lookups import *
+from .stimobj import *
 from .protocols import *
 from .drives import *
 

@@ -3,12 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-19 14:57:18
+# @Last Modified time: 2020-04-21 11:34:44
 
 import abc
 import numpy as np
 import itertools
-from ..utils import StimObject, isIterable
+from ..utils import isIterable
+from .stimobj import StimObject
 from .batches import Batch
 
 

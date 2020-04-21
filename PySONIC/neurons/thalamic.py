@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-31 18:14:25
+# @Last Modified time: 2020-04-20 12:59:36
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures

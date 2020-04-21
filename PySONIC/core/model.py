@@ -3,13 +3,14 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 19:31:15
+# @Last Modified time: 2020-04-21 11:45:16
 
 from functools import wraps
 from inspect import getdoc
 import abc
 import inspect
 import numpy as np
+from boltons.strutils import cardinalize
 
 from .batches import Batch
 from ..threshold import titrate
@@ -154,7 +155,7 @@ class Model(metaclass=abc.ABCMeta):
                 return None
             data, meta = out
             nspikes = self.getNSpikes(data)
-            logger.debug(f'{nspikes} spike{plural(nspikes)} detected')
+            logger.debug(f'{nspikes} {cardinalize("spike", nspikes)} detected')
             return data, meta
 
         return wrapper

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-19 15:00:52
+# @Last Modified time: 2020-04-20 11:44:59
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -175,7 +175,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             npatches, nfiles = len(patches), len(self.filepaths)
             if npatches != nfiles:
                 raise ValueError(
-                    f'Invalid patches ({npatches}): not matching number of compared files ({nfiles})')
+                    f'Invalid patches ({npatches}): not matching number of files ({nfiles})')
             if not all(isinstance(p, bool) for p in patches):
                 raise TypeError('Invalid patch sequence: all list items must be boolean typed')
         else:
@@ -247,7 +247,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             # Load data
             try:
                 data, meta = self.getData(filepath, frequency, trange)
-            except ValueError as err:
+            except ValueError:
                 continue
             if 'tcomp' in meta:
                 meta.pop('tcomp')
@@ -274,7 +274,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             if self.varname not in pltvars:
                 pltvars_str = ', '.join([f'"{p}"' for p in pltvars.keys()])
                 raise KeyError(
-                    f'Unknown plot variable: "{self.varname}". Possible plot variables are: {pltvars_str}')
+                    f'Unknown plot variable: "{self.varname}". Candidates are: {pltvars_str}')
             yplt = pltvars[self.varname]
             y = extractPltVar(model, yplt, data, meta, t.size, self.varname)
 
@@ -287,7 +287,8 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
 
             # Plot optional inset
             if inset is not None:
-                inset_ax = self.plotInset(inset_ax, inset, t, y, tplt, yplt, lines[j], colors[j], lw)
+                inset_ax = self.plotInset(
+                    inset_ax, inset, t, y, tplt, yplt, lines[j], colors[j], lw)
 
             # Add optional STIM-ON patches
             if patches[j]:
