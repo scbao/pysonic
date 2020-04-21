@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-21 11:46:00
+# @Last Modified time: 2020-04-21 20:38:46
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -919,3 +919,24 @@ def integerSuffix(n):
 
 def customStrftime(fmt, dt_obj):
     return dt_obj.strftime(fmt).replace('{S}', str(dt_obj.day) + integerSuffix(dt_obj.day))
+
+
+def friendlyLogspace(xmin, xmax, bases=None):
+    ''' Define a "friendly" logspace between two bounds. '''
+    if bases is None:
+        bases = [1, 2, 5]
+    bases = np.asarray(bases)
+    bounds = np.array([xmin, xmax])
+    logbounds = np.log10(bounds)
+    bounds_orders = np.floor(logbounds)
+    orders = np.arange(bounds_orders[0], bounds_orders[1] + 1)
+    factors = np.power(10., np.floor(orders))
+    seq = np.hstack([bases * f for f in factors])
+    if xmax > seq.max():
+        seq = np.hstack((seq, xmax))
+    seq = seq[np.logical_and(seq >= xmin, seq <= xmax)]
+    if xmin not in seq:
+        seq = np.hstack((xmin, seq))
+    if xmax not in seq:
+        seq = np.hstack((seq, xmax))
+    return seq
