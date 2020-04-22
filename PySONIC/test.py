@@ -3,9 +3,8 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-28 11:55:16
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 23:33:10
+# @Last Modified time: 2020-04-22 15:09:38
 
-import os
 import time
 import cProfile
 import pstats
@@ -21,18 +20,19 @@ class TestBase:
     prefix = 'test_'
     parser_class = TestParser
 
-    def execute(self, func_str, globals, locals, is_profiled):
+    def execute(self, func, is_profiled):
         ''' Execute function with or without profiling. '''
         if is_profiled:
-            pfile = 'tmp.stats'
-            cProfile.runctx(func_str, globals, locals, pfile)
-            stats = pstats.Stats(pfile)
-            os.remove(pfile)
-            stats.strip_dirs()
-            stats.sort_stats('cumulative')
-            stats.print_stats()
+            profile = cProfile.Profile()
+            profile.enable()
+            func()
+            profile.disable()
+            ps = pstats.Stats(profile)
+            ps.strip_dirs()
+            ps.sort_stats('cumulative')
+            ps.print_stats()
         else:
-            eval(func_str, globals, locals)
+            func()
 
     def buildtestSet(self):
         ''' Build list of candidate testsets. '''

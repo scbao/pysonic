@@ -3,11 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-14 18:37:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-26 22:19:28
+# @Last Modified time: 2020-04-22 15:11:50
 
 ''' Test the basic functionalities of the package. '''
 
-from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore, AcousticDrive, ElectricDrive, PulsedProtocol
+from PySONIC.core import BilayerSonophore, NeuronalBilayerSonophore
+from PySONIC.core.drives import AcousticDrive, ElectricDrive
+from PySONIC.core.protocols import PulsedProtocol
 from PySONIC.utils import logger
 from PySONIC.neurons import getPointNeuron, getNeuronsDict
 from PySONIC.test import TestBase
@@ -24,14 +26,14 @@ class TestSims(TestBase):
         Cm0 = 1e-2      # membrane resting capacitance (F/m2)
         Qm = 50e-5      # C/m2
         bls = BilayerSonophore(self.a, Cm0, Qm0)
-        self.execute('bls.simulate(self.USdrive, Qm)', globals(), locals(), is_profiled)
+        self.execute(lambda: bls.simulate(self.USdrive, Qm), is_profiled)
 
     def test_ESTIM(self, is_profiled=False):
         logger.info('Test: running ESTIM simulation')
         ELdrive = ElectricDrive(10.0)  # mA/m2
         pp = PulsedProtocol(100e-3, 50e-3)
         pneuron = getPointNeuron('RS')
-        self.execute('pneuron.simulate(ELdrive, pp)', globals(), locals(), is_profiled)
+        self.execute(lambda: pneuron.simulate(ELdrive, pp), is_profiled)
 
     def test_ASTIM_sonic(self, is_profiled=False):
         logger.info('Test: ASTIM sonic simulation')
@@ -65,24 +67,21 @@ class TestSims(TestBase):
             if name not in ('template', 'LeechP', 'LeechT', 'LeechR', 'SWnode'):
                 pneuron = neuron_class()
                 nbls = NeuronalBilayerSonophore(self.a, pneuron)
-                self.execute("nbls.simulate(self.USdrive, pp, method='sonic')",
-                             globals(), locals(), is_profiled)
+                self.execute(lambda: nbls.simulate(self.USdrive, pp, method='sonic'), is_profiled)
 
     def test_ASTIM_full(self, is_profiled=False):
         logger.info('Test: running ASTIM detailed simulation')
         pp = PulsedProtocol(1e-6, 1e-6)
         pneuron = getPointNeuron('RS')
         nbls = NeuronalBilayerSonophore(self.a, pneuron)
-        self.execute("nbls.simulate(self.USdrive, pp, method='full')",
-                     globals(), locals(), is_profiled)
+        self.execute(lambda: nbls.simulate(self.USdrive, pp, method='full'), is_profiled)
 
     def test_ASTIM_hybrid(self, is_profiled=False):
         logger.info('Test: running ASTIM hybrid simulation')
         pp = PulsedProtocol(0.6e-3, 0.1e-3)
         pneuron = getPointNeuron('RS')
         nbls = NeuronalBilayerSonophore(self.a, pneuron)
-        self.execute("nbls.simulate(self.USdrive, pp, method='hybrid')",
-                     globals(), locals(), is_profiled)
+        self.execute(lambda: nbls.simulate(self.USdrive, pp, method='hybrid'), is_profiled)
 
 
 if __name__ == '__main__':
