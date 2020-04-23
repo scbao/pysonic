@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-20 12:59:36
+# @Last Modified time: 2020-04-23 11:59:05
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
@@ -361,3 +361,10 @@ class ThalamoCortical(Thalamic):
             'iKLeak': lambda Vm, x: cls.iKLeak(Vm),
             'iH': lambda Vm, x: cls.iH(x['O'], x['C'], Vm)
         }}
+
+
+class ThalamoCortical2(ThalamoCortical):
+
+    name = 'TC2'
+    Vm0 = -70.0
+    gLeak = 2.0
