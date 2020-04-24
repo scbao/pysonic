@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-21 11:34:44
+# @Last Modified time: 2020-04-24 10:34:08
 
 import abc
 import numpy as np
@@ -115,7 +115,7 @@ class CustomProtocol(TimeProtocol):
 
 class PulsedProtocol(TimeProtocol):
 
-    def __init__(self, tstim, toffset, PRF=100., DC=1.):
+    def __init__(self, tstim, toffset, PRF=100., DC=1., tstart=0.):
         ''' Class constructor.
 
             :param tstim: pulse duration (s)
@@ -127,6 +127,7 @@ class PulsedProtocol(TimeProtocol):
         self.toffset = toffset
         self.DC = DC
         self.PRF = PRF
+        self.tstart = tstart
 
     @property
     def tstim(self):
@@ -170,8 +171,19 @@ class PulsedProtocol(TimeProtocol):
             self.checkBounded('PRF', value, (1 / self.tstim, np.inf))
         self._PRF = value
 
+    @property
+    def tstart(self):
+        return self._tstart
+
+    @tstart.setter
+    def tstart(self, value):
+        value = self.checkFloat('tstart', value)
+        self.checkPositiveOrNull('tstart', value)
+        self._tstart = value
+
     def copy(self):
-        return self.__class__(self.tstim, self.toffset, PRF=self.PRF, DC=self.DC)
+        return self.__class__(
+            self.tstim, self.toffset, PRF=self.PRF, DC=self.DC, tstart=self.tstart)
 
     @property
     def tstop(self):
@@ -184,6 +196,8 @@ class PulsedProtocol(TimeProtocol):
         if self.isCW:
             del d['PRF']
             del d['DC']
+        if self.tstart == 0.:
+            del d['tstart']
         return d
 
     @property
@@ -237,22 +251,28 @@ class PulsedProtocol(TimeProtocol):
                 'factor': 1e2,
                 'precision': 1,
                 'minfigs': 2
-            }
+            },
+            'tstart': {
+                'desc': 'stimulus start time',
+                'label': 't_{start}',
+                'unit': 's',
+                'precision': 0
+            },
         }
 
     def tOFFON(self):
         ''' Return vector of times of OFF-ON transitions (in s). '''
         if self.isCW:
-            return np.array([0.])
+            return np.array([self.tstart])
         else:
-            return np.arange(self.npulses) / self.PRF
+            return np.arange(self.npulses) / self.PRF + self.tstart
 
     def tONOFF(self):
         ''' Return vector of times of ON-OFF transitions (in s). '''
         if self.isCW:
-            return np.array([self.tstim])
+            return np.array([self.tstart + self.tstim])
         else:
-            return (np.arange(self.npulses) + self.DC) / self.PRF
+            return (np.arange(self.npulses) + self.DC) / self.PRF + self.tstart
 
     def stimEvents(self):
         t_on_off = self.tONOFF()
@@ -283,14 +303,14 @@ class PulsedProtocol(TimeProtocol):
 
 class BurstProtocol(PulsedProtocol):
 
-    def __init__(self, tburst, PRF=100., DC=1., BRF=1., nbursts=1):
+    def __init__(self, tburst, PRF=100., DC=1., BRF=1., nbursts=1, tstart=0.):
         ''' Class constructor.
 
             :param tburst: burst duration (s)
             :param BRF: burst repetition frequency (Hz)
             :param nbursts: number of bursts
         '''
-        super().__init__(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC)
+        super().__init__(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC, tstart=tstart)
         self.BRF = BRF
         self.nbursts = nbursts
 
@@ -386,13 +406,13 @@ class BurstProtocol(PulsedProtocol):
 
 class BalancedPulsedProtocol(PulsedProtocol):
 
-    def __init__(self, tpulse, xratio, toffset, tstim=None, PRF=100):
+    def __init__(self, tpulse, xratio, toffset, tstim=None, PRF=100, tstart=0.):
         self.tpulse = tpulse
         self.xratio = xratio
         if tstim is None:
             tstim = self.ttotal
             PRF = 1 / tstim
-        super().__init__(tstim, toffset, PRF=PRF, DC=self.tpulse * PRF)
+        super().__init__(tstim, toffset, PRF=PRF, DC=self.tpulse * PRF, tstart=tstart)
 
     @property
     def tpulse(self):

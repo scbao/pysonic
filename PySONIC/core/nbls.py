@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 21:24:48
+# @Last Modified time: 2020-04-24 10:42:51
 
 import logging
 import numpy as np
@@ -653,20 +653,29 @@ class DrivenNeuronalBilayerSonophore(NeuronalBilayerSonophore):
 
     @staticmethod
     def inputs():
-        inputvars = NeuronalBilayerSonophore.inputs()
-        inputvars['Idrive'] = {
-            'desc': 'driving current density',
-            'label': 'I_{drive}',
-            'unit': 'mA/m2',
-            'factor': 1e0,
-            'precision': 0
+        return {
+            **NeuronalBilayerSonophore.inputs(),
+            'Idrive': {
+                'desc': 'driving current density',
+                'label': 'I_{drive}',
+                'unit': 'mA/m2',
+                'factor': 1e0,
+                'precision': 0
+            }
         }
-        return inputvars
+
+    @property
+    def meta(self):
+        return {
+            **super().meta,
+            'Idrive': self.Idrive
+        }
 
     def filecodes(self, *args):
-        codes = super().filecodes(*args)
-        codes['Idrive'] = f'Idrive{self.Idrive:.1f}mAm2'
-        return codes
+        return {
+            **super().filecodes(*args),
+            'Idrive': f'Idrive{self.Idrive:.1f}mAm2'
+        }
 
     def fullDerivatives(self, *args):
         dydt = super().fullDerivatives(*args)
@@ -677,8 +686,3 @@ class DrivenNeuronalBilayerSonophore(NeuronalBilayerSonophore):
         dQmdt, *dstates = super().effDerivatives(*args)
         dQmdt += self.Idrive * 1e-3
         return [dQmdt, *dstates]
-
-    def meta(self, drive, pp, fs, method, qss_vars):
-        d = super().meta(drive, pp, fs, method, qss_vars)
-        d['Idrive'] = self.Idrive
-        return d
