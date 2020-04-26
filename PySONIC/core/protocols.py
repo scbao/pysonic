@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-24 10:34:08
+# @Last Modified time: 2020-04-26 19:08:43
 
 import abc
 import numpy as np
@@ -191,7 +191,7 @@ class PulsedProtocol(TimeProtocol):
 
     def pdict(self, **kwargs):
         d = super().pdict(**kwargs)
-        if self.toffset == 0.:
+        if 'toffset' in d and self.toffset == 0.:
             del d['toffset']
         if self.isCW:
             del d['PRF']
@@ -310,6 +310,7 @@ class BurstProtocol(PulsedProtocol):
             :param BRF: burst repetition frequency (Hz)
             :param nbursts: number of bursts
         '''
+        self.checkBounded('BRF', BRF, (0, 1 / tburst))  # BRF pre-check
         super().__init__(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC, tstart=tstart)
         self.BRF = BRF
         self.nbursts = nbursts

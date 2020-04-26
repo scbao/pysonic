@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-04-21 11:32:49
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-21 11:40:29
+# @Last Modified time: 2020-04-26 19:02:37
 
 import abc
 
@@ -100,20 +100,20 @@ class StimObject(metaclass=abc.ABCMeta):
 
     def checkStrictlyPositive(self, key, value):
         if value <= 0:
-            raise ValueError(f'Invalid {self.paramStr(key)} (must be strictly positive)')
+            raise ValueError(f'Invalid {key} (must be strictly positive)')
 
     def checkPositiveOrNull(self, key, value):
         if value < 0:
-            raise ValueError(f'Invalid {self.paramStr(key)} (must be positive or null)')
+            raise ValueError(f'Invalid {key} (must be positive or null)')
 
     def checkStrictlyNegative(self, key, value):
         if value >= 0:
-            raise ValueError(f'Invalid {self.paramStr(key)} (must be strictly negative)')
+            raise ValueError(f'Invalid {key} (must be strictly negative)')
 
     def checkNegativeOrNull(self, key, value):
         if value > 0:
             d = self.inputs()[key]
-            raise ValueError(f'Invalid {self.paramStr(key)} {d["unit"]} (must be negative or null)')
+            raise ValueError(f'Invalid {key} {d["unit"]} (must be negative or null)')
 
     def checkBounded(self, key, value, bounds):
         if value < bounds[0] or value > bounds[1]:
