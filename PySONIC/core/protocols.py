@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-26 19:08:43
+# @Last Modified time: 2020-04-26 19:21:16
 
 import abc
 import numpy as np
@@ -303,13 +303,15 @@ class PulsedProtocol(TimeProtocol):
 
 class BurstProtocol(PulsedProtocol):
 
-    def __init__(self, tburst, PRF=100., DC=1., BRF=1., nbursts=1, tstart=0.):
+    def __init__(self, tburst, PRF=100., DC=1., BRF=None, nbursts=1, tstart=0.):
         ''' Class constructor.
 
             :param tburst: burst duration (s)
             :param BRF: burst repetition frequency (Hz)
             :param nbursts: number of bursts
         '''
+        if BRF is None:
+            BRF = 1 / (2 * tburst)
         self.checkBounded('BRF', BRF, (0, 1 / tburst))  # BRF pre-check
         super().__init__(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC, tstart=tstart)
         self.BRF = BRF
