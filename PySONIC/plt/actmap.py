@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 18:11:15
+# @Last Modified time: 2020-04-28 13:30:30
 
 import abc
 import pandas as pd
@@ -21,6 +21,13 @@ from ..postpro import detectSpikes
 
 class XYMap(LogBatch):
     ''' Generic 2D map object interface. '''
+
+    offset_options = {
+        'lr': (1, -1),
+        'ur': (1, 1),
+        'll': (-1, -1),
+        'ul': (-1, 1)
+    }
 
     def __init__(self, root, xvec, yvec):
         self.root = root
@@ -227,7 +234,7 @@ class XYMap(LogBatch):
                 f'Maximal {self.zkey} ({zmax:.0f} {self.zunit}) is above defined upper bound ({zbounds[1]:.0f} {self.zunit})')
 
     def render(self, xscale='lin', yscale='lin', zscale='lin', zbounds=None, fs=8, cmap='viridis',
-               interactive=False, figsize=None):
+               interactive=False, figsize=None, insets=None, inset_offset=0.05):
         # Get figure size
         if figsize is None:
             figsize = cm2inch(12, 7)
@@ -261,6 +268,19 @@ class XYMap(LogBatch):
         # Plot map with specific color code
         data = self.getOutput()
         ax.pcolormesh(self.xedges, self.yedges, data, cmap=mymap, norm=norm)
+
+        # Plot potential insets
+        if insets is not None:
+            x_data, y_data, *_ = zip(*insets)
+            ax.scatter(x_data, y_data, s=80, facecolors='none', edgecolors='k',
+                       linestyle='--', lw=1)
+            axis_to_data = ax.transAxes + ax.transData.inverted()
+            data_to_axis = axis_to_data.inverted()
+            for x, y, label, direction in insets:
+                xyoffset = np.array(self.offset_options[direction]) * inset_offset  # in axis coords
+                xytext = axis_to_data.transform(np.array(data_to_axis.transform((x, y))) + xyoffset)
+                ax.annotate(label, xy=(x, y), xytext=xytext, fontsize=fs,
+                            arrowprops={'facecolor': 'black', 'arrowstyle': '-'})
 
         # Plot z-scale colorbar
         pos1 = ax.get_position()  # get the map axis position
@@ -342,10 +362,13 @@ class ActivationMap(XYMap):
         raise NotImplementedError
 
     def onClick(self, event):
-        ''' Retrieve the specific input parameters of the x and y dimensions
-            when the user clicks on a cell in the 2D map, and define filename from it.
-        '''
+        ''' Execute action when the user clicks on a cell in the 2D map. '''
         DC, A = self.getOnClickXY(event)
+        self.plotTimeseries(DC, A)
+        plt.show()
+
+    def plotTimeseries(self, DC, A, **kwargs):
+        ''' Plot related timeseries for a given duty cycle and amplitude. '''
         self.drive.A = A / self.yfactor
         self.pp.DC = DC / self.xfactor
 
@@ -354,8 +377,7 @@ class ActivationMap(XYMap):
 
         # Plot timeseries of appropriate variables
         timeseries = GroupedTimeSeries([(data, meta)], pltscheme=self.onclick_pltscheme)
-        timeseries.render(colors=self.onclick_colors)
-        plt.show()
+        return timeseries.render(colors=self.onclick_colors, **kwargs)[0]
 
     def render(self, yscale='log', thresholds=False, **kwargs):
         fig = super().render(yscale=yscale, **kwargs)

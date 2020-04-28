@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-13 17:46:11
+# @Last Modified time: 2020-04-28 14:32:03
 
 ''' Utility functions used in simulations '''
 
@@ -320,12 +320,15 @@ class LogBatch(metaclass=abc.ABCMeta):
     def run(self, mpi=False):
         ''' Run the batch and return the output(s). '''
         self.createLogFile()
-        batch = Batch(self.computeAndLog, [[x] for x in self.inputs])
-        self.mpi = mpi
-        outputs = batch.run(mpi=mpi, loglevel=logger.level)
-        outputs = filter(lambda x: x is not None, outputs)
-        if mpi:
-            for out in outputs:
-                self.writeEntry(out)
-        self.mpi = False
+        if len(self.getLogData()) < len(self.inputs):
+            batch = Batch(self.computeAndLog, [[x] for x in self.inputs])
+            self.mpi = mpi
+            outputs = batch.run(mpi=mpi, loglevel=logger.level)
+            outputs = filter(lambda x: x is not None, outputs)
+            if mpi:
+                for out in outputs:
+                    self.writeEntry(out)
+            self.mpi = False
+        else:
+            logger.debug('all entries already present')
         return self.getOutput()

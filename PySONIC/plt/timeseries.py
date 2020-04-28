@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-20 11:44:59
+# @Last Modified time: 2020-04-28 18:01:09
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -154,25 +154,25 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
     ''' Interface to build a comparative plot displaying profiles of a specific output variable
         across different model simulations. '''
 
-    def __init__(self, filepaths, varname):
+    def __init__(self, outputs, varname):
         ''' Constructor.
 
-            :param filepaths: list of full paths to output data files to be compared
+            :param outputs: list / generator of simulator outputs to be compared.
             :param varname: name of variable to extract and compare
         '''
-        ComparativePlot.__init__(self, filepaths, varname)
+        ComparativePlot.__init__(self, outputs, varname)
 
     def checkPatches(self, patches):
         greypatch = False
         if patches == 'none':
-            patches = [False] * len(self.filepaths)
+            patches = [False] * self.nouts
         elif patches == 'all':
-            patches = [True] * len(self.filepaths)
+            patches = [True] * self.nouts
         elif patches == 'one':
-            patches = [True] + [False] * (len(self.filepaths) - 1)
+            patches = [True] + [False] * (self.nouts - 1)
             greypatch = True
         elif isinstance(patches, list):
-            npatches, nfiles = len(patches), len(self.filepaths)
+            npatches, nfiles = len(patches), self.nouts
             if npatches != nfiles:
                 raise ValueError(
                     f'Invalid patches ({npatches}): not matching number of files ({nfiles})')
@@ -242,11 +242,11 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         # Loop through data files
         handles, comp_values, full_labels = [], [], []
         tmin, tmax = np.inf, -np.inf
-        for j, filepath in enumerate(self.filepaths):
+        for j, output in enumerate(self.outputs):
 
             # Load data
             try:
-                data, meta = self.getData(filepath, frequency, trange)
+                data, meta = self.getData(output, frequency, trange)
             except ValueError:
                 continue
             if 'tcomp' in meta:
@@ -340,13 +340,13 @@ class GroupedTimeSeries(TimeSeriesPlot):
     ''' Interface to build a plot displaying profiles of several output variables
         arranged into specific schemes. '''
 
-    def __init__(self, filepaths, pltscheme=None):
+    def __init__(self, outputs, pltscheme=None):
         ''' Constructor.
 
-            :param filepaths: list of full paths to output data files to be compared
+            :param outputs: list / generator of simulation outputs.
             :param varname: name of variable to extract and compare
         '''
-        super().__init__(filepaths)
+        super().__init__(outputs)
         self.pltscheme = pltscheme
 
     @staticmethod
@@ -395,11 +395,11 @@ class GroupedTimeSeries(TimeSeriesPlot):
             colors = plt.get_cmap('tab10').colors
 
         figs = []
-        for filepath in self.filepaths:
+        for output in self.outputs:
 
             # Load data and extract model
             try:
-                data, meta = self.getData(filepath, frequency, trange)
+                data, meta = self.getData(output, frequency, trange)
             except ValueError:
                 continue
             model = self.getModel(meta)
@@ -480,7 +480,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
             if save:
                 filecode = model.filecode(meta)
                 if outputdir is None:
-                    outputdir = os.path.split(filepath)[0]
+                    raise ValueError('output directory not specified')
                 plt_filename = f'{outputdir}/{filecode}.{fig_ext}'
                 plt.savefig(plt_filename)
                 logger.info(f'Saving figure as "{plt_filename}"')

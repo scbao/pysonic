@@ -3,14 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-24 13:59:47
+# @Last Modified time: 2020-04-28 17:54:11
 
 ''' Useful functions to generate plots. '''
 
 import re
 import numpy as np
 import pandas as pd
-from scipy.signal import peak_widths
 import matplotlib
 from matplotlib.patches import Rectangle
 from matplotlib import cm, colors
@@ -18,7 +17,6 @@ import matplotlib.pyplot as plt
 
 from ..core import getModel
 from ..utils import logger, isIterable, loadData, rescale, swapFirstLetterCase
-from ..constants import SPIKE_MIN_DT, SPIKE_MIN_QAMP, SPIKE_MIN_QPROM
 
 # Matplotlib parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -80,17 +78,24 @@ def setNormalizer(cmap, bounds, scale='lin'):
 
 
 class GenericPlot:
-    def __init__(self, filepaths):
+    def __init__(self, outputs):
         ''' Constructor.
 
-            :param filepaths: list of full paths to output data files to be compared
+            :param outputs: list / generator of simulation outputs
         '''
-        if not isIterable(filepaths):
-            filepaths = [filepaths]
-        self.filepaths = filepaths
+        try:
+            iter(outputs)
+        except TypeError:
+            outputs = [outputs]
+        self.outputs = outputs
 
     def __call__(self, *args, **kwargs):
         return self.render(*args, **kwargs)
+
+    @property
+    def nouts(self):
+        ''' Number of outputs. '''
+        return sum(1 for _ in self.outputs)
 
     def figtitle(self, model, meta):
         return model.desc(meta)
@@ -98,7 +103,7 @@ class GenericPlot:
     @staticmethod
     def wraptitle(ax, title, maxwidth=120, sep=':', fs=10, y=1.0):
         if len(title) > maxwidth:
-            title = l = '\n'.join(title.split(sep))
+            title = '\n'.join(title.split(sep))
             y = 0.94
         h = ax.set_title(title, fontsize=fs)
         h.set_y(y)
@@ -282,32 +287,36 @@ class GenericPlot:
 
 class ComparativePlot(GenericPlot):
 
-    def __init__(self, filepaths, varname):
+    def __init__(self, outputs, varname):
         ''' Constructor.
 
-            :param filepaths: list of full paths to output data files to be compared
-            :param varname: name of variable to extract and compare
+            :param outputs: list /generator of simulation outputs to be compared.
+            :param varname: name of variable to extract and compare.
         '''
-        super().__init__(filepaths)
+        super().__init__(outputs)
         self.varname = varname
         self.comp_ref_key = None
         self.meta_ref = None
         self.comp_info = None
         self.is_unique_comp = False
 
+    @property
+    def ncomps(self):
+        return sum(1 for _ in self.outputs)
+
     def checkColors(self, colors):
         if colors is None:
-            colors = [f'C{j}' for j in range(len(self.filepaths))]
+            colors = [f'C{j}' for j in range(self.nouts)]
         return colors
 
     def checkLines(self, lines):
         if lines is None:
-            lines = ['-'] * len(self.filepaths)
+            lines = ['-'] * self.nouts
         return lines
 
     def checkLabels(self, labels):
         if labels is not None:
-            nlabels, nfiles = len(labels), len(self.filepaths)
+            nlabels, nfiles = len(labels), self.nouts
             if nlabels != nfiles:
                 raise ValueError(
                     f'Invalid labels ({nlabels}): not matching number of compared files ({nfiles})')

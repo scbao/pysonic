@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 15:17:15
+# @Last Modified time: 2020-04-28 18:57:40
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -154,19 +154,13 @@ def resampleDataFrame(data, dt):
     return pd.DataFrame(new_data)
 
 
-def prependDataFrame(data):
+def prependDataFrame(data, tonset=0.):
     ''' Add an initial value (for t = 0) to all columns of a dataframe. '''
-    tnew = np.insert(data['t'].values, 0, 0)
-    new_data = {'t': tnew}
-    for key in data:
-        if key == 't':
-            x0 = 0.
-        elif key == 'stimstate':
-            x0 = 0
-        else:
-            x0 = data[key].values[0]
-        new_data[key] = np.insert(data[key].values, 0, x0)
-    return pd.DataFrame(new_data)
+    # Repeat first row
+    data = pd.concat([pd.DataFrame([data.iloc[0]]), data], ignore_index=True)
+    data['t'][0] = tonset
+    data['stimstate'][0] = 0
+    return data
 
 
 def boundDataFrame(data, tbounds):
@@ -324,7 +318,7 @@ def computeFRProfile(data):
     return np.interp(t, tspikes, sr, left=np.nan, right=np.nan)
 
 
-def computeSpikingMetrics(filenames):
+def computeSpikingMetrics(outputs):
     ''' Analyze the charge density profile from a list of files and compute for each one of them
         the following spiking metrics:
         - latency (ms)
@@ -332,7 +326,7 @@ def computeSpikingMetrics(filenames):
         - spike amplitude mean and standard deviation (nC/cm2)
         - spike width mean and standard deviation (ms)
 
-        :param filenames: list of files to analyze
+        :param outputs: list / generator of simulation outputs
         :return: a dataframe with the computed metrics
     '''
 
@@ -349,10 +343,13 @@ def computeSpikingMetrics(filenames):
     metrics = {k: [] for k in keys}
 
     # Compute spiking metrics
-    for fname in filenames:
+    for output in outputs:
 
-        # Load data from file
-        data, meta = loadData(fname)
+        # Load data
+        if isinstance(output, str):
+            data, meta = loadData(output)
+        else:
+            data, meta = output
         tstim = meta['pp'].tstim
         t = data['t'].values
 
