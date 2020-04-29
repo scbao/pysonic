@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-29 14:40:55
+# @Last Modified time: 2020-04-29 16:22:24
 
 import abc
 import pandas as pd
@@ -349,7 +349,7 @@ class ActivationMap(XYMap):
     def addThresholdCurve(self, ax, fs, mpi=False):
         queue = []
         for DC in self.xvec:
-            self.pp.DC = DC
+            self.pp.DC = DC / self.xfactor
             queue.append(self.sim_args.copy())
         batch = Batch(self.nbls.titrate, queue)
         Athrs = np.array(batch.run(mpi=mpi, loglevel=logger.level))
