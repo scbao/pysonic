@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-29 12:13:44
+# @Last Modified time: 2020-04-29 22:39:36
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -294,7 +294,7 @@ def isIterable(x):
     return False
 
 
-def isWithin(name, val, bounds, rel_tol=1e-9):
+def isWithin(name, val, bounds, rel_tol=1e-9, raise_warning=True):
     ''' Check if a floating point number is within an interval.
 
         If the value falls outside the interval, an error is raised.
@@ -307,14 +307,18 @@ def isWithin(name, val, bounds, rel_tol=1e-9):
         :return: original or corrected value
     '''
     if isIterable(val):
-        return np.array([isWithin(name, v, bounds, rel_tol) for v in val])
+        return np.array([isWithin(name, v, bounds, rel_tol, raise_warning) for v in val])
     if val >= bounds[0] and val <= bounds[1]:
         return val
     elif val < bounds[0] and math.isclose(val, bounds[0], rel_tol=rel_tol):
-        logger.warning('Rounding %s value (%s) to interval lower bound (%s)', name, val, bounds[0])
+        if raise_warning:
+            logger.warning(
+                'Rounding %s value (%s) to interval lower bound (%s)', name, val, bounds[0])
         return bounds[0]
     elif val > bounds[1] and math.isclose(val, bounds[1], rel_tol=rel_tol):
-        logger.warning('Rounding %s value (%s) to interval upper bound (%s)', name, val, bounds[1])
+        if raise_warning:
+            logger.warning(
+                'Rounding %s value (%s) to interval upper bound (%s)', name, val, bounds[1])
         return bounds[1]
     else:
         raise ValueError(f'{name} value ({val}) out of [{bounds[0]}, {bounds[1]}] interval')
