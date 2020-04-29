@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-04-21 11:32:49
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-28 13:33:00
+# @Last Modified time: 2020-04-29 11:01:14
 
 import abc
 
@@ -60,6 +60,10 @@ class StimObject(metaclass=abc.ABCMeta):
     def pdict(self, sf='{key}={value}', **kwargs):
         d = {k: self.paramStr(k, **kwargs) for k in self.inputs().keys()}
         return {k: sf.format(key=k, value=v) for k, v in d.items() if v is not None}
+
+    @property
+    def meta(self):
+        return {k: getattr(self, k) for k in self.inputs().keys()}
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):

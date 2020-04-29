@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-21 20:38:46
+# @Last Modified time: 2020-04-29 12:13:44
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -117,29 +117,37 @@ si_prefixes = {
     'Y': 1e24,   # yotta
 }
 
+sorted_si_prefixes = sorted(si_prefixes.items(), key=operator.itemgetter(1))
+
+
+def getSIpair(x, scale='lin'):
+    ''' Get the correct SI factor and prefix for a floating point number. '''
+    if isIterable(x):
+        # If iterable, get a representative number of the distribution
+        x = np.asarray(x)
+        x = x.prod()**(1.0 / x.size) if scale == 'log' else np.mean(x)
+    if x == 0:
+        return 1e0, ''
+    else:
+        vals = [tmp[1] for tmp in sorted_si_prefixes]
+        ix = np.searchsorted(vals, np.abs(x)) - 1
+        if np.abs(x) == vals[ix + 1]:
+            ix += 1
+        return vals[ix], sorted_si_prefixes[ix][0]
+
 
 def si_format(x, precision=0, space=' '):
     ''' Format a float according to the SI unit system, with the appropriate prefix letter. '''
     if isinstance(x, float) or isinstance(x, int) or isinstance(x, np.float) or\
        isinstance(x, np.int32) or isinstance(x, np.int64):
-        if x == 0:
-            factor = 1e0
-            prefix = ''
-        else:
-            sorted_si_prefixes = sorted(si_prefixes.items(), key=operator.itemgetter(1))
-            vals = [tmp[1] for tmp in sorted_si_prefixes]
-            ix = np.searchsorted(vals, np.abs(x)) - 1
-            if np.abs(x) == vals[ix + 1]:
-                ix += 1
-            factor = vals[ix]
-            prefix = sorted_si_prefixes[ix][0]
+        factor, prefix = getSIpair(x)
         return f'{x / factor:.{precision}f}{space}{prefix}'
     elif isinstance(x, list) or isinstance(x, tuple):
         return [si_format(item, precision, space) for item in x]
     elif isinstance(x, np.ndarray) and x.ndim == 1:
         return [si_format(float(item), precision, space) for item in x]
     else:
-        print(type(x))
+        raise ValueError(f'cannot si_format {type(x)} objects')
 
 
 def pow10_format(number, precision=2):
@@ -940,3 +948,37 @@ def friendlyLogspace(xmin, xmax, bases=None):
     if xmax not in seq:
         seq = np.hstack((seq, xmax))
     return seq
+
+
+def differing(d1, d2, subdkey=None, diff=None):
+    ''' Find differences in values across two dictionaries (recursively).
+
+        :param d1: first dictionary
+        :param d2: second dictionary
+        :param subdkey: specific sub-dictionary attribute key for objects
+        :param diff: existing diff list to append to
+        :return: list of (key, value1, value2) tuples for each differing values
+    '''
+    # Initilize diff list
+    if diff is None:
+        diff = []
+    # Check that the two dicts have the same structure
+    if sorted(list(d1.keys())) != sorted(list(d2.keys())):
+        raise ValueError('inconsistent inputs')
+    # For each key - values triplet
+    for k in d1.keys():
+        # If values are dicts themselves, loop recursively through them
+        if isinstance(d1[k], dict):
+            diff = differing(d1[k], d2[k], subdkey=subdkey, diff=diff)
+        # If values are objects with a specific sub-dictionary attribute,
+        # loop recursively through them
+        elif hasattr(d1[k], subdkey):
+            diff = differing(getattr(d1[k], subdkey), getattr(d2[k], subdkey),
+                             subdkey=subdkey, diff=diff)
+        # Otherwise
+        else:
+            # If values differ, add the key - values triplet to the diff list
+            if d1[k] != d2[k]:
+                diff.append((k, d1[k], d2[k]))
+    # Return the diff list
+    return diff

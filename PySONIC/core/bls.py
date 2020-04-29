@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-22 15:22:26
+# @Last Modified time: 2020-04-29 12:05:14
 
 from enum import Enum
 import os
@@ -194,8 +194,7 @@ class BilayerSonophore(Model):
             'a': {
                 'desc': 'sonophore radius',
                 'label': 'a',
-                'unit': 'nm',
-                'factor': 1e9,
+                'unit': 'm',
                 'precision': 0
             },
             'Qm': {

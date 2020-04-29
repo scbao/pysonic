@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-28 18:01:09
+# @Last Modified time: 2020-04-29 12:25:50
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -300,21 +300,20 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
 
             tmin, tmax = min(tmin, t.min()), max(tmax, t.max())
 
-        # Determine labels
+        # Get common label and add it as title
+        common_label = self.getCommonLabel(full_labels.copy(), seps=':@,()')
+        self.wraptitle(ax, common_label, fs=fs)
+
+        # Get comp info if any
         if self.comp_ref_key is not None:
             self.comp_info = model.inputs().get(self.comp_ref_key, None)
-        comp_values, comp_labels = self.getCompLabels(comp_values)
-        labels = self.chooseLabels(labels, comp_labels, full_labels)
-
-        # - split labels by space
-        common_label = self.getCommonLabel(full_labels.copy(), seps=':@,')
-        self.wraptitle(ax, common_label, fs=fs)
 
         # Post-process figure
         self.postProcess(ax, tplt, yplt, fs, meta, prettify)
         ax.set_xlim(tmin, tmax)
         fig.tight_layout()
 
+        # Materialize inset if any
         if inset is not None:
             self.materializeInset(ax, inset_ax, inset)
 
@@ -327,6 +326,8 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             self.addCmap(
                 fig, cmap, handles, comp_values, self.comp_info, fs, prettify, zscale=cscale)
         else:
+            comp_values, comp_labels = self.getCompLabels(comp_values)
+            labels = self.chooseLabels(labels, comp_labels, full_labels)
             self.addLegend(fig, ax, handles, labels, fs)
 
         # Add window title based on common pattern

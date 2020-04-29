@@ -3,13 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-27 18:08:04
+# @Last Modified time: 2020-04-29 12:14:47
 
 from inspect import signature
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..utils import logger, isWithin
+from ..utils import logger, isWithin, getSIpair
 from ..core import NeuronalBilayerSonophore
 from .pltutils import setGrid, setNormalizer
 
@@ -237,10 +237,10 @@ def plotEffectiveVariables(pneuron, a=None, f=None, A=None, nlevels=10,
 
     fig.suptitle(f'{pneuron.name} neuron: {zvar["label"]} \n modulated effective variables')
 
-    # Adjust colorbar factor and unit if zvar is US frequency of amplitude
-    if zkey in ['f', 'A']:
-        zvar['unit'] = 'k' + zvar['unit']
-        _, sm = setNormalizer(mymap, (zref.min() * 1e-3, zref.max() * 1e-3), zscale)
+    # Adjust colorbar factor and unit prefix if zvar is US frequency of amplitude
+    zfactor, zprefix = getSIpair(zref, scale=zscale)
+    zvar['unit'] = zprefix + zvar['unit']
+    _, sm = setNormalizer(mymap, (zref.min() / zfactor, zref.max() / zfactor), zscale)
 
     # Plot colorbar
     fig.subplots_adjust(left=0.20, bottom=0.05, top=0.8, right=0.80, hspace=0.5)

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-28 17:54:11
+# @Last Modified time: 2020-04-29 12:29:01
 
 ''' Useful functions to generate plots. '''
 
@@ -16,7 +16,7 @@ from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 
 from ..core import getModel
-from ..utils import logger, isIterable, loadData, rescale, swapFirstLetterCase
+from ..utils import *
 
 # Matplotlib parameters
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -258,6 +258,12 @@ class GenericPlot:
 
     @classmethod
     def addCmap(cls, fig, cmap, handles, comp_values, comp_info, fs, prettify, zscale='lin'):
+        # Rescale comparison values and adjust unit
+        comp_values = np.asarray(comp_values) * comp_info.get('factor', 1.)
+        comp_factor, comp_prefix = getSIpair(comp_values, scale=zscale)
+        comp_values /= comp_factor
+        comp_info['unit'] = comp_prefix + comp_info['unit']
+
         # Create colormap and normalizer
         try:
             mymap = plt.get_cmap(cmap)
@@ -330,24 +336,31 @@ class ComparativePlot(GenericPlot):
 
     def checkCompValues(self, meta, comp_values):
         ''' Check consistency of differing values across files. '''
-        differing = {k: meta[k] != self.meta_ref[k] for k in meta.keys()}
-        if sum(differing.values()) > 1:
+        # Get differing values across meta dictionaries
+        diffs = differing(self.meta_ref, meta, subdkey='meta')
+
+        # Check that only one value differs
+        if len(diffs) > 1:
             logger.warning('More than one differing inputs')
             self.comp_ref_key = None
             return []
-        zkey = (list(differing.keys())[list(differing.values()).index(True)])
+
+        # Get the key and differing values
+        zkey, refval, val = diffs[0]
+
+        # If no comparison key yet, fill it up
         if self.comp_ref_key is None:
             self.comp_ref_key = zkey
             self.is_unique_comp = True
-            comp_values.append(self.meta_ref[self.comp_ref_key])
-            comp_values.append(meta[self.comp_ref_key])
+            comp_values += [refval, val]
+        # Otherwise, check that comparison matches the existing one
         else:
             if zkey != self.comp_ref_key:
                 logger.warning('inconsistent differing inputs')
                 self.comp_ref_key = None
                 return []
             else:
-                comp_values.append(meta[self.comp_ref_key])
+                comp_values.append(val)
         return comp_values
 
     def checkConsistency(self, meta, comp_values):
@@ -364,8 +377,11 @@ class ComparativePlot(GenericPlot):
     def getCompLabels(self, comp_values):
         if self.comp_info is not None:
             comp_values = np.array(comp_values) * self.comp_info.get('factor', 1)
-            comp_labels = ['$\\rm{} = {}\ {}$'.format(self.comp_info["label"], x, self.comp_info["unit"])
-                           for x in comp_values]
+            if 'unit' in self.comp_info:
+                p = self.comp_info.get('precision', 0)
+                comp_values = [f"{si_format(v, p)}{self.comp_info['unit']}".replace(' ', '\ ')
+                               for v in comp_values]
+            comp_labels = ['$\\rm{} = {}$'.format(self.comp_info['label'], x) for x in comp_values]
         else:
             comp_labels = comp_values
         return comp_values, comp_labels
@@ -414,7 +430,7 @@ class ComparativePlot(GenericPlot):
             common_lbl += f'{p}{s}'
         common_lbl += pieces[-1]
 
-        return common_lbl
+        return common_lbl.replace('( ', '(')
 
 
 def addExcitationInset(ax, is_excited):
