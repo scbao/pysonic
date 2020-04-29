@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-28 13:30:30
+# @Last Modified time: 2020-04-29 14:40:55
 
 import abc
 import pandas as pd
@@ -12,7 +12,7 @@ from itertools import product
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..core import NeuronalBilayerSonophore, PulsedProtocol, AcousticDrive, LogBatch
+from ..core import NeuronalBilayerSonophore, PulsedProtocol, AcousticDrive, LogBatch, Batch
 from ..utils import logger, si_format, isIterable
 from .pltutils import cm2inch, setNormalizer
 from .timeseries import GroupedTimeSeries
@@ -346,12 +346,13 @@ class ActivationMap(XYMap):
     def xfunc(self, data):
         raise NotImplementedError
 
-    def addThresholdCurve(self, ax, fs):
-        Athrs = []
+    def addThresholdCurve(self, ax, fs, mpi=False):
+        queue = []
         for DC in self.xvec:
             self.pp.DC = DC
-            Athrs.append(self.nbls.titrate(*self.sim_args))
-        Athrs = np.array(Athrs)
+            queue.append(self.sim_args.copy())
+        batch = Batch(self.nbls.titrate, queue)
+        Athrs = np.array(batch.run(mpi=mpi, loglevel=logger.level))
         ax.plot(self.xvec * self.xfactor, Athrs * self.yfactor, '-', color='#F26522', linewidth=3,
                 label='threshold amplitudes')
         ax.legend(loc='lower center', frameon=False, fontsize=fs)
@@ -379,10 +380,10 @@ class ActivationMap(XYMap):
         timeseries = GroupedTimeSeries([(data, meta)], pltscheme=self.onclick_pltscheme)
         return timeseries.render(colors=self.onclick_colors, **kwargs)[0]
 
-    def render(self, yscale='log', thresholds=False, **kwargs):
+    def render(self, yscale='log', thresholds=False, mpi=False, **kwargs):
         fig = super().render(yscale=yscale, **kwargs)
         if thresholds:
-            self.addThresholdCurve(fig.axes[0], fs=8)
+            self.addThresholdCurve(fig.axes[0], fs=8, mpi=mpi)
         return fig
 
 
