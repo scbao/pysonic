@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-29 16:22:24
+# @Last Modified time: 2020-04-29 17:07:58
 
 import abc
 import pandas as pd
@@ -347,10 +347,10 @@ class ActivationMap(XYMap):
         raise NotImplementedError
 
     def addThresholdCurve(self, ax, fs, mpi=False):
-        queue = []
-        for DC in self.xvec:
-            self.pp.DC = DC / self.xfactor
-            queue.append(self.sim_args.copy())
+        queue = [[
+            self.drive,
+            PulsedProtocol(self.pp.tstim, self.pp.toffset, self.pp.PRF, DC / self.xfactor),
+            self.fs, 'sonic', None] for DC in self.xvec]
         batch = Batch(self.nbls.titrate, queue)
         Athrs = np.array(batch.run(mpi=mpi, loglevel=logger.level))
         ax.plot(self.xvec * self.xfactor, Athrs * self.yfactor, '-', color='#F26522', linewidth=3,
