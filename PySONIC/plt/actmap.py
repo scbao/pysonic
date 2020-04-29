@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-29 17:07:58
+# @Last Modified time: 2020-04-29 22:54:55
 
 import abc
 import pandas as pd
@@ -353,7 +353,7 @@ class ActivationMap(XYMap):
             self.fs, 'sonic', None] for DC in self.xvec]
         batch = Batch(self.nbls.titrate, queue)
         Athrs = np.array(batch.run(mpi=mpi, loglevel=logger.level))
-        ax.plot(self.xvec * self.xfactor, Athrs * self.yfactor, '-', color='#F26522', linewidth=3,
+        ax.plot(self.xvec, Athrs * self.yfactor, '-', color='#F26522', linewidth=3,
                 label='threshold amplitudes')
         ax.legend(loc='lower center', frameon=False, fontsize=fs)
 
@@ -383,7 +383,7 @@ class ActivationMap(XYMap):
     def render(self, yscale='log', thresholds=False, mpi=False, **kwargs):
         fig = super().render(yscale=yscale, **kwargs)
         if thresholds:
-            self.addThresholdCurve(fig.axes[0], fs=8, mpi=mpi)
+            self.addThresholdCurve(fig.axes[0], fs=12, mpi=mpi)
         return fig
 
 
