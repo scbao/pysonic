@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-28 20:08:42
+# @Last Modified time: 2020-04-30 13:26:14
 
 import logging
 import numpy as np
@@ -302,7 +302,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             dt=drive.dt)                                                # time step
         data = solver(
             y0, pp.stimEvents(), pp.tstop, target_dt=CLASSIC_TARGET_DT,
-            log_period=pp.tstop / 100 if logger.getEffectiveLevel() < logging.INFO else None,
+            log_period=pp.tstop / 100 if logger.getEffectiveLevel() <= logging.INFO else None,
             # logfunc=lambda y: f'Qm = {y[3] * 1e5:.2f} nC/cm2'
         )
 
