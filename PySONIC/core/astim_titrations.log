@@ -98,3 +98,5 @@ titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), AcousticDrive(f=500kHz), 
 titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), AcousticDrive(f=500kHz), PulsedProtocol(tstim=1s, PRF=10.00Hz, DC=98.0%), fs=1.0, method='sonic', qss_vars=None, xfunc=None, Arange=None)	31640.625
 titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), AcousticDrive(f=500kHz), PulsedProtocol(tstim=1s, PRF=10.00Hz, DC=99.0%), fs=1.0, method='sonic', qss_vars=None, xfunc=None, Arange=None)	31523.4375
 titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), AcousticDrive(f=500kHz), PulsedProtocol(tstim=1s), fs=1.0, method='sonic', qss_vars=None, xfunc=None, Arange=None)	31484.375
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), AcousticDrive(f=500kHz), PulsedProtocol(tstim=1s), fs=1.0, method='sonic', qss_vars=None, xfunc=None, Arange=None)	31484.375
+titrate(NeuronalBilayerSonophore(32.0 nm, CorticalRS), AcousticDrive(f=500kHz), PulsedProtocol(tstim=150ms, toffset=100ms), fs=1.0, method='sonic', qss_vars=None, xfunc=None, Arange=None)	36093.75
