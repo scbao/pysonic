@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 21:22:21
+# @Last Modified time: 2020-05-01 19:21:11
 
 import numpy as np
 import pandas as pd
@@ -84,7 +84,7 @@ class ODESolver:
         '''
         if dt is None:
             dt = self.dt
-        return int(np.round((tend - t0) / dt))
+        return max(int(np.round((tend - t0) / dt)), 2)
 
     def getTimeVector(self, t0, tend, **kwargs):
         ''' Get the time vector required to integrate from an initial to a final time with
