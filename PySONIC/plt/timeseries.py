@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-29 12:25:50
+# @Last Modified time: 2020-05-01 22:34:19
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -163,32 +163,25 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         ComparativePlot.__init__(self, outputs, varname)
 
     def checkPatches(self, patches):
-        greypatch = False
+        self.greypatch = False
         if patches == 'none':
-            patches = [False] * self.nouts
+            self.patchfunc = lambda _: False
         elif patches == 'all':
-            patches = [True] * self.nouts
+            self.patchfunc = lambda _: True
         elif patches == 'one':
-            patches = [True] + [False] * (self.nouts - 1)
-            greypatch = True
+            self.patchfunc = lambda j: True if j == 0 else False
+            self.greypatch = True
         elif isinstance(patches, list):
-            npatches, nfiles = len(patches), self.nouts
-            if npatches != nfiles:
-                raise ValueError(
-                    f'Invalid patches ({npatches}): not matching number of files ({nfiles})')
             if not all(isinstance(p, bool) for p in patches):
                 raise TypeError('Invalid patch sequence: all list items must be boolean typed')
+            self.patchfunc = lambda j: patches[j] if len(patches) > j else False
         else:
             raise ValueError(
                 'Invalid patches: must be either "none", all", "one", or a boolean list')
-        return patches, greypatch
 
-    def checkInputs(self, lines, labels, colors, patches):
+    def checkInputs(self, labels, patches):
         self.checkLabels(labels)
-        lines = self.checkLines(lines)
-        colors = self.checkColors(colors)
-        patches, greypatch = self.checkPatches(patches)
-        return lines, labels, colors, patches, greypatch
+        self.checkPatches(patches)
 
     @staticmethod
     def createBackBone(figsize):
@@ -230,9 +223,7 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             :param trange: optional lower and upper bounds to time axis
             :return: figure handle
         '''
-        lines, labels, colors, patches, greypatch = self.checkInputs(
-            lines, labels, colors, patches)
-
+        self.checkInputs(labels, patches)
         fcodes = []
 
         fig, ax = self.createBackBone(figsize)
@@ -243,6 +234,9 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         handles, comp_values, full_labels = [], [], []
         tmin, tmax = np.inf, -np.inf
         for j, output in enumerate(self.outputs):
+            color = f'C{j}' if colors is None else colors[j]
+            line = '-' if lines is None else lines[j]
+            patch = self.patchfunc(j)
 
             # Load data
             try:
@@ -279,24 +273,24 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
             y = extractPltVar(model, yplt, data, meta, t.size, self.varname)
 
             #  Plot time series
-            handles.append(ax.plot(t, y, linewidth=lw, linestyle=lines[j], color=colors[j])[0])
+            handles.append(ax.plot(t, y, linewidth=lw, linestyle=line, color=color)[0])
 
             # Optional: add spikes
             if self.varname == 'Qm' and spikes != 'none':
-                self.materializeSpikes(ax, data, tplt, yplt, colors[j], spikes)
+                self.materializeSpikes(ax, data, tplt, yplt, color, spikes)
 
             # Plot optional inset
             if inset is not None:
                 inset_ax = self.plotInset(
-                    inset_ax, inset, t, y, tplt, yplt, lines[j], colors[j], lw)
+                    inset_ax, inset, t, y, tplt, yplt, lines[j], color, lw)
 
             # Add optional STIM-ON patches
-            if patches[j]:
+            if patch:
                 ybottom, ytop = ax.get_ylim()
-                color = None if greypatch else handles[j].get_color()
-                self.addPatches(ax, pulses, tplt, color=color)
+                patchcolor = None if self.greypatch else handles[j].get_color()
+                self.addPatches(ax, pulses, tplt, color=patchcolor)
                 if inset is not None:
-                    self.addInsetPatches(ax, inset_ax, inset, pulses, tplt, color)
+                    self.addInsetPatches(ax, inset_ax, inset, pulses, tplt, patchcolor)
 
             tmin, tmax = min(tmin, t.min()), max(tmax, t.max())
 

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-29 12:29:01
+# @Last Modified time: 2020-05-01 22:36:58
 
 ''' Useful functions to generate plots. '''
 
@@ -91,11 +91,6 @@ class GenericPlot:
 
     def __call__(self, *args, **kwargs):
         return self.render(*args, **kwargs)
-
-    @property
-    def nouts(self):
-        ''' Number of outputs. '''
-        return sum(1 for _ in self.outputs)
 
     def figtitle(self, model, meta):
         return model.desc(meta)
@@ -306,26 +301,10 @@ class ComparativePlot(GenericPlot):
         self.comp_info = None
         self.is_unique_comp = False
 
-    @property
-    def ncomps(self):
-        return sum(1 for _ in self.outputs)
-
-    def checkColors(self, colors):
-        if colors is None:
-            colors = [f'C{j}' for j in range(self.nouts)]
-        return colors
-
-    def checkLines(self, lines):
-        if lines is None:
-            lines = ['-'] * self.nouts
-        return lines
-
     def checkLabels(self, labels):
         if labels is not None:
-            nlabels, nfiles = len(labels), self.nouts
-            if nlabels != nfiles:
-                raise ValueError(
-                    f'Invalid labels ({nlabels}): not matching number of compared files ({nfiles})')
+            if not isIterable(labels):
+                raise TypeError('Invalid labels: must be an iterable')
             if not all(isinstance(x, str) for x in labels):
                 raise TypeError('Invalid labels: must be string typed')
 
