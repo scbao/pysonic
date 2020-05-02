@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-02 17:10:32
+# @Last Modified time: 2020-05-02 17:13:13
 
 import logging
 import numpy as np
@@ -12,7 +12,7 @@ from .solvers import EventDrivenSolver, HybridSolver
 from .bls import BilayerSonophore
 from .pneuron import PointNeuron
 from .model import Model
-from .drives import AcousticDrive
+from .drives import AcousticDrive, ElectricDrive
 from .protocols import *
 from ..utils import *
 from ..constants import *
@@ -655,13 +655,7 @@ class DrivenNeuronalBilayerSonophore(NeuronalBilayerSonophore):
     def inputs():
         return {
             **NeuronalBilayerSonophore.inputs(),
-            'Idrive': {
-                'desc': 'driving current density',
-                'label': 'I_{drive}',
-                'unit': 'mA/m2',
-                'factor': 1e0,
-                'precision': 0
-            }
+            'Idrive': ElectricDrive.inputs()['I']
         }
 
     @property
