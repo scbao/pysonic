@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-01 19:21:11
+# @Last Modified time: 2020-05-02 17:08:26
 
 import numpy as np
 import pandas as pd
@@ -160,7 +160,7 @@ class ODESolver:
             t, y = self.t[-1], self.y[-1]
         if self.dt is None:
             sol = solve_ivp(
-                self.dfunc, [self.t[-1], target_t], self.y[-1], t_eval=t, method='LSODA')
+                self.dfunc, [self.t[-1], target_t], self.y[-1], method='LSODA')
             t, y = sol.t, sol.y.T
         else:
             t = self.getTimeVector(self.t[-1], target_t)
