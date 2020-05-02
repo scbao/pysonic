@@ -3,13 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-29 22:54:55
+# @Last Modified time: 2020-05-02 14:50:16
 
 import abc
-import pandas as pd
 import csv
 from itertools import product
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
 from ..core import NeuronalBilayerSonophore, PulsedProtocol, AcousticDrive, LogBatch, Batch
@@ -241,7 +241,8 @@ class XYMap(LogBatch):
 
         # Compute Z normalizer
         mymap = plt.get_cmap(cmap)
-        mymap.set_bad('silver')
+        mymap.set_under('silver')
+        nan_eq = zbounds[0] - 1 if zscale == 'lin' else 0.5 * zbounds[0]
         if zbounds is None:
             zbounds = self.getZBounds()
         else:
@@ -265,8 +266,11 @@ class XYMap(LogBatch):
         if yscale == 'log':
             ax.set_yscale('log')
 
-        # Plot map with specific color code
+        # Retrieve data and replace NaNs with specific out-of-bounds value
         data = self.getOutput()
+        data[np.isnan(data)] = nan_eq
+
+        # Plot map with specific color code
         ax.pcolormesh(self.xedges, self.yedges, data, cmap=mymap, norm=norm)
 
         # Plot potential insets
