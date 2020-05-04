@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-01 22:36:58
+# @Last Modified time: 2020-05-04 12:31:17
 
 ''' Useful functions to generate plots. '''
 
@@ -253,33 +253,52 @@ class GenericPlot:
 
     @classmethod
     def addCmap(cls, fig, cmap, handles, comp_values, comp_info, fs, prettify, zscale='lin'):
-        # Rescale comparison values and adjust unit
-        comp_values = np.asarray(comp_values) * comp_info.get('factor', 1.)
-        comp_factor, comp_prefix = getSIpair(comp_values, scale=zscale)
-        comp_values /= comp_factor
-        comp_info['unit'] = comp_prefix + comp_info['unit']
+
+        if all(isinstance(x, str) for x in comp_values):
+            # If list of strings, assume that index suffixes can be extracted
+            prefix, suffixes = extractCommonPrefix(comp_values)
+            comp_values = [int(s) for s in suffixes]
+            desc_str = f'{prefix}\ index'
+        else:
+            # Rescale comparison values and adjust unit
+            comp_values = np.asarray(comp_values) * comp_info.get('factor', 1.)
+            comp_factor, comp_prefix = getSIpair(comp_values, scale=zscale)
+            comp_values /= comp_factor
+            comp_info['unit'] = comp_prefix + comp_info['unit']
+            desc_str = comp_info["desc"].replace(" ", "\ ")
+            if len(comp_info['unit']) > 0:
+                desc_str = f"{desc_str}\ ({comp_info['unit']})"
+        nvalues = len(comp_values)
 
         # Create colormap and normalizer
         try:
             mymap = plt.get_cmap(cmap)
         except ValueError:
             mymap = plt.get_cmap(swapFirstLetterCase(cmap))
-        norm, sm = setNormalizer(mymap, (comp_values.min(), comp_values.max()), zscale)
+        norm, sm = setNormalizer(mymap, (min(comp_values), max(comp_values)), zscale)
 
-        # Adjust line colors
-        for lh, z in zip(handles, comp_values):
+        # Extract and adjust line colors
+        zcolors = sm.to_rgba(comp_values)
+        for lh, c in zip(handles, zcolors):
             if isIterable(lh):
                 for item in lh:
-                    item.set_color(sm.to_rgba(z))
+                    item.set_color(c)
             else:
-                lh.set_color(sm.to_rgba(z))
+                lh.set_color(c)
 
         # Add colorbar
         fig.subplots_adjust(left=0.1, right=0.8, bottom=0.15, top=0.95, hspace=0.5)
         cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
-        cbar = fig.colorbar(sm, cax=cbarax, orientation='vertical')
-        desc_str = comp_info["desc"].replace(" ", "\ ")
-        cbarax.set_ylabel('$\\rm {}\ ({})$'.format(desc_str, comp_info["unit"]), fontsize=fs)
+        cbar_kwargs = {}
+        if all(isinstance(x, int) for x in comp_values):
+            bounds = np.arange(nvalues + 1) + 1 + min(comp_values)
+            ticks = bounds[:-1] + 0.5
+            if nvalues > 10:
+                ticks = [ticks[0], ticks[-1]]
+            cbar_kwargs.update({'ticks': ticks, 'boundaries': bounds, 'format': '%1i'})
+            cbarax.tick_params(axis='both', which='both', length=0)
+        cbar = fig.colorbar(sm, cax=cbarax, **cbar_kwargs)
+        cbarax.set_ylabel(f'$\\rm {desc_str}$', fontsize=fs)
         if prettify:
             cls.prettify(cbar)
         for item in cbarax.get_yticklabels():

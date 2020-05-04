@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-29 22:39:36
+# @Last Modified time: 2020-05-04 12:02:06
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -986,3 +986,11 @@ def differing(d1, d2, subdkey=None, diff=None):
                 diff.append((k, d1[k], d2[k]))
     # Return the diff list
     return diff
+
+
+def extractCommonPrefix(labels):
+    ''' Extract a common prefix and a list of suffixes from a list of labels. '''
+    prefix = os.path.commonprefix(labels)
+    if len(prefix) == 0:
+        return None
+    return prefix, [s.split(prefix)[1] for s in labels]
