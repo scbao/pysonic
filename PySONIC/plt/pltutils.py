@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-04 12:31:17
+# @Last Modified time: 2020-05-05 14:40:11
 
 ''' Useful functions to generate plots. '''
 
@@ -291,7 +291,7 @@ class GenericPlot:
         cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
         cbar_kwargs = {}
         if all(isinstance(x, int) for x in comp_values):
-            bounds = np.arange(nvalues + 1) + 1 + min(comp_values)
+            bounds = np.arange(nvalues + 1) + min(comp_values)
             ticks = bounds[:-1] + 0.5
             if nvalues > 10:
                 ticks = [ticks[0], ticks[-1]]
