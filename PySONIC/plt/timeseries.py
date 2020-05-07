@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-04 12:34:40
+# @Last Modified time: 2020-05-07 16:18:25
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -195,6 +195,8 @@ class CompTimeSeries(ComparativePlot, TimeSeriesPlot):
         if 'bounds' in yplt:
             ymin, ymax = ax.get_ylim()
             ax.set_ylim(min(ymin, yplt['bounds'][0]), max(ymax, yplt['bounds'][1]))
+        elif 'strictbounds' in yplt:
+            ax.set_ylim(*yplt['strictbounds'])
         cls.setTimeLabel(ax, tplt, fs)
         cls.setYLabel(ax, yplt, fs)
         if prettify:
