@@ -92,7 +92,7 @@ You can easily run simulations of any implemented point-neuron model under both 
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-04-17 16:09:42
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 13:51:23
+# @Last Modified time: 2020-04-24 10:35:33
 
 ''' Example script showing how to simulate a point-neuron model upon application
     of both electrical and ultrasonic stimuli, with various temporal protocols.
@@ -122,6 +122,7 @@ USdrive = AcousticDrive(
     100e3)  # Pa
 
 # Pulsing parameters
+tstart = 10e-3   # s
 tburst = 100e-3  # s
 PRF = 100.       # Hz
 DC = 0.5         # -
@@ -131,8 +132,8 @@ nbursts = 3      # -
 # Protocols
 protocols = [
     CustomProtocol([10e-3, 30e-3, 50e-3], [1., 2., 0.], 100e-3),
-    PulsedProtocol(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC),
-    BurstProtocol(tburst, PRF=PRF, DC=DC, BRF=BRF, nbursts=nbursts)
+    PulsedProtocol(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC, tstart=tstart),
+    BurstProtocol(tburst, PRF=PRF, DC=DC, BRF=BRF, nbursts=nbursts, tstart=tstart)
 ]
 
 # For each protocol
