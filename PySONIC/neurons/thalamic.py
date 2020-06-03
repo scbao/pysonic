@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-23 12:41:31
+# @Last Modified time: 2020-06-03 16:44:42
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
@@ -363,15 +363,15 @@ class ThalamoCortical(Thalamic):
         }}
 
 
-class ThalamoCorticalTweak70(ThalamoCortical):
+# class ThalamoCorticalTweak70(ThalamoCortical):
 
-    name = 'TCtweak70'
-    Vm0 = -70.0
-    gKLeak = 0.377
+#     name = 'TCtweak70'
+#     Vm0 = -70.0
+#     gKLeak = 0.377
 
 
-class ThalamoCorticalTweak50(ThalamoCortical):
+# class ThalamoCorticalTweak50(ThalamoCortical):
 
-    name = 'TCtweak50'
-    Vm0 = -50.0
-    gCaTbar = 140.0  # or gHbar = 51.5
+#     name = 'TCtweak50'
+#     Vm0 = -50.0
+#     gCaTbar = 140.0  # or gHbar = 51.5

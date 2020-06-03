@@ -1,5 +1,5 @@
 include README.md
-include PySONIC/neurons/*.pkl
-include /scripts/*.py
-include /tests/*
-include /notebooks/*.ipynb
+include PySONIC/lookups/*.pkl
+include scripts/*.py
+include tests/*
+include notebooks/*.ipynb

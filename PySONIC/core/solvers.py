@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-02 17:08:26
+# @Last Modified time: 2020-06-03 16:44:22
 
 import numpy as np
 import pandas as pd
@@ -208,11 +208,7 @@ class ODESolver:
 
             :return: timeseries dataframe with labeled time, state and variables vectors.
         '''
-        return pd.DataFrame({
-            't': self.t,
-            'stimstate': self.x,
-            **{k: self.y[:, i] for i, k in enumerate(self.ykeys)}
-        })
+        return TimeSeries(self.t, self.x, {k: self.y[:, i] for i, k in enumerate(self.ykeys)})
 
     def __call__(self, *args, target_dt=None, max_nsamples=None, **kwargs):
         ''' Specific call method: solve the system, resample solution if needed, and return

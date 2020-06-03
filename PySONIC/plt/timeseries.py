@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-07 16:18:25
+# @Last Modified time: 2020-05-27 21:37:20
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -126,10 +126,9 @@ class TimeSeriesPlot(GenericPlot):
         inset_ax.plot(t, y, linewidth=lw, linestyle=line, color=color)
         return inset_ax
 
-    @staticmethod
-    def addInsetPatches(ax, inset_ax, inset, pulses, tplt, color):
+    @classmethod
+    def addInsetPatches(cls, ax, inset_ax, inset, pulses, tplt, color):
         tstart, tend, x = [np.array([z]) for z in zip(*pulses)]
-        # colors = cls.getPatchesColors(x)
         tfactor = tplt['factor']
         ybottom, ytop = ax.get_ylim()
         cond_start = np.logical_and(tstart > (inset['xlims'][0] / tfactor),

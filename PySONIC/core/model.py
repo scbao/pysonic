@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-28 20:08:46
+# @Last Modified time: 2020-06-03 16:15:58
 
 from functools import wraps
 from inspect import getdoc
