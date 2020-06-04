@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-06-03 16:54:41
+# @Last Modified time: 2020-06-04 22:02:35
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -1091,6 +1091,6 @@ class TimeSeries(pd.DataFrame):
         ''' Multiplication operator. '''
         return self.operate(other, '__mul__')
 
-    def __div__(self, other):
+    def __truediv__(self, other):
         ''' Division operator. '''
-        return self.operate(other, '__div__')
+        return self.operate(other, '__truediv__')

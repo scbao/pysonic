@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-18 16:02:03
+# @Last Modified time: 2020-06-04 22:02:48
 
 import os
 from sys import getsizeof
@@ -182,9 +182,9 @@ class Lookup:
         ''' Multiplication operator. '''
         return self.operate(other, '__mul__')
 
-    def __div__(self, other):
+    def __truediv__(self, other):
         ''' Division operator. '''
-        return self.operate(other, '__div__')
+        return self.operate(other, '__truediv__')
 
     def squeeze(self):
         ''' Return a new lookup object in which all lookup dimensions that only contain
