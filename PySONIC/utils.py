@@ -3,10 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-06-04 22:02:35
+# @Last Modified time: 2020-06-12 15:26:50
 
 ''' Definition of generic utility functions used in other modules '''
 
+import itertools
 import csv
 from functools import wraps
 import operator
@@ -1094,3 +1095,10 @@ class TimeSeries(pd.DataFrame):
     def __truediv__(self, other):
         ''' Division operator. '''
         return self.operate(other, '__truediv__')
+
+
+def pairwise(iterable):
+    ''' s -> (s0,s1), (s1,s2), (s2, s3), ... '''
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return list(zip(a, b))

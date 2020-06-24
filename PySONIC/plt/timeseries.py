@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-09-25 16:18:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-27 21:37:20
+# @Last Modified time: 2020-06-24 11:00:28
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -355,6 +355,12 @@ class GroupedTimeSeries(TimeSeriesPlot):
             fig, axes = plt.subplots(naxes, 1, figsize=(11, min(3 * naxes, 9)))
         return fig, axes
 
+    @staticmethod
+    def shareX(axes):
+        for ax in axes[:-1]:
+            ax.get_shared_x_axes().join(ax, axes[-1])
+            ax.set_xticklabels([])
+
     @classmethod
     def postProcess(cls, axes, tplt, fs, meta, prettify):
         for ax in axes:
@@ -362,9 +368,7 @@ class GroupedTimeSeries(TimeSeriesPlot):
             if prettify:
                 cls.prettify(ax, xticks=(0, meta['pp'].tstim * tplt['factor']), yfmt=None)
             cls.setTickLabelsFontSize(ax, fs)
-        for ax in axes[:-1]:
-            ax.get_shared_x_axes().join(ax, axes[-1])
-            ax.set_xticklabels([])
+        cls.shareX(axes)
         cls.setTimeLabel(axes[-1], tplt, fs)
 
     def render(self, fs=10, lw=2, labels=None, colors=None, lines=None, patches='one', save=False,
