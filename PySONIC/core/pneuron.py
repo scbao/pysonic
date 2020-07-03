@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-18 11:51:29
+# @Last Modified time: 2020-07-03 10:51:15
 
 import abc
 import inspect
@@ -60,6 +60,11 @@ class PointNeuron(Model):
     @property
     def Qm0(self):
         return self.Cm0 * self.Vm0 * 1e-3  # C/m2
+
+    @property
+    def tau_pas(self):
+        ''' Passive membrane time constant (s). '''
+        return self.Cm0 / self.gLeak
 
     @property
     def meta(self):
@@ -244,8 +249,7 @@ class PointNeuron(Model):
     @classmethod
     def getDerEffStates(cls, lkp, states):
         ''' Compute effective states derivatives array given lookups and states dictionaries. '''
-        return np.array([
-            cls.derEffStates()[k](lkp, states) for k in cls.statesNames()])
+        return np.array([cls.derEffStates()[k](lkp, states) for k in cls.statesNames()])
 
     @classmethod
     def getEffRates(cls, Vm):
