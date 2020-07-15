@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-02 14:50:16
+# @Last Modified time: 2020-07-13 16:22:44
 
 import abc
 import csv
@@ -11,6 +11,7 @@ from itertools import product
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import copy
 
 from ..core import NeuronalBilayerSonophore, PulsedProtocol, AcousticDrive, LogBatch, Batch
 from ..utils import logger, si_format, isIterable
@@ -234,20 +235,24 @@ class XYMap(LogBatch):
                 f'Maximal {self.zkey} ({zmax:.0f} {self.zunit}) is above defined upper bound ({zbounds[1]:.0f} {self.zunit})')
 
     def render(self, xscale='lin', yscale='lin', zscale='lin', zbounds=None, fs=8, cmap='viridis',
-               interactive=False, figsize=None, insets=None, inset_offset=0.05):
+               interactive=False, figsize=None, insets=None, inset_offset=0.05,
+               extend_under=False, extend_over=False):
         # Get figure size
         if figsize is None:
             figsize = cm2inch(12, 7)
 
         # Compute Z normalizer
-        mymap = plt.get_cmap(cmap)
-        mymap.set_under('silver')
-        nan_eq = zbounds[0] - 1 if zscale == 'lin' else 0.5 * zbounds[0]
+        mymap = copy.copy(plt.get_cmap(cmap))
+        if not extend_under:
+            mymap.set_under('silver')
+        if not extend_over:
+            mymap.set_over('silver')
         if zbounds is None:
             zbounds = self.getZBounds()
         else:
             self.checkZbounds(zbounds)
         norm, sm = setNormalizer(mymap, zbounds, zscale)
+        nan_eq = zbounds[0] - 1 if zscale == 'lin' else 0.5 * zbounds[0]
 
         # Compute mesh edges
         self.xedges = self.computeMeshEdges(self.xvec, xscale)
@@ -284,12 +289,20 @@ class XYMap(LogBatch):
                 xyoffset = np.array(self.offset_options[direction]) * inset_offset  # in axis coords
                 xytext = axis_to_data.transform(np.array(data_to_axis.transform((x, y))) + xyoffset)
                 ax.annotate(label, xy=(x, y), xytext=xytext, fontsize=fs,
+                            horizontalalignment='right',
                             arrowprops={'facecolor': 'black', 'arrowstyle': '-'})
 
         # Plot z-scale colorbar
         pos1 = ax.get_position()  # get the map axis position
         cbarax = fig.add_axes([pos1.x1 + 0.02, pos1.y0, 0.03, pos1.height])
-        fig.colorbar(sm, cax=cbarax)
+
+        if not extend_under and not extend_over:
+            extend = 'neither'
+        elif extend_under and extend_over:
+            extend = 'both'
+        else:
+            extend = 'max' if extend_over else 'min'
+        fig.colorbar(sm, cax=cbarax, extend=extend)
         cbarax.set_ylabel(f'{self.zkey} ({self.zunit})', fontsize=fs)
         for item in cbarax.get_yticklabels():
             item.set_fontsize(fs)

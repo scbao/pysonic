@@ -3,11 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-29 11:26:27
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-31 18:23:43
+# @Last Modified time: 2020-07-15 09:34:26
 
 import re
 import inspect
 from types import MethodType
+
+from .pneuron import PointNeuron
 
 
 class Translator:
@@ -400,6 +402,9 @@ def addSonicFeatures(pclass):
         - alphax, betax, taux and xinf list attributes
         - quasiSteadyStates method
     '''
+    # Check that the base class inherits from PointNeuron class
+    assert issubclass(pclass, PointNeuron), 'Base class must inherit from "PointNeuron" class'
+
     translator = SonicTranslator(pclass, verbose=False)
     eff_dstates = translator.parseDerStates()
     pclass.derEffStates = MethodType(createClassMethod(eff_dstates), pclass)

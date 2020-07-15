@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-28 14:32:03
+# @Last Modified time: 2020-07-06 18:15:57
 
 ''' Utility functions used in simulations '''
 
@@ -278,22 +278,42 @@ class LogBatch(metaclass=abc.ABCMeta):
         ''' Retrieve the logged batch inputs as an array. '''
         return self.getLogData()[self.in_label].values
 
-    def getOutput(self):
+    def getSerializedOutput(self):
         ''' Retrieve the logged batch outputs as an array (if 1 key) or dataframe (if several). '''
         if len(self.out_keys) == 1:
             return self.getLogData()[self.out_keys[0]].values
         else:
             return pd.DataFrame({k: self.getLogData()[k].values for k in self.out_keys})
 
-    def isEntry(self, value):
-        ''' Check if a given input is logged in the batch log file. '''
+    def getOutput(self):
+        return self.getSerializedOutput()
+
+    def getEntryIndex(self, entry):
+        ''' Get the index corresponding to a given entry. '''
         inputs = self.getInput()
         if len(inputs) == 0:
-            return False
-        imatches = np.where(np.isclose(inputs, value, rtol=self.rtol, atol=self.atol))[0]
+            raise ValueError(f'no entries in batch')
+        entry = np.asarray(entry)
+        close_per_col = np.isclose(inputs, entry, rtol=self.rtol, atol=self.atol)
+        close = close_per_col.all(axis=1)
+        imatches = np.where(close)[0]
         if len(imatches) == 0:
+            raise ValueError(f'{entry} entry not found in batch log')
+        elif len(imatches) > 1:
+            raise ValueError(f'duplicate {entry} entry found in batch log')
+        return imatches[0]
+
+    def getEntryOutput(self, entry):
+        imatch = self.getEntryIndex(entry)
+        return self.getSerializedOutput()[imatch]
+
+    def isEntry(self, value):
+        ''' Check if a given input is logged in the batch log file. '''
+        try:
+            self.getEntryIndex(value)
+            return True
+        except ValueError:
             return False
-        return True
 
     @abc.abstractmethod
     def compute(self, x):
