@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-03 10:51:15
+# @Last Modified time: 2020-07-15 19:59:11
 
 import abc
 import inspect

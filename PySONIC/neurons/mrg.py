@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-02-27 21:24:05
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-15 10:36:43
+# @Last Modified time: 2020-07-15 21:23:41
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
@@ -170,38 +170,3 @@ class MRGNode(PointNeuron):
     def chooseTimeStep(self):
         ''' neuron-specific time step for fast dynamics. '''
         return super().chooseTimeStep() * 1e-2
-
-
-@addSonicFeatures
-class SilentMRGNode(MRGNode):
-    ''' MRG node with an additional axial leakage current to mimick the influence of
-        the neighboring internodal sections in preventing spontaneous activity.
-    '''
-    name = 'silent_MRGnode'
-
-    # Axial leakage conductance yielding identical threshold for intracellular stimulation
-    # at the central node of a 10 um myelinated fiber with a 100 us pulse
-    gAxialLeak = 5.37e3  # S/m2
-
-    # Corresponding code snippet:
-    '''
-    from PySONIC.core import PulsedProtocol
-    from ExSONIC.core import MRGFiber, IntracellularCurrent
-    fiber = MRGFiber(10e-6, 11)
-    Ithr = fiber.titrate(
-        IntracellularCurrent(fiber.central_ID, None),
-        PulsedProtocol(tstim=1e-4, toffset=3e-3))  # A
-    Am = fiber.nodes[fiber.central_ID].Am  # cm2
-    ithr = (Ithr * 1e3) / (Am * 1e-4)  # mA/m2
-    print(f'Ithr = {Ithr * 1e9:.2f} nA, Am = {Am:.2e} cm2 -> ithr = {ithr:.2e} mA/m2')
-    '''
-
-    @classmethod
-    def iAxialLeak(cls, Vm):
-        ''' axial leakage current '''
-        return cls.gAxialLeak * (Vm - cls.Vm0)  # mA/m2
-
-    @classmethod
-    def currents(cls):
-        ''' updated currents dictionary '''
-        return {**MRGNode.currents(), 'iAxialLeak': lambda Vm, _: cls.iAxialLeak(Vm)}
