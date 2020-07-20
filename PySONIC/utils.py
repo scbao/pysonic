@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-06-12 15:26:50
+# @Last Modified time: 2020-07-20 21:30:19
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -878,7 +878,7 @@ def moveItem(l, value, itarget):
 
 
 def gaussian(x, mu=0., sigma=1., A=1.):
-    return A * np.exp(-((x - mu) / sigma)**2)
+    return A * np.exp(-((x - mu) / sigma)**2 / 2)
 
 
 def isPickable(obj):
