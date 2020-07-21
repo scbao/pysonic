@@ -3,10 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-20 21:30:19
+# @Last Modified time: 2020-07-21 20:00:28
 
 ''' Definition of generic utility functions used in other modules '''
 
+import sys
 import itertools
 import csv
 from functools import wraps
@@ -58,6 +59,7 @@ def setHandler(logger, handler):
 def setLogger(name, formatter):
     handler = colorlog.StreamHandler()
     handler.setFormatter(formatter)
+    handler.stream = sys.stdout
     logger = colorlog.getLogger(name)
     logger.addHandler(handler)
     return logger

@@ -3,11 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 16:14:10
+# @Last Modified time: 2020-07-21 16:19:53
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
-from ..constants import CELSIUS_2_KELVIN, Z_Na, Z_K
+from ..constants import Z_Na, Z_K
 
 
 @addSonicFeatures

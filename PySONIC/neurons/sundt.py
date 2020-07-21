@@ -3,11 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 16:16:37
+# @Last Modified time: 2020-07-21 16:19:45
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
-from ..constants import CELSIUS_2_KELVIN
 from ..utils import logger
 
 
