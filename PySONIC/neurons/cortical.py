@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 15:35:35
+# @Last Modified time: 2020-07-21 16:16:57
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
@@ -29,7 +29,7 @@ class Cortical(PointNeuron):
     ECa = 120.0  # Calcium
 
     # Additional parameters
-    celsius = 36.0  # Temperature (Celsius)
+    # celsius = 36.0  # Temperature in Pospischil 2008 (Celsius)
 
     # ------------------------------ Gating states kinetics ------------------------------
 

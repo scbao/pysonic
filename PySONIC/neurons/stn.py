@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-11-29 16:56:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-31 18:13:41
+# @Last Modified time: 2020-07-21 16:16:10
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
@@ -49,7 +49,7 @@ class OtsukaSTN(PointNeuron):
     gKCabar = 10.0   # Calcium-dependent Potassium
 
     # Physical constants
-    T = 306.15  # K (33°C)
+    # celsius = 33.0   # Temperature (Celsius)
 
     # Calcium dynamics
     Cao = 2e-3         # extracellular Calcium concentration (M)

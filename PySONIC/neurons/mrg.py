@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-02-27 21:24:05
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-15 21:23:41
+# @Last Modified time: 2020-07-21 16:15:20
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
@@ -40,9 +40,9 @@ class MRGNode(PointNeuron):
     gLeak = 70.     # Non-specific leakage
 
     # Additional parameters
-    celsius = 36.0          # Temperature (Celsius)
+    # celsius = 36.0          # Temperature (Celsius)
     celsius_Schwarz = 20.0  # Temperature in Schwarz 1995 (Celsius)
-    celsius_Ks = 36.0       # Temperature iused for Ks channels (unknown ref.)
+    celsius_Ks = 36.0       # Temperature used for Ks channels (unknown ref.)
     mhshift = 3.            # m and h gates voltage shift (mV)
     vtraub = -80.           # Reference voltage for the definition of the s rate constants (mV)
 

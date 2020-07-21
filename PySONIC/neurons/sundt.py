@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-10-03 15:58:38
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 15:37:46
+# @Last Modified time: 2020-07-21 16:16:37
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
@@ -45,10 +45,9 @@ class SundtSegment(PointNeuron):
     hshift = 6.0        # h-gate activation voltage shift, from ModelDB file (mV)
 
     # Additional parameters
-    celsius = 35.0         # Temperature (Celsius)
-    celsius_Traub = 30.0   # Temperature in Traub 1991 (Celsius)
-    celsius_BG = 30.0      # Temperature in Borg-Graham 1987 (Celsius)
-    # celsius_Yamada = 23.5  # Temperature in Yamada 1989 (Celsius)
+    # celsius = 35.0      # Temperature in ModelDB file (Celsius)
+    celsius_Traub = 30.0  # Temperature in Traub 1991 (Celsius)
+    celsius_BG = 30.0     # Temperature in Borg-Graham 1987 (Celsius)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
@@ -61,7 +60,6 @@ class SundtSegment(PointNeuron):
     def __new__(cls):
         cls.q10_Traub = 3**((cls.celsius - cls.celsius_Traub) / 10)
         cls.q10_BG = 3**((cls.celsius - cls.celsius_BG) / 10)
-        cls.T = cls.celsius + CELSIUS_2_KELVIN
 
         # Compute Eleak such that iLeak cancels out the net current at resting potential
         sstates = {k: cls.steadyStates()[k](cls.Vm0) for k in cls.statesNames()}

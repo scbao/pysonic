@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 15:01:36
+# @Last Modified time: 2020-07-21 15:59:12
 
 import abc
 import inspect
@@ -22,8 +22,10 @@ from ..utils import *
 class PointNeuron(Model):
     ''' Generic point-neuron model interface. '''
 
-    tscale = 'ms'  # relevant temporal scale of the model
+    tscale = 'ms'     # relevant temporal scale of the model
     simkey = 'ESTIM'  # keyword used to characterize simulations made with this model
+    celsius = 36.0    # Temperature (Celsius)
+    T = celsius + CELSIUS_2_KELVIN
 
     def __repr__(self):
         return self.__class__.__name__

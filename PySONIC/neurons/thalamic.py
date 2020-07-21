@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:20:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 15:35:41
+# @Last Modified time: 2020-07-21 16:17:08
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
@@ -30,7 +30,7 @@ class Thalamic(PointNeuron):
     ECa = 120.0  # Calcium
 
     # Additional parameters
-    celsius = 36.0  # Temperature (Celsius)
+    # celsius = 36.0  # Temperature in Pospischil 2008 (Celsius)
 
     # ------------------------------ Gating states kinetics ------------------------------
 

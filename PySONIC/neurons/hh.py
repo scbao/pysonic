@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-07-21 14:53:30
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 15:39:29
+# @Last Modified time: 2020-07-21 16:14:22
 
 import numpy as np
 
@@ -11,7 +11,7 @@ from ..core import PointNeuron, addSonicFeatures
 
 
 @addSonicFeatures
-class HodgkinHuxley(PointNeuron):
+class HodgkinHuxleySegment(PointNeuron):
     ''' Unmyelinated giant squid axon segment.
 
         Reference:
@@ -40,7 +40,7 @@ class HodgkinHuxley(PointNeuron):
 
     # Additional parameters
     celsius_HH = 6.3  # Temperature in Hodgkin Huxley 1952 (Celsius)
-    celsius = 6.3     # Temperature (Celsius)
+    # celsius = 6.3  # Temperature (Celsius)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
@@ -53,7 +53,7 @@ class HodgkinHuxley(PointNeuron):
 
     def __new__(cls):
         cls.q10 = 3**((cls.celsius - cls.celsius_HH) / 10.)  # from Hodgkin Huxley 1952
-        return super(HodgkinHuxley, cls).__new__(cls)
+        return super(HodgkinHuxleySegment, cls).__new__(cls)
 
     @classmethod
     def alpham(cls, Vm):
@@ -123,3 +123,7 @@ class HodgkinHuxley(PointNeuron):
             'iKd': lambda Vm, x: cls.iKd(x['n'], Vm),
             'iLeak': lambda Vm, _: cls.iLeak(Vm)
         }
+
+    def chooseTimeStep(self):
+        ''' neuron-specific time step for fast dynamics. '''
+        return super().chooseTimeStep() * 1e-1
