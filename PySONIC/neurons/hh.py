@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-07-21 14:53:30
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 15:26:16
+# @Last Modified time: 2020-07-21 15:39:29
 
 import numpy as np
 
@@ -40,7 +40,7 @@ class HodgkinHuxley(PointNeuron):
 
     # Additional parameters
     celsius_HH = 6.3  # Temperature in Hodgkin Huxley 1952 (Celsius)
-    celsius = 6.3  # current temperature (Celsius)
+    celsius = 6.3     # Temperature (Celsius)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {

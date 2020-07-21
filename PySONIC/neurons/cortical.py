@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-07-31 15:19:51
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-31 18:11:37
+# @Last Modified time: 2020-07-21 15:35:35
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
@@ -27,6 +27,9 @@ class Cortical(PointNeuron):
     ENa = 50.0   # Sodium
     EK = -90.0   # Potassium
     ECa = 120.0  # Calcium
+
+    # Additional parameters
+    celsius = 36.0  # Temperature (Celsius)
 
     # ------------------------------ Gating states kinetics ------------------------------
 

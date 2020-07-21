@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-01-07 18:41:06
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-03-31 18:12:24
+# @Last Modified time: 2020-07-21 15:32:16
 
 import numpy as np
 from ..core import PointNeuron, addSonicFeatures
@@ -47,7 +47,8 @@ class FrankenhaeuserHuxleyNode(PointNeuron):
     Ko = 2.5e-3     # Extracellular Potassium
 
     # Additional parameters
-    celsius = 20.0  # Temperature (Celsius)
+    celsius_FH = 20.0  # Temperature in Frankenhaeuser-Huxley 1964 (Celsius)
+    celsius = 20.0     # Temperature (Celsius)
 
     # ------------------------------ States names & descriptions ------------------------------
     states = {
@@ -58,7 +59,7 @@ class FrankenhaeuserHuxleyNode(PointNeuron):
     }
 
     def __new__(cls):
-        cls.q10 = 3**((cls.celsius - 20) / 10)
+        cls.q10 = 3**((cls.celsius - cls.celsius_FH) / 10)
         cls.T = cls.celsius + CELSIUS_2_KELVIN
         return super(FrankenhaeuserHuxleyNode, cls).__new__(cls)
 
