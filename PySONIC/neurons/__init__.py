@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-07 16:56:50
+# @Last Modified time: 2020-07-21 15:25:33
 
 import inspect
 import sys
@@ -13,6 +13,7 @@ from .cortical import *
 from .thalamic import *
 from .leech import *
 from .stn import *
+from .hh import *
 from .fh import *
 from .sweeney import *
 from .sundt import *
