@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-05 14:40:11
+# @Last Modified time: 2020-07-21 22:12:00
 
 ''' Useful functions to generate plots. '''
 
@@ -22,6 +22,18 @@ from ..utils import *
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 matplotlib.rcParams['font.family'] = 'arial'
+
+
+def getSymmetricCmap(cmap_key):
+    cmap = plt.get_cmap(cmap_key)
+    cl = np.vstack((cmap.colors, cmap.reversed().colors))
+    return colors.LinearSegmentedColormap.from_list(f'sym_{cmap_key}', cl)
+
+
+for k in ['viridis', 'plasma', 'inferno', 'magma', 'cividis']:
+    for cmap_key in [k, f'{k}_r']:
+        sym_cmap = getSymmetricCmap(cmap_key)
+        plt.register_cmap(name=sym_cmap.name, cmap=sym_cmap)
 
 
 def cm2inch(*tupl):
@@ -291,7 +303,7 @@ class GenericPlot:
         cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
         cbar_kwargs = {}
         if all(isinstance(x, int) for x in comp_values):
-            bounds = np.arange(nvalues + 1) + min(comp_values)
+            bounds = np.arange(nvalues + 1) + min(comp_values) - 0.5
             ticks = bounds[:-1] + 0.5
             if nvalues > 10:
                 ticks = [ticks[0], ticks[-1]]
