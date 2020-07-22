@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 20:00:28
+# @Last Modified time: 2020-07-22 10:36:58
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -1104,3 +1104,11 @@ def pairwise(iterable):
     a, b = itertools.tee(iterable)
     next(b, None)
     return list(zip(a, b))
+
+
+def padleft(x):
+    return np.pad(x, (1, 0), 'edge')
+
+
+def padright(x):
+    return np.pad(x, (0, 1), 'edge')

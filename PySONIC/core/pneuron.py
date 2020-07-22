@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 15:59:12
+# @Last Modified time: 2020-07-22 10:57:43
 
 import abc
 import inspect
@@ -97,7 +97,7 @@ class PointNeuron(Model):
         return Qm / cls.Cm0 * 1e3
 
     @classmethod
-    def getPltVars(cls, wrapleft='df["', wrapright='"]'):
+    def getPltVars(cls, wl='df["', wr='"]'):
         pltvars = {
             'Qm': {
                 'desc': 'membrane charge density',
@@ -112,7 +112,7 @@ class PointNeuron(Model):
                 'label': 'Q_m / C_{m0}',
                 'unit': 'mV',
                 'bounds': (-150, 70),
-                'func': f"normalizedQm({wrapleft}Qm{wrapright})"
+                'func': f"normalizedQm({wl}Qm{wr})"
             },
 
             'Vm': {
@@ -140,7 +140,7 @@ class PointNeuron(Model):
                 'label': f'I_{{{cname[1:]}}}',
                 'unit': 'A/m^2',
                 'factor': 1e-3,
-                'func': f"{cname}({', '.join([f'{wrapleft}{a}{wrapright}' for a in cargs])})"
+                'func': f"{cname}({', '.join([f'{wl}{a}{wr}' for a in cargs])})"
             }
             for var in cargs:
                 if var != 'Vm':
@@ -155,7 +155,7 @@ class PointNeuron(Model):
             'label': 'I_{net}',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': f'iNet({wrapleft}Vm{wrapright}, {wrapleft[:-1]}{cls.statesNames()}{wrapright[1:]})',
+            'func': f'iNet({wl}Vm{wr}, {wl[:-1]}{cls.statesNames()}{wr[1:]})',
             'ls': '--',
             'color': 'black'
         }
@@ -165,7 +165,17 @@ class PointNeuron(Model):
             'label': 'dQ_m/dt',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': f'dQdt({wrapleft}Vm{wrapright}, {wrapleft[:-1]}{cls.statesNames()}{wrapright[1:]})',
+            'func': f'dQdt({wl}t{wr}, {wl}Qm{wr})',
+            'ls': '--',
+            'color': 'black'
+        }
+
+        pltvars['iax'] = {
+            'desc': inspect.getdoc(getattr(cls, 'iax')).splitlines()[0],
+            'label': 'i_{ax}',
+            'unit': 'A/m^2',
+            'factor': 1e-3,
+            'func': f'iax({wl}t{wr}, {wl}Qm{wr}, {wl}Vm{wr}, {wl[:-1]}{cls.statesNames()}{wr[1:]})',
             'ls': '--',
             'color': 'black'
         }
@@ -175,7 +185,7 @@ class PointNeuron(Model):
             'label': 'I_{cap}',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': f'iCap({wrapleft}t{wrapright}, {wrapleft}Vm{wrapright})'
+            'func': f'iCap({wl}t{wr}, {wl}Vm{wr})'
         }
 
         for rate in cls.rates:
@@ -195,7 +205,7 @@ class PointNeuron(Model):
             'unit': 'Hz',
             'factor': 1e0,
             # 'bounds': (0, 1e3),
-            'func': f'firingRateProfile({wrapleft[:-2]})'
+            'func': f'firingRateProfile({wl[:-2]})'
         }
 
         return pltvars
@@ -277,20 +287,34 @@ class PointNeuron(Model):
         ''' net membrane current
 
             :param Vm: membrane potential (mV)
-            :states: states of ion channels gating and related variables
+            :param states: states of ion channels gating and related variables
             :return: current per unit area (mA/m2)
         '''
         return sum([cfunc(Vm, states) for cfunc in cls.currents().values()])
 
     @classmethod
-    def dQdt(cls, Vm, states):
+    def dQdt(cls, t, Qm):
         ''' membrane charge density variation rate
 
-            :param Vm: membrane potential (mV)
-            :states: states of ion channels gating and related variables
-            :return: variation rate (mA/m2)
+            :param t: time vector (s)
+            :param Qm: membrane charge density vector (C/m2)
+            :return: variation rate vector (mA/m2)
         '''
-        return -cls.iNet(Vm, states)
+        return padright(np.diff(Qm) / np.diff(t)) * 1e3  # mA/m2
+
+    @classmethod
+    def iax(cls, t, Qm, Vm, states):
+        ''' axial current density
+
+            (computed as sum of charge variation and net membrane ionic current)
+
+            :param t: time vector (s)
+            :param Qm: membrane charge density vector (C/m2)
+            :param Vm: membrane potential (mV)
+            :param states: states of ion channels gating and related variables
+            :return: axial current density (mA/m2)
+        '''
+        return cls.iNet(Vm, states) + cls.dQdt(t, Qm)
 
     @classmethod
     def titrationFunc(cls, *args, **kwargs):

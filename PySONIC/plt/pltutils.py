@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 22:12:00
+# @Last Modified time: 2020-07-22 10:57:25
 
 ''' Useful functions to generate plots. '''
 
@@ -51,8 +51,11 @@ def extractPltVar(model, pltvar, df, meta=None, nsamples=0, name=''):
             s = f'model.{s}'
         try:
             var = eval(s)
-        except AttributeError:
-            var = eval(s.replace('model', 'model.pneuron'))
+        except AttributeError as err:
+            if hasattr(model, 'pneuron'):
+                var = eval(s.replace('model', 'model.pneuron'))
+            else:
+                raise err
     elif 'key' in pltvar:
         var = df[pltvar['key']]
     elif 'constant' in pltvar:
