@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-22 10:57:43
+# @Last Modified time: 2020-07-22 16:44:50
 
 import abc
 import inspect
@@ -175,9 +175,10 @@ class PointNeuron(Model):
             'label': 'i_{ax}',
             'unit': 'A/m^2',
             'factor': 1e-3,
-            'func': f'iax({wl}t{wr}, {wl}Qm{wr}, {wl}Vm{wr}, {wl[:-1]}{cls.statesNames()}{wr[1:]})',
+            # 'func': f'iax({wl}t{wr}, {wl}Qm{wr}, {wl}Vm{wr}, {wl[:-1]}{cls.statesNames()}{wr[1:]})',
             'ls': '--',
-            'color': 'black'
+            'color': 'black',
+            'bounds': (-1e2, 1e2)
         }
 
         pltvars['iCap'] = {
