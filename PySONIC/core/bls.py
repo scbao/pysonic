@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-29 12:05:14
+# @Last Modified time: 2020-07-22 18:44:26
 
 from enum import Enum
 import os
@@ -216,14 +216,14 @@ class BilayerSonophore(Model):
         }
 
     @staticmethod
-    def getPltVars(wrapleft='df["', wrapright='"]'):
+    def getPltVars(wl='df["', wr='"]'):
         return {
             'Pac': {
                 'desc': 'acoustic pressure',
                 'label': 'P_{AC}',
                 'unit': 'kPa',
                 'factor': 1e-3,
-                'func': f'meta["drive"].compute({wrapleft}t{wrapright})'
+                'func': f'meta["drive"].compute({wl}t{wr})'
             },
             'Z': {
                 'desc': 'leaflets deflection',
@@ -246,7 +246,7 @@ class BilayerSonophore(Model):
                 'label': 'P_M',
                 'unit': 'kPa',
                 'factor': 1e-3,
-                'func': f'PMavgpred({wrapleft}Z{wrapright})'
+                'func': f'PMavgpred({wl}Z{wr})'
             },
 
             'Telastic': {
@@ -254,7 +254,7 @@ class BilayerSonophore(Model):
                 'label': 'T_E',
                 'unit': 'mN/m',
                 'factor': 1e3,
-                'func': f'TEleaflet({wrapleft}Z{wrapright})'
+                'func': f'TEleaflet({wl}Z{wr})'
             },
 
             'Cm': {
@@ -263,7 +263,7 @@ class BilayerSonophore(Model):
                 'unit': 'uF/cm^2',
                 'factor': 1e2,
                 'bounds': (0.0, 1.5),
-                'func': f'v_capacitance({wrapleft}Z{wrapright})'
+                'func': f'v_capacitance({wl}Z{wr})'
             }
         }
 
