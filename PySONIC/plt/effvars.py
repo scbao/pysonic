@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2018-10-02 01:44:59
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-06-26 16:08:45
+# @Last Modified time: 2020-07-23 13:45:31
 
 from inspect import signature
 import numpy as np
@@ -18,7 +18,7 @@ def isVoltageDependent(func):
     return 'Vm' in list(signature(func).parameters.keys())
 
 
-def plotGatingKinetics(pneuron, fs=15, tau_scale='lin'):
+def plotGatingKinetics(pneuron, fs=15, tau_scale='lin', tau_pas=True):
     ''' Plot the voltage-dependent steady-states and time constants of activation and
         inactivation gates of the different ionic currents involved in a specific
         neuron's membrane.
@@ -103,6 +103,8 @@ def plotGatingKinetics(pneuron, fs=15, tau_scale='lin'):
     for xname in names:
         if xname in taux_dict:
             ax.plot(Vm, taux_dict[xname] * 1e3, lw=2, label='$\\tau_{' + xname + '}$')
+    if tau_pas:
+        ax.axhline(pneuron.tau_pas * 1e3, lw=2, linestyle='--', c='k', label='$\\tau_{pas}$')
     ax.legend(fontsize=fs, loc=7)
 
     return fig
