@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-17 19:56:16
+# @Last Modified time: 2020-07-31 10:51:21
 
 import os
 import logging
@@ -73,7 +73,6 @@ class Parser(ArgumentParser):
 
     def parseRangeParam(self, args, key):
         rangekey = f'{key}range'
-        params = [key, rangekey]
         self.restrict(args)
         if key in args:
             return np.array(args[key]) * self.factors[key]

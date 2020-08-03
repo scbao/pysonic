@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-06-03 16:44:22
+# @Last Modified time: 2020-07-30 18:57:58
 
 import numpy as np
 import pandas as pd
@@ -333,7 +333,7 @@ class PeriodicSolver(ODESolver):
         ''' Integrate system for a cycle. '''
         self.integrateUntil(self.t[-1] + self.T, remove_first=True)
 
-    def solve(self, y0, nmax=None, **kwargs):
+    def solve(self, y0, nmax=None, nmin=None, **kwargs):
         ''' Simulate system with a specific periodicity until stopping criterion is met.
 
             :param y0: dictionary of initial conditions
@@ -341,13 +341,16 @@ class PeriodicSolver(ODESolver):
         '''
         if nmax is None:
             nmax = NCYCLES_MAX
+        if nmin is None:
+            nmin = 2
+        assert nmin < nmax, 'incorrect bounds for number of cycles (min > max)'
 
         # Initialize system
         if y0 is not None:
             self.initialize(y0, **kwargs)
 
-        # Integrate system for 2 cycles
-        for i in range(2):
+        # Integrate system for minimal number of cycles
+        for i in range(nmin):
             self.integrateCycle()
 
         # Keep integrating system periodically until stopping criterion is met

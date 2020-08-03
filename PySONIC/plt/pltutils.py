@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-22 10:57:25
+# @Last Modified time: 2020-08-03 17:04:22
 
 ''' Useful functions to generate plots. '''
 
@@ -85,7 +85,8 @@ def setGrid(n, ncolmax=3):
 def setNormalizer(cmap, bounds, scale='lin'):
     norm = {
         'lin': colors.Normalize,
-        'log': colors.LogNorm
+        'log': colors.LogNorm,
+        'symlog': colors.SymLogNorm
     }[scale](*bounds)
     sm = cm.ScalarMappable(norm=norm, cmap=cmap)
     sm._A = []

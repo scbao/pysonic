@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-22 18:44:26
+# @Last Modified time: 2020-07-30 19:01:21
 
 from enum import Enum
 import os
@@ -730,7 +730,7 @@ class BilayerSonophore(Model):
             'ng': [self.ng0] * 2,
         }
 
-    def simCycles(self, drive, Qm, n=None, Pm_comp_method=PmCompMethod.predict):
+    def simCycles(self, drive, Qm, nmax=None, nmin=None, Pm_comp_method=PmCompMethod.predict):
         ''' Simulate for a specific number of cycles or until periodic stabilization,
             for a specific set of ultrasound parameters, and return output data in a dataframe.
 
@@ -754,7 +754,7 @@ class BilayerSonophore(Model):
             primary_vars=['Z', 'ng'],                                        # primary variables
             dt=drive.dt                                                      # time step
         )
-        data = solver(y0, nmax=n)
+        data = solver(y0, nmax=nmax, nmin=nmin)
 
         # Remove velocity timeries from solution
         del data['U']
