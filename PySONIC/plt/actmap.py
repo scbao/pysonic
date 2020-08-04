@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-13 16:22:44
+# @Last Modified time: 2020-08-04 17:52:34
 
 import abc
 import csv
@@ -454,3 +454,56 @@ def getActivationMap(key, *args, **kwargs):
     if key not in map_classes:
         raise ValueError(f'{key} is not a valid map type')
     return map_classes[key](*args, **kwargs)
+
+
+class GammaMap(XYMap):
+    ''' Interface to a 2D map showing relative capacitance oscillation amplitude
+        resulting from BLS simulations at various frequencies and amplitude.
+    '''
+    xkey = 'f_US'
+    xfactor = 1e0
+    xunit = 'kHz'
+    ykey = 'A'
+    yfactor = 1e0
+    yunit = 'kPa'
+    zkey = 'gamma'
+    zfactor = 1e0
+    zunit = '-'
+    suffix = 'gamma'
+
+    def __init__(self, root, bls, freqs, amps):
+        self.bls = bls.copy()
+        super().__init__(root, freqs, amps)
+
+    @property
+    def title(self):
+        return f'Gamma map - {self.bls}'
+
+    def corecode(self):
+        return f'gamma_map_bls{self.bls.a * 1e9:.0f}nm'
+
+    def compute(self, x):
+        f, A = x
+        data, meta = self.bls.simulate(AcousticDrive(f * 1e3, A * 1e3), 0.)
+        Cm = self.bls.v_capacitance(data['Z'])
+        gamma = np.ptp(Cm) / (2 * self.bls.Cm0)
+        logger.info(f'f = {f:.2f} kHz, A = {A:.2f} kPa, gamma = {gamma:.2f}')
+        return gamma
+
+    def onClick(self, event):
+        ''' Execute action when the user clicks on a cell in the 2D map. '''
+        x = self.getOnClickXY(event)
+        f, A = x
+        out = self.bls.simulate(AcousticDrive(f * 1e3, A * 1e3), 0.)
+        GroupedTimeSeries([out]).render()
+        plt.show()
+
+    def render(self, xscale='log', yscale='log', figsize=(6, 4), fs=12, **kwargs):
+        fig = super().render(xscale=xscale, yscale=yscale, figsize=figsize, fs=fs, **kwargs)
+        levels = [0.1, 0.3, 0.5, 0.7]
+        colors = ['w', 'k', 'k', 'k']
+        ax = fig.axes[0]
+        CS = ax.contour(
+            self.xvec, self.yvec, self.getOutput(), levels, colors=colors)
+        ax.clabel(CS, fontsize=fs, fmt=lambda x: f'{x:g}', inline_spacing=2)
+        return fig

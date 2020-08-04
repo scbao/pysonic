@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-05-02 17:13:13
+# @Last Modified time: 2020-08-04 17:44:52
 
 import logging
 import numpy as np
@@ -19,9 +19,6 @@ from ..constants import *
 from ..postpro import getFixedPoints
 from .lookups import EffectiveVariablesLookup
 from ..neurons import getPointNeuron
-
-
-NEURONS_LOOKUP_DIR = os.path.abspath(os.path.split(__file__)[0] + "/../lookups/")
 
 
 class NeuronalBilayerSonophore(BilayerSonophore):
@@ -204,7 +201,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return f'{fname}.pkl'
 
     def getLookupFilePath(self, *args, **kwargs):
-        return os.path.join(NEURONS_LOOKUP_DIR, self.getLookupFileName(*args, **kwargs))
+        return os.path.join(LOOKUP_DIR, self.getLookupFileName(*args, **kwargs))
 
     def getLookup(self, *args, **kwargs):
         keep_tcomp = kwargs.pop('keep_tcomp', False)

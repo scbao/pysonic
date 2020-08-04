@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-30 19:01:21
+# @Last Modified time: 2020-08-04 17:49:24
 
 from enum import Enum
 import os
@@ -14,9 +14,10 @@ import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
 
 from .model import Model
+from .lookups import EffectiveVariablesLookup
 from .solvers import PeriodicSolver
 from .drives import Drive, AcousticDrive
-from ..utils import logger, si_format
+from ..utils import logger, si_format, LOOKUP_DIR
 from ..constants import *
 
 
@@ -174,6 +175,18 @@ class BilayerSonophore(Model):
         if self.d > 0.:
             s += f', d={si_format(self.d, precision=1)}m'
         return f'{s})'
+
+    @property
+    def gamma_lkp_filename(self):
+        return f'gamma_lkp_{self.a * 1e9:.0f}nm.lkp'
+
+    @property
+    def gamma_lkp_filepath(self):
+        return os.path.join(LOOKUP_DIR, self.gamma_lkp_filename)
+
+    @property
+    def gamma_lkp(self):
+        return EffectiveVariablesLookup.fromPickle(self.gamma_lkp_filepath)
 
     @property
     def meta(self):

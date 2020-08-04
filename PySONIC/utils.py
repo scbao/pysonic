@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-04 11:40:25
+# @Last Modified time: 2020-08-04 17:44:01
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -77,6 +77,9 @@ class TqdmHandler(logging.StreamHandler):
 
 
 logger = setLogger('PySONIC', my_log_formatter)
+
+
+LOOKUP_DIR = os.path.abspath(os.path.split(__file__)[0] + "/lookups/")
 
 
 def fillLine(text, char='-', totlength=None):
