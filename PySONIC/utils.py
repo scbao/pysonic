@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-22 10:36:58
+# @Last Modified time: 2020-08-04 11:40:25
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -284,6 +284,7 @@ def rescale(x, lb=None, ub=None, lb_new=0, ub_new=1):
 
 
 def expandRange(xmin, xmax, exp_factor=2):
+    ''' Expand a range by a specific factor around its mid-point. '''
     if xmin > xmax:
         raise ValueError('values must be provided in (min, max) order')
     xptp = xmax - xmin
