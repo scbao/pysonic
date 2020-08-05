@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-06-04 22:02:48
+# @Last Modified time: 2020-08-05 20:41:44
 
 import os
 from sys import getsizeof

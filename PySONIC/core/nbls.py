@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-04 17:44:52
+# @Last Modified time: 2020-08-05 20:25:53
 
 import logging
 import numpy as np
@@ -164,9 +164,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             :param fs: list of sonophore membrane coverage fractions
             :return: list with computation time and a list of dictionaries of effective variables
         '''
-        # Run simulation and retrieve deflection and gas content vectors from last cycle
-        data = super().simCycles(drive, Qm)
-        Z_last = data.loc[-NPC_DENSE:, 'Z'].values  # m
+        # Run simulation and extract capacitance vector from last cycle
+        Z_last = super().simCycles(drive, Qm).tail(NPC_DENSE)['Z'].values  # m
         Cm_last = self.v_capacitance(Z_last)  # F/m2
 
         # For each coverage fraction
@@ -213,6 +212,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
     def getLookup2D(self, f, fs):
         proj_kwargs = {'a': self.a, 'f': f, 'fs': fs}
+        proj_str = f'a = {si_format(self.a)}m, f = {si_format(f)}Hz, fs = {fs * 1e2:.0f}%'
+        logger.debug(f'loading {self.pneuron} lookup for {proj_str}')
         if fs < 1.:
             kwargs = proj_kwargs.copy()
             kwargs['fs'] = True

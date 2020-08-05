@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-04 17:49:24
+# @Last Modified time: 2020-08-05 20:23:05
 
 from enum import Enum
 import os
@@ -336,6 +336,10 @@ class BilayerSonophore(Model):
         '''
         return (Z / self.a)**2
 
+    def logRelGap(self, Z):
+        ''' Logarithm of relative sonophore deflection for a given deflection Z. '''
+        return np.log10((2 * Z + self.Delta) / self.Delta)
+
     def capacitance(self, Z):
         ''' Membrane capacitance
             (parallel-plate capacitor evaluated at average inter-layer distance)
@@ -346,9 +350,8 @@ class BilayerSonophore(Model):
         if Z == 0.0:
             return self.Cm0
         else:
-            return ((self.Cm0 * self.Delta / self.a**2) *
-                    (Z + (self.a**2 - Z**2 - Z * self.Delta) / (2 * Z) *
-                     np.log((2 * Z + self.Delta) / self.Delta)))
+            Z2 = (self.a**2 - Z**2 - Z * self.Delta) / (2 * Z)
+            return self.Cm0 * self.Delta / self.a**2 * (Z + Z2 * self.logRelGap(Z))
 
     def v_capacitance(self, Z):
         ''' Vectorized capacitance function '''
@@ -361,10 +364,9 @@ class BilayerSonophore(Model):
             :param U: leaflet apex deflection velocity (m/s)
             :return: time derivative of capacitance per unit area (F/m2.s)
         '''
-        dCmdZ = ((self.Cm0 * self.Delta / self.a**2) *
-                 ((Z**2 + self.a**2) / (Z * (2 * Z + self.Delta)) -
-                  ((Z**2 + self.a**2) *
-                   np.log((2 * Z + self.Delta) / self.Delta)) / (2 * Z**2)))
+        ratio1 = (Z**2 + self.a**2) / (Z * (2 * Z + self.Delta))
+        ratio2 = (Z**2 + self.a**2) / (2 * Z**2) * self.logRelGap(Z)
+        dCmdZ = self.Cm0 * self.Delta / self.a**2 * (ratio1 - ratio2)
         return dCmdZ * U
 
     @staticmethod
@@ -785,37 +787,20 @@ class BilayerSonophore(Model):
     def desc(self, meta):
         return f'{self}: simulation @ {meta["drive"].desc}, Q = {si_format(meta["Qm"] * 1e-4, 2)}C/cm2'
 
-    def getCycleProfiles(self, drive, Qm):
-        ''' Simulate mechanical system and compute pressures over the last acoustic cycle
+    @Model.logDesc
+    def getRelCmCycle(self, drive, Qm):
+        ''' Run simulation and extract relative capacitance vector from last cycle. '''
+        Z_last = self.simCycles(drive, Qm).tail(NPC_DENSE)['Z'].values  # m
+        return self.v_capacitance(Z_last) / self.Cm0
 
-            :param drive: acoustic drive object
-            :param Qm: imposed membrane charge density (C/m2)
-            :return: dataframe with the time, kinematic and pressure profiles over the last cycle.
-        '''
-        # Run default simulation and retrieve last cycle solution
-        logger.info(f'Running mechanical simulation (a = {si_format(self.a, 1)}m, {drive.desc})')
-        data = self.simulate(
-            drive, Qm, Pm_comp_method=PmCompMethod.direct)[0].iloc[-drive.nPerCycle:, :]
+    @property
+    def Cm_lkp_filename(self):
+        return f'Cm_lkp_{self.a * 1e9:.0f}nm.lkp'
 
-        # Extract relevant variables and de-offset time vector
-        t, Z, ng = [data[key].values for key in ['t', 'Z', 'ng']]
-        dt = (t[-1] - t[0]) / (NPC_DENSE - 1)
-        t -= t[0]
+    @property
+    def Cm_lkp_filepath(self):
+        return os.path.join(LOOKUP_DIR, self.Cm_lkp_filename)
 
-        # Compute pressure cyclic profiles
-        logger.info('Computing pressure cyclic profiles')
-        R = self.v_curvrad(Z)
-        U = np.diff(Z) / dt
-        U = np.hstack((U, U[-1]))
-        data = {
-            't': t,
-            'Z': Z,
-            'Cm': self.v_capacitance(Z),
-            'P_M': self.v_PMavg(Z, R, self.surface(Z)),
-            'P_Q': self.Pelec(Z, Qm),
-            'P_{VE}': self.PEtot(Z, R) + self.PVleaflet(U, R),
-            'P_V': self.PVfluid(U, R),
-            'P_G': self.gasmol2Pa(ng, self.volume(Z)),
-            'P_0': - np.ones(Z.size) * self.P0
-        }
-        return pd.DataFrame(data, columns=data.keys())
+    @property
+    def Cm_lkp(self):
+        return EffectiveVariablesLookup.fromPickle(self.Cm_lkp_filepath)
