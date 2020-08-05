@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-05 20:23:05
+# @Last Modified time: 2020-08-05 21:21:51
 
 from enum import Enum
 import os
@@ -338,7 +338,7 @@ class BilayerSonophore(Model):
 
     def logRelGap(self, Z):
         ''' Logarithm of relative sonophore deflection for a given deflection Z. '''
-        return np.log10((2 * Z + self.Delta) / self.Delta)
+        return np.log((2 * Z + self.Delta) / self.Delta)
 
     def capacitance(self, Z):
         ''' Membrane capacitance
