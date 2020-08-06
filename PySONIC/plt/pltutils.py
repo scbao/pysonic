@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-03 17:04:22
+# @Last Modified time: 2020-08-06 17:49:09
 
 ''' Useful functions to generate plots. '''
 
@@ -11,7 +11,7 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Polygon, Rectangle
 from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 
@@ -314,6 +314,7 @@ class GenericPlot:
             cbar_kwargs.update({'ticks': ticks, 'boundaries': bounds, 'format': '%1i'})
             cbarax.tick_params(axis='both', which='both', length=0)
         cbar = fig.colorbar(sm, cax=cbarax, **cbar_kwargs)
+        fig.sm = sm  # add scalar mappable as figure attribute in case of future need
         cbarax.set_ylabel(f'$\\rm {desc_str}$', fontsize=fs)
         if prettify:
             cls.prettify(cbar)
@@ -456,3 +457,32 @@ def addExcitationInset(ax, is_excited):
             boxstyle='round',
             fc=(0.8, 1.0, 0.8) if is_excited else (1., 0.8, 0.8)
         ))
+
+
+def mirrorProp(org, new, prop):
+    ''' Mirror an instance property onto another instance of the same class. '''
+    getattr(new, f'set_{prop}')(getattr(org, f'get_{prop}')())
+
+
+def mirrorAxis(org_ax, new_ax, p=False):
+    ''' Mirror content of original axis to a new axis. That includes:
+        - position on the figure
+        - spines properties
+        - ticks, ticklabels, and labels
+        - vertical spans
+    '''
+    mirrorProp(org_ax, new_ax, 'position')
+    for sk in ['bottom', 'left', 'right', 'top']:
+        mirrorProp(org_ax.spines[sk], new_ax.spines[sk], 'visible')
+    for prop in ['label', 'ticks', 'ticklabels']:
+        for k in ['x', 'y']:
+            mirrorProp(org_ax, new_ax, f'{k}{prop}')
+    ax_children = org_ax.get_children()
+    vspans = filter(lambda x: isinstance(x, Polygon), ax_children)
+    for vs in vspans:
+        props = vs.properties()
+        xmin, xmax = [props['xy'][i][0] for i in [0, 2]]
+        kwargs = {k: props[k] for k in ['alpha', 'edgecolor', 'facecolor']}
+        if kwargs['edgecolor'] == (0.0, 0.0, 0.0, 0.0):
+            kwargs['edgecolor'] = 'none'
+        new_ax.axvspan(xmin, xmax, **kwargs)

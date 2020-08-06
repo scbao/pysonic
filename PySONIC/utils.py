@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-04 17:44:01
+# @Last Modified time: 2020-08-06 15:51:39
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -1005,6 +1005,20 @@ def extractCommonPrefix(labels):
     return prefix, [s.split(prefix)[1] for s in labels]
 
 
+def cycleAvg(t, y, T):
+    ''' Cycle-average a vector according to a given periodicity.
+
+        :param t: time vector
+        ;param y: signal vector
+        :param T: periodicity
+        :return: cycle-averaged signal vector
+    '''
+    t -= t[0]
+    n = int(np.ceil(t[-1] / T))
+    return np.array([
+        np.mean(y[np.where((t >= i * T) & (t < (i + 1) * T))[0]]) for i in range(n)])
+
+
 class TimeSeries(pd.DataFrame):
     ''' Wrapper around pandas DataFrame to store timeseries data. '''
 
@@ -1055,6 +1069,13 @@ class TimeSeries(pd.DataFrame):
         tmin, tmax = self.tbounds
         n = int((tmax - tmin) / dt) + 1
         self.interp1d(np.linspace(tmin, tmax, n))
+
+    def cycleAveraged(self, T):
+        ''' Cycle-average a periodic solution. '''
+        t = np.arange(self.time[0], self.time[-1], T)
+        stim = interp1d(self.time, self.stim, kind='nearest')(t)
+        outputs = {k: cycleAvg(self.time, self[k].values, T) for k in self.outputs}
+        return self.__class__(t, stim, outputs)
 
     def prepend(self, t0=0):
         ''' Repeat first row outputs for a preceding time. '''
