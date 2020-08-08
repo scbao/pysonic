@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-11-04 13:23:31
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-22 10:59:17
+# @Last Modified time: 2020-08-08 15:39:42
 
 ''' Numerical constants used in the package. '''
 
@@ -45,6 +45,7 @@ MAX_NSAMPLES_EFFECTIVE = 1e5        # maximum number of time samples in effectiv
 
 # -------------------------- Post-processing --------------------------
 
+DT_MAX_REL_TOL = 1e-5     # max relative tolerance for time step irregularity
 SPIKE_MIN_DT = 5e-4       # minimal time interval for spike detection on charge signal (s)
 SPIKE_MIN_QAMP = 3e-5     # threshold amplitude for spike detection on charge signal (C/m2)
 SPIKE_MIN_QPROM = 20e-5   # threshold prominence for spike detection on charge signal (C/m2)

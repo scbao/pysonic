@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-28 18:57:40
+# @Last Modified time: 2020-08-08 15:45:47
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.optimize import brentq
-from scipy.signal import find_peaks, peak_prominences
+from scipy.signal import find_peaks, peak_prominences, butter, sosfiltfilt
 
 from .constants import *
 from .utils import logger, isIterable, loadData
@@ -110,15 +110,13 @@ def computeTimeStep(t):
         :param t: time vector (s)
         :return: average time step (s)
     '''
-
     # Compute time step vector
     dt = np.diff(t)  # s
 
     # Raise error if time step vector is not uniform
-    is_uniform_dt = np.allclose(np.diff(dt), np.zeros(dt.size - 1), atol=1e-5)
-    if not is_uniform_dt:
-        bounds_str = [f'{dt[i]:.2e} s (index {i})' for i in [dt.argmin(), dt.argmax()]]
-        raise ValueError(f'non-uniform time step: from {bounds_str[0]} to {bounds_str[1]}')
+    rel_dt_var = (dt.max() - dt.min()) / dt.min()
+    if rel_dt_var > DT_MAX_REL_TOL:
+        raise ValueError(f'irregular time step (rel. variance = {rel_dt_var:.2e})')
 
     # Return average dt value
     return np.mean(dt)  # s
@@ -407,3 +405,19 @@ def computeSpikingMetrics(outputs):
 
     # Return dataframe with metrics
     return pd.DataFrame(metrics, columns=metrics.keys())
+
+
+def filtfilt(y, fs, fc, order):
+    ''' Apply a bi-directional low-pass filter of specific order and cutoff frequency to a signal.
+
+        :param y: signal vector
+        :param fs: sampling frequency
+        :param fc: cutoff frequency
+        :param order: filter order (must be even)
+        :return: filtered signal vector
+
+        ..note: the filter order is divided by 2 since filtering is applied twice.
+    '''
+    assert order % 2 == 0, 'filter order must be an even integer'
+    sos = butter(order // 2, fc, 'low', fs=fs, output='sos')
+    return sosfiltfilt(sos, y)
