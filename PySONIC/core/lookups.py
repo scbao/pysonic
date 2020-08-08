@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-27 13:59:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-05 20:41:44
+# @Last Modified time: 2020-08-08 16:23:59
 
 import os
 from sys import getsizeof
@@ -339,6 +339,13 @@ class Lookup:
         itiles = range(ref_values.size)
         tables = {k: np.array([v for i in itiles]) for k, v in self.items()}
         refs = {**{ref_name: ref_values}, **self.refs}
+        return self.__class__(refs, tables, **self.kwattrs)
+
+    def reduce(self, rfunc, ref_name):
+        ''' Reduce lookup by applying a reduction function along a specific reference axis. '''
+        iaxis = self.getAxisIndex(ref_name)
+        refs = {k: v for k, v in self.refitems() if k != ref_name}
+        tables = {k: rfunc(v, axis=iaxis) for k, v in self.items()}
         return self.__class__(refs, tables, **self.kwattrs)
 
     def toDict(self):
