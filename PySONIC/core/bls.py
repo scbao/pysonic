@@ -3,13 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-08 16:29:29
+# @Last Modified time: 2020-08-17 15:33:38
 
 from enum import Enum
 import os
 import json
 import numpy as np
-import pandas as pd
 import scipy.integrate as integrate
 from scipy.optimize import brentq, curve_fit
 
@@ -776,10 +775,13 @@ class BilayerSonophore(Model):
         return f'{self}: simulation @ {meta["drive"].desc}, Q = {si_format(meta["Qm"] * 1e-4, 2)}C/cm2'
 
     @Model.logDesc
-    def getRelCmCycle(self, drive, Qm):
+    def getZlast(self, drive, Qm):
+        ''' Run simulation and extract deflection vector from last cycle. '''
+        return self.simCycles(drive, Qm).tail(NPC_DENSE)['Z'].values  # m
+
+    def getRelCmCycle(self, *args, **kwargs):
         ''' Run simulation and extract relative capacitance vector from last cycle. '''
-        Z_last = self.simCycles(drive, Qm).tail(NPC_DENSE)['Z'].values  # m
-        return self.v_capacitance(Z_last) / self.Cm0
+        return self.v_capacitance(self.getZlast(*args, **kwargs)) / self.Cm0
 
     @property
     def Cm_lkp_filename(self):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-03 11:53:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-05 14:46:40
+# @Last Modified time: 2020-08-28 17:14:49
 
 import abc
 import inspect
@@ -178,7 +178,7 @@ class PointNeuron(Model):
             # 'func': f'iax({wl}t{wr}, {wl}Qm{wr}, {wl}Vm{wr}, {wl[:-1]}{cls.statesNames()}{wr[1:]})',
             'ls': '--',
             'color': 'black',
-            'bounds': (-1e2, 1e2)
+            # 'bounds': (-1e2, 1e2)
         }
 
         pltvars['iCap'] = {
@@ -295,14 +295,15 @@ class PointNeuron(Model):
         return sum([cfunc(Vm, states) for cfunc in cls.currents().values()])
 
     @classmethod
-    def dQdt(cls, t, Qm):
+    def dQdt(cls, t, Qm, pad='right'):
         ''' membrane charge density variation rate
 
             :param t: time vector (s)
             :param Qm: membrane charge density vector (C/m2)
             :return: variation rate vector (mA/m2)
         '''
-        return padright(np.diff(Qm) / np.diff(t)) * 1e3  # mA/m2
+        dQdt = np.diff(Qm) / np.diff(t) * 1e3  # mA/m2
+        return {'left': padleft, 'right': padright}[pad](dQdt)
 
     @classmethod
     def iax(cls, t, Qm, Vm, states):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-06 17:49:09
+# @Last Modified time: 2020-08-24 12:47:51
 
 ''' Useful functions to generate plots. '''
 
@@ -307,12 +307,15 @@ class GenericPlot:
         cbarax = fig.add_axes([0.85, 0.15, 0.03, 0.8])
         cbar_kwargs = {}
         if all(isinstance(x, int) for x in comp_values):
-            bounds = np.arange(nvalues + 1) + min(comp_values) - 0.5
-            ticks = bounds[:-1] + 0.5
-            if nvalues > 10:
-                ticks = [ticks[0], ticks[-1]]
-            cbar_kwargs.update({'ticks': ticks, 'boundaries': bounds, 'format': '%1i'})
-            cbarax.tick_params(axis='both', which='both', length=0)
+            dx = np.diff(comp_values)
+            if all(x == dx[0] for x in dx):
+                dx = dx[0]
+                ticks = comp_values
+                bounds = np.hstack((ticks, [max(ticks) + dx])) - dx / 2
+                if nvalues > 10:
+                    ticks = [ticks[0], ticks[-1]]
+                cbar_kwargs.update({'ticks': ticks, 'boundaries': bounds, 'format': '%1i'})
+                cbarax.tick_params(axis='both', which='both', length=0)
         cbar = fig.colorbar(sm, cax=cbarax, **cbar_kwargs)
         fig.sm = sm  # add scalar mappable as figure attribute in case of future need
         cbarax.set_ylabel(f'$\\rm {desc_str}$', fontsize=fs)

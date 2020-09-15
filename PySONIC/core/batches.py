@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-06 18:15:57
+# @Last Modified time: 2020-08-25 12:08:48
 
 ''' Utility functions used in simulations '''
 
@@ -293,9 +293,7 @@ class LogBatch(metaclass=abc.ABCMeta):
         inputs = self.getInput()
         if len(inputs) == 0:
             raise ValueError(f'no entries in batch')
-        entry = np.asarray(entry)
-        close_per_col = np.isclose(inputs, entry, rtol=self.rtol, atol=self.atol)
-        close = close_per_col.all(axis=1)
+        close = np.isclose(inputs, entry, rtol=self.rtol, atol=self.atol)
         imatches = np.where(close)[0]
         if len(imatches) == 0:
             raise ValueError(f'{entry} entry not found in batch log')

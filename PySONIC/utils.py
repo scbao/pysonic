@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-06 15:51:39
+# @Last Modified time: 2020-09-11 10:41:02
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -1137,3 +1137,19 @@ def padleft(x):
 
 def padright(x):
     return np.pad(x, (0, 1), 'edge')
+
+
+def timeThreshold(t, y, dy_thr):
+    ''' Find time interval required to reach a given threshold in a non-monotonous signal. '''
+    y -= y[0]  # remove initial offset
+    ifirst = np.where(y > dy_thr)[0][0]
+    return np.interp(dy_thr, y[:ifirst + 1], t[:ifirst + 1])
+
+
+def flatten(din):
+    ''' Flatten a two level dictionary '''
+    dout = {}
+    for k, v in din.items():
+        for k2, v2 in v.items():
+            dout[f'{k} - {k2}'] = v2
+    return dout
