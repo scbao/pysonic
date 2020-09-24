@@ -3,8 +3,9 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-04 17:52:34
+# @Last Modified time: 2020-09-24 15:26:27
 
+import os
 import abc
 import csv
 from itertools import product
@@ -13,11 +14,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import copy
 
-from ..core import NeuronalBilayerSonophore, PulsedProtocol, AcousticDrive, LogBatch, Batch
-from ..utils import logger, si_format, isIterable
+from ..core import NeuronalBilayerSonophore, PulsedProtocol, AcousticDrive, LogBatch, Batch, Lookup
+from ..utils import logger, si_format, isIterable, bounds
 from .pltutils import cm2inch, setNormalizer
 from .timeseries import GroupedTimeSeries
 from ..postpro import detectSpikes
+from ..constants import NPC_DENSE
 
 
 class XYMap(LogBatch):
@@ -460,50 +462,97 @@ class GammaMap(XYMap):
     ''' Interface to a 2D map showing relative capacitance oscillation amplitude
         resulting from BLS simulations at various frequencies and amplitude.
     '''
-    xkey = 'f_US'
+    xkey = 'f'
     xfactor = 1e0
-    xunit = 'kHz'
+    xunit = 'Hz'
     ykey = 'A'
     yfactor = 1e0
-    yunit = 'kPa'
+    yunit = 'Pa'
     zkey = 'gamma'
     zfactor = 1e0
     zunit = '-'
     suffix = 'gamma'
 
-    def __init__(self, root, bls, freqs, amps):
+    def __init__(self, root, bls, Qm, freqs, amps):
         self.bls = bls.copy()
+        self.Qm = Qm
         super().__init__(root, freqs, amps)
 
     @property
     def title(self):
         return f'Gamma map - {self.bls}'
 
+    @property
+    def pdict(self):
+        return {
+            'a': f'{self.bls.a * 1e9:.0f}nm',
+            'Cm0': f'{self.bls.Cm0 * 1e2:.1f}uF_cm2',
+            'Qm0': f'{self.bls.Qm0 * 1e5:.0f}nC_cm2',
+            'Qm': f'{self.Qm * 1e5:.0f}nC_cm2',
+        }
+
+    @property
+    def pcode(self):
+        return 'bls_' + '_'.join([f'{k}{v}' for k, v in self.pdict.items()])
+
     def corecode(self):
-        return f'gamma_map_bls{self.bls.a * 1e9:.0f}nm'
+        return f'gamma_map_{self.pcode}'
 
     def compute(self, x):
         f, A = x
-        data, meta = self.bls.simulate(AcousticDrive(f * 1e3, A * 1e3), 0.)
+        data = self.bls.simCycles(AcousticDrive(f, A), self.Qm).tail(NPC_DENSE)
         Cm = self.bls.v_capacitance(data['Z'])
-        gamma = np.ptp(Cm) / (2 * self.bls.Cm0)
-        logger.info(f'f = {f:.2f} kHz, A = {A:.2f} kPa, gamma = {gamma:.2f}')
+        gamma = np.ptp(Cm) / self.bls.Cm0
+        logger.info(f'f = {si_format(f, 1)}Hz, A = {si_format(A)}Pa, gamma = {gamma:.2f}')
         return gamma
 
     def onClick(self, event):
         ''' Execute action when the user clicks on a cell in the 2D map. '''
         x = self.getOnClickXY(event)
         f, A = x
-        out = self.bls.simulate(AcousticDrive(f * 1e3, A * 1e3), 0.)
-        GroupedTimeSeries([out]).render()
+        data = self.bls.simCycles(AcousticDrive(f, A), self.Qm).tail(NPC_DENSE)
+        t = data['t'].values
+        rel_Cm = self.bls.v_capacitance(data['Z']) / self.bls.Cm0
+        gamma = np.ptp(rel_Cm)
+        fig, ax = plt.subplots()
+        ax.set_xlabel('time (us)')
+        ax.set_ylabel('Cm / Cm0')
+        for sk in ['right', 'top']:
+            ax.spines[sk].set_visible(False)
+        ax.plot((t - t[0]) * 1e6, rel_Cm)
+        ax.axhline(1.0, c='k', linewidth=0.5)
+        ybounds = bounds(rel_Cm)
+        for y in ybounds:
+            ax.axhline(y, linestyle='--', c='k')
+
+        axis_to_data = ax.transAxes + ax.transData.inverted()
+        data_to_axis = axis_to_data.inverted()
+        ax_ybounds = [data_to_axis.transform((ax.get_ylim()[0], y))[1] for y in ybounds]
+        xarrow = 0.9
+        ax.text(0.85, np.mean(ax_ybounds), f'gamma = {gamma:.2f}', transform=ax.transAxes,
+                rotation='vertical', va='center', ha='center', color='k')
+        ax.annotate(
+            '', xy=(xarrow, ax_ybounds[0]), xytext=(xarrow, ax_ybounds[1]),
+            xycoords='axes fraction', textcoords='axes fraction',
+            arrowprops=dict(facecolor='k', edgecolor='k', arrowstyle='<|-|>'))
         plt.show()
 
-    def render(self, xscale='log', yscale='log', figsize=(6, 4), fs=12, **kwargs):
+    def render(self, xscale='log', yscale='log', figsize=(6, 4), fs=12, levels=None, **kwargs):
         fig = super().render(xscale=xscale, yscale=yscale, figsize=figsize, fs=fs, **kwargs)
-        levels = [0.1, 0.3, 0.5, 0.7]
-        colors = ['w', 'k', 'k', 'k']
+        if levels is not None:
+            colors = ['k' if l > 0.5 else 'w' for l in levels]
         ax = fig.axes[0]
         CS = ax.contour(
             self.xvec, self.yvec, self.getOutput(), levels, colors=colors)
         ax.clabel(CS, fontsize=fs, fmt=lambda x: f'{x:g}', inline_spacing=2)
         return fig
+
+    def toPickle(self, root):
+        lkp = Lookup(
+            {'f': self.xvec, 'A': np.hstack(([0.], self.yvec))},
+            {'gamma': np.vstack([np.zeros(self.xvec.size), self.getOutput()]).T})
+
+        xcode = self.rangecode(lkp.refs['f'], self.xkey, self.xunit)
+        ycode = self.rangecode(lkp.refs['A'], self.ykey, self.yunit)
+        xycode = '_'.join([xcode, ycode])
+        lkp.toPickle(os.path.join(root, f'gamma_lkp_{self.pcode}_{xycode}.lkp'))
