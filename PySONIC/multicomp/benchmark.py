@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-09-24 15:30:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-24 18:44:18
+# @Last Modified time: 2020-09-24 20:03:59
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
@@ -34,33 +34,41 @@ class SonicBenchmark:
     nodelabels = ['node 1', 'node 2']
     ga_bounds = [1e-10, 1e10]  # S/m2
 
-    def __init__(self, pneuron, ga, f, gammas, passive=False):
+    def __init__(self, pneuron, ga, Fdrive, gammas, passive=False):
         ''' Initialization.
 
             :param pneuron: point-neuron object
             :param ga: axial conductance (S/m2)
-            :param f: US frequency (Hz)
+            :param Fdrive: US frequency (Hz)
             :param gammas: pair of relative capacitance oscillation ranges
         '''
         self.pneuron = pneuron
         self.ga = ga
-        self.f = f
+        self.Fdrive = Fdrive
         self.gammas = gammas
         self.passive = passive
         self.computeLookups()
 
     def copy(self):
-        return self.__class__(self.pneuron, self.ga, self.f, self.gammas, passive=self.passive)
+        return self.__class__(self.pneuron, self.ga, self.Fdrive, self.gammas, passive=self.passive)
 
     @property
-    def strGammas(self):
-        return f"({', '.join([f'{x:.2f}' for x in self.gammas])})"
+    def gammalist(self):
+        return [f'{x:.2f}' for x in self.gammas]
+
+    @property
+    def gammastr(self):
+        return f"({', '.join(self.gammalist)})"
+
+    @property
+    def fstr(self):
+        return f'{si_format(self.Fdrive)}Hz'
 
     def __repr__(self):
         params = [
             f'ga = {self.ga:.2e} S/m2',
-            f'f = {si_format(self.f)}Hz',
-            f'gamma = {self.strGammas}'
+            f'f = {self.fstr}',
+            f'gamma = {self.gammastr}'
         ]
         dynamics = 'passive ' if self.passive else ''
         mech = f'{dynamics}{self.pneuron.name} dynamics'
@@ -81,12 +89,12 @@ class SonicBenchmark:
         return self.pneuron.name.startswith('pas_')
 
     @property
-    def f(self):
-        return self._f
+    def Fdrive(self):
+        return self._Fdrive
 
-    @f.setter
-    def f(self, value):
-        self._f = value
+    @Fdrive.setter
+    def Fdrive(self, value):
+        self._Fdrive = value
         if hasattr(self, 'lkps'):
             self.computeLookups()
 
@@ -158,7 +166,7 @@ class SonicBenchmark:
 
     def capct(self, gamma, t):
         ''' Time-varying sinusoidal capacitance (in F/m2) '''
-        return self.Cm0 * (1 + 0.5 * gamma * np.sin(2 * np.pi * self.f * t))
+        return self.Cm0 * (1 + 0.5 * gamma * np.sin(2 * np.pi * self.Fdrive * t))
 
     def vCapct(self, t):
         ''' Vector of time-varying capacitance (in F/m2) '''
@@ -177,17 +185,17 @@ class SonicBenchmark:
     @property
     def tcycle(self):
         ''' Time vector over 1 acoustic cycle (s). '''
-        return np.linspace(0, 1 / self.f, self.npc)
+        return np.linspace(0, 1 / self.Fdrive, self.npc)
 
     @property
     def dt_full(self):
         ''' Full time step (s). '''
-        return 1 / (self.npc * self.f)
+        return 1 / (self.npc * self.Fdrive)
 
     @property
     def dt_sparse(self):
         ''' Sparse time step (s). '''
-        return 1 / self.f
+        return 1 / self.Fdrive
 
     def computeLookups(self):
         ''' Compute benchmark lookups. '''
@@ -336,12 +344,12 @@ class SonicBenchmark:
 
     def getNCycles(self, duration):
         ''' Compute number of cycles from a duration. '''
-        return int(np.ceil(duration * self.f))
+        return int(np.ceil(duration * self.Fdrive))
 
     def simulate(self, mtype, tstop):
         ''' Simulate the system with a specific method for a given duration. '''
         # Cast tstop as a multiple of the acoustic period
-        tstop = self.getNCycles(tstop) / self.f  # s
+        tstop = self.getNCycles(tstop) / self.Fdrive  # s
 
         # Retrieve simulation method
         try:
@@ -369,7 +377,7 @@ class SonicBenchmark:
             solavg[k] = np.array([self.cycleAvg(yvec) for yvec in ymat])
 
         # Re-sample time vector at system periodicity
-        tavg = t[::self.npc]  # + 0.5 / self.f
+        tavg = t[::self.npc]  # + 0.5 / self.Fdrive
 
         # Return cycle-averaged time vector and solution dictionary
         return tavg, solavg
@@ -419,7 +427,7 @@ class SonicBenchmark:
 
     def setDrive(self, f, gammas):
         ''' Update benchmark drive to a new frequency and amplitude. '''
-        self.f = f
+        self.Fdrive = f
         self.gammas = gammas
 
     def getPassiveTstop(self, f):
@@ -428,7 +436,7 @@ class SonicBenchmark:
 
     @property
     def passive_tstop(self):
-        return self.getPassiveTstop(self.f)
+        return self.getPassiveTstop(self.Fdrive)
 
     def simAllMethods(self, tstop):
         ''' Simulate the model with both methods. '''
@@ -524,7 +532,7 @@ class SonicBenchmark:
         # Return figure
         return fig
 
-    def plotV(self, t, sol):
+    def plotQnorm(self, t, sol):
         ''' Plot results of benchmark simulations of the model. '''
         colors = ['C0', 'C1']
         markers = ['-', '--', '-']

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-22 17:34:17
+# @Last Modified time: 2020-09-24 20:42:31
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -293,7 +293,7 @@ def expandRange(xmin, xmax, exp_factor=2):
     xptp = xmax - xmin
     xmid = (xmin + xmax) / 2
     xdev = xptp * exp_factor / 2
-    return (xmid - xdev, xmin + xdev)
+    return (xmid - xdev, xmid + xdev)
 
 
 def isIterable(x):
