@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-21 11:33:31
+# @Last Modified time: 2020-09-24 15:30:48
 
 from types import MethodType
 import inspect
@@ -21,6 +21,7 @@ from .lookups import *
 from .stimobj import *
 from .protocols import *
 from .drives import *
+from .multicomp_benchmark import *
 
 from ..neurons import getPointNeuron
 
