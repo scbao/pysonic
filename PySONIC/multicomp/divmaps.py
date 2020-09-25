@@ -3,13 +3,12 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-06-29 18:11:24
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-25 11:34:56
+# @Last Modified time: 2020-09-25 14:41:27
 
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..utils import logger, bounds, si_format
+from ..utils import logger, si_format
 from ..plt import XYMap
 
 
@@ -109,7 +108,6 @@ class ModelDivergenceMap(DivergenceMap):
     ykey = 'tau_ax'
     yfactor = 1e0
     yunit = 's'
-    ga_default = 1e0  # mS/cm2
 
     @property
     def title(self):
@@ -153,74 +151,47 @@ class ModelDivergenceMap(DivergenceMap):
         return fig
 
 
-class OldDriveDivergenceMap(DivergenceMap):
-    ''' Divergence map of a specific (membrane model, axial coupling) pairfor various
-        combinations of drive frequencies and drive amplitudes.
+class GammaDivergenceMap(DivergenceMap):
+    ''' Divergence map of a specific model (membrane properties and axial coupling)
+        and US frequency for various combinations capacitance oscillation ranges amplitudes.
     '''
 
-    xkey = 'f'
+    xkey = 'gamma1'
     xfactor = 1e0
-    xunit = 'Hz'
-    ykey = 'gamma'
+    xunit = '-'
+    ykey = 'gamma2'
     yfactor = 1e0
     yunit = '-'
 
     @property
-    def tauaxstr(self):
-        return f'{si_format(self.benchmark.tauax, 2)}s'
-
-    @property
-    def taumstr(self):
-        return f'{si_format(self.benchmark.taum, 2)}s'
-
-    @property
     def title(self):
-        return f'Drive divmap - {self.benchmark.pneuron.name}, tauax = {self.tauaxstr})'
+        params = [
+            f'{self.benchmark.mechstr} dynamics',
+            f'ga = {self.benchmark.gastr}',
+            f'f = {self.benchmark.fstr}'
+        ]
+        return f'Gamma divmap ({", ".join(params)})'
 
     def corecode(self):
-        if self.benchmark.isPassive():
-            neuron_desc = f'passive_taum_{self.taumstr}'
-        else:
-            neuron_desc = self.benchmark.pneuron.name
-            if self.benchmark.passive:
-                neuron_desc = f'passive_{neuron_desc}'
-        code = f'drive_divmap_{neuron_desc}_tauax_{self.tauaxstr}'
+        params = [
+            self.benchmark.mechstr,
+            f'ga_{self.benchmark.gastr}',
+            f'f_{self.benchmark.fstr}'
+        ]
+        code = f'gamma_divmap_{"_".join(params)}'
         if self._tstop is not None:
             code = f'{code}_tstop{si_format(self.tstop, 2)}s'
-        return code
+        return code.replace(' ', '').replace('/', '_')
 
-    def descPair(self, Fdrive, gamma):
-        return f'f = {si_format(Fdrive, 1)}Hz, gamma = {gamma:.2f}'
+    def descPair(self, gamma1, gamma2):
+        return f'gamma = ({gamma1:.2f}, {gamma1:.2f})'
 
     def updateBenchmark(self, x):
-        Fdrive, gamma = x
-        self.benchmark.setDrive(Fdrive, (gamma, 0.))
+        self.benchmark.gammas = x
 
-    def threshold_filename(self, method):
-        fmin, fmax = bounds(self.xvec)
-        return f'{self.corecode()}_f{fmin:.0f}kHz_{fmax:.0f}kHz_{self.xvec.size}_gammathrs_{method}.txt'
-
-    def threshold_filepath(self, *args, **kwargs):
-        return os.path.join(self.root, self.threshold_filename(*args, **kwargs))
-
-    def addThresholdCurves(self, ax):
-        ls = ['--', '-.']
-        for j, method in enumerate(['effective', 'full']):
-            fpath = self.threshold_filepath(method)
-            if os.path.isfile(fpath):
-                gamma_thrs = np.loadtxt(fpath)
-            else:
-                gamma_thrs = np.empty(self.xvec.size)
-                for i, f in enumerate(self.xvec):
-                    self.benchmark.f = f
-                    gamma_thrs[i] = self.benchmark.titrate(self.tstop, method=method)
-                np.savetxt(fpath, gamma_thrs)
-            ylims = ax.get_ylim()
-            ax.plot(self.xvec * self.xfactor, gamma_thrs * self.yfactor, ls[j], color='k')
-            ax.set_ylim(ylims)
-
-    def render(self, xscale='log', thresholds=False, **kwargs):
-        fig = super().render(xscale=xscale, **kwargs)
-        if thresholds:
-            self.addThresholdCurves(fig.axes[0])
+    def render(self, ax=None, **kwargs):
+        ''' Render with drive periodicty indicator. '''
+        fig = super().render(ax=ax, **kwargs)
+        if ax is None:
+            fig.canvas.set_window_title(self.corecode())
         return fig

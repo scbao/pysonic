@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-09-24 15:30:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-25 13:00:00
+# @Last Modified time: 2020-09-25 14:18:42
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
@@ -64,15 +64,22 @@ class SonicBenchmark:
     def fstr(self):
         return f'{si_format(self.Fdrive)}Hz'
 
+    @property
+    def gastr(self):
+        return f'{self.ga:.2e} S/m2'
+
+    @property
+    def mechstr(self):
+        dynamics = 'passive ' if self.passive else ''
+        return f'{dynamics}{self.pneuron.name}'
+
     def __repr__(self):
         params = [
-            f'ga = {self.ga:.2e} S/m2',
+            f'ga = {self.gastr}',
             f'f = {self.fstr}',
             f'gamma = {self.gammastr}'
         ]
-        dynamics = 'passive ' if self.passive else ''
-        mech = f'{dynamics}{self.pneuron.name} dynamics'
-        return f'{self.__class__.__name__}({mech}, {", ".join(params)})'
+        return f'{self.__class__.__name__}({self.mechstr} dynamics, {", ".join(params)})'
 
     @property
     def pneuron(self):
