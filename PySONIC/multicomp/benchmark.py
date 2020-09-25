@@ -3,13 +3,13 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-09-24 15:30:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-25 14:18:42
+# @Last Modified time: 2020-09-25 19:05:30
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
 from PySONIC.core import EffectiveVariablesLookup
-from ..utils import logger, timer, isWithin, si_format, rmse
+from ..utils import logger, timer, isWithin, si_format, rmse, padleft
 from ..neurons import passiveNeuron
 
 
@@ -366,7 +366,7 @@ class SonicBenchmark:
             raise ValueError(f'"{mtype}" is not a valid method type')
 
         # Run simulation and return output
-        logger.debug(f'running {mtype} {tstop:.2f} ms simulation')
+        logger.debug(f'running {mtype} {si_format(tstop, 2)}s simulation')
         output, tcomp = method(tstop)
         logger.debug(f'completed in {tcomp:.2f} s')
         return output
@@ -392,7 +392,7 @@ class SonicBenchmark:
 
     def g2tau(self, g):
         ''' Convert conductance per unit membrane area (S/m2) to time constant (s). '''
-        return self.Cm0 / g  # ms
+        return self.Cm0 / g  # s
 
     def tau2g(self, tau):
         ''' Convert time constant (s) to conductance per unit membrane area (S/m2). '''
@@ -548,13 +548,14 @@ class SonicBenchmark:
         return fig
 
     def plotQnorm(self, t, sol):
-        ''' Plot results of benchmark simulations of the model. '''
+        ''' Plot normalized charge density traces from benchmark simulations of the model. '''
         colors = ['C0', 'C1']
         markers = ['-', '--', '-']
         alphas = [0.5, 1., 1.]
         V = {key: value['Qm'] / self.Cm0 for key, value in sol.items()}
+        tstop = t[list(t.keys())[0]][-1]  # s
         fig, ax = plt.subplots(figsize=(10, 3))
-        ax.set_title(f'{self} - {t[list(t.keys())[0]][-1]:.2f} ms simulation')
+        ax.set_title(f'{self} - {si_format(tstop)}s simulation')
         ax.set_xlabel(f'time ({self.varunits["t"]})')
         ax.set_ylabel(f'Qm / Cm0 (mV)')
         ax.set_ylim(-100.0, 50.)
@@ -619,3 +620,41 @@ class SonicBenchmark:
             div_per_node = self.divergencePerNode(t, sol, eval_mode=eval_mode)
             div_per_node_str = {k: f'{v:.3f}' for k, v in div_per_node.items()}
             logger.info(f'{eval_mode}: divergence = {div_per_node_str} mV')
+
+    def phaseplotQnorm(self, t, sol):
+        ''' Phase-plot normalized charge density traces from benchmark simulations of the model. '''
+        colors = ['C0', 'C1']
+        markers = ['-', '--', '-']
+        alphas = [0.5, 1., 1.]
+
+        # Extract normalized charge density profiles
+        Qnorm = {key: value['Qm'] / self.Cm0 for key, value in sol.items()}
+
+        # Discard the first 2 indexes of artifical onset)
+        t = {k: v[2:] for k, v in t.items()}
+        Qnorm = {k: v[:, 2:] for k, v in Qnorm.items()}
+
+        # Get time derivatives
+        dQnorm = {}
+        for key, value in Qnorm.items():
+            dQdt = np.diff(value, axis=1) / np.diff(t[key])
+            dQnorm[key] = np.hstack((np.array([dQdt[:, 0]]).T, dQdt))
+
+        fig, ax = plt.subplots(figsize=(5, 5), constrained_layout=True)
+        # tstop = t[list(t.keys())[0]][-1]  # s
+        # ax.set_title(f'{self} - {si_format(tstop)}s simulation', fontsize=10)
+        ax.set_xlabel(f'Qm / Cm0 (mV)')
+        ax.set_ylabel(f'd(Qm / Cm0) / dt (V/s)')
+        xfactor, yfactor = 1e3, 1e0
+        x0 = self.pneuron.Qm0 / self.pneuron.Cm0
+        y0 = 0.
+        for m, alpha, (key, varsdict) in zip(markers, alphas, sol.items()):
+            if key != 'full':
+                for y, dydt, c, lbl in zip(Qnorm[key], dQnorm[key], colors, self.nodelabels):
+                    ax.plot(np.hstack(([x0], y)) * xfactor, np.hstack(([y0], dydt)) * yfactor,
+                            m, alpha=alpha, c=c, label=f'{lbl} - {key}')
+        ax.scatter(x0 * xfactor, y0 * yfactor, c=['k'], zorder=2.5)
+        # fig.subplots_adjust(bottom=0.2)
+        # ax.legend(bbox_to_anchor=(0., -0.7, 1., .1), loc='upper center', ncol=3,
+        #           mode="expand", borderaxespad=0.)
+        return fig
