@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-09-24 19:00:54
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-24 19:14:57
+# @Last Modified time: 2020-09-25 11:41:57
 
 import os
 import numpy as np
@@ -106,16 +106,9 @@ class GammaMap(XYMap):
         # Show figure
         plt.show()
 
-    def render(self, xscale='log', yscale='log', figsize=(6, 4), fs=12, levels=None, **kwargs):
-        ''' Render and add specific contour levels. '''
-        fig = super().render(xscale=xscale, yscale=yscale, figsize=figsize, fs=fs, **kwargs)
-        if levels is not None:
-            colors = ['k' if l > 0.5 else 'w' for l in levels]
-        ax = fig.axes[0]
-        CS = ax.contour(
-            self.xvec, self.yvec, self.getOutput(), levels, colors=colors)
-        ax.clabel(CS, fontsize=fs, fmt=lambda x: f'{x:g}', inline_spacing=2)
-        return fig
+    def render(self, xscale='log', yscale='log', figsize=(6, 4), **kwargs):
+        ''' Render with specific log scale. '''
+        return super().render(xscale=xscale, yscale=yscale, figsize=figsize, **kwargs)
 
     def toPickle(self, root):
         ''' Ouput map to a lookup file (adding amplitude-zero). '''

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-24 19:03:20
+# @Last Modified time: 2020-09-25 11:13:39
 
 import abc
 import csv
@@ -234,12 +234,23 @@ class XYMap(LogBatch):
             logger.warning(
                 f'Maximal {self.zkey} ({zmax:.0f} {self.zunit}) is above defined upper bound ({zbounds[1]:.0f} {self.zunit})')
 
+    def addInsets(self, ax, insets, fs, minimal=False):
+        xyoffset = np.array([0, 0.1])
+        axis_to_data = ax.transAxes + ax.transData.inverted()
+        data_to_axis = axis_to_data.inverted()
+        for k, xydata in insets.items():
+            ax.scatter(*xydata, s=20, facecolor='k', edgecolor='none')
+            if not minimal:
+                xyaxis = np.array(data_to_axis.transform(xydata))
+                ax.annotate(
+                    k, xy=xyaxis, xytext=xyaxis + xyoffset, xycoords=ax.transAxes,
+                    fontsize=fs, arrowprops={'facecolor': 'black', 'arrowstyle': '-'},
+                    ha='right')
+
     def render(self, xscale='lin', yscale='lin', zscale='lin', zbounds=None, fs=8, cmap='viridis',
                interactive=False, figsize=None, insets=None, inset_offset=0.05,
-               extend_under=False, extend_over=False):
-        # Get figure size
-        if figsize is None:
-            figsize = cm2inch(12, 7)
+               extend_under=False, extend_over=False, ax=None, cbarax=None, title=None,
+               minimal=False, levels=None):
 
         # Compute Z normalizer
         mymap = copy.copy(plt.get_cmap(cmap))
@@ -258,12 +269,28 @@ class XYMap(LogBatch):
         self.xedges = self.computeMeshEdges(self.xvec, xscale)
         self.yedges = self.computeMeshEdges(self.yvec, yscale)
 
-        # Create figure
-        fig, ax = plt.subplots(figsize=figsize)
-        fig.subplots_adjust(left=0.15, bottom=0.15, right=0.8, top=0.92)
-        ax.set_title(self.title, fontsize=fs)
-        ax.set_xlabel(f'{self.xkey} ({self.xunit})', fontsize=fs, labelpad=-0.5)
-        ax.set_ylabel(f'{self.ykey} ({self.yunit})', fontsize=fs)
+        # Create figure if required
+        if ax is None:
+            if figsize is None:
+                figsize = cm2inch(12, 7)
+            fig, ax = plt.subplots(figsize=figsize)
+            fig.subplots_adjust(left=0.15, bottom=0.15, right=0.8, top=0.92)
+        else:
+            fig = ax.get_figure()
+
+        # Set axis properties
+        if title is None:
+            title = self.title
+        ax.set_title(title, fontsize=fs)
+        if minimal:
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.tick_params(axis='both', which='both', bottom=False, left=False,
+                           labelbottom=False, labelleft=False)
+        else:
+            ax.set_xlabel(f'{self.xkey} ({self.xunit})', fontsize=fs, labelpad=-0.5)
+            ax.set_ylabel(f'{self.ykey} ({self.yunit})', fontsize=fs)
+            ax.minorticks_on()
         for item in ax.get_xticklabels() + ax.get_yticklabels():
             item.set_fontsize(fs)
         if xscale == 'log':
@@ -278,31 +305,27 @@ class XYMap(LogBatch):
         # Plot map with specific color code
         ax.pcolormesh(self.xedges, self.yedges, data, cmap=mymap, norm=norm)
 
-        # Plot potential insets
+        # Add contour levels if needed
+        if levels is not None:
+            CS = ax.contour(
+                self.xvec, self.yvec, data, levels, colors='k')
+            ax.clabel(CS, fontsize=fs, fmt=lambda x: f'{x:g}', inline_spacing=2)
+
+        # Add potential insets
         if insets is not None:
-            x_data, y_data, *_ = zip(*insets)
-            ax.scatter(x_data, y_data, s=80, facecolors='none', edgecolors='k',
-                       linestyle='--', lw=1)
-            axis_to_data = ax.transAxes + ax.transData.inverted()
-            data_to_axis = axis_to_data.inverted()
-            for x, y, label, direction in insets:
-                xyoffset = np.array(self.offset_options[direction]) * inset_offset  # in axis coords
-                xytext = axis_to_data.transform(np.array(data_to_axis.transform((x, y))) + xyoffset)
-                ax.annotate(label, xy=(x, y), xytext=xytext, fontsize=fs,
-                            horizontalalignment='right',
-                            arrowprops={'facecolor': 'black', 'arrowstyle': '-'})
+            self.addInsets(ax, insets, fs, minimal=minimal)
 
         # Plot z-scale colorbar
-        pos1 = ax.get_position()  # get the map axis position
-        cbarax = fig.add_axes([pos1.x1 + 0.02, pos1.y0, 0.03, pos1.height])
-
+        if cbarax is None:
+            pos1 = ax.get_position()  # get the map axis position
+            cbarax = fig.add_axes([pos1.x1 + 0.02, pos1.y0, 0.03, pos1.height])
         if not extend_under and not extend_over:
             extend = 'neither'
         elif extend_under and extend_over:
             extend = 'both'
         else:
             extend = 'max' if extend_over else 'min'
-        fig.colorbar(sm, cax=cbarax, extend=extend)
+        plt.colorbar(sm, cax=cbarax, extend=extend)
         cbarax.set_ylabel(f'{self.zkey} ({self.zunit})', fontsize=fs)
         for item in cbarax.get_yticklabels():
             item.set_fontsize(fs)

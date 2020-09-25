@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-09-24 15:30:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-24 20:03:59
+# @Last Modified time: 2020-09-25 13:00:00
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
@@ -17,7 +17,7 @@ class SonicBenchmark:
     ''' Interface allowing to run benchmark simulations of a two-compartment model
         incorporating the SONIC paradigm, with a simplified sinusoidal capacitive drive.
     '''
-    npc = 25          # number of samples per cycle
+    npc = 100          # number of samples per cycle
     min_ncycles = 10  # minimum number of cycles per simulation
     varunits = {
         't': 'ms',
@@ -174,8 +174,8 @@ class SonicBenchmark:
 
     def getLookup(self, Cm):
         ''' Get a lookup object of effective variables for a given capacitance cycle vector. '''
-        Vmarray = np.array([Q / Cm for Q in self.Qref]) * 1e3  # mV
         refs = {'Q': self.Qref}  # C/m2
+        Vmarray = np.array([Q / Cm for Q in self.Qref]) * 1e3  # mV
         tables = {
             k: np.array([np.mean(np.vectorize(v)(Vmvec)) for Vmvec in Vmarray])
             for k, v in self.pneuron.effRates().items()
@@ -294,7 +294,8 @@ class SonicBenchmark:
     def integrate(self, dfunc, t):
         ''' Integrate over a time vector and return charge density arrays. '''
         # Integrate system
-        y = odeint(dfunc, self.y0, t, tfirst=True).T
+        tolerances = {'atol': 1e-10}
+        y = odeint(dfunc, self.y0, t, tfirst=True, **tolerances).T
 
         # Cast each solution variable as a time-per-node matrix
         sol = {'Qm': y[::self.npernode]}
@@ -455,7 +456,15 @@ class SonicBenchmark:
     def addOnset(self, ymat, y0):
         return np.hstack((np.ones((2, 2)) * y0, ymat))
 
-    def postproSol(self, t, sol):
+    def getY0(self, k, y):
+        y0dict = {'Cm': self.Cm0, 'Qm': self.Qm0, 'Vm': self.Vm0}
+        try:
+            return y0dict[k]
+        except KeyError:
+            return y[0, 0]
+        return
+
+    def postproSol(self, t, sol, gradient=False):
         ''' Post-process solution. '''
         # Add cycle-average of full solution
         t['cycle-avg'], sol['cycle-avg'] = self.cycleAvgSol(t['full'], sol['full'])
@@ -463,14 +472,16 @@ class SonicBenchmark:
 
         tonset = 0.05 * np.ptp(t['full'])
         # Add onset
-        y0dict = {'Cm': self.Cm0, 'Qm': self.Qm0, 'Vm': self.Vm0}
         for k in keys:
             t[k] = np.hstack(([-tonset, 0], t[k]))
-            sol[k] = {vk: self.addOnset(ymat, y0dict[vk]) for vk, ymat in sol[k].items()}
+            sol[k] = {vk: self.addOnset(ymat, self.getY0(vk, ymat)) for vk, ymat in sol[k].items()}
 
         # Add gradient across nodes for each variable
-        for k in keys:
-            sol[f'{k}-grad'] = self.computeGradient(sol[k])
+        if gradient:
+            for k in keys:
+                t[f'{k}-grad'] = t[k]
+                sol[f'{k}-grad'] = self.computeGradient(sol[k])
+
         return t, sol
 
     def plot(self, t, sol, Qonly=False, gradient=False):
@@ -493,8 +504,6 @@ class SonicBenchmark:
 
         # Get node labels
         lbls = self.nodelabels
-        if gradient:
-            lbls.append('gradient')
 
         # Create figure
         fig, axes = plt.subplots(naxes, 1, sharex=True, figsize=(10, min(3 * naxes, 10)))
@@ -505,12 +514,11 @@ class SonicBenchmark:
         for ax, vk in zip(axes, varkeys):
             ax.set_ylabel(f'{vk} ({self.varunits.get(vk, "-")})')
 
-        # Add horizontal lines for node-specific SONIC steady-states on charge density plot
-        Qm_ax = axes[varkeys.index('Qm')]
-        for Qm, c in zip(self.Qminf, colors):
-            Qm_ax.axhline(Qm * self.varfactors['Qm'], c=c, linestyle=':')
-        if gradient:
-            Qm_ax.axhline(np.diff(self.Qminf) * self.varfactors['Qm'], c=colors[-1], linestyle=':')
+        if self.passive:
+            # Add horizontal lines for node-specific SONIC steady-states on charge density plot
+            Qm_ax = axes[varkeys.index('Qm')]
+            for Qm, c in zip(self.Qminf, colors):
+                Qm_ax.axhline(Qm * self.varfactors['Qm'], c=c, linestyle=':')
 
         # For each solution type
         for m, alpha, (mkey, varsdict) in zip(markers, alphas, sol.items()):
@@ -520,7 +528,7 @@ class SonicBenchmark:
                 # For each node
                 for y, c, lbl in zip(v, colors, lbls):
                     # Plot node variable with appropriate color and marker
-                    ax.plot(tplt, y * self.varfactors[vkey],
+                    ax.plot(tplt, y * self.varfactors.get(vkey, 1.0),
                             m, alpha=alpha, c=c, label=f'{lbl} - {mkey}')
 
         # Add legend
@@ -598,3 +606,9 @@ class SonicBenchmark:
     def divergence(self, *args, **kwargs):
         div_per_node = self.divergencePerNode(*args, **kwargs)  # mV
         return max(list(div_per_node.values()))                 # mV
+
+    def logDivergences(self, t, sol):
+        for eval_mode in self.eval_funcs.keys():
+            div_per_node = self.divergencePerNode(t, sol, eval_mode=eval_mode)
+            div_per_node_str = {k: f'{v:.3f}' for k, v in div_per_node.items()}
+            logger.info(f'{eval_mode}: divergence = {div_per_node_str} mV')

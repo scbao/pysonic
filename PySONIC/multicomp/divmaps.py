@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-06-29 18:11:24
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-24 20:34:59
+# @Last Modified time: 2020-09-25 11:34:56
 
 import os
 import numpy as np
@@ -89,20 +89,13 @@ class DivergenceMap(XYMap):
         fig.axes[0].set_title(self.descPair(*x))
         plt.show()
 
-    def render(self, zscale='log', levels=None, zbounds=(1e-1, 1e1),
+    def render(self, zscale='log', zbounds=(1e-1, 1e1),
                extend_under=True, extend_over=True, cmap='Spectral_r', figsize=(6, 4), fs=12,
                **kwargs):
-        ''' Render and add specific contour levels. '''
-        fig = super().render(
+        ''' Render with default log scale, zbounds, cmap and cbar properties. '''
+        return super().render(
             zscale=zscale, zbounds=zbounds, extend_under=extend_under, extend_over=extend_over,
             cmap=cmap, figsize=figsize, fs=fs, **kwargs)
-        if levels is not None:
-            ax = fig.axes[0]
-            fmt = lambda x: f'{x:g}'  # ' mV'
-            CS = ax.contour(
-                self.xvec, self.yvec, self.getOutput(), levels, colors='k')
-            ax.clabel(CS, fontsize=fs, fmt=fmt, inline_spacing=2)
-        return fig
 
 
 class ModelDivergenceMap(DivergenceMap):
@@ -133,39 +126,29 @@ class ModelDivergenceMap(DivergenceMap):
     def updateBenchmark(self, x):
         self.benchmark.setTimeConstants(*x)
 
-    def render(self, xscale='log', yscale='log', add_periodicity=True, insets=None, **kwargs):
-        ''' Render with insets and drive periodicty indicator. '''
-        fig = super().render(xscale=xscale, yscale=yscale, **kwargs)
-        fig.canvas.set_window_title(self.corecode())
-        ax = fig.axes[0]
-        axis_to_data = ax.transAxes + ax.transData.inverted()
-        data_to_axis = axis_to_data.inverted()
-
+    def render(self, xscale='log', yscale='log', add_periodicity=True, ax=None, minimal=False,
+               **kwargs):
+        ''' Render with drive periodicty indicator. '''
+        fig = super().render(xscale=xscale, yscale=yscale, ax=ax, minimal=minimal, **kwargs)
+        if ax is None:
+            fig.canvas.set_window_title(self.corecode())
         # Indicate periodicity if required
         if add_periodicity:
+            if ax is None:
+                ax = fig.axes[0]
             T_US = 1 / self.benchmark.Fdrive
-            xyTUS = data_to_axis.transform((T_US, T_US))
             for i, k in enumerate(['h', 'v']):
-                getattr(ax, f'ax{k[0]}line')(T_US, color='k', linestyle='-', linewidth=1)
-                xy = np.empty(2)
-                xy_offset = np.empty(2)
-                xy[i] = xyTUS[i]
-                xy[1 - i] = 0.
-                xy_offset[i] = 0.
-                xy_offset[1 - i] = 0.2
-                ax.annotate(
-                    'TUS', xy=xy, xytext=xy - xy_offset, xycoords=ax.transAxes, fontsize=10,
-                    arrowprops={'facecolor': 'black', 'arrowstyle': '-'}, **{f'{k}a': 'center'})
-
-        # Add potential insets
-        if insets is not None:
-            for k, (taum, tauax) in insets.items():
-                xy = data_to_axis.transform((taum, tauax))
-                ax.scatter(*xy, transform=ax.transAxes, facecolor='k', edgecolor='none',
-                           linestyle='--', lw=1)
-                ax.annotate(k, xy=xy, xytext=np.array(xy) + np.array([0, 0.1]),
-                            xycoords=ax.transAxes, fontsize=10,
-                            arrowprops={'facecolor': 'black', 'arrowstyle': '-'}, ha='right')
+                getattr(ax, f'ax{k}line')(T_US, color='k', linestyle='-', linewidth=1)
+            if not minimal:
+                axis_to_data = ax.transAxes + ax.transData.inverted()
+                data_to_axis = axis_to_data.inverted()
+                xyTUS = data_to_axis.transform((T_US, T_US))
+                delta = 0.01
+                for i, k in enumerate(['h', 'v']):
+                    xy = np.empty(2)
+                    xy[i] = xyTUS[i] + delta
+                    xy[1 - i] = delta
+                    ax.text(*xy, 'TUS', transform=ax.transAxes, fontsize=10)
 
         return fig
 
@@ -175,35 +158,43 @@ class OldDriveDivergenceMap(DivergenceMap):
         combinations of drive frequencies and drive amplitudes.
     '''
 
-    xkey = 'f_US'
+    xkey = 'f'
     xfactor = 1e0
-    xunit = 'kHz'
+    xunit = 'Hz'
     ykey = 'gamma'
     yfactor = 1e0
     yunit = '-'
 
     @property
+    def tauaxstr(self):
+        return f'{si_format(self.benchmark.tauax, 2)}s'
+
+    @property
+    def taumstr(self):
+        return f'{si_format(self.benchmark.taum, 2)}s'
+
+    @property
     def title(self):
-        return f'Drive divergence map - {self.benchmark.pneuron.name}, tauax = {self.benchmark.tauax:.2e} ms)'
+        return f'Drive divmap - {self.benchmark.pneuron.name}, tauax = {self.tauaxstr})'
 
     def corecode(self):
         if self.benchmark.isPassive():
-            neuron_desc = f'passive_taum_{self.benchmark.taum:.2e}ms'
+            neuron_desc = f'passive_taum_{self.taumstr}'
         else:
             neuron_desc = self.benchmark.pneuron.name
             if self.benchmark.passive:
                 neuron_desc = f'passive_{neuron_desc}'
-        code = f'drive_divmap_{neuron_desc}_tauax_{self.benchmark.tauax:.2e}ms'
+        code = f'drive_divmap_{neuron_desc}_tauax_{self.tauaxstr}'
         if self._tstop is not None:
-            code = f'{code}_tstop{self.tstop:.2f}ms'
+            code = f'{code}_tstop{si_format(self.tstop, 2)}s'
         return code
 
-    def descPair(self, f_US, A_Cm):
-        return f'f = {f_US:.2f} kHz, gamma = {A_Cm:.2f}'
+    def descPair(self, Fdrive, gamma):
+        return f'f = {si_format(Fdrive, 1)}Hz, gamma = {gamma:.2f}'
 
     def updateBenchmark(self, x):
-        f, gamma = x
-        self.benchmark.setDrive(f, (gamma, 0.))
+        Fdrive, gamma = x
+        self.benchmark.setDrive(Fdrive, (gamma, 0.))
 
     def threshold_filename(self, method):
         fmin, fmax = bounds(self.xvec)
