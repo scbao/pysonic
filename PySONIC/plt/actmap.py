@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-25 11:13:39
+# @Last Modified time: 2020-09-28 13:39:41
 
 import abc
 import csv
@@ -290,7 +290,6 @@ class XYMap(LogBatch):
         else:
             ax.set_xlabel(f'{self.xkey} ({self.xunit})', fontsize=fs, labelpad=-0.5)
             ax.set_ylabel(f'{self.ykey} ({self.yunit})', fontsize=fs)
-            ax.minorticks_on()
         for item in ax.get_xticklabels() + ax.get_yticklabels():
             item.set_fontsize(fs)
         if xscale == 'log':
@@ -325,7 +324,7 @@ class XYMap(LogBatch):
             extend = 'both'
         else:
             extend = 'max' if extend_over else 'min'
-        plt.colorbar(sm, cax=cbarax, extend=extend)
+        self.cbar = plt.colorbar(sm, cax=cbarax, extend=extend)
         cbarax.set_ylabel(f'{self.zkey} ({self.zunit})', fontsize=fs)
         for item in cbarax.get_yticklabels():
             item.set_fontsize(fs)

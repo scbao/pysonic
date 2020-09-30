@@ -3,7 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-09-24 15:30:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-25 19:05:30
+# @Last Modified time: 2020-09-28 20:26:31
+
+import os
+import pickle
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
@@ -80,6 +83,14 @@ class SonicBenchmark:
             f'gamma = {self.gammastr}'
         ]
         return f'{self.__class__.__name__}({self.mechstr} dynamics, {", ".join(params)})'
+
+    @property
+    def corecode(self):
+        s = self.__repr__()
+        for c in [' = ', ', ', ' ', '(', '/']:
+            s = s.replace(c, '_')
+        s = s.replace('))', '').replace('__', '_')
+        return s
 
     @property
     def pneuron(self):
@@ -456,6 +467,17 @@ class SonicBenchmark:
         t, sol = self.postproSol(t, sol)
         return t, sol
 
+    def simAndSave(self, *args, outdir=''):
+        fpath = os.path.join(outdir, self.corecode)
+        if os.path.isfile(fpath):
+            with open(fpath, 'rb') as fh:
+                out = pickle.load(fh)
+        else:
+            out = self.simAllMethods(*args)
+            with open(fpath, 'wb') as fh:
+                pickle.dump(out, fh)
+        return out
+
     def computeGradient(self, sol):
         ''' compute the gradient of a solution array. '''
         return {k: np.vstack((y, np.diff(y, axis=0))) for k, y in sol.items()}
@@ -547,25 +569,31 @@ class SonicBenchmark:
         # Return figure
         return fig
 
-    def plotQnorm(self, t, sol):
+    def plotQnorm(self, t, sol, ax=None, notitle=False):
         ''' Plot normalized charge density traces from benchmark simulations of the model. '''
         colors = ['C0', 'C1']
         markers = ['-', '--', '-']
         alphas = [0.5, 1., 1.]
         V = {key: value['Qm'] / self.Cm0 for key, value in sol.items()}
         tstop = t[list(t.keys())[0]][-1]  # s
-        fig, ax = plt.subplots(figsize=(10, 3))
-        ax.set_title(f'{self} - {si_format(tstop)}s simulation')
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(10, 3))
+        else:
+            fig = ax.get_figure()
+        if not notitle:
+            ax.set_title(f'{self} - {si_format(tstop)}s simulation')
         ax.set_xlabel(f'time ({self.varunits["t"]})')
         ax.set_ylabel(f'Qm / Cm0 (mV)')
-        ax.set_ylim(-100.0, 50.)
+        for sk in ['top', 'right']:
+            ax.spines[sk].set_visible(False)
+        ax.set_ylim(-85., 55.)
         for m, alpha, (key, varsdict) in zip(markers, alphas, sol.items()):
             for y, c, lbl in zip(V[key], colors, self.nodelabels):
                 ax.plot(t[key] * self.varfactors['t'], y * 1e3,
                         m, alpha=alpha, c=c, label=f'{lbl} - {key}')
-        fig.subplots_adjust(bottom=0.2)
-        ax.legend(bbox_to_anchor=(0., -0.7, 1., .1), loc='upper center', ncol=3,
-                  mode="expand", borderaxespad=0.)
+        # fig.subplots_adjust(bottom=0.2)
+        # ax.legend(bbox_to_anchor=(0., -0.7, 1., .1), loc='upper center', ncol=3,
+        #           mode="expand", borderaxespad=0.)
         return fig
 
     def simplot(self, *args, **kwargs):
