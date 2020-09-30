@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-26 19:21:16
+# @Last Modified time: 2020-09-30 20:17:40
 
 import abc
 import numpy as np
@@ -496,3 +496,17 @@ class BalancedPulsedProtocol(PulsedProtocol):
             ]
         ]))
         return sorted(pairs, key=lambda x: x[0])
+
+
+def getPulseTrainProtocol(PD, npulses, PRF):
+    ''' Get a pulse train protocol for a given pulse duration, number of pulses and PRF.
+
+        :param PD: pulse duration (s)
+        :param npulses: number of pulses
+        :param PRF: pulse repetition frequency (Hz)
+        :return: PulsedProtocol object
+    '''
+    DC = PD * PRF
+    tstim = npulses / PRF
+    tstart = 1 / PRF - PD
+    return PulsedProtocol(tstim + tstart, 0., PRF=PRF, DC=DC, tstart=tstart)
