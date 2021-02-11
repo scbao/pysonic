@@ -3,10 +3,11 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-11-12 18:04:45
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-30 20:17:40
+# @Last Modified time: 2020-12-11 18:25:22
 
 import abc
 import numpy as np
+import matplotlib.pyplot as plt
 import itertools
 from ..utils import isIterable
 from .stimobj import StimObject
@@ -30,6 +31,24 @@ class TimeProtocol(StimObject):
     def tstop(self):
         ''' Stopping time. '''
         raise NotImplementedError
+
+    def stimProfile(self):
+        events = self.stimEvents()
+        l = [(0., 0)]
+        for e in events:
+            l.append((e[0], l[-1][1]))
+            l.append(e)
+        t, x = zip(*l)
+        return np.array(t), np.array(x)
+
+    def plot(self):
+        t, x = self.stimProfile()
+        fig, ax = plt.subplots()
+        ax.set_title('stim vector')
+        ax.set_xlabel('time (ms)')
+        ax.set_ylabel('amplitude')
+        ax.plot(t * 1e3, x)
+        return fig
 
 
 class CustomProtocol(TimeProtocol):
