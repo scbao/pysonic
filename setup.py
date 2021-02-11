@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-13 09:40:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-21 11:49:56
+# @Last Modified time: 2021-02-11 12:41:57
 
 import os
 from setuptools import setup
@@ -59,7 +59,7 @@ setup(
         'numpy>=1.10',
         'scipy>=0.17',
         'matplotlib>=2',
-        'pandas>=0.22.0',
+        'pandas>=1.0.2',
         'colorlog>=3.0.1',
         'tqdm>=4.3',
         'lockfile>=0.1.2',
