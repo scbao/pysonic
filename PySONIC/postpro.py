@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-08 15:45:47
+# @Last Modified time: 2021-03-02 13:26:27
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -112,6 +112,9 @@ def computeTimeStep(t):
     '''
     # Compute time step vector
     dt = np.diff(t)  # s
+
+    # Remove zero time increments from potential transition times.
+    dt = dt[dt != 0]
 
     # Raise error if time step vector is not uniform
     rel_dt_var = (dt.max() - dt.min()) / dt.min()

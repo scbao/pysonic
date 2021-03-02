@@ -82,74 +82,34 @@ But also some valuable models used in peripheral axon models:
 
 # Usage
 
-## Python scripts
+## Python code
 
-You can easily run simulations of any implemented point-neuron model under both electrical and ultrasonic stimuli with various temporal protocols, and visualize the simulation results, in just a few lines of code:
+You can easily run simulations of any implemented point-neuron model under both electrical and ultrasonic stimuli with various temporal protocols, and visualize the simulation results, in just a few lines of code. Here's an example:
 
 ```python
-# -*- coding: utf-8 -*-
-# @Author: Theo Lemaire
-# @Email: theo.lemaire@epfl.ch
-# @Date:   2020-04-17 16:09:42
-# @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-04-24 10:35:33
-
-''' Example script showing how to simulate a point-neuron model upon application
-    of both electrical and ultrasonic stimuli, with various temporal protocols.
-'''
-
 import logging
 import matplotlib.pyplot as plt
-
 from PySONIC.utils import logger
 from PySONIC.neurons import getPointNeuron
-from PySONIC.core import NeuronalBilayerSonophore, ElectricDrive, AcousticDrive
+from PySONIC.core import NeuronalBilayerSonophore, AcousticDrive
 from PySONIC.core.protocols import *
 from PySONIC.plt import GroupedTimeSeries
-
-# Set logging level
 logger.setLevel(logging.INFO)
 
-# Define point-neuron model and corresponding neuronal bilayer sonophore model
-pneuron = getPointNeuron('RS')
-a = 32e-9  # sonophore radius (m)
-nbls = NeuronalBilayerSonophore(a, pneuron)
+# Define point-neuron model and corresponding neuronal bilayer sonophore object
+nbls = NeuronalBilayerSonophore(32e-9, getPointNeuron('RS'))
 
-# Define electric and ultrasonic drives
-ELdrive = ElectricDrive(20.)  # mA/m2
-USdrive = AcousticDrive(
-    500e3,  # Hz
-    100e3)  # Pa
+# Define stimulus drive and time protocol
+drive = AcousticDrive(500e3, 100e3)
+pp = PulsedProtocol(100e-3, 100e-3, tstart=10e-3)
 
-# Pulsing parameters
-tstart = 10e-3   # s
-tburst = 100e-3  # s
-PRF = 100.       # Hz
-DC = 0.5         # -
-BRF = 1.0        # Hz
-nbursts = 3      # -
-
-# Protocols
-protocols = [
-    CustomProtocol([10e-3, 30e-3, 50e-3], [1., 2., 0.], 100e-3),
-    PulsedProtocol(tburst, 1 / BRF - tburst, PRF=PRF, DC=DC, tstart=tstart),
-    BurstProtocol(tburst, PRF=PRF, DC=DC, BRF=BRF, nbursts=nbursts, tstart=tstart)
-]
-
-# For each protocol
-for p in protocols:
-    # Run simulation upon electrical stimulation, and plot results
-    data, meta = pneuron.simulate(ELdrive, p)
-    GroupedTimeSeries([(data, meta)]).render()
-
-    # Run simulation upon ultrasonic stimulation, and plot results
-    data, meta = nbls.simulate(USdrive, p)
-    GroupedTimeSeries([(data, meta)]).render()
-
-# Show figures
+# Run simulation and plot results
+data, meta = nbls.simulate(drive, pp)
+GroupedTimeSeries([(data, meta)]).render()
 plt.show()
-
 ```
+
+Have a look at the `demo.ipynb` notebook located in the `notebooks` folder for more details.
 
 ## From the command line
 
