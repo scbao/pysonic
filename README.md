@@ -14,6 +14,8 @@ The package contains four model classes:
 
 All model classes contain a `simulate` method to simulate the underlying model's behavior for a given set of stimulation and physiological parameters. The `NeuronalBilayerSonophore.simulate` method contains an additional `method` argument defining whether to perform a detailed (`full`), coarse-grained (`sonic`) or hybrid (`hybrid`) integration of the differential system.
 
+The default (and fastest) simulation method is the `sonic` method, and makes use of pre-computed tables that are stored in lookup files within the package architecture (in the `lookups` subfolder). These large binary files are handled by the `git-lfs` utility, which sets up dynamic links to these files without storing them physically in the repository, thereby avoiding to store their entire history. Hence, **you must install `git-lfs` in order to download the lookup files together with the repo.**
+
 ### Solvers
 
 Numerical integration routines are implemented outside the models, in a separate `solvers` module:
@@ -56,13 +58,14 @@ But also some valuable models used in peripheral axon models:
 # Requirements
 
 - Python 3.6+
+- Git Large File Storage (LFS)
 - Package dependencies (numpy, scipy, ...) are installed automatically upon installation of the package.
 
 # Installation
 
 - Open a terminal.
 
-- Install [git-lfs](https://github.com/git-lfs/git-lfs/wiki/Installation) if not already done
+- Install [git-lfs](https://github.com/git-lfs/git-lfs/wiki/Installation) if not already done. This step is crucial as it ensures that lookup tables will be downloaded when you clone the repository.
 
 - Activate a Python3 environment if needed, e.g. on the tnesrv5 machine:
 
