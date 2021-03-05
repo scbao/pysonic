@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-16 12:07:41
+# @Last Modified time: 2021-03-05 13:34:44
 
 from enum import Enum
 import os
@@ -785,7 +785,7 @@ class BilayerSonophore(Model):
 
     @property
     def Cm_lkp_filename(self):
-        return f'Cm_lkp_{self.a * 1e9:.0f}nm.lkp'
+        return f'Cm_lkp_{self.a * 1e9:.0f}nm.pkl'
 
     @property
     def Cm_lkp_filepath(self):
