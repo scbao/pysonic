@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-13 09:40:02
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-02-11 12:41:57
+# @Last Modified time: 2021-03-16 18:26:21
 
 import os
 from setuptools import setup
@@ -54,7 +54,7 @@ setup(
     author_email='theo.lemaire@epfl.ch',
     license='MIT',
     packages=['PySONIC'],
-    scripts=getFiles('scripts') + getFiles('tests') + getFiles('examples'),
+    scripts=getFiles('scripts') + getFiles('tests'),
     install_requires=[
         'numpy>=1.10',
         'scipy>=0.17',
