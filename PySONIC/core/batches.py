@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-25 12:08:48
+# @Last Modified time: 2021-03-23 21:30:07
 
 ''' Utility functions used in simulations '''
 
@@ -163,6 +163,18 @@ class Batch:
         queue = np.stack(np.meshgrid(*dims_in), -1).reshape(-1, ndims)
         queue = queue[:, inds_out]
         return queue.tolist()
+
+    @staticmethod
+    def printQueue(queue, nmax=20):
+        if len(queue) <= nmax:
+            for x in queue:
+                print(x)
+        else:
+            for x in queue[:nmax // 2]:
+                print(x)
+            print(f'... {len(queue) - nmax} more entries ...')
+            for x in queue[-nmax // 2:]:
+                print(x)
 
 
 class LogBatch(metaclass=abc.ABCMeta):

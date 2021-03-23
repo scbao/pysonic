@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-23 19:08:23
+# @Last Modified time: 2021-03-23 21:34:38
 
 ''' Create lookup table for specific neuron. '''
 
@@ -18,9 +18,9 @@ from PySONIC.parsers import MechSimParser
 from PySONIC.constants import DQ_LOOKUP
 
 
-@alert
-def computeAStimLookup(pneuron, aref, fref, Aref, Qref, fsref=None,
-                       mpi=False, loglevel=logging.INFO):
+# @alert
+def computeAStimLookup(pneuron, aref, fref, Aref, fsref, Qref, novertones=0,
+                       test=False, mpi=False, loglevel=logging.INFO):
     ''' Run simulations of the mechanical system for a multiple combinations of
         imposed sonophore radius, US frequencies, acoustic amplitudes charge densities and
         (spatially-averaged) sonophore membrane coverage fractions, compute effective
@@ -36,12 +36,12 @@ def computeAStimLookup(pneuron, aref, fref, Aref, Qref, fsref=None,
         :param loglevel: logging level
         :return: lookups dictionary
     '''
-
     descs = {
         'a': 'sonophore radii',
         'f': 'US frequencies',
         'A': 'US amplitudes',
-        'fs': 'sonophore membrane coverage fractions'
+        'fs': 'sonophore membrane coverage fractions',
+        'overtones': 'charge Fourier overtones'
     }
 
     # Populate reference vectors dictionary
@@ -52,15 +52,35 @@ def computeAStimLookup(pneuron, aref, fref, Aref, Qref, fsref=None,
         'Q': Qref  # C/m2
     }
 
+    err_span = 'cannot span {} for more than 1 {}'
     # If multiple sonophore coverage values, ensure that only 1 value of
     # sonophore radius and US frequency are provided
-    err_fs = 'cannot span {} for more than 1 {}'
     if fsref.size > 1 or fsref[0] != 1.:
         for x in ['a', 'f']:
-            assert refs[x].size == 1, err_fs.format(descs['fs'], descs[x])
-
+            assert refs[x].size == 1, err_span.format(descs['fs'], descs[x])
     # Add sonophore coverage vector to references
     refs['fs'] = fsref
+
+    # If charge overtones are required, ensure that only 1 value of
+    # sonophore radius, US frequency and coverage fraction are provided
+    if novertones > 0:
+        for x in ['a', 'f', 'fs']:
+            assert refs[x].size == 1, err_span.format(descs['overtones'], descs[x])
+
+    # If charge overtones are required, downsample charge and US amplitude input vectors
+    if novertones > 0:
+        nQmax = 50
+        if len(refs['Q']) > nQmax:
+            refs['Q'] = np.linspace(refs['Q'][0], refs['Q'][-1], nQmax)
+        nAmax = 15
+        if len(refs['A']) > nAmax:
+            refs['A'] = np.insert(
+                np.logspace(np.log10(refs['A'][1]), np.log10(refs['A'][-1]), num=nAmax - 1),
+                0, 0.0)
+
+    # If test case, reduce all vector dimensions to their instrinsic bounds
+    if test:
+        refs = {k: np.array([v.min(), v.max()]) if v.size > 1 else v for k, v in refs.items()}
 
     # Check validity of all reference vectors
     for key, values in refs.items():
@@ -79,11 +99,30 @@ def computeAStimLookup(pneuron, aref, fref, Aref, Qref, fsref=None,
     dims = np.array([x.size for x in refs.values()])
 
     # Create simulation queue per sonophore radius
-    drives = AcousticDrive.createQueue(fref, Aref)
+    drives = AcousticDrive.createQueue(refs['f'], refs['A'])
     queue = []
     for drive in drives:
-        for Qm in Qref:
+        for Qm in refs['Q']:
             queue.append([drive, refs['fs'], Qm])
+
+    # Add charge overtones to queue if required
+    if novertones > 0:
+        nAQ, nphiQ = 5, 5
+        AQ_ref = np.linspace(0, 100e-5, nAQ)  # C/m2
+        phiQ_ref = np.linspace(0, 2 * np.pi, nphiQ, endpoint=False)  # rad
+        if test:
+            AQ_ref = np.array([AQ_ref.min(), AQ_ref.max()])
+            phiQ_ref = np.array([phiQ_ref.min(), phiQ_ref.max()])
+        Qovertones_dims = []
+        for i in range(novertones):
+            Qovertones_dims += [AQ_ref, phiQ_ref]
+        Qovertones = Batch.createQueue(*Qovertones_dims)
+        Qovertones = [list(zip(x, x[1:]))[::2] for x in Qovertones]
+        queue = list(itertools.product(queue, Qovertones))
+        queue = [(x[0], {'Qm_overtones': x[1]}) for x in queue]
+
+    # Print queue (or redcued view of it)
+    Batch.printQueue(queue)
 
     # Run simulations and populate outputs
     logger.info('Starting simulation batch for %s neuron', pneuron.name)
@@ -129,6 +168,7 @@ def main():
     parser.defaults['amp'] = np.insert(
         np.logspace(np.log10(0.1), np.log10(600), num=50), 0, 0.0)  # kPa
     parser.defaults['charge'] = np.nan
+    parser.add_argument('--novertones', type=int, default=0, help='Number of Fourier overtones')
     args = parser.parse()
     logger.setLevel(args['loglevel'])
 
@@ -140,35 +180,35 @@ def main():
             Qmin, Qmax = pneuron.Qbounds
             charges = np.arange(Qmin, Qmax + DQ_LOOKUP, DQ_LOOKUP)  # C/m2
 
+        # Number of Fourier overtones
+        novertones = args['novertones']
+
         # Determine output filename
-        f = NeuronalBilayerSonophore(32e-9, pneuron).getLookupFilePath
-        if args['fs'].size == 1 and args['fs'][0] == 1.:
-            lookup_fpath = f()
-        else:
-            lookup_fpath = f(a=args['radius'][0], f=args['freq'][0], fs=True)
+        input_args = {'a': args['radius'], 'f': args['freq'], 'A': args['amp'], 'fs': args['fs']}
+        fname_args = {k: v[0] if v.size == 1 else None for k, v in input_args.items()}
+        fname_args['novertones'] = novertones
+        lookup_fpath = NeuronalBilayerSonophore(32e-9, pneuron).getLookupFilePath(**fname_args)
 
         # Combine inputs into single list
-        inputs = [args[x] for x in ['radius', 'freq', 'amp']] + [charges, args['fs']]
+        inputs = [args[x] for x in ['radius', 'freq', 'amp', 'fs']] + [charges]
 
         # Adapt inputs and output filename if test case
         if args['test']:
-            for i, x in enumerate(inputs):
-                if x is not None and x.size > 1:
-                    inputs[i] = np.array([x.min(), x.max()])
             fcode, fext = os.path.splitext(lookup_fpath)
             lookup_fpath = f'{fcode}_test{fext}'
 
         # Check if lookup file already exists
         if os.path.isfile(lookup_fpath):
-            logger.warning('"%s" file already exists and will be overwritten. ' +
-                           'Continue? (y/n)', lookup_fpath)
+            logger.warning(
+                f'"{lookup_fpath}" file already exists and will be overwritten. Continue? (y/n)')
             user_str = input()
             if user_str not in ['y', 'Y']:
                 logger.error('%s Lookup creation canceled', pneuron.name)
                 return
 
         # Compute lookup
-        lkp = computeAStimLookup(pneuron, *inputs, mpi=args['mpi'], loglevel=args['loglevel'])
+        lkp = computeAStimLookup(pneuron, *inputs, novertones=novertones,
+                                 test=args['test'], mpi=args['mpi'], loglevel=args['loglevel'])
         logger.info(f'Generated lookup: {lkp}')
 
         # Save lookup in PKL file

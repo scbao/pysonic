@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-23 17:37:06
+# @Last Modified time: 2021-03-23 21:31:15
 
 import logging
 import numpy as np
@@ -208,6 +208,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Log process
         log = f'{self}: lookups @ {drive.desc}, Qm0 = {Qm0 * 1e5:.2f} nC/cm2'
+        if Qm_overtones is not None:
+            log += f', Qm_overtones = {Qm_overtones}'
         if len(fs) > 1:
             log += f', fs = {fs.min() * 1e2:.0f} - {fs.max() * 1e2:.0f}%'
         logger.info(log)
@@ -215,7 +217,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Return effective coefficients
         return effvars_list
 
-    def getLookupFileName(self, a=None, f=None, A=None, fs=False):
+    def getLookupFileName(self, a=None, f=None, A=None, fs=None, novertones=0.):
         fname = f'{self.pneuron.name}_lookups'
         if a is not None:
             fname += f'_{a * 1e9:.0f}nm'
@@ -223,8 +225,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             fname += f'_{f * 1e-3:.0f}kHz'
         if A is not None:
             fname += f'_{A * 1e-3:.0f}kPa'
-        if fs is True:
-            fname += '_fs'
+        if fs is not None:
+            fname += f'_fs{fs:.2f}'
+        if novertones > 0:
+            fname += f'_{novertones}overtones'
         return f'{fname}.pkl'
 
     def getLookupFilePath(self, *args, **kwargs):
@@ -244,9 +248,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         logger.debug(f'loading {self.pneuron} lookup for {proj_str}')
         if fs < 1.:
             kwargs = proj_kwargs.copy()
-            kwargs['fs'] = True
+            kwargs['fs'] = None
         else:
-            kwargs = {}
+            kwargs = {'fs': fs}
         return self.getLookup(**kwargs).projectN(proj_kwargs)
 
     def fullDerivatives(self, t, y, drive, fs):
