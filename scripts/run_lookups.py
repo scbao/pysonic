@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-02-03 21:37:09
+# @Last Modified time: 2021-03-23 19:08:23
 
 ''' Create lookup table for specific neuron. '''
 
@@ -20,7 +20,7 @@ from PySONIC.constants import DQ_LOOKUP
 
 @alert
 def computeAStimLookup(pneuron, aref, fref, Aref, Qref, fsref=None,
-                        mpi=False, loglevel=logging.INFO):
+                       mpi=False, loglevel=logging.INFO):
     ''' Run simulations of the mechanical system for a multiple combinations of
         imposed sonophore radius, US frequencies, acoustic amplitudes charge densities and
         (spatially-averaged) sonophore membrane coverage fractions, compute effective
@@ -83,7 +83,7 @@ def computeAStimLookup(pneuron, aref, fref, Aref, Qref, fsref=None,
     queue = []
     for drive in drives:
         for Qm in Qref:
-            queue.append([drive, Qm, refs['fs']])
+            queue.append([drive, refs['fs'], Qm])
 
     # Run simulations and populate outputs
     logger.info('Starting simulation batch for %s neuron', pneuron.name)

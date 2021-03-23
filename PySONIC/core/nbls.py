@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-18 16:15:47
+# @Last Modified time: 2021-03-23 17:37:06
 
 import logging
 import numpy as np
@@ -151,7 +151,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return fs * x + (1 - fs) * x0
 
     @timer
-    def computeEffVars(self, drive, Qm, fs):
+    def computeEffVars(self, drive, fs, Qm0, Qm_overtones=None):
         ''' Compute "effective" coefficients of the HH system for a specific
             acoustic stimulus and charge density.
 
@@ -160,32 +160,60 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             acoustic cycle to yield "effective" coefficients.
 
             :param drive: acoustic drive object
-            :param Qm: imposed charge density (C/m2)
             :param fs: list of sonophore membrane coverage fractions
+            :param Qm: imposed charge density (C/m2)
             :return: list with computation time and a list of dictionaries of effective variables
         '''
+        if not isIterable(fs):
+            fs = [fs]
+        if Qm_overtones is None:
+            # Constant Qm profile
+            Qm_cycle = Qm0
+            novertones = 0
+        else:
+            # Qm profile as Fourier series
+            A_Qm, phi_Qm = Qm_overtones
+            Qm_fft = np.hstack(([Qm0 + 0j], A_Qm * (np.cos(phi_Qm) + 1j * np.sin(phi_Qm))))
+            Qm_cycle = np.fft.irfft(Qm_fft, n=drive.nPerCycle) * drive.nPerCycle
+            novertones = len(A_Qm)
+
         # Run simulation and extract capacitance vector from last cycle
-        Z_last = super().simCycles(drive, Qm).tail(NPC_DENSE)['Z'].values  # m
-        Cm_last = self.v_capacitance(Z_last)  # F/m2
+        Z_cycle = super().simCycles(drive, Qm_cycle).tail(drive.nPerCycle)['Z'].values  # m
+        Cm_cycle = self.v_capacitance(Z_cycle)  # F/m2
 
         # For each coverage fraction
-        effvars = []
+        effvars_list = []
         for x in fs:
-            # Compute membrane capacitance and membrane potential vectors
-            Cm = self.spatialAverage(x, Cm_last, self.Cm0)  # F/m2
-            Vm = Qm / Cm * 1e3  # mV
+            # Compute membrane potential vector
+            Vm_cycle = Qm_cycle / self.spatialAverage(x, Cm_cycle, self.Cm0) * 1e3  # mV
 
-            # Compute average cycle value for membrane potential and rate constants
-            effvars.append({**{'V': np.mean(Vm)}, **self.pneuron.getEffRates(Vm)})
+            # Compute effective (cycle-average) membrane potential
+            effvars = {'V': np.mean(Vm_cycle)}
+
+            # If Qm overtones were provided, compute Vm overtones
+            if novertones > 0:
+                # classic Fourier coefficients
+                Vm_coeffs = np.fft.rfft(Vm_cycle)[:novertones + 1] / drive.nPerCycle
+                # amplitude-phase formalism
+                A_Vm, phi_Vm = np.abs(Vm_coeffs), np.angle(Vm_coeffs)
+                for i in range(1, novertones + 1):
+                    effvars[f'A_V{i}'] = A_Vm[i]
+                    effvars[f'phi_V{i}'] = phi_Vm[i]
+
+            # Add computed effective rates
+            effvars.update(self.pneuron.getEffRates(Vm_cycle))
+
+            # Append to list
+            effvars_list.append(effvars)
 
         # Log process
-        log = f'{self}: lookups @ {drive.desc}, {Qm * 1e5:.2f} nC/cm2'
+        log = f'{self}: lookups @ {drive.desc}, Qm0 = {Qm0 * 1e5:.2f} nC/cm2'
         if len(fs) > 1:
             log += f', fs = {fs.min() * 1e2:.0f} - {fs.max() * 1e2:.0f}%'
         logger.info(log)
 
         # Return effective coefficients
-        return effvars
+        return effvars_list
 
     def getLookupFileName(self, a=None, f=None, A=None, fs=False):
         fname = f'{self.pneuron.name}_lookups'
