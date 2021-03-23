@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-09-24 15:30:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-28 20:26:31
+# @Last Modified time: 2021-03-23 00:36:39
 
 import os
 import pickle
@@ -12,7 +12,7 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
 from PySONIC.core import EffectiveVariablesLookup
-from ..utils import logger, timer, isWithin, si_format, rmse, padleft
+from ..utils import logger, timer, isWithin, si_format, rmse
 from ..neurons import passiveNeuron
 
 

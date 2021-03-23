@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-05 13:34:44
+# @Last Modified time: 2021-03-23 13:42:44
 
 from enum import Enum
 import os
@@ -16,7 +16,7 @@ from .model import Model
 from .lookups import EffectiveVariablesLookup
 from .solvers import PeriodicSolver
 from .drives import Drive, AcousticDrive
-from ..utils import logger, si_format, LOOKUP_DIR
+from ..utils import logger, si_format, isIterable, LOOKUP_DIR
 from ..constants import *
 
 
@@ -208,11 +208,15 @@ class BilayerSonophore(Model):
         }
 
     def filecodes(self, drive, Qm, PmCompMethod='predict'):
+        if isIterable(Qm):
+            Qm_code = f'{Qm.min() * 1e5:.1f}nCcm2_{Qm.max() * 1e5:.1f}nCcm2_{Qm.size}'
+        else:
+            Qm_code = f'{Qm * 1e5:.1f}nCcm2'
         return {
             'simkey': self.simkey,
             'a': f'{self.a * 1e9:.0f}nm',
             **drive.filecodes,
-            'Qm': f'{Qm * 1e5:.1f}nCcm2'
+            'Qm': Qm_code
         }
 
     @staticmethod
@@ -655,10 +659,15 @@ class BilayerSonophore(Model):
         '''
         if not isinstance(drive, Drive):
             raise TypeError(f'Invalid "drive" parameter (must be an "Drive" object)')
-        if not isinstance(Qm, float):
-                raise TypeError(f'Invalid "Qm" parameter (must be float typed)')
+
+        if not (isinstance(Qm, float) or isIterable(Qm)):
+            raise TypeError(f'Invalid "Qm" parameter (must be a scalar or T-periodic vector)')
+        if isIterable(Qm):
+            if len(Qm) != drive.nPerCycle:
+                raise ValueError(
+                    f'Qm size ({Qm.size}) differs from drive granularity ({drive.nPerCycle})')
         Qmin, Qmax = CHARGE_RANGE
-        if Qm < Qmin or Qm > Qmax:
+        if np.min(Qm) < Qmin or np.max(Qm) > Qmax:
             raise ValueError(
                 f'Invalid applied charge: {Qm * 1e5} nC/cm2 (must be within [{Qmin * 1e5}, {Qmax * 1e5}] interval')
         if not isinstance(Pm_comp_method, PmCompMethod):
@@ -745,16 +754,26 @@ class BilayerSonophore(Model):
         # Set the tissue elastic modulus
         self.setTissueModulus(drive)
 
+        # Adapt Qm(t) function to charge input type
+        if isinstance(Qm, float):
+            # If float, simply use a constant applied charge
+            Qm0, Qm_t = Qm, lambda t: Qm
+        elif isIterable(Qm):
+            # If iterable, recast as 1d array, check size, and use a time-varying charge
+            Qm0, Qm_t = Qm[0], lambda t: Qm[int((t % drive.periodicity) / drive.dt)]
+        else:
+            raise ValueError('unknown charge input type')
+
         # Compute initial conditions
-        y0 = self.initialConditions(drive, Qm, drive.dt, Pm_comp_method=Pm_comp_method)
+        y0 = self.initialConditions(drive, Qm0, drive.dt, Pm_comp_method=Pm_comp_method)
 
         # Initialize solver and compute solution
         solver = PeriodicSolver(
-            drive.periodicity,                                               # periodicty
-            y0.keys(),                                                       # variables list
-            lambda t, y: self.derivatives(t, y, drive, Qm, Pm_comp_method),  # dfunc
-            primary_vars=['Z', 'ng'],                                        # primary variables
-            dt=drive.dt                                                      # time step
+            drive.periodicity,                                                    # periodicty
+            y0.keys(),                                                            # variables list
+            lambda t, y: self.derivatives(t, y, drive, Qm_t(t), Pm_comp_method),  # dfunc
+            primary_vars=['Z', 'ng'],                                             # primary variables
+            dt=drive.dt                                                           # time step
         )
         data = solver(y0, nmax=nmax, nmin=nmin)
 
@@ -772,7 +791,12 @@ class BilayerSonophore(Model):
         return self.simCycles(drive, Qm, Pm_comp_method=Pm_comp_method)
 
     def desc(self, meta):
-        return f'{self}: simulation @ {meta["drive"].desc}, Q = {si_format(meta["Qm"] * 1e-4, 2)}C/cm2'
+        Qm = meta['Qm']
+        if isIterable(Qm):
+            Qstr = f'US-periodic function within [{Qm.min() * 1e5:.2f}, {Qm.max() * 1e5:.2f}] nC/cm2'
+        else:
+            Qstr = f'{si_format(Qm * 1e-4, 2)}C/cm2'
+        return f'{self}: simulation @ {meta["drive"].desc}, Q = {Qstr}'
 
     @Model.logDesc
     def getZlast(self, drive, Qm):

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-05 20:25:53
+# @Last Modified time: 2021-03-18 16:15:47
 
 import logging
 import numpy as np
@@ -390,7 +390,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Add dummy deflection and gas content vectors to solution
         for key in ['Z', 'ng']:
-                data[key] = np.full(data['t'].size, np.nan)
+            data[key] = np.full(data['t'].size, np.nan)
 
         # Return solution dataframe
         return data
