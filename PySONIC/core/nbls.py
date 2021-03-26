@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-26 18:42:04
+# @Last Modified time: 2021-03-26 20:12:39
 
 import logging
 import numpy as np
@@ -214,6 +214,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
                 for i, x in enumerate(Qm_overtones)])
         if len(fs) > 1:
             log += f', fs = {fs.min() * 1e2:.0f} - {fs.max() * 1e2:.0f}%'
+        else:
+            log += f', fs = {fs[0] * 1e2:.0f}%'
         logger.info(log)
 
         # Return effective coefficients
