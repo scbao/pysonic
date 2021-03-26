@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-23 17:16:05
+# @Last Modified time: 2021-03-26 18:28:04
 
 from enum import Enum
 import os
@@ -563,8 +563,13 @@ class BilayerSonophore(Model):
             :return: leaflet deflection canceling quasi-steady pressure (m)
         '''
         Zbounds = (self.Zmin, self.a)
-        Plb, Pub = [self.PtotQS(x, ng, Qm, Pac, Pm_comp_method) for x in Zbounds]
-        assert (Plb > 0 > Pub), '[{}, {}] is not a sign changing interval for PtotQS'.format(*Zbounds)
+        PQS = [self.PtotQS(x, ng, Qm, Pac, Pm_comp_method) for x in Zbounds]
+        if not (PQS[0] > 0 > PQS[1]):
+            s = 'P_QS not changing sign within [{:.2f}, {:.2f}] nm interval: '.format(
+                *np.array(Zbounds) * 1e9)
+            s += ', '.join([
+                f'P_QS({Z * 1e9:.2f} nm) = {si_format(P, 2)}Pa' for Z, P in zip(Zbounds, PQS)])
+            raise ValueError(s)
         return brentq(self.PtotQS, *Zbounds, args=(ng, Qm, Pac, Pm_comp_method), xtol=1e-16)
 
     def TEleaflet(self, Z):

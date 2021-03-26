@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-23 21:31:15
+# @Last Modified time: 2021-03-26 18:42:04
 
 import logging
 import numpy as np
@@ -172,7 +172,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             novertones = 0
         else:
             # Qm profile as Fourier series
-            A_Qm, phi_Qm = Qm_overtones
+            A_Qm, phi_Qm = list(zip(*Qm_overtones))
             Qm_fft = np.hstack(([Qm0 + 0j], A_Qm * (np.cos(phi_Qm) + 1j * np.sin(phi_Qm))))
             Qm_cycle = np.fft.irfft(Qm_fft, n=drive.nPerCycle) * drive.nPerCycle
             novertones = len(A_Qm)
@@ -209,7 +209,9 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         # Log process
         log = f'{self}: lookups @ {drive.desc}, Qm0 = {Qm0 * 1e5:.2f} nC/cm2'
         if Qm_overtones is not None:
-            log += f', Qm_overtones = {Qm_overtones}'
+            log = log + ', ' + ', '.join([
+                f'Qm{i + 1} = ({x[0] * 1e5:.2f} nC/cm2, {x[1]:.2f} rad)'
+                for i, x in enumerate(Qm_overtones)])
         if len(fs) > 1:
             log += f', fs = {fs.min() * 1e2:.0f} - {fs.max() * 1e2:.0f}%'
         logger.info(log)

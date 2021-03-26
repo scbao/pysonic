@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-23 21:34:38
+# @Last Modified time: 2021-03-26 19:50:50
 
 ''' Create lookup table for specific neuron. '''
 
@@ -95,9 +95,6 @@ def computeAStimLookup(pneuron, aref, fref, Aref, fsref, Qref, novertones=0,
         if key in ('A', 'fs') and min(values) < 0:
             raise ValueError(f'Invalid {descs[key]} (must all be positive or null)')
 
-    # Get references dimensions
-    dims = np.array([x.size for x in refs.values()])
-
     # Create simulation queue per sonophore radius
     drives = AcousticDrive.createQueue(refs['f'], refs['A'])
     queue = []
@@ -107,21 +104,34 @@ def computeAStimLookup(pneuron, aref, fref, Aref, fsref, Qref, novertones=0,
 
     # Add charge overtones to queue if required
     if novertones > 0:
+        # Default references
         nAQ, nphiQ = 5, 5
         AQ_ref = np.linspace(0, 100e-5, nAQ)  # C/m2
         phiQ_ref = np.linspace(0, 2 * np.pi, nphiQ, endpoint=False)  # rad
+        # Downsample if test mode is on
         if test:
             AQ_ref = np.array([AQ_ref.min(), AQ_ref.max()])
             phiQ_ref = np.array([phiQ_ref.min(), phiQ_ref.max()])
-        Qovertones_dims = []
+        # Construct refs dict specific to Qm overtones
+        Qovertones_refs = {}
         for i in range(novertones):
-            Qovertones_dims += [AQ_ref, phiQ_ref]
-        Qovertones = Batch.createQueue(*Qovertones_dims)
+            Qovertones_refs[f'AQ{i + 1}'] = AQ_ref
+            Qovertones_refs[f'phiQ{i + 1}'] = phiQ_ref
+        # Create associated batch queue
+        Qovertones = Batch.createQueue(*Qovertones_refs.values())
         Qovertones = [list(zip(x, x[1:]))[::2] for x in Qovertones]
+        # Merge with main queue (moving Qm overtones into kwargs)
         queue = list(itertools.product(queue, Qovertones))
         queue = [(x[0], {'Qm_overtones': x[1]}) for x in queue]
+        # Update main refs dict, and reset 'fs' as last dictionary key
+        refs.update(Qovertones_refs)
+        refs['fs'] = refs.pop('fs')
 
-    # Print queue (or redcued view of it)
+    # Get references dimensions
+    dims = np.array([x.size for x in refs.values()])
+
+    # Print queue (or reduced view of it)
+    logger.info('batch queue:')
     Batch.printQueue(queue)
 
     # Run simulations and populate outputs
@@ -138,10 +148,13 @@ def computeAStimLookup(pneuron, aref, fref, Aref, fsref, Qref, novertones=0,
 
     # Make sure outputs size matches inputs dimensions product
     nout = len(effvars)
-    assert nout == dims.prod(), 'Number of outputs does not match number of combinations'
+    ncombs = dims.prod()
+    if nout != ncombs:
+        raise ValueError(
+            f'Number of outputs ({nout}) does not match number of input combinations ({ncombs})')
 
     # Reshape effvars into nD arrays and add them to lookups dictionary
-    logger.info('Reshaping output into lookup tables')
+    logger.info(f'Reshaping {nout}-entries output into {tuple(dims)} lookup tables')
     varkeys = list(effvars[0].keys())
     tables = {}
     for key in varkeys:
