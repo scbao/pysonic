@@ -1,6 +1,14 @@
 # Description
 
-`PySONIC` is a Python implementation of the **multi-Scale Optimized Neuronal Intramembrane Cavitation (SONIC) model [1]**, a computationally efficient and interpretable model of neuronal intramembrane cavitation. It allows to simulate the responses of various neuron types to ultrasonic (and electrical) stimuli.
+## Context
+
+Low-Intensity Focused Ultrasound Stimulation (LIFUS) is emerging as a promising technology for noninvasive brain stimulation, but many questions remain regarding its mechanisms of action as well as optimal stimulation parameters.
+
+One candidate mechanism is that of *intramembrane cavitation*, in which LIFUS induces high-frequency mechanical deflections of the neural membrane to generate depolarizing currents and trigger action potentials. This phernomenon is decribed mathematically by a *Neuronal Intramembrane Cavitation Excitation (NICE)* model [1-3], whose predictions of cell-type-specific LIFUS responses corroborate a wide range of experimental results on LIFUS-evoked brain activity. However, the NICE model is conceptually complex and  tedious to simulate, thereby limiting its adoption by the community. 
+
+To adress these limitations, we recently developed the *multiScale Optimized Intramembrane Cavitation (SONIC)* model [4], a computationally efficient variant of the NICE model that also defines a more intuititve frame of interpretation for LIFUS-evoked responses.
+
+The `PySONIC` package is a Python implementation of the SONIC model, allowing to simulate the responses of various neuron types to ultrasonic (and electrical) stimuli.
 
 ## Content of repository
 
@@ -203,4 +211,7 @@ DOI: 10.1088/1741-2552/ab1685
 
 # References
 
-[1] Lemaire, T., Neufeld, E., Kuster, N., and Micera, S. (2019). Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation. J. Neural Eng.
+ - [1] B. Krasovitski, V. Frenkel, S. Shoham, and E. Kimmel, “Intramembrane cavitation as a unifying mechanism for ultrasound-induced bioeffects,” Proc. Natl. Acad. Sci. U.S.A., vol. 108, no. 8, pp. 3258–3263, Feb. 2011, [DOI](https://doi.org/10.1073/pnas.1015771108).
+- [2] M. Plaksin, S. Shoham, and E. Kimmel, “Intramembrane Cavitation as a Predictive Bio-Piezoelectric Mechanism for Ultrasonic Brain Stimulation,” Physical Review X, vol. 4, no. 1, Jan. 2014, [DOI](https://doi.org/10.1103/PhysRevX.4.011004).
+- [3] M. Plaksin, E. Kimmel, and S. Shoham, “Cell-Type-Selective Effects of Intramembrane Cavitation as a Unifying Theoretical Framework for Ultrasonic Neuromodulation,” eNeuro, vol. 3, no. 3, Jun. 2016, [DOI](https://doi.org/10.1523/ENEURO.0136-15.2016).
+- [4] T. Lemaire, E. Neufeld, N. Kuster, and S. Micera, “Understanding ultrasound neuromodulation using a computationally efficient and interpretable model of intramembrane cavitation,” J. Neural Eng., vol. 16, no. 4, p. 046007, Jul. 2019, [DOI](https://doi.org/10.1088/1741-2552/ab1685).
