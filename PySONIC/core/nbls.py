@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-26 20:12:39
+# @Last Modified time: 2021-05-14 18:48:06
 
 import logging
 import numpy as np
@@ -310,7 +310,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return [dQmdt, *dstates]
 
     def deflectionDependentVm(self, Qm, Z, fs):
-        ''' Compute deflection (and sonopphore coverage fraction) dependent voltage profile. '''
+        ''' Compute deflection (and sonophore coverage fraction) dependent voltage profile. '''
         return Qm / self.spatialAverage(fs, self.v_capacitance(Z), self.Cm0) * 1e3  # mV
 
     def fullInitialConditions(self, *args, **kwargs):
