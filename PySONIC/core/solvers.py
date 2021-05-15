@@ -3,16 +3,16 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-05-28 14:45:12
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-30 18:57:58
+# @Last Modified time: 2021-05-15 11:09:39
 
 import numpy as np
-import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.integrate import ode, odeint, solve_ivp
 from tqdm import tqdm
 
 from ..utils import *
 from ..constants import *
+from .timeseries import TimeSeries
 
 
 class ODESolver:

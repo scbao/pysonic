@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-19 22:30:46
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-09-24 20:42:31
+# @Last Modified time: 2021-05-15 11:04:35
 
 ''' Definition of generic utility functions used in other modules '''
 
@@ -27,9 +27,7 @@ from tkinter import filedialog
 import base64
 import datetime
 import numpy as np
-import pandas as pd
 from scipy.optimize import brentq
-from scipy.interpolate import interp1d
 from scipy import linalg
 import colorlog
 from pushbullet import Pushbullet
@@ -1017,111 +1015,6 @@ def cycleAvg(t, y, T):
     n = int(np.ceil(t[-1] / T))
     return np.array([
         np.mean(y[np.where((t >= i * T) & (t < (i + 1) * T))[0]]) for i in range(n)])
-
-
-class TimeSeries(pd.DataFrame):
-    ''' Wrapper around pandas DataFrame to store timeseries data. '''
-
-    time_key = 't'
-    stim_key = 'stimstate'
-
-    def __init__(self, t, stim, dout):
-        super().__init__(data={
-            self.time_key: t,
-            self.stim_key: stim,
-            **dout
-        })
-
-    @property
-    def time(self):
-        return self[self.time_key].values
-
-    @property
-    def tbounds(self):
-        return self.time.min(), self.time.max()
-
-    @property
-    def stim(self):
-        return self[self.stim_key].values
-
-    @property
-    def inputs(self):
-        return [self.time_key, self.stim_key]
-
-    @property
-    def outputs(self):
-        return list(set(self.columns.values) - set(self.inputs))
-
-    def interpCol(self, t, k, kind):
-        ''' Interpolate a column according to a new time vector. '''
-        kind = 'nearest' if k == self.stim_key else 'linear'
-        self[k] = interp1d(self.time, self[k].values, kind=kind)(t)
-
-    def interp1d(self, t):
-        ''' Interpolate the entire dataframe according to a new time vector. '''
-        for k in self.outputs:
-            self.interpCol(t, k, 'linear')
-        self.interpCol(t, self.stim_key, 'nearest')
-        self[self.time_key] = t
-
-    def resample(self, dt):
-        ''' Resample dataframe at regular time step. '''
-        tmin, tmax = self.tbounds
-        n = int((tmax - tmin) / dt) + 1
-        self.interp1d(np.linspace(tmin, tmax, n))
-
-    def cycleAveraged(self, T):
-        ''' Cycle-average a periodic solution. '''
-        t = np.arange(self.time[0], self.time[-1], T)
-        stim = interp1d(self.time, self.stim, kind='nearest')(t)
-        outputs = {k: cycleAvg(self.time, self[k].values, T) for k in self.outputs}
-        return self.__class__(t, stim, outputs)
-
-    def prepend(self, t0=0):
-        ''' Repeat first row outputs for a preceding time. '''
-        if t0 > self.time.min():
-            raise ValueError('t0 greater than minimal time value')
-        self.loc[-1] = self.iloc[0]  # repeat first row
-        self.index = self.index + 1  # shift index
-        self.sort_index(inplace=True)
-        self[self.time_key][0] = t0
-        self[self.stim_key][0] = 0
-
-    def bound(self, tbounds):
-        ''' Restrict all columns of dataframe to indexes corresponding to time values
-            within specific bounds. '''
-        tmin, tmax = tbounds
-        return self[np.logical_and(self.time >= tmin, self.time <= tmax)].reset_index(drop=True)
-
-    def checkAgainst(self, other):
-        assert isinstance(other, self.__class__), 'classes do not match'
-        assert all(self.keys() == other.keys()), 'differing keys'
-        for k in self.inputs:
-            assert all(self[k].values == other[k].values), f'{k} vectors do not match'
-
-    def operate(self, other, op):
-        ''' Generic arithmetic operator. '''
-        self.checkAgainst(other)
-        return self.__class__(
-            self.time, self.stim,
-            {k: getattr(self[k].values, op)(other[k].values) for k in self.outputs}
-        )
-
-    def __add__(self, other):
-        ''' Addition operator. '''
-        return self.operate(other, '__add__')
-
-    def __sub__(self, other):
-        ''' Subtraction operator. '''
-        return self.operate(other, '__sub__')
-
-    def __mul__(self, other):
-        ''' Multiplication operator. '''
-        return self.operate(other, '__mul__')
-
-    def __truediv__(self, other):
-        ''' Division operator. '''
-        return self.operate(other, '__truediv__')
 
 
 def pairwise(iterable):
