@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-02 17:50:10
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-26 19:50:50
+# @Last Modified time: 2021-05-17 21:17:17
 
 ''' Create lookup table for specific neuron. '''
 
@@ -137,7 +137,7 @@ def computeAStimLookup(pneuron, aref, fref, Aref, fsref, Qref, novertones=0,
     # Run simulations and populate outputs
     logger.info('Starting simulation batch for %s neuron', pneuron.name)
     outputs = []
-    for a in aref:
+    for a in refs['a']:
         nbls = NeuronalBilayerSonophore(a, pneuron)
         batch = Batch(nbls.computeEffVars, queue)
         outputs += batch(mpi=mpi, loglevel=loglevel)

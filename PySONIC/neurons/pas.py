@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-07-07 16:56:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-15 12:17:20
+# @Last Modified time: 2021-05-17 20:59:03
 
 from ..core import PointNeuron, addSonicFeatures
 
@@ -42,7 +42,7 @@ def passiveNeuron(Cm0, gLeak, ELeak):
 
         @property
         def name(self):
-            return f'pas_tau_{self.tau_pas * 1e3:.2e}ms'
+            return f'pas_Cm0_{self.Cm0 * 1e2:.1f}uF_cm2_ELeak_{self.ELeak:.1f}mV'
 
         @property
         def Cm0(self):

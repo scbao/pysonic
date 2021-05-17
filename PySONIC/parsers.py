@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2019-06-04 18:24:29
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-31 10:51:21
+# @Last Modified time: 2021-05-17 21:13:23
 
 import os
 import logging
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 from .utils import Intensity2Pressure, selectDirDialog, OpenFilesDialog, isIterable
-from .neurons import getPointNeuron, CorticalRS
+from .neurons import getPointNeuron, CorticalRS, passiveNeuron
 from .plt import GroupedTimeSeries, CompTimeSeries
 
 DEFAULT_OUTPUT_FOLDER = os.path.abspath(os.path.split(__file__)[0] + '../../../../dump')
@@ -213,7 +213,20 @@ class Parser(ArgumentParser):
         self.to_parse['neuron'] = self.parseNeuron
 
     def parseNeuron(self, args):
-        return [getPointNeuron(n) for n in args['neuron']]
+        pneurons = []
+        for n in args['neuron']:
+            try:
+                pneuron = getPointNeuron(n)
+            except ValueError as err:
+                if str(err).startswith('"pas" neuron not found'):
+                    Cm0 = 1e-2   # F/m2
+                    gLeak = 1e2  # S/m2
+                    ELeak = -70  # mV
+                    pneuron = passiveNeuron(Cm0, gLeak, ELeak)
+                else:
+                    raise err
+            pneurons.append(pneuron)
+        return pneurons
 
     def addInteractive(self):
         self.add_argument(
