@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-14 18:48:06
+# @Last Modified time: 2021-05-17 19:46:30
 
 import logging
 import numpy as np
@@ -342,8 +342,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Remove velocity and add voltage timeseries to solution
         del data['U']
-        data = addColumn(
-            data, 'Vm', self.deflectionDependentVm(data['Qm'], data['Z'], fs), preceding_key='Qm')
+        data.addColumn(
+            'Vm', self.deflectionDependentVm(data['Qm'], data['Z'], fs), preceding_key='Qm')
 
         # Return solution dataframe
         return data
@@ -375,8 +375,8 @@ class NeuronalBilayerSonophore(BilayerSonophore):
 
         # Remove velocity and add voltage timeseries to solution
         del data['U']
-        data = addColumn(
-            data, 'Vm', self.deflectionDependentVm(data['Qm'], data['Z'], fs), preceding_key='Qm')
+        data.addColumn(
+            'Vm', self.deflectionDependentVm(data['Qm'], data['Z'], fs), preceding_key='Qm')
 
         # Return solution dataframe
         return data
@@ -418,11 +418,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
             max_nsamples=MAX_NSAMPLES_EFFECTIVE)
 
         # Interpolate Vm and QSS variables along charge vector and store them in solution dataframe
-        data = addColumn(
-            data, 'Vm', self.interpEffVariable('V', data['Qm'], data['stimstate'] * drive.A, lkp),
+        data.addColumn(
+            'Vm', self.interpEffVariable('V', data['Qm'], data.stim * drive.A, lkp),
             preceding_key='Qm')
         for k in qss_vars:
-            data[k] = self.interpEffVariable(k, data['Qm'], data['stimstate'] * drive.A, lkp_QSS)
+            data[k] = self.interpEffVariable(k, data['Qm'], data.stim * drive.A, lkp_QSS)
 
         # Add dummy deflection and gas content vectors to solution
         for key in ['Z', 'ng']:
@@ -537,7 +537,7 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         if fs < 1.0:
             s += f', fs = {(fs * 1e2):.2f}%'
         if 'qss_vars' in meta and meta['qss_vars'] is not None:
-                s += f" - QSS ({', '.join(meta['qss_vars'])})"
+            s += f" - QSS ({', '.join(meta['qss_vars'])})"
         return s
 
     @staticmethod
@@ -659,11 +659,11 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return classified_fixed_points
 
     def isStableQSS(self, f, A, DC):
-            lookups, QSS = self.getQuasiSteadyStates(
-                f, amps=A, DCs=DC, squeeze_output=True)
-            dQdt = -self.pneuron.iNet(lookups['V'], QSS.tables)  # mA/m2
-            classified_fixed_points = self.fixedPointsQSS(f, A, DC, lookups, dQdt)
-            return len(classified_fixed_points['stable']) > 0
+        lookups, QSS = self.getQuasiSteadyStates(
+            f, amps=A, DCs=DC, squeeze_output=True)
+        dQdt = -self.pneuron.iNet(lookups['V'], QSS.tables)  # mA/m2
+        classified_fixed_points = self.fixedPointsQSS(f, A, DC, lookups, dQdt)
+        return len(classified_fixed_points['stable']) > 0
 
 
 class DrivenNeuronalBilayerSonophore(NeuronalBilayerSonophore):

@@ -3,30 +3,20 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2021-05-14 17:50:14
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-15 19:45:40
+# @Last Modified time: 2021-05-17 16:33:03
 
 import logging
 import numpy as np
 
 from ..utils import logger, isWithin
-from ..core import EventDrivenSolver, TimeSeries, SpatiallyExtendedTimeSeries
+from ..core import Model, EventDrivenSolver, TimeSeries, SpatiallyExtendedTimeSeries
 from ..constants import CLASSIC_TARGET_DT, MAX_NSAMPLES_EFFECTIVE
 
 
 class CoupledSonophores:
     ''' Interface allowing to run benchmark simulations of a two-compartment coupled NBLS model. '''
-    varunits = {
-        't': 'ms',
-        'Cm': 'uF/cm2',
-        'Vm': 'mV',
-        'Qm': 'nC/cm2'
-    }
-    varfactors = {
-        't': 1e3,
-        'Cm': 1e2,
-        'Vm': 1e0,
-        'Qm': 1e5
-    }
+
+    simkey = 'COUPLED_ASTIM'  # keyword used to characterize simulations made with this model
     ga_bounds = [1e-10, 1e10]  # S/m2
 
     def __init__(self, nodes, ga):
@@ -46,6 +36,13 @@ class CoupledSonophores:
 
     def copy(self):
         return self.__class__(self.nodes, self.ga)
+
+    @property
+    def meta(self):
+        return {
+            'nodes': self.nodes,
+            'ga': self.ga
+        }
 
     @property
     def refnode(self):
@@ -68,14 +65,6 @@ class CoupledSonophores:
         return f'{self.__class__.__name__}({self.mechstr} dynamics, {", ".join(params)})'
 
     @property
-    def corecode(self):
-        s = self.__repr__()
-        for c in [' = ', ', ', ' ', '(', '/']:
-            s = s.replace(c, '_')
-        s = s.replace('))', '').replace('__', '_')
-        return s
-
-    @property
     def ga(self):
         return self._ga
 
@@ -86,32 +75,7 @@ class CoupledSonophores:
         self._ga = value
         self.ga_matrix = self.normalizedConductanceMatrix() * value
 
-    @property
-    def gPas(self):
-        ''' Passive membrane conductance (S/m2). '''
-        return self.refpneuron.gLeak
-
-    @property
-    def Cm0(self):
-        ''' Resting capacitance (F/m2). '''
-        return self.refpneuron.Cm0
-
-    @property
-    def Vm0(self):
-        ''' Resting membrane potential (mV). '''
-        return self.refpneuron.Vm0
-
-    @property
-    def Qm0(self):
-        ''' Resting membrane charge density (C/m2). '''
-        return self.Vm0 * self.Cm0 * 1e-3
-
-    @property
-    def Qref(self):
-        ''' Reference charge linear space. '''
-        return np.arange(*self.refpneuron.Qbounds, 1e-5)  # C/cm2
-
-    def vIax(self, Vm):
+    def Iax(self, Vm):
         ''' Compute array of axial currents in each compartment based on array of potentials. '''
         return -self.ga_matrix.dot(Vm)  # mA/m2
 
@@ -136,7 +100,7 @@ class CoupledSonophores:
                        for i, x in enumerate(self.nodes)])  # F/m2
         Vm = y[:, iQ] / Cm * 1e3  # mV
         # Add axial currents to charge derivatives column
-        dydt[:, iQ] += self.vIax(Vm) * 1e-3  # A/m2
+        dydt[:, iQ] += self.Iax(Vm) * 1e-3  # A/m2
         # Return serialized derivatives vector
         return self.serialize(dydt)
 
@@ -151,7 +115,7 @@ class CoupledSonophores:
         # Interpolate membrane potentials
         Vm = np.array([x.interpolate1D(Qm)['V'] for x, Qm in zip(lkps1d, y[:, iQ])])  # mV
         # Add axial currents to charge derivatives column
-        dydt[:, iQ] += self.vIax(Vm) * 1e-3  # A/m2
+        dydt[:, iQ] += self.Iax(Vm) * 1e-3  # A/m2
         # Return serialized derivatives vector
         return self.serialize(dydt)
 
@@ -171,7 +135,7 @@ class CoupledSonophores:
         dt = drives[0].dt
 
         # Compute and serialize initial conditions
-        y0 = [self.nodes[i].fullInitialConditions(drives[i], self.Qm0, dt)
+        y0 = [self.nodes[i].fullInitialConditions(drives[i], self.nodes[i].Qm0, dt)
               for i in range(self.nnodes)]
         self.npernode = len(y0[0])
         y0 = {f'{k}_{i + 1}': v for i, x in enumerate(y0) for k, v in x.items()}
@@ -261,10 +225,42 @@ class CoupledSonophores:
             'sonic': self.__simSonic
         }
 
+    def desc(self, meta):
+        method = meta['method'] if 'method' in meta else meta['model']['method']
+        fs = meta['fs'] if 'fs' in meta else meta['model']['fs']
+        drives_str = ', '.join([x.desc for x in meta['drives']])
+        fs_str = f'fs = ({", ".join([f"{x * 1e2:.2f}%" for x in fs])})'
+        return f'{self}: {method} simulation @ ({drives_str}), {meta["pp"].desc}, {fs_str}'
+
+    @Model.addMeta
+    @Model.logDesc
     def simulate(self, drives, pp, fs, method='sonic'):
-        ''' Call appropriate simulation function and return. '''
+        ''' Simulate the coupled-nbls model for a specific set of US stimulation parameters,
+            and coverage fractions, and return spatially-distributed output data.
+
+            :param drives: list of acoustic drive objects
+            :param pp: pulse protocol object
+            :param fs: list of sonophore membrane coverage fractions (-)
+            :param method: selected integration method
+            :return: SpatiallyExtendedTimeSeries object
+        '''
         # Check that inputs dimensions matches number of nodes
         assert len(drives) == self.nnodes, 'number of drives does not match number of nodes'
         assert len(fs) == self.nnodes, 'number of coverage inputs does not match number of nodes'
         simfunc = self.intMethods()[method]
         return simfunc(drives, pp, fs)
+
+    @property
+    def tauax(self):
+        ''' Axial time constant (s). '''
+        return self.refnode.Cm0 / self.ga
+
+    @property
+    def taum(self):
+        ''' Passive membrane time constant (s). '''
+        return self.refpneuron.tau_pas
+
+    @property
+    def taumax(self):
+        ''' Maximal time constant of the model (s). '''
+        return max(self.taum, self.tauax)

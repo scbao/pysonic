@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2021-05-15 11:01:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-15 11:40:26
+# @Last Modified time: 2021-05-17 19:58:36
 
 import pandas as pd
 import numpy as np
@@ -55,23 +55,22 @@ class TimeSeries(pd.DataFrame):
             self.reindex(columns=new_cols)
             # self = self[cols[:preceding_index + 1] + [key] + cols[preceding_index + 1:]]
 
-    def interpCol(self, t, k, kind):
+    def interpCol(self, t, k):
         ''' Interpolate a column according to a new time vector. '''
         kind = 'nearest' if k == self.stim_key else 'linear'
-        self[k] = interp1d(self.time, self[k].values, kind=kind)(t)
+        return interp1d(self.time, self[k].values, kind=kind)(t)
 
-    def interp1d(self, t):
+    def interpolate(self, t):
         ''' Interpolate the entire dataframe according to a new time vector. '''
-        for k in self.outputs:
-            self.interpCol(t, k, 'linear')
-        self.interpCol(t, self.stim_key, 'nearest')
-        self[self.time_key] = t
+        stim = self.interpCol(t, self.stim_key)
+        outputs = {k: self.interpCol(t, k) for k in self.outputs}
+        return self.__class__(t, stim, outputs)
 
     def resample(self, dt):
         ''' Resample dataframe at regular time step. '''
         tmin, tmax = self.tbounds
         n = int((tmax - tmin) / dt) + 1
-        self.interp1d(np.linspace(tmin, tmax, n))
+        return self.interpolate(np.linspace(tmin, tmax, n))
 
     def cycleAveraged(self, T):
         ''' Cycle-average a periodic solution. '''

@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-03-02 13:26:27
+# @Last Modified time: 2021-05-17 20:19:09
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -12,6 +12,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.optimize import brentq
 from scipy.signal import find_peaks, peak_prominences, butter, sosfiltfilt
+from scipy.ndimage.filters import generic_filter
 
 from .constants import *
 from .utils import logger, isIterable, loadData
@@ -424,3 +425,70 @@ def filtfilt(y, fs, fc, order):
     assert order % 2 == 0, 'filter order must be an even integer'
     sos = butter(order // 2, fc, 'low', fs=fs, output='sos')
     return sosfiltfilt(sos, y)
+
+
+def getDistancePenaltyKernel(dmax, resolution):
+    ''' Get the distance penalty kernel to use for gamma evaluation between
+        a sample and a reference distribution.
+
+        :param dmax: search window limit in the same units as `resolution` (int)
+        :param resolution: resolution of each axis of `sample` and `reference` (tuple)
+        :return: penalty kernel (ndarray)
+    '''
+    resolution = np.atleast_1d(np.asarray(resolution))
+
+    # Adapt dimensionality of resolution array
+    for i in range(resolution.size):
+        resolution = resolution[np.newaxis, :]
+    resolution = resolution.T
+
+    # Compute max deviations (in number of samples) along each dimension,
+    # and corresponding evaluation slices between +/- max dev.
+    maxdevs = [np.ceil(dmax / r) for r in resolution]
+    slices = [slice(-x, x + 1) for x in maxdevs]
+
+    # Construct the distance penalty kernel, scaled to the resolution of the distributions
+    kernel = np.mgrid[slices].astype(np.float) * resolution
+
+    # Distance squared from the central voxel
+    kernel = np.sum(kernel**2, axis=0)
+
+    # Discard voxels for which distance from central voxel exceeds distance threshold
+    # (setting them to infinity so that it will not be selected as the minimum)
+    kernel[np.where(np.sqrt(kernel) > dmax)] = np.inf
+
+    # Normalize by the square of the distance threshold, this is the cost penalty
+    kernel /= dmax**2
+
+    # Remove unecessary dimensions and return
+    return np.squeeze(kernel)
+
+
+def computeGammaDist(sample, reference, kernel, threshold):
+    ''' Distance to Agreement between a sample and reference using gamma evaluation.
+
+        :param sample: sample distribution (ndarray)
+        :param reference: reference distribution (ndarray)
+        :param kernel: penalty kernel (ndarray)
+        :param threshold: maximum passable deviation between distributions (float)
+        :return: evaluated gamma (ndarray)
+    '''
+    assert sample.ndim == reference.ndim == kernel.ndim, \
+        '`sample` and `reference` dimensions must equal `kernel` dimensions'
+    assert sample.shape == reference.shape, \
+        '`sample` and `reference` arrays must have the same shape'
+
+    # Save kernel footprint and flatten kernel for passing into generic_filter
+    footprint = np.ones_like(kernel)
+    kernel = kernel.flatten()
+
+    # Apply the dose threshold penalty (see gamma evaluation equation)
+    values = (reference - sample)**2 / threshold**2
+
+    # Move the distance penalty kernel over the dose penalised values and search
+    # for the minimum of the sum between the kernel and the values under it. This
+    # is the point of closest agreement.
+    gamma_map = generic_filter(values, lambda x: np.minimum.reduce(x + kernel), footprint=footprint)
+
+    # return Euclidean distance
+    return np.sqrt(gamma_map)
