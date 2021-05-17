@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2021-05-15 11:01:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-17 19:58:36
+# @Last Modified time: 2021-05-17 21:48:19
 
 import pandas as pd
 import numpy as np
@@ -77,6 +77,8 @@ class TimeSeries(pd.DataFrame):
         t = np.arange(self.time[0], self.time[-1], T)
         stim = interp1d(self.time, self.stim, kind='nearest')(t)
         outputs = {k: cycleAvg(self.time, self[k].values, T) for k in self.outputs}
+        outputs = {k: interp1d(t + T / 2, v, kind='linear', fill_value='extrapolate')(t)
+                   for k, v in outputs.items()}
         return self.__class__(t, stim, outputs)
 
     def prepend(self, t0=0):
