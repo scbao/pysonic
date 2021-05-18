@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2021-05-15 11:01:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-18 12:47:48
+# @Last Modified time: 2021-05-18 14:50:06
 
 import pandas as pd
 import numpy as np
@@ -135,7 +135,6 @@ class TimeSeries(pd.DataFrame):
         self.dump(list(filter(lambda x: x not in storekeys, self.outputs)))
 
 
-
 class SpatiallyExtendedTimeSeries:
 
     def __init__(self, data):
@@ -217,3 +216,9 @@ class SpatiallyExtendedTimeSeries:
     def dumpOutputsOtherThan(self, *args, **kwargs):
         for k, v in self.items():
             v.dumpOutputsOtherThan(*args, **kwargs)
+
+    def resample(self, dt):
+        return self.__class__({k: v.resample(dt) for k, v in self.items()})
+
+    def interpolate(self, t):
+        return self.__class__({k: v.interpolate(t) for k, v in self.items()})
