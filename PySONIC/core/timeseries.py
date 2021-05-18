@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2021-05-15 11:01:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-17 21:48:19
+# @Last Modified time: 2021-05-18 12:47:48
 
 import pandas as pd
 import numpy as np
@@ -127,6 +127,14 @@ class TimeSeries(pd.DataFrame):
         ''' Division operator. '''
         return self.operate(other, '__truediv__')
 
+    def dump(self, keys):
+        for k in keys:
+            del self[k]
+
+    def dumpOutputsOtherThan(self, storekeys):
+        self.dump(list(filter(lambda x: x not in storekeys, self.outputs)))
+
+
 
 class SpatiallyExtendedTimeSeries:
 
@@ -205,3 +213,7 @@ class SpatiallyExtendedTimeSeries:
     @property
     def stim(self):
         return self.data[self.refkey].stim
+
+    def dumpOutputsOtherThan(self, *args, **kwargs):
+        for k, v in self.items():
+            v.dumpOutputsOtherThan(*args, **kwargs)

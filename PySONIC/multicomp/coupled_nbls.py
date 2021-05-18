@@ -3,8 +3,10 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2021-05-14 17:50:14
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-17 22:19:01
+# @Last Modified time: 2021-05-18 14:24:12
 
+import os
+import pickle
 import logging
 import numpy as np
 
@@ -249,6 +251,40 @@ class CoupledSonophores:
         assert len(fs) == self.nnodes, 'number of coverage inputs does not match number of nodes'
         simfunc = self.intMethods()[method]
         return simfunc(drives, pp, fs)
+
+    def filecodes(self, drives, pp, fs, method):
+        codes = {
+            'simkey': self.simkey,
+            'neuron': self.refpneuron.name,
+            'nnodes': f'{self.nnodes}node{"s" if self.nnodes > 1 else ""}',
+            'a': f'a{"_".join([f"{x.a * 1e9:.0f}nm" for x in self.nodes])}'
+        }
+        for i, drive in enumerate(drives):
+            codes.update({f'{k}_{i}': v for k, v in drive.filecodes.items()})
+        codes.update(pp.filecodes)
+        codes['fs'] = f'fs{"_".join([f"{x * 1e2:.0f}%" for x in fs])}'
+        codes['method'] = method
+        return codes
+
+    def filecode(self, *args):
+        return '_'.join([x for x in self.filecodes(*args).values() if x is not None])
+
+    def simAndSave(self, *args, outdir='.', overwrite=False, minimize_output=True):
+        fname = f'{self.filecode(*args)}.pkl'
+        fpath = os.path.join(outdir, fname)
+        if os.path.isfile(fpath) and not overwrite:
+            logger.info(f'Loading data from "{os.path.basename(fpath)}"')
+            with open(fpath, 'rb') as fh:
+                frame = pickle.load(fh)
+                data, meta = frame['data'], frame['meta']
+        else:
+            data, meta = self.simulate(*args)
+            if minimize_output:
+                data.dumpOutputsOtherThan(['Qm', 'Vm'])
+            with open(fpath, 'wb') as fh:
+                pickle.dump({'meta': meta, 'data': data}, fh)
+            logger.debug(f'simulation data exported to "{fpath}"')
+        return data, meta
 
     @property
     def tauax(self):
