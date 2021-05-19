@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-07-07 16:56:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-19 12:16:51
+# @Last Modified time: 2021-05-19 16:32:39
 
 import re
 from ..core import PointNeuron, addSonicFeatures

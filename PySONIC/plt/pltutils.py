@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-08-24 12:47:51
+# @Last Modified time: 2021-05-19 16:53:36
 
 ''' Useful functions to generate plots. '''
 
@@ -489,3 +489,38 @@ def mirrorAxis(org_ax, new_ax, p=False):
         if kwargs['edgecolor'] == (0.0, 0.0, 0.0, 0.0):
             kwargs['edgecolor'] = 'none'
         new_ax.axvspan(xmin, xmax, **kwargs)
+
+
+def harmonizeAxesLimits(axes, dim='xy'):
+    ''' Harmonize x and/or y limits across an array of axes. '''
+    axes = axes.flatten()
+    xlims, ylims = [np.inf, -np.inf], [np.inf, -np.inf]
+    for ax in axes:
+        xlims = [min(xlims[0], ax.get_xlim()[0]), max(xlims[1], ax.get_xlim()[1])]
+        ylims = [min(ylims[0], ax.get_ylim()[0]), max(ylims[1], ax.get_ylim()[1])]
+    for ax in axes:
+        if dim in ['xy', 'x']:
+            ax.set_xlim(*xlims)
+        if dim in ['xy', 'y']:
+            ax.set_ylim(*ylims)
+
+
+def hideSpines(ax, spines='all'):
+    if isIterable(ax):
+        for item in ax:
+            hideSpines(item, spines=spines)
+    else:
+        if spines == 'all':
+            spines = ['top', 'bottom', 'right', 'left']
+        for sk in spines:
+            ax.spines[sk].set_visible(False)
+
+
+def hideTicks(ax, key='xy'):
+    if isIterable(ax):
+        for item in ax:
+            hideTicks(item, key=key)
+    if key in ['xy', 'x']:
+        ax.set_xticks([])
+    if key in ['xy', 'y']:
+        ax.set_yticks([])
