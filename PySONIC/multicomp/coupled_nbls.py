@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2021-05-14 17:50:14
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-19 12:00:38
+# @Last Modified time: 2021-05-19 21:39:40
 
 import os
 import pickle
@@ -281,21 +281,25 @@ class CoupledSonophores:
     def filecode(self, *args):
         return '_'.join([x for x in self.filecodes(*args).values() if x is not None])
 
-    def simAndSave(self, *args, outdir='.', overwrite=False, minimize_output=True):
-        fname = f'{self.filecode(*args)}.pkl'
-        fpath = os.path.join(outdir, fname)
-        if os.path.isfile(fpath) and not overwrite:
-            logger.info(f'Loading data from "{os.path.basename(fpath)}"')
-            with open(fpath, 'rb') as fh:
-                frame = pickle.load(fh)
-                data, meta = frame['data'], frame['meta']
-        else:
+    def simAndSave(self, *args, outdir=None, overwrite=False, minimize_output=True):
+        runsim = True
+        if outdir is not None:
+            fname = f'{self.filecode(*args)}.pkl'
+            fpath = os.path.join(outdir, fname)
+            if os.path.isfile(fpath) and not overwrite:
+                logger.info(f'Loading data from "{os.path.basename(fpath)}"')
+                with open(fpath, 'rb') as fh:
+                    frame = pickle.load(fh)
+                    data, meta = frame['data'], frame['meta']
+                    runsim = False
+        if runsim:
             data, meta = self.simulate(*args)
             if minimize_output:
                 data.dumpOutputsOtherThan(['Qm', 'Vm'])
-            with open(fpath, 'wb') as fh:
-                pickle.dump({'meta': meta, 'data': data}, fh)
-            logger.debug(f'simulation data exported to "{fpath}"')
+            if outdir is not None:
+                with open(fpath, 'wb') as fh:
+                    pickle.dump({'meta': meta, 'data': data}, fh)
+                logger.debug(f'simulation data exported to "{fpath}"')
         return data, meta
 
     @property

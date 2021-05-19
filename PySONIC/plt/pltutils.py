@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-21 14:33:36
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-19 16:53:36
+# @Last Modified time: 2021-05-19 19:58:24
 
 ''' Useful functions to generate plots. '''
 
@@ -524,3 +524,21 @@ def hideTicks(ax, key='xy'):
         ax.set_xticks([])
     if key in ['xy', 'y']:
         ax.set_yticks([])
+
+
+def addXscale(ax, xoffset, yoffset, unit='', lw=2, fmt='.0f', fs=10):
+    ax.plot([xoffset, 1 + xoffset], [yoffset, yoffset], c='k',
+            transform=ax.transAxes, linewidth=lw, clip_on=False)
+    xytext = (0.5 + xoffset / 2, yoffset + 0.03)
+    xscale = np.ptp(ax.get_xlim())
+    ax.text(*xytext, f'{xscale:{fmt}} {unit}', transform=ax.transAxes,
+            ha='center', va='bottom', fontsize=fs)
+
+
+def addYscale(ax, xoffset, yoffset, unit='', lw=2, fmt='.0f', fs=10):
+    ax.plot([1 + xoffset, 1 + xoffset], [yoffset, 1 + yoffset], c='k',
+            transform=ax.transAxes, linewidth=lw, clip_on=False)
+    xytext = (1 + xoffset + 0.07, .5 + yoffset / 2)
+    yscale = np.ptp(ax.get_ylim())
+    ax.text(*xytext, f'{yscale:{fmt}} {unit}', transform=ax.transAxes,
+            ha='left', va='center', rotation=90, fontsize=fs)
