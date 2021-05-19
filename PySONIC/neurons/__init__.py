@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-06-06 13:36:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2020-07-21 15:25:33
+# @Last Modified time: 2021-05-19 12:19:10
 
 import inspect
 import sys
@@ -37,5 +37,8 @@ def getPointNeuron(name):
     try:
         return neuron_classes[name]()
     except KeyError:
-        raise ValueError('"{}" neuron not found. Implemented neurons are: {}'.format(
-            name, ', '.join(list(neuron_classes.keys()))))
+        if name.startswith('pas'):
+            return passiveNeuron(name)
+        else:
+            raise ValueError('"{}" neuron not found. Implemented neurons are: {}'.format(
+                name, ', '.join(list(neuron_classes.keys()))))

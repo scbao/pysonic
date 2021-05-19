@@ -3,12 +3,22 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-07-07 16:56:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-19 11:19:34
+# @Last Modified time: 2021-05-19 12:16:51
 
+import re
 from ..core import PointNeuron, addSonicFeatures
 
+float_pattern = r'([+-]?\d+\.?\d*)'
+pattern = re.compile(
+    r'pas_Cm0_{0}uF_cm2_gLeak_{0}S_m2_ELeak_{0}mV'.format(float_pattern))
 
-def passiveNeuron(Cm0, gLeak, ELeak):
+
+def passiveNeuron(*args):
+    if len(args) == 1:
+        Cm0, gLeak, ELeak = [float(x) for x in re.findall(pattern, args[0])[0]]
+        Cm0 *= 1e-2
+    else:
+        Cm0, gLeak, ELeak = args
 
     @addSonicFeatures
     class PassiveNeuron(PointNeuron):

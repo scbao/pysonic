@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2021-05-14 17:50:14
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-18 17:41:16
+# @Last Modified time: 2021-05-19 12:00:38
 
 import os
 import pickle
@@ -11,7 +11,8 @@ import logging
 import numpy as np
 
 from ..utils import logger, isWithin
-from ..core import Model, EventDrivenSolver, TimeSeries, SpatiallyExtendedTimeSeries
+from ..core import Model, NeuronalBilayerSonophore, EventDrivenSolver
+from ..core.timeseries import TimeSeries, SpatiallyExtendedTimeSeries
 from ..constants import CLASSIC_TARGET_DT, MAX_NSAMPLES_EFFECTIVE
 
 
@@ -45,6 +46,16 @@ class CoupledSonophores:
             'nodes': [x.meta for x in self.nodes],
             'ga': self.ga
         }
+
+    @classmethod
+    def initFromMeta(cls, meta):
+        try:
+            nodes, ga = meta['nodes'], meta['ga']
+        except KeyError:
+            meta = meta['model']
+            nodes, ga = meta['nodes'], meta['ga']
+        nodes = [NeuronalBilayerSonophore.initFromMeta(x) for x in nodes]
+        return cls(nodes, ga)
 
     @property
     def refnode(self):
