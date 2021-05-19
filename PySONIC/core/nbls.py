@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2016-09-29 16:16:19
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-17 19:46:30
+# @Last Modified time: 2021-05-19 11:18:45
 
 import logging
 import numpy as np
@@ -222,7 +222,10 @@ class NeuronalBilayerSonophore(BilayerSonophore):
         return effvars_list
 
     def getLookupFileName(self, a=None, f=None, A=None, fs=None, novertones=0.):
-        fname = f'{self.pneuron.name}_lookups'
+        try:
+            fname = f'{self.pneuron.lookup_name}_lookups'
+        except AttributeError:
+            fname = f'{self.pneuron.name}_lookups'
         if a is not None:
             fname += f'_{a * 1e9:.0f}nm'
         if f is not None:

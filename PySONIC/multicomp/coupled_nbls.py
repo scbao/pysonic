@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2021-05-14 17:50:14
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-18 14:24:12
+# @Last Modified time: 2021-05-18 17:41:16
 
 import os
 import pickle
@@ -42,7 +42,7 @@ class CoupledSonophores:
     @property
     def meta(self):
         return {
-            'nodes': self.nodes,
+            'nodes': [x.meta for x in self.nodes],
             'ga': self.ga
         }
 
@@ -257,6 +257,7 @@ class CoupledSonophores:
             'simkey': self.simkey,
             'neuron': self.refpneuron.name,
             'nnodes': f'{self.nnodes}node{"s" if self.nnodes > 1 else ""}',
+            'ga': f'ga{self.ga:.2e}S_m2',
             'a': f'a{"_".join([f"{x.a * 1e9:.0f}nm" for x in self.nodes])}'
         }
         for i, drive in enumerate(drives):

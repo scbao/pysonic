@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2020-07-07 16:56:34
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-17 20:59:03
+# @Last Modified time: 2021-05-19 11:19:34
 
 from ..core import PointNeuron, addSonicFeatures
 
@@ -31,18 +31,31 @@ def passiveNeuron(Cm0, gLeak, ELeak):
         def copy(self):
             return self.__class__(self.Cm0, self.gLeak, self.ELeak)
 
-        def __repr__(self):
-            params = {
+        def pdict(self):
+            return {
                 'Cm0': f'{self.Cm0 * 1e2:.1f} uF/cm2',
                 'gLeak': f'{self.gLeak:.1f} S/m2',
                 'ELeak': f'{self.ELeak:.1f} mV'
             }
-            params_str = ', '.join([f'{k} = {v}' for k, v in params.items()])
+
+        def __repr__(self):
+            params_str = ', '.join([f'{k} = {v}' for k, v in self.pdict().items()])
             return f'{self.__class__.__name__}({params_str})'
+
+        def code(self, pdict):
+            pdict = {k: v.replace(' ', '').replace('/', '_') for k, v in pdict.items()}
+            s = '_'.join([f'{k}_{v}' for k, v in pdict.items()])
+            return f'pas_{s}'
 
         @property
         def name(self):
-            return f'pas_Cm0_{self.Cm0 * 1e2:.1f}uF_cm2_ELeak_{self.ELeak:.1f}mV'
+            return self.code(self.pdict())
+
+        @property
+        def lookup_name(self):
+            pdict = self.pdict()
+            del pdict['gLeak']
+            return self.code(pdict)
 
         @property
         def Cm0(self):

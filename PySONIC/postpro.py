@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2017-08-22 14:33:04
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-17 20:47:47
+# @Last Modified time: 2021-05-18 19:10:05
 
 ''' Utility functions to detect spikes on signals and compute spiking metrics. '''
 
@@ -427,7 +427,7 @@ def filtfilt(y, fs, fc, order):
     return sosfiltfilt(sos, y)
 
 
-def getDistancePenaltyKernel(delta_d, resolution):
+def gammaKernel(delta_d, resolution):
     ''' Get the distance penalty kernel to use for a gamma evaluation based on
         a threshold distance-to-agreement criterion.
 
@@ -464,17 +464,20 @@ def getDistancePenaltyKernel(delta_d, resolution):
     return np.squeeze(kernel)
 
 
-def computeGammaDist(sample, reference, kernel, delta_D):
+def gamma(sample, reference, delta_d, delta_D, resolution):
     ''' Compute the gamma deviation distribution between a sample and reference distribution,
         based on composite evaluation of Distance-To-Agreement (DTA) and Dose Deviation (DT).
 
         :param sample: sample distribution (ndarray)
         :param reference: reference distribution (ndarray)
-        :param kernel: DTA penalty kernel (ndarray)
+        :param delta_d: distance-to-agreement criterion, i.e. search window limit in
+            the same units as `resolution` (float)
         :param delta_D: dose difference criterion, i.e. maximum passable deviation between
             distributions (float)
+        :param resolution: resolution of each axis of the distributions (tuple, or scalar for 1D)
         :return: evaluated gamma distribution (ndarray, same dimensions as input distributions)
     '''
+    kernel = gammaKernel(delta_d, resolution)
     assert sample.ndim == reference.ndim == kernel.ndim, \
         '`sample` and `reference` dimensions must equal `kernel` dimensions'
     assert sample.shape == reference.shape, \
