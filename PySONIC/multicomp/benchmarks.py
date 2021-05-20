@@ -3,7 +3,7 @@
 # @Email: theo.lemaire@epfl.ch
 # @Date:   2021-05-14 19:42:00
 # @Last Modified by:   Theo Lemaire
-# @Last Modified time: 2021-05-19 22:05:26
+# @Last Modified time: 2021-05-20 10:09:19
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -113,15 +113,23 @@ class PassiveBenchmark(Benchmark):
         fig.supxlabel('tau_ax', fontsize=fs + 2)
         fig.supylabel('tau_m', fontsize=fs + 2)
         i = 0
+        tmin = np.inf
         for axrow in axes[::-1]:
             for ax in axrow:
                 self.plotSignals(ax, results[i])
                 hideSpines(ax)
                 hideTicks(ax)
-                addXscale(ax, 0, 0, unit='ms', fmt='.2f', fs=fs)
+                ax.margins(0)
+                tmin = min(tmin, np.ptp(ax.get_xlim()))
+                # addXscale(ax, 0, 0, unit='ms', fmt='.2f', fs=fs)
                 i += 1
+        for axrow in axes[::-1]:
+            for ax in axrow:
+                trans = (ax.transData + ax.transAxes.inverted())
+                xpoints = [trans.transform([x, 0])[0] for x in [0, tmin]]
+                ax.plot(xpoints, [-0.05] * 2, c='k', lw=2, transform=ax.transAxes, clip_on=False)
         harmonizeAxesLimits(axes, dim='y')
-        addYscale(axes[-1, -1], 0, 0, unit='mV', fmt='.0f', fs=fs)
+        addYscale(axes[-1, -1], 0.05, 0, unit='mV', fmt='.0f', fs=fs)
         for ax, tauax in zip(axes[-1, :], tauax_range):
             ax.set_xlabel(f'{si_format(tauax)}s', labelpad=15, fontsize=fs + 2)
         for ax, taum in zip(axes[:, 0], taum_range[::-1]):
